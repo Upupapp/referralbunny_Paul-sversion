@@ -3,9 +3,9 @@
 @section('nav') @include('reseller._nav') @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-add-deal')" class="rs-btn-primary">
+    <button x-data @click="$dispatch('open-claim-deal')" class="rs-btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        <span class="hidden sm:inline">New Deal</span>
+        <span class="hidden sm:inline">Claim a Deal</span>
     </button>
 @endsection
 
@@ -13,7 +13,7 @@
 <div class="space-y-5"
      x-data="resellerDeals('{{ $tenant->id }}', '{{ addslashes($reseller->name) }}')"
      x-init="init()"
-     @open-add-deal.window="showAdd = true">
+     @open-claim-deal.window="showClaim = true">
 
     {{-- Search + filters --}}
     <div class="card space-y-3">
@@ -64,26 +64,23 @@
 
         <div x-show="loading" class="flex items-center justify-center py-10 gap-3 text-gray-400">
             <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            <span class="text-sm">Loading your deals…</span>
+            <span class="text-sm">Loading…</span>
         </div>
 
         <div x-show="!loading" class="overflow-x-auto">
             <table class="w-full">
                 <thead>
                     <tr class="table-head">
-                        <th>Deal</th>
-                        <th>Stage</th>
-                        <th>Value</th>
-                        <th>Commission</th>
-                        <th>Status</th>
-                        <th>Days Left</th>
+                        <th>Organization</th><th>Stage</th><th>Value</th><th>Commission</th><th>Status</th><th>Days Left</th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-if="filtered.length === 0 && !loading">
                         <tr><td colspan="6" class="py-14 text-center">
                             <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
-                            <p class="text-gray-400 text-sm">No deals match your filters.</p>
+                            <p class="text-gray-400 text-sm font-medium">No deals yet</p>
+                            <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
+                            <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Claim a Deal</button>
                         </td></tr>
                     </template>
                     <template x-for="d in filtered" :key="d.id">
@@ -95,7 +92,7 @@
                                          x-text="(d.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
                                         <p class="font-medium text-sm truncate" style="color:#1E1B4B" x-text="d.name"></p>
-                                        <p class="text-xs text-gray-400 truncate" x-text="(d.data?.province || d.data?.municipality) ? (d.data?.province || '') : ''"></p>
+                                        <p class="text-xs text-gray-400 truncate" x-text="d.data?.province || ''"></p>
                                     </div>
                                 </div>
                             </td>
@@ -111,7 +108,8 @@
                                       :class="{'bg-emerald-100 text-emerald-700':d.status==='active','bg-amber-100 text-amber-700':d.status==='expiring','bg-red-100 text-red-600':d.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(d.status||'')}"
                                       x-text="d.status || 'active'"></span>
                             </td>
-                            <td class="text-sm tabular-nums" :class="(d.days_left||21) <= 3 ? 'text-red-500 font-bold' : (d.days_left||21) <= 7 ? 'text-amber-500 font-semibold' : 'text-gray-500'"
+                            <td class="text-sm tabular-nums"
+                                :class="(d.days_left||21) <= 3 ? 'text-red-500 font-bold' : (d.days_left||21) <= 7 ? 'text-amber-500 font-semibold' : 'text-gray-500'"
                                 x-text="(d.days_left ?? 21) + 'd'"></td>
                         </tr>
                     </template>
@@ -120,85 +118,158 @@
         </div>
     </div>
 
-    {{-- Add Deal Modal (same LGU autocomplete as tenant admin) --}}
-    <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold" style="color:#1E1B4B">Add New Deal</h3>
-                <button @click="showAdd=false; clearLgu()" class="text-gray-400 hover:text-gray-600">
+    {{-- ── CLAIM DEAL MODAL (LGU IDS: browse by province) ──── --}}
+    <div x-show="showClaim" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showClaim = false; claimStep = 1; selectedOrg = null">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" @click.stop>
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                <div>
+                    <h3 class="font-semibold" style="color:#1E1B4B">
+                        <span x-show="claimStep === 1">Choose a Municipality</span>
+                        <span x-show="claimStep === 2">Confirm Your Claim</span>
+                    </h3>
+                    <p class="text-xs text-gray-400 mt-0.5" x-show="claimStep === 1">Select a province, then pick an available municipality.</p>
+                </div>
+                <button @click="showClaim = false; claimStep = 1; selectedOrg = null" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4">
-                {{-- LGU Search --}}
-                <div>
-                    <label class="form-label">City / Municipality *</label>
-                    <div class="relative">
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="text" x-model="lguQuery" @input.debounce.300ms="searchLgu()" @keydown.escape="lguDropdown=false"
-                               class="form-input pl-9" :class="lguSelected ? 'border-teal-300 bg-teal-50/30' : ''"
-                               placeholder="Type city or municipality…" autocomplete="off">
-                        <button x-show="lguSelected" @click="clearLgu()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                        <div x-show="lguDropdown && lguResults.length > 0" x-cloak @click.outside="lguDropdown=false"
-                             class="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
-                            <template x-for="org in lguResults" :key="org.id">
-                                <button type="button" @click="selectLgu(org)"
-                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50">
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-medium truncate" style="color:#1E1B4B" x-text="org.name"></p>
-                                        <p class="text-xs text-gray-400 truncate" x-text="org.address"></p>
-                                    </div>
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-                    <div x-show="lguSelected" x-cloak class="mt-2 px-4 py-3 rounded-xl border border-teal-100" style="background:#F0FDFA">
-                        <p class="text-[10px] font-bold text-teal-500 uppercase tracking-widest mb-1">Standardized Name</p>
-                        <p class="text-sm font-semibold" style="color:#1E1B4B" x-text="form.name"></p>
-                        <p class="text-xs text-gray-500 mt-0.5">Province: <span class="font-medium text-gray-700" x-text="form.data.province || '—'"></span></p>
-                    </div>
+
+            {{-- Step 1: Browse --}}
+            <div x-show="claimStep === 1" class="flex flex-col flex-1 overflow-hidden">
+                {{-- Province selector --}}
+                <div class="px-6 pt-4 pb-3 shrink-0">
+                    <label class="form-label">Province</label>
+                    <select x-model="claimProvince" @change="loadAvailableOrgs()" class="form-input">
+                        <option value="">Select a province…</option>
+                        @foreach(['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Metro Manila','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay'] as $prov)
+                        <option value="{{ $prov }}">{{ $prov }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                {{-- Org list --}}
+                <div class="flex-1 overflow-y-auto px-6 pb-4">
+                    <div x-show="loadingOrgs" class="flex items-center justify-center py-8 text-gray-400 gap-2">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span class="text-sm">Loading municipalities…</span>
+                    </div>
+
+                    <div x-show="!loadingOrgs && claimProvince && availableOrgs.length === 0" class="text-center py-8">
+                        <p class="text-sm text-gray-400">All municipalities in this province are claimed.</p>
+                    </div>
+
+                    <div x-show="!loadingOrgs && availableOrgs.length > 0" class="space-y-1.5 mt-1">
+                        <template x-for="org in availableOrgs" :key="org.id">
+                            <button type="button"
+                                    @click="!org.claimed && selectOrgToClaim(org)"
+                                    :class="org.claimed ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-teal-50 hover:border-teal-200 cursor-pointer'"
+                                    class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 text-left transition-all">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                     :style="`background:${org.lgu_type === 'City' ? '#7B61FF' : '#3B82F6'}`"
+                                     x-text="(org.name||'').slice(0,2).toUpperCase()"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold truncate" style="color:#1E1B4B" x-text="org.name"></p>
+                                    <p class="text-xs text-gray-400 mt-0.5" x-text="org.lgu_type || 'LGU'"></p>
+                                </div>
+                                <div class="shrink-0">
+                                    <span x-show="org.claimed" class="text-xs px-2 py-0.5 rounded-full font-medium" style="background:#F3F4F6;color:#9CA3AF">Claimed</span>
+                                    <span x-show="!org.claimed" class="text-xs px-2.5 py-1 rounded-full font-semibold" style="background:#CCFBF1;color:#0D9488">Available</span>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+
+                    <div x-show="!claimProvince && availableOrgs.length === 0" class="text-center py-8">
+                        <p class="text-sm text-gray-400">Select a province to see available municipalities.</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Step 2: Confirm claim --}}
+            <div x-show="claimStep === 2" class="p-6 flex-1">
+                <div x-show="selectedOrg" class="text-center mb-6">
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold mx-auto mb-3"
+                         :style="`background:${selectedOrg?.lgu_type === 'City' ? '#7B61FF' : '#0D9488'}`"
+                         x-text="(selectedOrg?.name||'').slice(0,2).toUpperCase()"></div>
+                    <h3 class="text-lg font-bold" style="color:#1E1B4B" x-text="selectedOrg?.name"></h3>
+                    <p class="text-sm text-gray-400 mt-0.5" x-text="selectedOrg?.province"></p>
+                </div>
+
+                <div class="px-4 py-3 rounded-xl mb-4 text-center" style="background:#F0FDFA;border:1px solid #99F6E4">
+                    <p class="text-sm font-semibold" style="color:#0D9488">Take this challenge on! 💪</p>
+                    <p class="text-xs text-gray-500 mt-1" x-text="claimPrompt"></p>
+                </div>
+
+                <div class="space-y-3">
                     <div>
                         <label class="form-label">Stage</label>
-                        <select x-model="form.stage" class="form-input">
+                        <select x-model="claimForm.stage" class="form-input">
                             <option value="introduction">Introduction</option>
                             <option value="presentation">Presentation</option>
-                            <option value="contract_sent">Contract Sent</option>
-                            <option value="signed">Signed</option>
-                            <option value="paid">Paid</option>
                         </select>
                     </div>
                     <div>
-                        <label class="form-label">Deal Value (₱)</label>
-                        <input type="number" x-model="form.deal_value" class="form-input" placeholder="0">
+                        <label class="form-label">Deal Value (₱) <span class="text-gray-400 font-normal">optional</span></label>
+                        <input type="number" x-model="claimForm.deal_value" class="form-input" placeholder="0">
                     </div>
                 </div>
 
-                <p x-show="addError" class="text-xs text-red-600 font-medium" x-text="addError"></p>
-                <div class="flex justify-end gap-3">
-                    <button @click="showAdd=false; clearLgu()" class="btn-secondary">Cancel</button>
-                    <button @click="addDeal()" :disabled="saving || !lguSelected"
-                            class="rs-btn-primary"
-                            x-text="saving ? 'Saving…' : 'Add Deal'"></button>
+                <p x-show="claimError" class="text-xs text-red-600 font-medium mt-3" x-text="claimError"></p>
+
+                <div class="flex gap-3 mt-5">
+                    <button @click="claimStep = 1; selectedOrg = null" class="btn-secondary flex-1">Back</button>
+                    <button @click="confirmClaim()" :disabled="saving" class="rs-btn-primary flex-1 justify-center"
+                            x-text="saving ? 'Claiming…' : 'Claim This Deal'"></button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- ── SUCCESS PROMPT ──────────────────────────────────── --}}
+    <div x-show="showSuccessPrompt" x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center" @click.stop>
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background:#CCFBF1">
+                <svg class="w-8 h-8" style="color:#0D9488" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <h2 class="text-xl font-bold mb-2" style="color:#1E1B4B">Deal Claimed!</h2>
+            <p class="text-gray-500 text-sm mb-1" x-text="successOrgName"></p>
+            <p class="text-base font-semibold mb-6" style="color:#0D9488" x-text="successPrompt"></p>
+            <button @click="showSuccessPrompt = false" class="rs-btn-primary w-full justify-center">
+                Let's Go 🚀
+            </button>
         </div>
     </div>
 
 </div>
 
 <script>
+const CLAIM_PROMPTS = [
+    "You're now the champion for this municipality. Show them what you've got!",
+    "The clock starts now. Move this deal through the pipeline.",
+    "Every big win starts with a single claim. This is yours.",
+    "This municipality is counting on you. Don't let them down.",
+    "Your territory, your responsibility. Make it happen.",
+    "One step closer to your commission. Keep the momentum going!",
+    "You've staked your claim. Now it's time to deliver.",
+];
+
 function resellerDeals(tenantId, resellerName) {
     return {
         leads: [], filtered: [], loading: true,
         search: '', filterStatus: '', filterStage: '',
-        showAdd: false, saving: false, addError: '',
-        lguQuery: '', lguResults: [], lguDropdown: false, lguSelected: null,
-        form: { name: '', stage: 'introduction', deal_value: '', data: { province: '', municipality: '' } },
+        showClaim: false, claimStep: 1,
+        claimProvince: '', availableOrgs: [], loadingOrgs: false,
+        selectedOrg: null, saving: false, claimError: '',
+        claimForm: { stage: 'introduction', deal_value: '' },
+        claimPrompt: '',
+        showSuccessPrompt: false, successPrompt: '', successOrgName: '',
 
         stageColors: { introduction:'#9CA3AF', presentation:'#3B82F6', contract_sent:'#F59E0B', signed:'#8B5CF6', paid:'#10B981' },
         stageColor(s) { return this.stageColors[s] || '#9CA3AF'; },
@@ -226,49 +297,69 @@ function resellerDeals(tenantId, resellerName) {
             });
         },
 
-        async searchLgu() {
-            if (this.lguQuery.length < 2) { this.lguResults = []; this.lguDropdown = false; return; }
-            this.lguDropdown = true;
+        async loadAvailableOrgs() {
+            if (!this.claimProvince) { this.availableOrgs = []; return; }
+            this.loadingOrgs = true;
             try {
-                const res  = await fetch(`/api/organizations?tenant_id=${tenantId}&search=${encodeURIComponent(this.lguQuery)}&per_page=10`);
-                const json = await res.json();
-                this.lguResults = json.data || [];
-            } catch(e) { this.lguResults = []; }
+                const res  = await fetch(`/api/organizations/available?tenant_id=${tenantId}&province=${encodeURIComponent(this.claimProvince)}`);
+                this.availableOrgs = await res.json();
+            } catch(e) { this.availableOrgs = []; }
+            this.loadingOrgs = false;
         },
 
-        selectLgu(org) {
-            this.lguSelected = org;
-            this.lguDropdown = false;
-            this.lguQuery    = org.name;
-            this.form.name   = org.name;
-            this.form.data.province    = org.address || '';
-            this.form.data.municipality = (org.name||'').replace(/^(?:Municipality|City) of\s+/i, '');
+        selectOrgToClaim(org) {
+            this.selectedOrg  = org;
+            this.claimPrompt  = CLAIM_PROMPTS[Math.floor(Math.random() * CLAIM_PROMPTS.length)];
+            this.claimError   = '';
+            this.claimStep    = 2;
         },
 
-        clearLgu() {
-            this.lguSelected = null; this.lguQuery = ''; this.lguResults = []; this.lguDropdown = false;
-            this.form.name = ''; this.form.data.province = ''; this.form.data.municipality = '';
-        },
-
-        async addDeal() {
-            this.addError = '';
-            if (!this.lguSelected) { this.addError = 'Please select a city or municipality.'; return; }
+        async confirmClaim() {
+            if (!this.selectedOrg) return;
+            this.claimError = '';
             this.saving = true;
             try {
                 const res  = await fetch('/api/leads', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ tenant_id: tenantId, reseller_name: resellerName, ...this.form }),
+                    body: JSON.stringify({
+                        tenant_id:       tenantId,
+                        reseller_name:   resellerName,
+                        organization_id: this.selectedOrg.id,
+                        name:            this.selectedOrg.name,
+                        stage:           this.claimForm.stage,
+                        deal_value:      this.claimForm.deal_value || 0,
+                        data: {
+                            province:    this.selectedOrg.province,
+                            municipality: (this.selectedOrg.name||'').replace(/^(?:Municipality|City) of\s+/i, ''),
+                            lgu_type:    this.selectedOrg.lgu_type,
+                        },
+                    }),
                 });
                 const lead = await res.json();
-                if (!res.ok) { this.addError = lead.message || Object.values(lead.errors||{})[0]?.[0] || 'Failed to create deal.'; return; }
-                if (lead.id) { this.leads.unshift(lead); this.applyFilters(); }
-                this.showAdd = false;
-                this.clearLgu();
-                this.form = { name: '', stage: 'introduction', deal_value: '', data: { province: '', municipality: '' } };
-                this.$dispatch('show-toast', { type: 'success', message: `Deal "${lead.name}" added successfully.` });
-            } catch(e) { this.addError = 'Network error. Please try again.'; }
-            finally { this.saving = false; }
+
+                if (!res.ok) {
+                    this.claimError = lead.message || 'Failed to claim deal.';
+                    return;
+                }
+
+                this.leads.unshift(lead);
+                this.applyFilters();
+                this.showClaim    = false;
+                this.claimStep    = 1;
+                this.selectedOrg  = null;
+                this.claimProvince = '';
+                this.availableOrgs = [];
+                this.claimForm    = { stage: 'introduction', deal_value: '' };
+
+                this.successOrgName  = lead.name;
+                this.successPrompt   = CLAIM_PROMPTS[Math.floor(Math.random() * CLAIM_PROMPTS.length)];
+                this.showSuccessPrompt = true;
+            } catch(e) {
+                this.claimError = 'Network error. Please try again.';
+            } finally {
+                this.saving = false;
+            }
         },
     };
 }

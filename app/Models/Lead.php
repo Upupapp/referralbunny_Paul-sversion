@@ -16,7 +16,7 @@ class Lead extends Model
         'tenant_id', 'name', 'stage', 'status', 'days_left',
         'reseller_name', 'commission_status',
         'base_cost', 'added_amount', 'deal_value',
-        'data',
+        'data', 'organization_id',
     ];
 
     protected $casts = [

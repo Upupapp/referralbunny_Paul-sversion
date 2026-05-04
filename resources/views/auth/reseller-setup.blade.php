@@ -33,7 +33,11 @@
         <div style="text-align:center;margin-bottom:2rem">
             <x-r-bunny variant="portal" size="sm" :decorative="true" style="margin:0 auto 1rem" />
             <h1 style="margin:0 0 .375rem;font-size:1.375rem;font-weight:700;color:#111827">Hi, {{ $reseller->name }}!</h1>
-            <p style="margin:0;font-size:.875rem;color:#6b7280">Set up your referrer account to get started.</p>
+            <p style="margin:0 0 1rem;font-size:.875rem;color:#6b7280">Set up your account to start claiming deals.</p>
+            <div style="background:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;padding:.75rem 1rem">
+                <p style="margin:0;font-size:.8125rem;font-weight:600;color:#0D9488">Every municipality needs a champion.</p>
+                <p style="margin:.25rem 0 0;font-size:.75rem;color:#6b7280">Set your password and take on the challenge.</p>
+            </div>
         </div>
 
         @if ($errors->any())

@@ -251,5 +251,6 @@ Route::patch('/leads/{lead}',     [LeadController::class, 'update']);
 Route::delete('/leads/{lead}',    [LeadController::class, 'destroy']);
 Route::get('/resellers',          [ResellerController::class, 'index']);
 Route::get('/messages',           [MessageController::class, 'index']);
-Route::get('/organizations',      [OrganizationController::class, 'index']);
+Route::get('/organizations',           [OrganizationController::class, 'index']);
+Route::get('/organizations/available', [OrganizationController::class, 'available']);
 Route::get('/contacts',           [ContactController::class, 'index']);

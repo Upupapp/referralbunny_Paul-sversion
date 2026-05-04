@@ -40,6 +40,7 @@ class LeadController extends Controller
             'days_left'          => 'nullable|integer',
             'reseller_name'      => 'required|string',
             'new_reseller_email' => 'nullable|email',
+            'organization_id'    => 'nullable|uuid',
             'commission_status'  => 'nullable|in:pending,locked,paid',
             'base_cost'          => 'nullable|numeric|min:0',
             'added_amount'       => 'nullable|numeric|min:0',
@@ -47,6 +48,38 @@ class LeadController extends Controller
             'data'               => 'nullable|array',
             'commission_splits'  => 'nullable|array',
         ]);
+
+        // ── LGU IDS: one active deal per organization ─────────────────
+        // LOCKED RULE — do not remove or generalise (LGU IDS pipeline protection)
+        if (!empty($data['organization_id']) && $data['tenant_id'] === 'lgu-ids') {
+            $existing = DB::table('leads')
+                ->where('tenant_id', 'lgu-ids')
+                ->where('organization_id', $data['organization_id'])
+                ->whereNotIn('status', ['expired', 'declined'])
+                ->select('reseller_name')
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'message'    => 'This municipality already has an active deal.',
+                    'claimed_by' => $existing->reseller_name,
+                    'error_code' => 'ORG_ALREADY_CLAIMED',
+                ], 422);
+            }
+        }
+
+        // ── LGU IDS: set days_left from pipeline stage rules ──────────
+        // LOCKED RULE — do not generalise (LGU IDS pipeline protection)
+        $daysLeft = $data['days_left'] ?? 21;
+        if ($data['tenant_id'] === 'lgu-ids') {
+            $stageRule = DB::table('tenant_pipeline_stage_rules')
+                ->where('tenant_id', 'lgu-ids')
+                ->where('stage', $data['stage'])
+                ->first();
+            if ($stageRule) {
+                $daysLeft = $stageRule->max_days;
+            }
+        }
 
         $baseCost    = (float) ($data['base_cost']    ?? 0);
         $addedAmount = (float) ($data['added_amount'] ?? 0);
@@ -57,7 +90,8 @@ class LeadController extends Controller
             'name'              => $data['name'],
             'stage'             => $data['stage'],
             'status'            => $data['status'] ?? 'active',
-            'days_left'         => $data['days_left'] ?? 21,
+            'days_left'         => $daysLeft,
+            'organization_id'   => $data['organization_id'] ?? null,
             'reseller_name'     => $data['reseller_name'],
             'commission_status' => $data['commission_status'] ?? 'pending',
             'base_cost'         => $baseCost,
@@ -169,6 +203,19 @@ class LeadController extends Controller
         if (isset($data['base_cost']) || isset($data['added_amount'])) {
             $data['deal_value'] = ((float)($data['base_cost'] ?? $lead->base_cost))
                                 + ((float)($data['added_amount'] ?? $lead->added_amount));
+        }
+
+        // ── LGU IDS: reset days_left when stage advances ──────────────
+        // LOCKED RULE — do not generalise (LGU IDS pipeline protection)
+        if (isset($data['stage']) && $data['stage'] !== $lead->stage && $lead->tenant_id === 'lgu-ids') {
+            $stageRule = DB::table('tenant_pipeline_stage_rules')
+                ->where('tenant_id', 'lgu-ids')
+                ->where('stage', $data['stage'])
+                ->first();
+            if ($stageRule) {
+                $data['days_left'] = $stageRule->max_days;
+                $data['status']    = 'active';
+            }
         }
 
         $lead->update($data);

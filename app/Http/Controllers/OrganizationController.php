@@ -97,6 +97,44 @@ class OrganizationController extends Controller
         ]);
     }
 
+    public function available(Request $request): JsonResponse
+    {
+        $tenantId = $request->tenant_id;
+        $province = $request->province;
+
+        // Org IDs that already have a non-expired, non-declined active deal
+        $claimedOrgIds = DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->whereNotNull('organization_id')
+            ->whereNotIn('status', ['expired', 'declined'])
+            ->pluck('organization_id');
+
+        $query = DB::table('organizations as o')
+            ->where('o.tenant_id', $tenantId)
+            ->select('o.id', 'o.name', 'o.address', 'o.data');
+
+        if ($province) {
+            $query->where('o.address', $province);
+        }
+
+        $orgs = $query->orderByRaw("o.data->>'lgu_type' desc") // Cities first
+                      ->orderBy('o.name')
+                      ->get()
+                      ->map(function ($org) use ($claimedOrgIds) {
+                          $d = [];
+                          try { $d = is_string($org->data) ? json_decode($org->data, true) : (array)($org->data ?? []); } catch (\Throwable $e) {}
+                          return [
+                              'id'       => $org->id,
+                              'name'     => $org->name,
+                              'province' => $org->address,
+                              'lgu_type' => $d['lgu_type'] ?? null,
+                              'claimed'  => $claimedOrgIds->contains($org->id),
+                          ];
+                      });
+
+        return response()->json($orgs);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
