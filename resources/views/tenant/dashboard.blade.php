@@ -105,8 +105,8 @@ document.addEventListener('alpine:init', () => {
     {{-- ── CHARTS ROW ───────────────────────────────────────── --}}
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-        {{-- Bar Chart: Referral Pipeline (5 cols) --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-5">
+        {{-- Bar Chart: Referral Pipeline (4 cols) --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-4">
             <div class="flex items-center justify-between mb-5">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Pipeline</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
@@ -163,8 +163,8 @@ document.addEventListener('alpine:init', () => {
             <div x-show="funnel.length===0" class="flex items-center justify-center h-24 text-sm text-gray-400">No pipeline data</div>
         </div>
 
-        {{-- Area Chart: Referral Trend (4 cols) --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-4">
+        {{-- Area Chart: Referral Trend (3 cols) --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-3">
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Trend</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
@@ -208,52 +208,51 @@ document.addEventListener('alpine:init', () => {
             </div>
         </div>
 
-        {{-- Status Analysis: Concentric Circles (3 cols) --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-3">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-[#1E1B4B]">Status Analysis</h3>
-                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2 py-1.5 bg-gray-50 outline-none">
-                    <option>Monthly</option><option>All Time</option>
+        {{-- Top Resellers panel (5 cols) — styled like Chat reference --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-[#1E1B4B]">Top Resellers</h3>
+                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
+                    <option>Today</option><option>This Week</option><option>This Month</option>
                 </select>
             </div>
-            {{-- Concentric circles --}}
-            <div class="flex justify-center my-1">
-                <div class="relative" style="width:152px;height:152px">
-                    {{-- Outermost: Active --}}
-                    <div class="absolute inset-0 rounded-full flex items-start justify-center pt-3"
-                         style="background:#EDE9FE">
-                        <div class="text-center leading-none">
-                            <p class="text-[9px] font-semibold text-violet-400">Active</p>
-                            <p class="text-xs font-bold text-violet-700 mt-0.5"
-                               x-text="leads.filter(l=>l.status==='active').length"></p>
+
+            <div class="space-y-1 overflow-y-auto" style="max-height:220px" x-show="resellers.length>0">
+                <template x-for="(r,i) in resellers.slice(0,8)" :key="r.id">
+                    <div class="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+                        {{-- Avatar --}}
+                        <div class="relative shrink-0">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                 :style="`background:${['#7B61FF','#FF6CAB','#3B82F6','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'][i%8]}`"
+                                 x-text="r.name.slice(0,2).toUpperCase()"></div>
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full"></span>
+                        </div>
+                        {{-- Name + sub --}}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="r.name"></p>
+                            <p class="text-xs text-gray-400 truncate mt-0.5"
+                               x-text="(r.assigned_leads||0)+' deals · '+(r.performance_score||0)+'% rate'"></p>
+                        </div>
+                        {{-- Value + time --}}
+                        <div class="text-right shrink-0">
+                            <p class="text-xs font-bold text-[#1E1B4B]"
+                               x-text="r.closed_value?'₱'+(Number(r.closed_value)/1000).toFixed(0)+'K':'₱0'"></p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">active</p>
                         </div>
                     </div>
-                    {{-- Expiring --}}
-                    <div class="absolute rounded-full flex items-start justify-center pt-2.5"
-                         style="inset:22px;background:#C4B5FD">
-                        <div class="text-center leading-none">
-                            <p class="text-[9px] font-semibold text-violet-600">Expiring</p>
-                            <p class="text-xs font-bold text-violet-800 mt-0.5"
-                               x-text="leads.filter(l=>l.status==='expiring').length"></p>
-                        </div>
-                    </div>
-                    {{-- Expired --}}
-                    <div class="absolute rounded-full flex items-start justify-center pt-2"
-                         style="inset:44px;background:#7B61FF">
-                        <div class="text-center leading-none">
-                            <p class="text-[9px] font-semibold text-violet-200">Expired</p>
-                            <p class="text-xs font-bold text-white mt-0.5"
-                               x-text="leads.filter(l=>l.status==='expired').length"></p>
-                        </div>
-                    </div>
-                    {{-- Innermost: Paid --}}
-                    <div class="absolute rounded-full flex flex-col items-center justify-center"
-                         style="inset:66px;background:#4C1D95">
-                        <p class="text-[8px] text-purple-300 font-semibold leading-none">Paid</p>
-                        <p class="text-sm font-bold text-white leading-none mt-0.5"
-                           x-text="leads.filter(l=>l.stage==='paid').length"></p>
-                    </div>
-                </div>
+                </template>
+            </div>
+
+            {{-- Empty --}}
+            <div x-show="resellers.length===0" class="flex flex-col items-center justify-center py-10 text-center">
+                <img src="/images/mascots/r-bunny-sleeping.webp" alt="" aria-hidden="true"
+                     class="w-12 h-12 object-contain mb-2 opacity-50">
+                <p class="text-xs text-gray-400">No resellers yet</p>
+            </div>
+
+            {{-- Scrollbar indicator --}}
+            <div x-show="resellers.length>5" class="flex justify-center mt-2 gap-1">
+                <div class="w-1 h-4 bg-gray-200 rounded-full"></div>
             </div>
         </div>
     </div>
