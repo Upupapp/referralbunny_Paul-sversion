@@ -18,6 +18,7 @@ $variants = [
     'sleeping'    => 'r-bunny-sleeping.webp',
     'thumbsup'    => 'r-bunny-thumbs-up.webp',
     'rocket'      => 'r-bunny-rocket.webp',
+    'portal'      => 'r-bunny-portal.webp',
 ];
 
 $altTexts = [
@@ -32,6 +33,7 @@ $altTexts = [
     'sleeping'    => 'R Bunny sleeping',
     'thumbsup'    => 'R Bunny giving a thumbs up',
     'rocket'      => 'R Rocket flying with fist raised',
+    'portal'      => 'R Portal — R Bunny with holographic displays',
 ];
 
 $sizes = [

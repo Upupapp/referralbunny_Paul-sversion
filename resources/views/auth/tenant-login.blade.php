@@ -273,7 +273,7 @@
             <div style="position:absolute;width:260px;height:260px;border-radius:50%;top:-80px;right:-80px;opacity:.25;pointer-events:none;background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
             <div style="position:absolute;width:200px;height:200px;border-radius:50%;bottom:-60px;left:-60px;opacity:.2;pointer-events:none;background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
             <div style="position:relative;z-index:1">
-                <x-r-bunny variant="waving" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
+                <x-r-bunny variant="portal" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
                 <x-rb-logo variant="white" size="xs" :priority="true" :decorative="true" style="display:block;margin:0 auto 1rem;opacity:.9" />
                 <h2 style="margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#fff;line-height:1.4">Grow your referral<br>programs with ease.</h2>
                 <p style="margin:0;font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.6;max-width:180px;margin:0 auto">Leads, partners, commissions — all in one place.</p>
