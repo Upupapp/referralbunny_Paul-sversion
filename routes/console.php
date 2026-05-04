@@ -17,6 +17,9 @@ Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00'); // Reset usage 
 // ── Search index ──────────────────────────────────────────────
 Schedule::command('search:reindex')->dailyAt('03:00');
 
+// ── Lead expiry ───────────────────────────────────────────────
+Schedule::command('leads:expire')->dailyAt('00:05');
+
 // ── Promo jobs ────────────────────────────────────────────────
 Schedule::command('promos:expire')->dailyAt('00:15');
 
