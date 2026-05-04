@@ -108,9 +108,9 @@ document.addEventListener('alpine:init', () => {
                 <h3 class="font-semibold text-[#1E1B4B]">Deal Stages</h3>
                 <x-info-tip text="Lead count at each stage of the sales pipeline: Introduction → Presentation → Contract Sent → Signed → Paid." />
             </div>
-            <div class="flex items-end gap-2 h-36 overflow-x-auto pb-2" x-show="funnel.length > 0">
+            <div class="flex items-end justify-around gap-2 h-36 overflow-x-auto pb-2" x-show="funnel.length > 0">
                 <template x-for="(stage, i) in funnel" :key="stage.stage">
-                    <div class="rb-bar-wrap flex-1 min-w-[52px] flex flex-col items-center gap-1.5 cursor-pointer">
+                    <div class="rb-bar-wrap flex flex-col items-center gap-1.5 cursor-pointer" style="width:48px;flex-shrink:0">
                         <span class="text-xs font-semibold text-[#1E1B4B]" x-text="stage.count"></span>
                         <div class="w-full transition-all duration-200 relative overflow-hidden"
                              :style="`height:${Math.max(12,(stage.count/maxCount)*110)}px; border-radius:9999px;`"
