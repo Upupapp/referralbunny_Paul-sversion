@@ -17,6 +17,8 @@ use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AgreementController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ─────────────────────────────────────────────
@@ -164,6 +166,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('search/favorites',          [SearchController::class, 'removeFavorite']);
     Route::post('search/actions',              [SearchController::class, 'executeAction']);
     Route::post('search/reindex',              [SearchController::class, 'reindex']);
+
+    // Contacts
+    Route::get('contacts',                                  [ContactController::class, 'index']);
+    Route::post('contacts',                                 [ContactController::class, 'store']);
+    Route::put('contacts/{id}',                            [ContactController::class, 'update']);
+    Route::patch('contacts/{id}',                          [ContactController::class, 'update']);
+    Route::delete('contacts/{id}',                         [ContactController::class, 'destroy']);
+    Route::get('deals/{dealId}/contacts',                  [ContactController::class, 'forDeal']);
+    Route::post('deals/{dealId}/contacts',                 [ContactController::class, 'linkToDeal']);
+    Route::delete('deals/{dealId}/contacts/{contactId}',   [ContactController::class, 'unlinkFromDeal']);
+
+    // Organizations
+    Route::get('organizations',                            [OrganizationController::class, 'index']);
+    Route::post('organizations',                           [OrganizationController::class, 'store']);
+    Route::put('organizations/{id}',                      [OrganizationController::class, 'update']);
+    Route::patch('organizations/{id}',                    [OrganizationController::class, 'update']);
+    Route::delete('organizations/{id}',                   [OrganizationController::class, 'destroy']);
 
     // Agreement Files
     Route::get('agreements/reseller-status',              [AgreementController::class, 'resellerStatus']);

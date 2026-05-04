@@ -381,6 +381,48 @@
                         </div>
                     </div>
                 </div>
+            {{-- Contacts on this Deal --}}
+            <div class="card space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Contacts</h3>
+                    <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Link
+                    </button>
+                </div>
+                <div x-show="loadingContacts" class="flex items-center gap-2 text-gray-400 text-xs py-2">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Loading…
+                </div>
+                <div x-show="!loadingContacts">
+                    <template x-if="dealContacts.length === 0">
+                        <div class="text-center py-5 rounded-xl border-2 border-dashed border-gray-100">
+                            <p class="text-gray-400 text-xs">No contacts linked yet.</p>
+                            <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">Link a contact</button>
+                        </div>
+                    </template>
+                    <div x-show="dealContacts.length > 0" class="space-y-1">
+                        <template x-for="c in dealContacts" :key="c.id">
+                            <div class="flex items-center gap-2.5 py-2 border-b border-gray-50 last:border-0 group">
+                                <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                                     x-text="contactInitials(c)"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="contactFullName(c)"></p>
+                                    <p class="text-xs text-gray-400 truncate">
+                                        <span x-show="c.deal_role" x-text="c.deal_role + ' · '"></span>
+                                        <span x-text="c.org_name || c.job_title || c.email || ''"></span>
+                                    </p>
+                                </div>
+                                <button @click="unlinkContact(c.id)"
+                                        class="p-1 rounded text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Unlink">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
             </div>
 
             {{-- Right: Notes + Activity --}}
@@ -458,6 +500,51 @@
 
     </div>
 
+    {{-- Link Contact Modal --}}
+    <div x-show=”showLinkContact” x-cloak
+         class=”fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4”
+         @keydown.escape.window=”showLinkContact = false”>
+        <div class=”bg-white rounded-2xl shadow-xl w-full max-w-md” @click.stop>
+            <div class=”flex items-center justify-between px-6 py-4 border-b border-gray-100”>
+                <h3 class=”font-semibold text-[#1E1B4B]”>Link Contact to Deal</h3>
+                <button @click=”showLinkContact = false; linkSearch = ''” class=”text-gray-400 hover:text-gray-600 transition-colors”>
+                    <svg class=”w-5 h-5” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M6 18L18 6M6 6l12 12”/></svg>
+                </button>
+            </div>
+            <div class=”p-5 space-y-3”>
+                <div class=”search-group”>
+                    <svg fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z”/></svg>
+                    <input type=”text” x-model=”linkSearch” placeholder=”Search contacts by name or email…” autofocus>
+                </div>
+                <div class=”max-h-72 overflow-y-auto space-y-1”>
+                    <template x-if=”linkableContacts().length === 0”>
+                        <p class=”text-center text-gray-400 text-sm py-6”>
+                            <span x-text=”allTenantContacts.length === 0 ? 'No contacts in this tenant yet.' : 'No matching contacts.'”></span>
+                        </p>
+                    </template>
+                    <template x-for=”c in linkableContacts()” :key=”c.id”>
+                        <button @click=”linkContact(c)”
+                                :disabled=”linkSaving”
+                                class=”flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left group”>
+                            <div class=”w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0”
+                                 x-text=”contactInitials(c)”></div>
+                            <div class=”flex-1 min-w-0”>
+                                <p class=”text-sm font-medium text-[#1E1B4B] truncate” x-text=”contactFullName(c)”></p>
+                                <p class=”text-xs text-gray-400 truncate” x-text=”[c.job_title, c.org_name].filter(Boolean).join(' · ') || c.email || ''”></p>
+                            </div>
+                            <svg class=”w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M12 4v16m8-8H4”/></svg>
+                        </button>
+                    </template>
+                </div>
+                <p class=”text-xs text-gray-400 pt-1”>
+                    Can't find the contact?
+                    <a href=”{{ route('tenant.contacts', $tenant->id) }}” class=”text-purple-600 hover:underline”>Add them first</a>
+                    in the Contacts module.
+                </p>
+            </div>
+        </div>
+    </div>
+
     {{-- â”€â”€ Move Stage Modal â”€â”€ --}}
     <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
@@ -520,6 +607,11 @@ function dealDetail(leadId, tenantId) {
         editSplits: false,
         splitsForm: [],
 
+        // Contacts
+        dealContacts: [], loadingContacts: true,
+        allTenantContacts: [],
+        showLinkContact: false, linkSearch: '', linkSaving: false,
+
         allStages: [
             { key: 'introduction',  label: 'Introduction'  },
             { key: 'presentation',  label: 'Presentation'  },
@@ -529,9 +621,13 @@ function dealDetail(leadId, tenantId) {
         ],
 
         async init() {
-            const res = await fetch(`/api/leads/${leadId}`);
-            this.lead = await res.json();
+            const [leadRes] = await Promise.all([
+                fetch(`/api/leads/${leadId}`),
+            ]);
+            this.lead = await leadRes.json();
             this.loading = false;
+            this.fetchContacts();
+            this.fetchAllContacts();
         },
 
         // â”€â”€ Financial helpers â”€â”€
@@ -672,6 +768,79 @@ function dealDetail(leadId, tenantId) {
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
+        },
+
+        // ── Contact helpers ──────────────────────────────────────────────
+        contactFullName(c) { return [c.first_name, c.last_name].filter(Boolean).join(' ') || '—'; },
+        contactInitials(c) {
+            const p = [c.first_name, c.last_name].filter(Boolean);
+            return p.length ? p.map(n => n[0]).join('').toUpperCase() : '?';
+        },
+
+        async fetchContacts() {
+            this.loadingContacts = true;
+            try {
+                const res = await fetch(`/api/deals/${leadId}/contacts`);
+                const data = await res.json();
+                this.dealContacts = Array.isArray(data) ? data : [];
+            } catch(e) { this.dealContacts = []; }
+            this.loadingContacts = false;
+        },
+
+        async fetchAllContacts() {
+            try {
+                const res = await fetch(`/api/contacts?tenant_id=${tenantId}`);
+                const data = await res.json();
+                this.allTenantContacts = Array.isArray(data) ? data : [];
+            } catch(e) { this.allTenantContacts = []; }
+        },
+
+        openLinkContact() {
+            this.linkSearch = '';
+            this.showLinkContact = true;
+            if (this.allTenantContacts.length === 0) this.fetchAllContacts();
+        },
+
+        linkableContacts() {
+            const linked = new Set(this.dealContacts.map(c => c.id));
+            const q = this.linkSearch.toLowerCase();
+            return this.allTenantContacts.filter(c => {
+                if (linked.has(c.id)) return false;
+                const name = this.contactFullName(c).toLowerCase();
+                return !q || name.includes(q) || (c.email||'').toLowerCase().includes(q) || (c.org_name||'').toLowerCase().includes(q);
+            });
+        },
+
+        async linkContact(contact) {
+            this.linkSaving = true;
+            try {
+                const res = await fetch(`/api/deals/${leadId}/contacts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ contact_id: contact.id, tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (data.id) {
+                    this.dealContacts.push(data);
+                    this.showLinkContact = false;
+                    this.linkSearch = '';
+                    this.$dispatch('show-toast', { type: 'success', message: `${this.contactFullName(contact)} linked to deal.` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Failed to link contact.' });
+                }
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Network error.' }); }
+            finally { this.linkSaving = false; }
+        },
+
+        async unlinkContact(contactId) {
+            try {
+                await fetch(`/api/deals/${leadId}/contacts/${contactId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                });
+                this.dealContacts = this.dealContacts.filter(c => c.id !== contactId);
+                this.$dispatch('show-toast', { type: 'success', message: 'Contact unlinked.' });
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to unlink contact.' }); }
         },
 
         openEditSplits() {
