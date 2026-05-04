@@ -99,51 +99,235 @@ document.addEventListener('alpine:init', () => {
         <div class="absolute left-1/2 -bottom-8 w-32 h-32 bg-white/5 rounded-full pointer-events-none"></div>
     </div>
 
-    {{-- Stage funnel + Recent Deals --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    {{-- ══ KPI CARDS ══ --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
-        {{-- Stage funnel --}}
+        {{-- Total Deals --}}
         <div class="card">
-            <div class="flex items-center gap-1 mb-4">
-                <h3 class="font-semibold text-[#1E1B4B]">Deal Stages</h3>
-                <x-info-tip text="Lead count at each stage of the sales pipeline: Introduction → Presentation → Contract Sent → Signed → Paid." />
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#EDE9FE">
+                    <svg class="w-4 h-4 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </div>
+                <span class="text-xs font-medium text-gray-400">Total</span>
             </div>
-            <div class="flex items-end justify-around gap-2 h-36 overflow-x-auto pb-2" x-show="funnel.length > 0">
-                <template x-for="(stage, i) in funnel" :key="stage.stage">
-                    <div class="rb-bar-wrap flex flex-col items-center gap-1.5 cursor-pointer" style="width:48px;flex-shrink:0">
+            <div class="relative h-1 bg-gray-100 rounded-full mb-3">
+                <div class="absolute inset-y-0 left-0 rounded-full" style="background:linear-gradient(90deg,#7B61FF,#A78BFA)"
+                     :style="`width:${Math.min((leads.length/50)*100,100)}%`"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-[#7B61FF] rounded-full shadow"
+                     :style="`left:${Math.min((leads.length/50)*100,97)}%`"></div>
+            </div>
+            <p class="text-2xl font-bold text-[#1E1B4B]" x-text="leads.length"></p>
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">
+                    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 9L6 4l4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Active
+                </span>
+                <span class="text-xs text-gray-400">Since last month</span>
+            </div>
+        </div>
+
+        {{-- Pipeline Value --}}
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#D1FAE5">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <span class="text-xs font-medium text-gray-400">Pipeline</span>
+            </div>
+            <div class="relative h-1 bg-gray-100 rounded-full mb-3">
+                <div class="absolute inset-y-0 left-0 rounded-full" style="background:linear-gradient(90deg,#10B981,#34D399)"
+                     :style="`width:${Math.min((leads.reduce((s,l)=>s+(+l.deal_value||0),0)/10000000)*100,100)}%`"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-emerald-500 rounded-full shadow"
+                     :style="`left:${Math.min((leads.reduce((s,l)=>s+(+l.deal_value||0),0)/10000000)*100,97)}%`"></div>
+            </div>
+            <p class="text-2xl font-bold text-[#1E1B4B]" x-text="pipelineValue()"></p>
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                    <svg class="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 9L6 4l4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Growing
+                </span>
+                <span class="text-xs text-gray-400">Total value</span>
+            </div>
+        </div>
+
+        {{-- Pending Commission --}}
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#FEF3C7">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                </div>
+                <span class="text-xs font-medium text-gray-400">Commission</span>
+            </div>
+            <div class="relative h-1 bg-gray-100 rounded-full mb-3">
+                <div class="absolute inset-y-0 left-0 rounded-full" style="background:linear-gradient(90deg,#F59E0B,#FCD34D)"
+                     :style="`width:${leads.length ? Math.min((leads.filter(l=>l.commission_status==='pending').length/leads.length)*100,100) : 0}%`"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-amber-400 rounded-full shadow"
+                     :style="`left:${leads.length ? Math.min((leads.filter(l=>l.commission_status==='pending').length/leads.length)*100,97) : 0}%`"></div>
+            </div>
+            <p class="text-2xl font-bold text-[#1E1B4B]" x-text="commissionStat('pending').value"></p>
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"
+                      x-text="commissionStat('pending').count + ' deals'"></span>
+                <span class="text-xs text-gray-400">Pending</span>
+            </div>
+        </div>
+
+        {{-- Active Resellers --}}
+        <div class="card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:#DBEAFE">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <span class="text-xs font-medium text-gray-400">Resellers</span>
+            </div>
+            <div class="relative h-1 bg-gray-100 rounded-full mb-3">
+                <div class="absolute inset-y-0 left-0 rounded-full" style="background:linear-gradient(90deg,#3B82F6,#60A5FA)"
+                     :style="`width:${Math.min((resellers.length/20)*100,100)}%`"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-blue-500 rounded-full shadow"
+                     :style="`left:${Math.min((resellers.length/20)*100,97)}%`"></div>
+            </div>
+            <p class="text-2xl font-bold text-[#1E1B4B]" x-text="resellers.length"></p>
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                    Active
+                </span>
+                <span class="text-xs text-gray-400">Since last week</span>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ CHARTS ROW ══ --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {{-- Deal Stages Bar Chart --}}
+        <div class="card lg:col-span-2">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-1.5">
+                    <h3 class="font-semibold text-[#1E1B4B]">Deal Stages</h3>
+                    <x-info-tip text="Lead count at each stage: Introduction → Presentation → Contract Sent → Signed → Paid." />
+                </div>
+                <select class="text-xs font-medium text-gray-500 border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-violet-200">
+                    <option>Monthly</option><option>Quarterly</option><option>All Time</option>
+                </select>
+            </div>
+            <div class="flex items-end justify-around gap-3 pb-2" style="height:160px" x-show="funnel.length > 0">
+                <template x-for="stage in funnel" :key="stage.stage">
+                    <div class="rb-bar-wrap flex flex-col items-center gap-1.5 cursor-pointer" style="width:32px;flex-shrink:0">
                         <span class="text-xs font-semibold text-[#1E1B4B]" x-text="stage.count"></span>
                         <div class="w-full transition-all duration-200 relative overflow-hidden"
-                             :style="`height:${Math.max(12,(stage.count/maxCount)*110)}px; border-radius:9999px;`"
-                             x-show="maxCount > 0">
-                            <div class="absolute inset-0" style="background:rgba(123,97,255,.13); border-radius:9999px"></div>
+                             :style="`height:${Math.max(16,(stage.count/maxCount)*120)}px; border-radius:9999px;`">
+                            <div class="absolute inset-0" style="background:rgba(123,97,255,.13);border-radius:9999px"></div>
                             <div class="absolute inset-0 hatch-bar" style="border-radius:9999px"></div>
                             <div class="absolute inset-0 rb-bar-solid transition-opacity duration-150"
-                                 style="background:#7B61FF; border-radius:9999px; opacity:0"></div>
+                                 style="background:#7B61FF;border-radius:9999px;opacity:0"></div>
                         </div>
-                        <span class="text-xs text-gray-400 text-center capitalize" x-text="stage.label"></span>
+                        <span class="text-[10px] text-gray-400 text-center leading-tight" style="max-width:48px" x-text="stage.label"></span>
                     </div>
                 </template>
             </div>
-            <p class="text-gray-400 text-sm text-center py-4" x-show="funnel.length === 0">No deal data yet</p>
+            <p class="text-gray-400 text-sm text-center py-8" x-show="funnel.length === 0">No deal data yet</p>
+        </div>
+
+        {{-- Deal Status Analysis --}}
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-[#1E1B4B]">Status Analysis</h3>
+                <select class="text-xs font-medium text-gray-500 border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-violet-200">
+                    <option>Monthly</option><option>All Time</option>
+                </select>
+            </div>
+
+            {{-- Donut chart --}}
+            <div class="flex justify-center my-2">
+                <div class="relative" style="width:130px;height:130px">
+                    <div class="w-full h-full rounded-full transition-all"
+                         :style="`background: conic-gradient(
+                            #7B61FF 0% ${donutPct('active')}%,
+                            #F59E0B ${donutPct('active')}% ${donutPct('active')+donutPct('expiring')}%,
+                            #EF4444 ${donutPct('active')+donutPct('expiring')}% ${donutPct('active')+donutPct('expiring')+donutPct('expired')}%,
+                            #10B981 ${donutPct('active')+donutPct('expiring')+donutPct('expired')}% 100%
+                         )`"></div>
+                    <div class="absolute rounded-full bg-white flex flex-col items-center justify-center" style="inset:26px">
+                        <p class="text-xl font-bold text-[#1E1B4B]" x-text="leads.length"></p>
+                        <p class="text-[9px] text-gray-400 uppercase tracking-wide">Total</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Legend --}}
+            <div class="space-y-2 mt-3">
+                <template x-for="item in statusLegend()" :key="item.label">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="`background:${item.color}`"></span>
+                            <span class="text-xs text-gray-600" x-text="item.label"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-[#1E1B4B]" x-text="item.count"></span>
+                            <span class="text-[10px] text-gray-400" x-text="'(' + item.pct + '%)'"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ COMMISSION + RECENT DEALS ══ --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {{-- Commission Breakdown --}}
+        <div class="card lg:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-[#1E1B4B]">Commission Overview</h3>
+                <a href="{{ route('tenant.reports', $tenant->id) }}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View reports →</a>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="text-center p-3 rounded-xl" style="background:#F5F3FF">
+                    <p class="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">Pending</p>
+                    <p class="text-xl font-bold text-[#1E1B4B]" x-text="commissionStat('pending').value"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="commissionStat('pending').count + ' deals'"></p>
+                    <div class="mt-2 h-1 bg-violet-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-violet-500 rounded-full transition-all"
+                             :style="`width:${leads.length ? (leads.filter(l=>l.commission_status==='pending').length/leads.length)*100 : 0}%`"></div>
+                    </div>
+                </div>
+                <div class="text-center p-3 rounded-xl" style="background:#FFF7ED">
+                    <p class="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Locked</p>
+                    <p class="text-xl font-bold text-[#1E1B4B]" x-text="commissionStat('locked').value"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="commissionStat('locked').count + ' deals'"></p>
+                    <div class="mt-2 h-1 bg-orange-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-orange-400 rounded-full transition-all"
+                             :style="`width:${leads.length ? (leads.filter(l=>l.commission_status==='locked').length/leads.length)*100 : 0}%`"></div>
+                    </div>
+                </div>
+                <div class="text-center p-3 rounded-xl" style="background:#ECFDF5">
+                    <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Paid</p>
+                    <p class="text-xl font-bold text-[#1E1B4B]" x-text="commissionStat('paid').value"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="commissionStat('paid').count + ' deals'"></p>
+                    <div class="mt-2 h-1 bg-emerald-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 rounded-full transition-all"
+                             :style="`width:${leads.length ? (leads.filter(l=>l.commission_status==='paid').length/leads.length)*100 : 0}%`"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {{-- Recent Deals --}}
         <div class="card">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-[#1E1B4B]">Recent Deals</h3>
-                <a href="{{ route('tenant.deals', $tenant->id) }}" class="text-sm text-purple-600 hover:text-purple-700">View all</a>
+                <a href="{{ route('tenant.deals', $tenant->id) }}" class="text-xs text-violet-600 hover:text-violet-700 font-medium">View all</a>
             </div>
             <div class="space-y-1" x-show="leads.length > 0">
-                <template x-for="lead in leads.slice(0,5)" :key="lead.id">
+                <template x-for="lead in leads.slice(0,4)" :key="lead.id">
                     <a :href="`/tenant/{{ $tenant->id }}/deals/${lead.id}`"
-                       class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors">
-                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
+                       class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#F0EFFA] transition-colors">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
                              style="background:#EDE9FE" x-text="lead.name.slice(0,2).toUpperCase()"></div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="lead.name"></p>
-                            <p class="text-xs text-gray-400 capitalize" x-text="lead.stage.replace('_',' ')"></p>
+                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="lead.name"></p>
+                            <p class="text-[10px] text-gray-400 capitalize" x-text="lead.stage.replace('_',' ')"></p>
                         </div>
-                        <span class="text-xs font-semibold text-gray-600" x-text="'₱' + (lead.deal_value/1000000).toFixed(1) + 'M'"></span>
                         <span :class="{'badge badge-green':lead.status==='active','badge badge-orange':lead.status==='expiring','badge badge-red':lead.status==='expired','badge badge-gray':true}"
                               x-text="lead.status"></span>
                     </a>
@@ -186,35 +370,6 @@ document.addEventListener('alpine:init', () => {
         </div>
     </div>
 
-    {{-- ═══ COMMISSION SNAPSHOT (always visible) ═══ --}}
-    @if($showLocation ?? false)
-    <div class="flex items-center gap-2">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission Overview</p>
-        <x-tax-tip />
-    </div>
-    @endif
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="card">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Pending Commission</p>
-            <p class="text-2xl font-bold text-[#1E1B4B]" x-text="commissionStat('pending').count + ' deals'"></p>
-            <p class="text-xs text-gray-500 mt-0.5" x-text="'₱' + commissionStat('pending').value + ' in pipeline'"></p>
-        </div>
-        <div class="card">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Locked Commission</p>
-            <p class="text-2xl font-bold text-orange-600" x-text="commissionStat('locked').count + ' deals'"></p>
-            <p class="text-xs text-gray-500 mt-0.5" x-text="'₱' + commissionStat('locked').value + ' awaiting payment'"></p>
-        </div>
-        <div class="card">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Paid Commission</p>
-            <p class="text-2xl font-bold text-emerald-600" x-text="commissionStat('paid').count + ' deals'"></p>
-            <p class="text-xs text-gray-500 mt-0.5" x-text="'₱' + commissionStat('paid').value + ' closed'"></p>
-        </div>
-        <div class="card">
-            <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1.5">Expiring Soon</p>
-            <p class="text-2xl font-bold text-red-600" x-text="leads.filter(l => l.days_left <= 7 && l.status === 'active').length"></p>
-            <p class="text-xs text-gray-500 mt-0.5">deals with ≤ 7 days left</p>
-        </div>
-    </div>
 
     {{-- ═══ FULL VIEW SECTIONS ═══ --}}
     <div x-show="$store.dashView.mode === 'full'" class="space-y-5">
@@ -359,6 +514,22 @@ function tenantDashboard(tenantId) {
                 { key:'paid',          label:'Paid',          color:'#10B981' },
             ];
             return stages.map(s => ({ ...s, count: this.leads.filter(l => l.stage === s.key).length }));
+        },
+
+        donutPct(status) {
+            if (!this.leads.length) return 25;
+            const map = { active: this.leads.filter(l=>l.status==='active').length, expiring: this.leads.filter(l=>l.status==='expiring').length, expired: this.leads.filter(l=>l.status==='expired').length, paid: this.leads.filter(l=>l.stage==='paid').length };
+            return Math.round((map[status]||0) / this.leads.length * 100);
+        },
+
+        statusLegend() {
+            const t = this.leads.length || 1;
+            return [
+                { label:'Active',   color:'#7B61FF', count: this.leads.filter(l=>l.status==='active').length,   pct: Math.round(this.leads.filter(l=>l.status==='active').length/t*100)   },
+                { label:'Expiring', color:'#F59E0B', count: this.leads.filter(l=>l.status==='expiring').length, pct: Math.round(this.leads.filter(l=>l.status==='expiring').length/t*100) },
+                { label:'Expired',  color:'#EF4444', count: this.leads.filter(l=>l.status==='expired').length,  pct: Math.round(this.leads.filter(l=>l.status==='expired').length/t*100)  },
+                { label:'Paid',     color:'#10B981', count: this.leads.filter(l=>l.stage==='paid').length,      pct: Math.round(this.leads.filter(l=>l.stage==='paid').length/t*100)      },
+            ];
         },
 
         trialDaysLeft() {
