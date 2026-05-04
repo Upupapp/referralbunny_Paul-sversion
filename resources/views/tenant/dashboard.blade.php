@@ -284,33 +284,45 @@ document.addEventListener('alpine:init', () => {
                 </div>
             </div>
 
-            {{-- Deal cards grid --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" x-show="filteredDeals().length>0">
-                <template x-for="deal in filteredDeals().slice(0,4)" :key="deal.id">
+            {{-- Column headers --}}
+            <div x-show="filteredDeals().length>0"
+                 class="grid gap-3 px-3 mb-1"
+                 style="grid-template-columns:2fr 1fr 1fr 80px">
+                <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Referral</span>
+                <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Stage</span>
+                <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Value</span>
+                <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-right">Status</span>
+            </div>
+
+            {{-- Deal list --}}
+            <div class="space-y-1" x-show="filteredDeals().length>0">
+                <template x-for="deal in filteredDeals().slice(0,6)" :key="deal.id">
                     <a :href="`/tenant/{{ $tenant->id }}/deals/${deal.id}`"
-                       class="group flex flex-col rounded-2xl border border-gray-100 overflow-hidden hover:border-violet-200 hover:shadow-md transition-all">
-                        {{-- Card top band --}}
-                        <div class="relative h-16 flex items-center justify-center"
-                             :style="`background:${stageColor(deal.stage)}18`">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                       class="grid gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors items-center"
+                       style="grid-template-columns:2fr 1fr 1fr 80px">
+                        {{-- Name + referrer --}}
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
                                  :style="`background:${stageColor(deal.stage)}`"
                                  x-text="deal.name?.slice(0,2).toUpperCase()"></div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="deal.name"></p>
+                                <p class="text-[11px] text-gray-400 truncate mt-0.5 flex items-center gap-1">
+                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    <span x-text="deal.reseller_name || '—'"></span>
+                                </p>
+                            </div>
                         </div>
-                        {{-- Card body --}}
-                        <div class="p-3 flex-1">
-                            <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="deal.name"></p>
-                            <p class="text-[11px] text-gray-400 capitalize mt-0.5" x-text="deal.stage?.replace('_',' ')"></p>
-                            <div class="flex items-center justify-between mt-2.5">
-                                <span class="text-sm font-bold text-[#1E1B4B] tabular-nums"
-                                      x-text="deal.deal_value ? '₱'+Number(deal.deal_value).toLocaleString() : '₱0'"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      :class="{'bg-emerald-100 text-emerald-700':deal.status==='active','bg-orange-100 text-orange-700':deal.status==='expiring','bg-red-100 text-red-600':deal.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(deal.status||'')}"
-                                      x-text="deal.status"></span>
-                            </div>
-                            <div class="flex items-center gap-1 mt-1.5 text-gray-300">
-                                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                <span class="text-[10px] truncate" x-text="deal.reseller_name || 'No referrer'"></span>
-                            </div>
+                        {{-- Stage --}}
+                        <span class="text-xs text-gray-500 capitalize" x-text="(deal.stage||'').replace('_',' ')"></span>
+                        {{-- Value --}}
+                        <span class="text-sm font-bold text-[#1E1B4B] tabular-nums"
+                              x-text="deal.deal_value ? '₱'+Number(deal.deal_value).toLocaleString() : '₱0'"></span>
+                        {{-- Status badge --}}
+                        <div class="flex justify-end">
+                            <span class="text-[10px] px-2.5 py-1 rounded-full font-medium"
+                                  :class="{'bg-emerald-100 text-emerald-700':deal.status==='active','bg-orange-100 text-orange-700':deal.status==='expiring','bg-red-100 text-red-600':deal.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(deal.status||'')}"
+                                  x-text="deal.status"></span>
                         </div>
                     </a>
                 </template>
