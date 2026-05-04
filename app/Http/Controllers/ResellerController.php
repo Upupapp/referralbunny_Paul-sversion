@@ -6,6 +6,10 @@ use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class ResellerController extends Controller
 {
@@ -66,7 +70,29 @@ class ResellerController extends Controller
             'is_anonymous'      => 'nullable|boolean',
         ]);
 
-        $reseller = Reseller::create($data);
+        // Generate setup token so the reseller can activate their account
+        $setupToken = Str::random(64);
+        $data['setup_token'] = $setupToken;
+        $data['status']      = 'invited';
+
+        $reseller   = Reseller::create($data);
+        $tenantName = DB::table('tenants')->where('id', $data['tenant_id'])->value('name') ?? 'Referral Bunny';
+        $setupUrl   = url('/reseller/setup?token=' . $setupToken);
+
+        try {
+            Mail::raw(
+                "Hi {$data['name']},\n\n"
+                . "You've been invited as a referrer for {$tenantName}'s referral program.\n\n"
+                . "Set up your account and start claiming deals:\n{$setupUrl}\n\n"
+                . "This link is unique to you. Once you set your password, you can log in to track your deals and commissions.\n\n"
+                . "— The {$tenantName} Team",
+                fn($msg) => $msg->to($data['email'], $data['name'])
+                               ->subject("You've been invited as a referrer for {$tenantName}")
+            );
+        } catch (\Throwable $e) {
+            Log::warning("Reseller invite email failed for {$data['email']}: {$e->getMessage()}");
+        }
+
         return response()->json($reseller, 201);
     }
 

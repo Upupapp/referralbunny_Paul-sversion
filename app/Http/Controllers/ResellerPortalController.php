@@ -12,8 +12,13 @@ class ResellerPortalController extends Controller
 {
     private function reseller(): Reseller
     {
-        return Auth::guard('reseller')->user()
-            ?? Auth::guard('web')->user(); // super admin impersonation fallback
+        $reseller = Auth::guard('reseller')->user();
+        if ($reseller instanceof Reseller) {
+            return $reseller;
+        }
+        // Super admin accessing reseller portal — not supported directly.
+        // Super admins should use the tenant admin portal instead.
+        abort(403, 'Reseller portal requires reseller authentication.');
     }
 
     public function dashboard($tenantId)

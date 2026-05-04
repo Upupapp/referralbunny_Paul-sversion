@@ -56,8 +56,12 @@ Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soo
 Route::get('/reseller/login',  [ResellerPortalAuthController::class, 'showLogin'])->name('reseller.login');
 Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post');
 Route::post('/reseller/logout',[ResellerPortalAuthController::class, 'logout'])->name('reseller.logout');
-Route::get('/reseller/setup',  [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
-Route::post('/reseller/setup', [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post');
+Route::get('/reseller/setup',          [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
+Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post');
+Route::get('/reseller/forgot-password',[ResellerPortalAuthController::class, 'showForgotPassword'])->name('reseller.forgot-password');
+Route::post('/reseller/forgot-password',[ResellerPortalAuthController::class, 'forgotPassword'])->name('reseller.forgot-password.post');
+Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'showResetPassword'])->name('reseller.reset-password');
+Route::post('/reseller/reset-password',[ResellerPortalAuthController::class, 'resetPassword'])->name('reseller.reset-password.post');
 
 // ── Reseller Portal ────────────────────────────────────────────
 Route::middleware(['auth:reseller,web', 'reseller.access'])

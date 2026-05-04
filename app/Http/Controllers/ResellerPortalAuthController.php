@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class ResellerPortalAuthController extends Controller
 {
@@ -56,6 +58,79 @@ class ResellerPortalAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('reseller.login');
+    }
+
+    public function showForgotPassword()
+    {
+        return view('auth.reseller-forgot-password');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $reseller = Reseller::where('email', strtolower(trim($request->email)))->first();
+
+        // Always return success to prevent email enumeration
+        if ($reseller) {
+            $token      = Str::random(64);
+            $tenantName = DB::table('tenants')->where('id', $reseller->tenant_id)->value('name') ?? 'Referral Bunny';
+            $resetUrl   = url('/reseller/reset-password?token=' . $token);
+
+            DB::table('resellers')->where('id', $reseller->id)->update(['setup_token' => $token]);
+
+            try {
+                Mail::raw(
+                    "Hi {$reseller->name},\n\n"
+                    . "We received a request to reset your password for {$tenantName}'s referrer portal.\n\n"
+                    . "Click the link below to set a new password:\n{$resetUrl}\n\n"
+                    . "If you didn't request this, you can safely ignore this email.\n\n"
+                    . "— The {$tenantName} Team",
+                    fn($msg) => $msg->to($reseller->email, $reseller->name)
+                                   ->subject("Reset your referrer portal password")
+                );
+            } catch (\Throwable $e) {
+                Log::warning("Reseller password reset email failed: {$e->getMessage()}");
+            }
+        }
+
+        return back()->with('success', 'If an account exists with that email, a reset link has been sent.');
+    }
+
+    public function showResetPassword(Request $request)
+    {
+        $token = $request->query('token');
+        if (!$token) return redirect()->route('reseller.login');
+
+        $reseller = Reseller::where('setup_token', $token)->first();
+        if (!$reseller) {
+            return redirect()->route('reseller.login')
+                ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
+        }
+
+        return view('auth.reseller-reset-password', compact('token'));
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token'                 => 'required|string',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $reseller = Reseller::where('setup_token', $data['token'])->first();
+        if (!$reseller) {
+            return back()->withErrors(['token' => 'Invalid or expired reset link.']);
+        }
+
+        DB::table('resellers')->where('id', $reseller->id)->update([
+            'password'    => Hash::make($data['password']),
+            'setup_token' => null,
+        ]);
+
+        return redirect()->route('reseller.login')
+            ->with('success', 'Password updated. You can now sign in.');
     }
 
     public function showSetup(Request $request)
