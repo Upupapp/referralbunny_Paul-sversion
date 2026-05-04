@@ -500,8 +500,15 @@ document.addEventListener('alpine:init', () => {
         </div>
     </div>
 
-    {{-- ── EXPIRY ALERT (once per day, server-gated) ──────────── --}}
-    @if(isset($expiryAlert) && $expiryAlert->count() > 0)
+    {{-- ── DAILY BRIEFING (once per day, server-gated) ────────── --}}
+    @if(isset($dailyBriefing))
+    @php
+        $expiringDeals = $dailyBriefing['expiringDeals'];
+        $newDeals      = $dailyBriefing['newDeals'];
+        $newInvited    = $dailyBriefing['newInvited'];
+        $newActive     = $dailyBriefing['newActive'];
+        $totalItems    = $expiringDeals->count() + $newDeals->count() + $newInvited->count() + $newActive->count();
+    @endphp
     <div x-data="{ open: true }"
          x-show="open"
          x-transition:enter="transition ease-out duration-200"
@@ -510,64 +517,168 @@ document.addEventListener('alpine:init', () => {
          x-cloak
          class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          @keydown.escape.window="open = false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" @click.stop>
 
             {{-- Header --}}
-            <div class="flex items-start gap-4 px-6 pt-6 pb-4 border-b border-gray-100">
-                <div class="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            <div class="flex items-start gap-4 px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                     style="background:#EDE9FE">
+                    <svg class="w-5 h-5" style="color:#7B61FF" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-[#1E1B4B] text-base">
-                        {{ $expiryAlert->count() }} Deal{{ $expiryAlert->count() > 1 ? 's' : '' }} Expiring Soon
-                    </h3>
-                    <p class="text-sm text-gray-400 mt-0.5">These referrals need your attention today.</p>
+                    <h3 class="font-semibold text-[#1E1B4B] text-base">Daily Briefing</h3>
+                    <p class="text-sm text-gray-400 mt-0.5">{{ now()->format('l, F j') }} · {{ $totalItems }} item{{ $totalItems > 1 ? 's' : '' }} need your attention</p>
                 </div>
-                <button @click="open = false" class="text-gray-400 hover:text-gray-600 transition-colors shrink-0 mt-0.5">
+                <button @click="open = false" class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            {{-- Deal list --}}
-            <div class="px-6 py-3 space-y-1 max-h-64 overflow-y-auto">
-                @foreach($expiryAlert as $deal)
-                <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                             style="background:#F59E0B">
-                            {{ strtoupper(substr($deal->name, 0, 2)) }}
+            {{-- Scrollable body --}}
+            <div class="overflow-y-auto flex-1 divide-y divide-gray-50">
+
+                {{-- Section 1: Expiring Deals --}}
+                @if($expiringDeals->isNotEmpty())
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#F59E0B"></span>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Expiring Deals</p>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#FEF3C7;color:#D97706">{{ $expiringDeals->count() }}</span>
                         </div>
-                        <div class="min-w-0">
-                            <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                            <p class="text-xs text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer assigned' }}</p>
-                        </div>
+                        <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
+                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
                     </div>
-                    <div class="text-right shrink-0 ml-4">
-                        <span class="inline-block text-xs font-bold px-2.5 py-0.5 rounded-full"
-                              style="background:#FEF3C7;color:#D97706">
-                            {{ $deal->days_left }}d left
-                        </span>
-                        @if($deal->deal_value)
-                        <p class="text-xs text-gray-400 mt-0.5">₱{{ number_format($deal->deal_value) }}</p>
+                    <div class="space-y-1">
+                        @foreach($expiringDeals->take(4) as $deal)
+                        <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
+                           class="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-orange-50 transition-colors group">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#F59E0B">
+                                    {{ strtoupper(substr($deal->name, 0, 2)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
+                                    <p class="text-[10px] text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer' }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0 ml-3">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#FEF3C7;color:#D97706">{{ $deal->days_left }}d left</span>
+                                @if($deal->deal_value)<p class="text-[10px] text-gray-400 mt-0.5">₱{{ number_format($deal->deal_value) }}</p>@endif
+                            </div>
+                        </a>
+                        @endforeach
+                        @if($expiringDeals->count() > 4)
+                        <p class="text-xs text-gray-400 text-center py-1">+{{ $expiringDeals->count() - 4 }} more</p>
                         @endif
                     </div>
                 </div>
-                @endforeach
+                @endif
+
+                {{-- Section 2: New Deals --}}
+                @if($newDeals->isNotEmpty())
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#7B61FF"></span>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">New Deals</p>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#EDE9FE;color:#7B61FF">{{ $newDeals->count() }}</span>
+                        </div>
+                        <a href="{{ route('tenant.deals', $tenant->id) }}"
+                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                    </div>
+                    <div class="space-y-1">
+                        @foreach($newDeals->take(4) as $deal)
+                        <a href="{{ route('tenant.deals', $tenant->id) }}"
+                           class="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-violet-50 transition-colors">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#7B61FF">
+                                    {{ strtoupper(substr($deal->name, 0, 2)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
+                                    <p class="text-[10px] text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
+                                </div>
+                            </div>
+                            @if($deal->deal_value)
+                            <p class="text-xs font-bold text-[#1E1B4B] shrink-0 ml-3">₱{{ number_format($deal->deal_value) }}</p>
+                            @endif
+                        </a>
+                        @endforeach
+                        @if($newDeals->count() > 4)
+                        <p class="text-xs text-gray-400 text-center py-1">+{{ $newDeals->count() - 4 }} more</p>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                {{-- Section 3: New Reseller Requests (invited, pending) --}}
+                @if($newInvited->isNotEmpty())
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#3B82F6"></span>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending Referrer Invites</p>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#DBEAFE;color:#2563EB">{{ $newInvited->count() }}</span>
+                        </div>
+                        <a href="{{ route('tenant.referrers', $tenant->id) }}"
+                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                    </div>
+                    <div class="space-y-1">
+                        @foreach($newInvited->take(4) as $r)
+                        <div class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-blue-50/50">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#3B82F6">
+                                {{ strtoupper(substr($r->name, 0, 2)) }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $r->name }}</p>
+                                <p class="text-[10px] text-gray-400 truncate">{{ $r->email }}</p>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style="background:#DBEAFE;color:#2563EB">invited</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                {{-- Section 4: Newly Activated Resellers --}}
+                @if($newActive->isNotEmpty())
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#10B981"></span>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">New Referrers Joined</p>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#D1FAE5;color:#059669">{{ $newActive->count() }}</span>
+                        </div>
+                        <a href="{{ route('tenant.referrers', $tenant->id) }}"
+                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                    </div>
+                    <div class="space-y-1">
+                        @foreach($newActive->take(4) as $r)
+                        <div class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-emerald-50/50">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#10B981">
+                                {{ strtoupper(substr($r->name, 0, 2)) }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $r->name }}</p>
+                                <p class="text-[10px] text-gray-400 truncate">{{ $r->email }}</p>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style="background:#D1FAE5;color:#059669">active</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
             </div>
 
             {{-- Footer --}}
-            <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
-                <button @click="open = false"
-                        class="btn-secondary text-sm">
+            <div class="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
+                <button @click="open = false" class="btn-secondary text-sm">
                     Dismiss for today
                 </button>
-                <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
-                   class="btn-primary text-sm">
-                    View {{ $expiryAlert->count() }} Expiring Deal{{ $expiryAlert->count() > 1 ? 's' : '' }}
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </a>
             </div>
         </div>
     </div>

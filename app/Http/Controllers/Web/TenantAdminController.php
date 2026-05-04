@@ -40,24 +40,63 @@ class TenantAdminController extends Controller
             ->latest()
             ->first();
 
-        // Expiry alert — shown once per day per tenant session
-        $sessionKey   = "expiry_alert_{$tenantId}_" . now()->format('Y-m-d');
-        $expiryAlert  = null;
-        if (!session()->has($sessionKey)) {
-            session()->put($sessionKey, true);
-            $expiryAlert = DB::table('leads')
+        // Daily dashboard briefing — shown once per calendar day
+        $seenTodayKey  = "dash_seen_{$tenantId}_" . now()->format('Y-m-d');
+        $lastSeenKey   = "dash_last_seen_{$tenantId}";
+        $dailyBriefing = null;
+
+        if (!session()->has($seenTodayKey)) {
+            // "Since" = last time the briefing was shown (default: 24h ago on first visit)
+            $since = session($lastSeenKey, now()->subHours(24));
+
+            // 1. Expiring deals
+            $expiringDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'expiring')
                 ->select('id', 'name', 'days_left', 'deal_value', 'reseller_name')
                 ->orderBy('days_left')
                 ->get();
-            if ($expiryAlert->isEmpty()) {
-                $expiryAlert = null;
+
+            // 2. New deals since last visit
+            $newDeals = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('created_at', '>', $since)
+                ->select('id', 'name', 'stage', 'deal_value', 'reseller_name', 'created_at')
+                ->orderByDesc('created_at')
+                ->get();
+
+            // 3. New resellers invited since last visit (status = invited, pending acceptance)
+            $newInvited = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'invited')
+                ->where('created_at', '>', $since)
+                ->select('id', 'name', 'email', 'created_at')
+                ->orderByDesc('created_at')
+                ->get();
+
+            // 4. Resellers who accepted invite and became active since last visit
+            $newActive = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->where('updated_at', '>', $since)
+                ->select('id', 'name', 'email', 'joined_date', 'updated_at')
+                ->orderByDesc('updated_at')
+                ->get();
+
+            // Only show if at least one section has data
+            if ($expiringDeals->isNotEmpty() || $newDeals->isNotEmpty() || $newInvited->isNotEmpty() || $newActive->isNotEmpty()) {
+                $dailyBriefing = compact('expiringDeals', 'newDeals', 'newInvited', 'newActive');
             }
+
+            session()->put($seenTodayKey, true);
+            session()->put($lastSeenKey, now());
         }
 
+        // Keep old variable name for backwards compat with any other references
+        $expiryAlert = null;
+
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert'),
+            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing'),
             $this->configMeta($tenantId)
         ));
     }
