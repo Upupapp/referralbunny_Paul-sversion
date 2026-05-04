@@ -11,19 +11,23 @@ Route::get('/login',  [AuthWebController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
-// ── Root redirect — guard-aware ───────────────────────────────
+// ── Root — public landing (scrapers see OG tags; users get redirected) ───
 Route::get('/', function () {
+    // Authenticated tenant admin → their portal
     if (auth('tenant')->check()) {
-        // Tenant admin → send to their tenant portal, never the platform
         $membership = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
-            ->where('status', 'active')
-            ->first();
+            ->where('status', 'active')->first();
         return $membership
             ? redirect()->route('tenant.dashboard', $membership->tenant_id)
             : redirect()->route('tenant.login');
     }
-    return redirect()->route('platform.dashboard');
-});
+    // Authenticated super admin → platform
+    if (auth('web')->check()) {
+        return redirect()->route('platform.dashboard');
+    }
+    // Guest (including social scrapers) → public landing page
+    return view('landing');
+})->name('home');
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
