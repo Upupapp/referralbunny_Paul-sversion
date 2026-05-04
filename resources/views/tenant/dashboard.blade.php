@@ -992,21 +992,41 @@ function tenantDashboard(tenantId, currentResellerName) {
         // ── Add deal ──────────────────────────────────────────
         async addLead() {
             this.addError = '';
-            if (!this.lguSelected)        { this.addError = 'Please select a city or municipality.'; return; }
+            if (!this.lguSelected)        { this.addError = 'Please select a city or municipality first.'; return; }
             if (!this.form.reseller_name) { this.addError = 'Referrer name is required.'; return; }
             this.saving = true;
             try {
-                const res = await fetch('/api/leads', {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content},
-                    body: JSON.stringify({...this.form, tenant_id: tenantId}),
+                const payload = {
+                    tenant_id:    tenantId,
+                    name:         this.form.name,
+                    stage:        this.form.stage,
+                    deal_value:   this.form.deal_value || 0,
+                    reseller_name: this.form.reseller_name,
+                    data:         this.form.data,
+                };
+                const res  = await fetch('/api/leads', {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify(payload),
                 });
                 const lead = await res.json();
+
+                if (!res.ok) {
+                    // Show first validation error or generic message
+                    const msg = lead.message || (lead.errors ? Object.values(lead.errors)[0][0] : null) || 'Failed to create referral.';
+                    this.addError = msg;
+                    return;
+                }
+
                 if (lead.id) {
                     this.leads.unshift(lead);
-                    this.maxCount     = Math.max(...this.funnel.map(f=>f.count), 1);
-                    this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
+                    this.maxCount     = Math.max(...this.funnel.map(f => f.count), 1);
+                    this.maxLeadCount = Math.max(...this.stageSummary().map(s => s.count), 1);
                 }
+
                 this.showAdd = false;
                 this.clearLgu();
                 this.form = {
@@ -1017,7 +1037,12 @@ function tenantDashboard(tenantId, currentResellerName) {
                     data: { province: '', municipality: '' },
                 };
                 this.autoFilledReferrer = !!currentResellerName;
-            } finally { this.saving = false; }
+                this.$dispatch('show-toast', { type: 'success', message: `Referral "${lead.name}" added successfully.` });
+            } catch(e) {
+                this.addError = 'Network error. Please try again.';
+            } finally {
+                this.saving = false;
+            }
         },
     }
 }
