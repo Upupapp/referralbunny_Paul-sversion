@@ -190,7 +190,7 @@
     </div>
 
     <div class="am" style="position:relative;z-index:1">
-        <x-r-bunny variant="waving" size="lg" :decorative="true" />
+        <x-r-bunny variant="rocket" size="lg" :decorative="true" />
     </div>
 
     <div style="position:relative;z-index:1;width:100%;text-align:center">

@@ -17,6 +17,7 @@ $variants = [
     'warning'     => 'r-bunny-warning-error.webp',
     'sleeping'    => 'r-bunny-sleeping.webp',
     'thumbsup'    => 'r-bunny-thumbs-up.webp',
+    'rocket'      => 'r-bunny-rocket.webp',
 ];
 
 $altTexts = [
@@ -30,6 +31,7 @@ $altTexts = [
     'warning'     => 'R Bunny showing a warning',
     'sleeping'    => 'R Bunny sleeping',
     'thumbsup'    => 'R Bunny giving a thumbs up',
+    'rocket'      => 'R Rocket flying with fist raised',
 ];
 
 $sizes = [
