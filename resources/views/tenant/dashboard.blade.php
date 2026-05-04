@@ -33,23 +33,6 @@ document.addEventListener('alpine:init', () => {
      @open-add-deal.window="showAdd = true"
      class="space-y-5">
 
-    {{-- ── PAGE HEADER ─────────────────────────────────────── --}}
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-        <div class="flex items-center gap-2 flex-wrap" x-show="subscription">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white border border-gray-200 text-gray-600">
-                <span class="w-1.5 h-1.5 rounded-full"
-                      :class="{'bg-emerald-400':subscription?.status==='active','bg-blue-400':subscription?.status==='trial','bg-orange-400':subscription?.status==='past_due','bg-red-400':['suspended','canceled'].includes(subscription?.status||'')}"></span>
-                <span x-text="subscription?.plan?.name || 'No plan'"></span>·
-                <span class="capitalize" x-text="subscription?.status || '—'"></span>
-            </span>
-            <span x-show="subscription?.status==='trial' && trialDaysLeft()>0"
-                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span x-text="trialDaysLeft()+' days left'"></span>
-            </span>
-        </div>
-    </div>
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
