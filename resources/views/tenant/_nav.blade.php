@@ -79,7 +79,8 @@ $groups = [
     @endif
 @endforeach
 
-{{-- Back to Platform --}}
+{{-- Back to Platform — SUPER ADMIN ONLY. Never shown to tenant admins. --}}
+@if(auth('web')->check())
 <div class="pt-3 mt-3 border-t border-white/10">
     <a href="{{ route('platform.dashboard') }}" class="sidebar-link text-xs text-white/40 hover:text-white/70">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,3 +89,4 @@ $groups = [
         Back to Platform
     </a>
 </div>
+@endif

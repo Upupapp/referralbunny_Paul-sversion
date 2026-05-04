@@ -364,19 +364,33 @@
                                 </a>
                             </template>
                         </div>
+                        @if(auth('web')->check())
                         <div class="px-4 py-3 border-t border-gray-100 bg-gray-50">
                             <a href="{{ route('platform.dashboard') }}" @click="open = false"
                                class="text-xs text-purple-600 hover:text-purple-700 font-medium">View all notifications</a>
                         </div>
+                        @endif
                     </div>
                 </div>
 
-                {{-- Avatar + profile dropdown --}}
+                {{-- Avatar + profile dropdown — guard-aware --}}
+                @php
+                    $isSuperAdmin  = auth('web')->check();
+                    $isTenantAdmin = auth('tenant')->check();
+                    $authUser      = $isSuperAdmin ? auth('web')->user() : ($isTenantAdmin ? auth('tenant')->user() : null);
+                    $displayName   = $isSuperAdmin  ? 'Super Admin'
+                                   : ($isTenantAdmin ? ($authUser?->first_name.' '.$authUser?->last_name) : 'Guest');
+                    $displayEmail  = $authUser?->email ?? '';
+                    $displayInit   = strtoupper(substr($displayName, 0, 2));
+                    $logoutRoute   = $isTenantAdmin ? route('tenant.logout') : route('logout');
+                @endphp
+
                 <div x-data="{ open: false }" class="relative ml-1">
                     <button @click="open = !open"
                             class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 transition-colors">
-                        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                            SA
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                             style="background:linear-gradient(135deg,#7B61FF,#FF6CAB)">
+                            {{ $displayInit }}
                         </div>
                         <svg class="w-3 h-3 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
@@ -387,16 +401,30 @@
                          x-transition:enter="transition ease-out duration-150"
                          x-transition:enter-start="opacity-0 -translate-y-1"
                          x-transition:enter-end="opacity-100 translate-y-0"
-                         class="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+                         class="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+
+                        {{-- Identity --}}
                         <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                            <p class="text-xs font-semibold text-[#1E1B4B]">Super Admin</p>
-                            <p class="text-xs text-gray-400 mt-0.5 truncate">admin@referralbunny.com</p>
+                            <p class="text-xs font-semibold text-[#1E1B4B] truncate">{{ $displayName }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5 truncate">{{ $displayEmail }}</p>
+                            @if($isTenantAdmin)
+                            <span class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-700">
+                                Tenant Admin
+                            </span>
+                            @elseif($isSuperAdmin)
+                            <span class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">
+                                Super Admin
+                            </span>
+                            @endif
                         </div>
+
+                        {{-- Super Admin only: platform links --}}
+                        @if($isSuperAdmin)
                         <div class="py-1">
                             <a href="{{ route('platform.dashboard') }}" @click="open = false"
                                class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                Dashboard
+                                Platform Dashboard
                             </a>
                             <a href="{{ route('platform.billing') }}" @click="open = false"
                                class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -404,8 +432,11 @@
                                 Billing
                             </a>
                         </div>
+                        @endif
+
+                        {{-- Sign out --}}
                         <div class="border-t border-gray-100 py-1">
-                            <form method="POST" action="{{ route('logout') }}" @click.stop>
+                            <form method="POST" action="{{ $logoutRoute }}" @click.stop>
                                 @csrf
                                 <button type="submit"
                                         class="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
