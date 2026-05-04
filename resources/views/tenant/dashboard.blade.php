@@ -374,37 +374,73 @@ document.addEventListener('alpine:init', () => {
     {{-- ── FULL VIEW (expanded) ─────────────────────────────── --}}
     <div x-show="$store.dashView.mode==='full'" class="space-y-4" x-cloak>
 
-        {{-- Top Referrers --}}
+        {{-- Critical Metrics --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-[#1E1B4B]">Referrer Leaderboard</h3>
-                <a href="{{ route('tenant.resellers', $tenant->id) }}" class="text-xs text-[#7B61FF] font-medium">View all →</a>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-sm font-semibold text-[#1E1B4B]">Critical Metrics</h3>
+                <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 uppercase tracking-wide">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Live
+                </span>
             </div>
-            <div class="space-y-3" x-show="resellers.length>0">
-                <template x-for="(r,i) in resellers.slice(0,8)" :key="r.id">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs font-bold text-gray-300 w-5 text-right shrink-0" x-text="i+1"></span>
-                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                             :style="`background:${['#7B61FF','#FF6CAB','#3B82F6','#10B981','#F59E0B'][i%5]}`"
-                             x-text="r.name.slice(0,2).toUpperCase()"></div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center justify-between mb-1">
-                                <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
-                                <span class="text-xs text-gray-400 tabular-nums ml-2" x-text="(r.performance_score||0)+'%'"></span>
-                            </div>
-                            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all"
-                                     :style="`width:${Math.min(r.performance_score||0,100)}%;background:${(r.performance_score||0)>=70?'#10B981':(r.performance_score||0)>=40?'#F59E0B':'#9CA3AF'}`"></div>
-                            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+                {{-- Avg. Deal Size --}}
+                <div class="p-4 rounded-2xl bg-violet-50 border border-violet-100/60">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                         </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-xs font-bold text-[#1E1B4B]" x-text="r.closed_value?'₱'+Number(r.closed_value).toLocaleString():'₱0'"></p>
-                            <p class="text-[10px] text-gray-400" x-text="(r.assigned_leads||0)+' deals'"></p>
-                        </div>
+                        <span class="text-xs text-violet-600 font-semibold">Avg. Deal Size</span>
                     </div>
-                </template>
+                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums"
+                       x-text="leads.length ? '₱'+(leads.reduce((s,l)=>s+(+l.deal_value||0),0)/leads.length/1000000).toFixed(1)+'M' : '—'"></p>
+                    <p class="text-[10px] text-gray-400 mt-1.5" x-text="'Across '+leads.length+' referral'+(leads.length!==1?'s':'')"></p>
+                </div>
+
+                {{-- Revenue at Risk --}}
+                <div class="p-4 rounded-2xl bg-orange-50 border border-orange-100/60">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        <span class="text-xs text-orange-500 font-semibold">Revenue at Risk</span>
+                    </div>
+                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums" x-text="(()=>{
+                        const v = leads.filter(l=>(l.days_left??21)<=7||l.status==='expired').reduce((s,l)=>s+(+l.deal_value||0),0);
+                        return v>=1000000 ? '₱'+(v/1000000).toFixed(1)+'M' : v>=1000 ? '₱'+Math.round(v/1000)+'K' : '₱0';
+                    })()"></p>
+                    <p class="text-[10px] text-gray-400 mt-1.5"
+                       x-text="leads.filter(l=>(l.days_left??21)<=7||l.status==='expired').length+' deals expiring or expired'"></p>
+                </div>
+
+                {{-- Conversion Rate --}}
+                <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-100/60">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <span class="text-xs text-emerald-600 font-semibold">Conversion Rate</span>
+                    </div>
+                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums" x-text="conversionRate()+'%'"></p>
+                    <p class="text-[10px] text-gray-400 mt-1.5"
+                       x-text="leads.filter(l=>l.stage==='paid').length+' paid of '+leads.length+' total'"></p>
+                </div>
+
+                {{-- Referrer Activation --}}
+                <div class="p-4 rounded-2xl bg-blue-50 border border-blue-100/60">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                        <span class="text-xs text-blue-600 font-semibold">Referrer Activation</span>
+                    </div>
+                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums"
+                       x-text="resellers.length > 0 ? Math.round((resellers.filter(r=>(r.assigned_leads||0)>0).length/resellers.length)*100)+'%' : '0%'"></p>
+                    <p class="text-[10px] text-gray-400 mt-1.5"
+                       x-text="resellers.filter(r=>(r.assigned_leads||0)>0).length+' of '+resellers.length+' referrers have deals'"></p>
+                </div>
+
             </div>
-            <p x-show="resellers.length===0" class="text-sm text-gray-400 text-center py-6">No referrers yet</p>
         </div>
 
         {{-- Stage Breakdown + Data Quality --}}
