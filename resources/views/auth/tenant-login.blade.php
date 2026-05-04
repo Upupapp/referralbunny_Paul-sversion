@@ -37,42 +37,43 @@
 <body class="bg-white font-sans antialiased" x-data="tenantLogin()" x-init="init()">
 
 {{-- ── Intro animation ─────────────────────────────────── --}}
-<div id="intro-screen" x-ref="intro" :class="{ hidden: introSkipped }">
+<div id="intro-screen" :class="{ hidden: introSkipped }"
+     class="fixed inset-0 z-50 flex flex-col items-center justify-between py-10 px-6 overflow-hidden"
+     style="background:linear-gradient(145deg,#1E1347 0%,#2D1B69 55%,#1a1040 100%)">
+
     {{-- Glow orbs --}}
-    <div class="glow-1 absolute w-[600px] h-[600px] rounded-full pointer-events-none -top-60 -left-60"
+    <div class="absolute w-[500px] h-[500px] rounded-full pointer-events-none -top-48 -left-48 opacity-25"
          style="background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
-    <div class="glow-2 absolute w-[500px] h-[500px] rounded-full pointer-events-none -bottom-40 -right-40"
+    <div class="absolute w-[400px] h-[400px] rounded-full pointer-events-none -bottom-32 -right-32 opacity-15"
          style="background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
 
-    <div class="relative z-10 flex flex-col items-center gap-6 px-6 text-center w-full max-w-sm">
-        {{-- Logo (wordmark only — no icon, avoids duplicate bunny) --}}
-        <div class="intro-logo">
-            <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
-        </div>
+    {{-- Top: logo wordmark --}}
+    <div class="intro-logo relative z-10">
+        <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
+    </div>
 
-        {{-- R Bunny mascot — the hero of the intro --}}
-        <div class="intro-bunny">
-            <x-r-bunny variant="waving" size="xl" :decorative="true" />
-        </div>
+    {{-- Middle: mascot (lg = 220px, fits comfortably without clipping) --}}
+    <div class="intro-bunny relative z-10 flex-1 flex items-center justify-center py-4">
+        <x-r-bunny variant="waving" size="lg" :decorative="true" />
+    </div>
 
-        {{-- Text — fades in at 3.5 s via CSS animation --}}
+    {{-- Bottom: welcome text + footer row --}}
+    <div class="relative z-10 w-full text-center space-y-5">
         <div class="intro-text">
-            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">
+            <h1 class="text-2xl font-bold text-white tracking-tight leading-tight">
                 Welcome to ReferralBunny.ai
             </h1>
-            <p class="mt-2 text-white/60 text-sm sm:text-base">
+            <p class="mt-1.5 text-white/60 text-sm">
                 Set up, manage, and grow your referral programs.
             </p>
         </div>
-    </div>
-
-    {{-- Footer + Skip --}}
-    <div class="absolute bottom-8 w-full flex items-center justify-between px-8">
-        <p class="intro-badge text-white/30 text-xs tracking-widest uppercase">Tenant Admin Portal</p>
-        <button @click="skipIntro()"
-                class="intro-skip text-white/40 hover:text-white/80 text-sm transition-colors px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
-            Skip
-        </button>
+        <div class="intro-badge flex items-center justify-between">
+            <span class="text-white/30 text-xs tracking-widest uppercase">Tenant Admin Portal</span>
+            <button @click="skipIntro()"
+                    class="intro-skip text-white/40 hover:text-white/80 text-sm transition-colors px-2 py-1 rounded focus:outline-none">
+                Skip
+            </button>
+        </div>
     </div>
 </div>
 
