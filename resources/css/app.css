@@ -145,8 +145,8 @@ body {
 .filter-bar::-webkit-scrollbar { display: none; }
 
 .filter-pill {
-    display: inline-flex;
-    align-items: center;
+    display: inline-flex !important; /* override @tailwindcss/forms label { display: block } */
+    align-items: center !important;
     gap: 0.375rem;
     padding: 0.4rem 1rem;
     border-radius: 9999px;
@@ -159,11 +159,13 @@ body {
     cursor: pointer;
     transition: all 0.15s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-decoration: none;
 }
 .filter-pill:hover { background: #F5F3FF; border-color: #C4B5FD; color: #7B61FF; }
 .filter-pill.active { background: #EDE9FE; border-color: #7B61FF; color: #7B61FF; }
 .filter-pill select {
     appearance: none;
+    -webkit-appearance: none;
     background: transparent;
     border: none;
     outline: none;
@@ -172,6 +174,18 @@ body {
     color: inherit;
     cursor: pointer;
     padding-right: 1rem;
+    max-width: 160px; /* prevent overflow on small screens */
+}
+
+/* Responsive: on very small screens stack filter bar */
+@media (max-width: 480px) {
+    .filter-bar {
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    .filter-pill {
+        flex-shrink: 0;
+    }
 }
 
 /* ── Table ───────────────────────────────────────────────── */
