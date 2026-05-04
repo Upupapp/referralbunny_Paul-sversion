@@ -64,7 +64,7 @@
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
             <div class="flex-1 min-w-0">
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
-                <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
+                <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant)Tenant Portal@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
             <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,26 +89,47 @@
             </div>
         </div>
 
-        {{-- Bottom --}}
+        {{-- Bottom profile (guard-aware) --}}
+        @php
+            if (auth('tenant')->check()) {
+                $profileUser  = auth('tenant')->user();
+                $profileName  = $profileUser->full_name;
+                $profileEmail = $profileUser->email;
+                $membership   = isset($tenant)
+                    ? $profileUser->memberships()->where('tenant_id', $tenant->id)->first()
+                    : null;
+                $profileRole  = $membership ? ucfirst($membership->role) : 'Member';
+                $initials     = strtoupper(
+                    substr($profileUser->first_name ?? '?', 0, 1) .
+                    substr($profileUser->last_name  ?? '',  0, 1)
+                );
+                $logoutAction = route('tenant.logout');
+            } else {
+                $profileName  = 'Super Admin';
+                $profileEmail = auth('web')->user()?->email ?? '';
+                $profileRole  = 'Platform Admin';
+                $initials     = 'SA';
+                $logoutAction = route('logout');
+            }
+        @endphp
         <div class="px-4 py-4 border-t border-white/10">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    SA
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                     style="background: linear-gradient(135deg, #EC4899, #7B61FF)">
+                    {{ $initials }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-white text-sm font-medium truncate">Super Admin</p>
-                    <p class="text-white/40 text-xs truncate">admin@referralbunny.com</p>
+                    <p class="text-white text-sm font-medium truncate leading-tight">{{ $profileName }}</p>
+                    <p class="text-white/40 text-[10px] truncate mt-0.5">{{ $profileRole }}</p>
                 </div>
-                <a href="{{ route('logout') }}"
-                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
-                   class="text-white/40 hover:text-white transition-colors" title="Logout">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                </a>
-                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
+                <form id="logout-form" action="{{ $logoutAction }}" method="POST">
                     @csrf
+                    <button type="submit" class="text-white/40 hover:text-white transition-colors" title="Logout">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </button>
                 </form>
             </div>
         </div>
