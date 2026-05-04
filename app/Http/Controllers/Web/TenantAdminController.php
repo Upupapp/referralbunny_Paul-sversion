@@ -74,13 +74,13 @@ class TenantAdminController extends Controller
                 ->orderByDesc('created_at')
                 ->get();
 
-            // 4. Resellers who accepted invite and became active since last visit
+            // 4. Resellers who became active since last visit (joined_date or created_at)
             $newActive = DB::table('resellers')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
-                ->where('updated_at', '>', $since)
-                ->select('id', 'name', 'email', 'joined_date', 'updated_at')
-                ->orderByDesc('updated_at')
+                ->where('created_at', '>', $since)
+                ->select('id', 'name', 'email', 'joined_date', 'created_at')
+                ->orderByDesc('created_at')
                 ->get();
 
             // Only show if at least one section has data
