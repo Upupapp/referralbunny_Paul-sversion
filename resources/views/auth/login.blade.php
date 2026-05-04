@@ -151,8 +151,8 @@
             <h1 style="margin:0;font-size:1.5rem;font-weight:700;color:#ffffff !important;letter-spacing:-.02em;text-shadow:0 1px 8px rgba(0,0,0,.3)">Welcome to ReferralBunny.ai</h1>
             <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.7) !important">The referral management platform.</p>
         </div>
-        <div class="am">
-            <x-r-bunny variant="rocket" size="lg" :decorative="true" />
+        <div class="am" style="width:220px;height:220px;flex-shrink:0">
+            <x-r-bunny variant="rocket" size="lg" :decorative="true" style="width:220px;height:220px;object-fit:contain" />
         </div>
     </div>
 
