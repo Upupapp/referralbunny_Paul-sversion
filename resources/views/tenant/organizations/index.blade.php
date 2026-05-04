@@ -58,18 +58,32 @@
     </div>
 
     {{-- Filter bar --}}
-    <div class="card">
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div class="search-group flex-1">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search organizations…">
-            </div>
-            <select x-model="filterIndustry" @change="applyFilters()" class="form-input sm:w-48">
-                <option value="">All Industries</option>
-                <template x-for="ind in industries" :key="ind">
-                    <option :value="ind" x-text="ind"></option>
-                </template>
-            </select>
+    <div class="card space-y-3">
+        <div class="search-group">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search organizations…">
+            <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="filter-bar">
+            <label class="filter-pill" :class="filterIndustry !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <select x-model="filterIndustry" @change="applyFilters()">
+                    <option value="">All Industries</option>
+                    <template x-for="ind in industries" :key="ind">
+                        <option :value="ind" x-text="ind"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <button x-show="filterIndustry || search"
+                    @click="filterIndustry=''; search=''; applyFilters()"
+                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Clear
+            </button>
         </div>
     </div>
 

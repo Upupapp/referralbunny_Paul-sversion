@@ -58,24 +58,42 @@
     </div>
 
     {{-- Filter bar --}}
-    <div class="card">
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div class="search-group flex-1">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search by name, email, or organization…">
-            </div>
-            <select x-model="filterStatus" @change="applyFilters()" class="form-input sm:w-40">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="prospect">Prospect</option>
-                <option value="inactive">Inactive</option>
-            </select>
-            <select x-model="filterOrg" @change="applyFilters()" class="form-input sm:w-48">
-                <option value="">All Organizations</option>
-                <template x-for="o in orgs" :key="o.id">
-                    <option :value="o.id" x-text="o.name"></option>
-                </template>
-            </select>
+    <div class="card space-y-3">
+        <div class="search-group">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search by name, email, or organization…">
+            <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="filter-bar">
+            <label class="filter-pill" :class="filterStatus !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <select x-model="filterStatus" @change="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="prospect">Prospect</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <label class="filter-pill" :class="filterOrg !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
+                <select x-model="filterOrg" @change="applyFilters()">
+                    <option value="">All Organizations</option>
+                    <template x-for="o in orgs" :key="o.id">
+                        <option :value="o.id" x-text="o.name"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <button x-show="filterStatus || filterOrg || search"
+                    @click="filterStatus=''; filterOrg=''; search=''; applyFilters()"
+                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Clear
+            </button>
         </div>
     </div>
 

@@ -16,41 +16,17 @@
      @open-add-deal.window="showAdd = true">
 
     {{-- Filter bar --}}
-    <div class="card">
-        <div class="flex flex-col sm:flex-row gap-3 flex-wrap items-start sm:items-center">
-            <div class="search-group flex-1 min-w-48">
+    <div class="card space-y-3">
+        <div class="flex items-center gap-3">
+            <div class="search-group flex-1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search deals, province, municipality…">
+                <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search deals…">
+                <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+                        class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            @if($showLocation)
-            <select x-model="filterProvince" @change="applyFilters()" class="form-input sm:w-44">
-                <option value="">All Provinces</option>
-                @foreach(['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Metro Manila','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay'] as $prov)
-                <option value="{{ $prov }}">{{ $prov }}</option>
-                @endforeach
-            </select>
-            @endif
-            <select x-model="filterStage" @change="applyFilters()" class="form-input sm:w-40">
-                <option value="">All Stages</option>
-                <option value="introduction">Introduction</option>
-                <option value="presentation">Presentation</option>
-                <option value="contract_sent">Contract Sent</option>
-                <option value="signed">Signed</option>
-                <option value="paid">Paid</option>
-            </select>
-            <select x-model="filterStatus" @change="applyFilters()" class="form-input sm:w-32">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="expiring">Expiring</option>
-                <option value="expired">Expired</option>
-            </select>
-            <select x-model="filterCommission" @change="applyFilters()" class="form-input sm:w-36">
-                <option value="">All Commission</option>
-                <option value="pending">Pending</option>
-                <option value="locked">Locked</option>
-                <option value="paid">Paid</option>
-            </select>
-            <div class="flex items-center gap-1.5 ml-auto">
+            <div class="flex items-center gap-1.5 shrink-0">
                 <button @click="viewMode = 'table'" :class="viewMode==='table' ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'"
                         class="p-2 rounded-xl border transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
@@ -60,6 +36,58 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
                 </button>
             </div>
+        </div>
+        <div class="filter-bar">
+            @if($showLocation)
+            <label class="filter-pill" :class="filterProvince !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                <select x-model="filterProvince" @change="applyFilters()">
+                    <option value="">All Provinces</option>
+                    @foreach(['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Metro Manila','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay'] as $prov)
+                    <option value="{{ $prov }}">{{ $prov }}</option>
+                    @endforeach
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            @endif
+            <label class="filter-pill" :class="filterStage !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                <select x-model="filterStage" @change="applyFilters()">
+                    <option value="">All Stages</option>
+                    <option value="introduction">Introduction</option>
+                    <option value="presentation">Presentation</option>
+                    <option value="contract_sent">Contract Sent</option>
+                    <option value="signed">Signed</option>
+                    <option value="paid">Paid</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <label class="filter-pill" :class="filterStatus !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <select x-model="filterStatus" @change="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="expiring">Expiring</option>
+                    <option value="expired">Expired</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <label class="filter-pill" :class="filterCommission !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1"/></svg>
+                <select x-model="filterCommission" @change="applyFilters()">
+                    <option value="">All Commission</option>
+                    <option value="pending">Pending</option>
+                    <option value="locked">Locked</option>
+                    <option value="paid">Paid</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <button x-show="filterStage || filterStatus || filterCommission || filterProvince || search"
+                    @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; search=''; applyFilters()"
+                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Clear
+            </button>
         </div>
     </div>
 

@@ -50,23 +50,42 @@
     </div>
 
     {{-- Filter bar --}}
-    <div class="card">
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div class="search-group flex-1">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search referrers…">
-            </div>
-            <select x-model="filterStatus" @change="applyFilters()" class="form-input sm:w-44">
-                <option value="">All Status</option>
-                <option value="invited">Invited</option>
-                <option value="active">Active</option>
-                <option value="nda_signed">NDA Signed</option>
-            </select>
-            <select x-show="totalRequiredAgreements > 0" x-model="filterAgreement" @change="applyFilters()" class="form-input sm:w-52">
-                <option value="">All Agreement Status</option>
-                <option value="compliant">Fully Signed</option>
-                <option value="missing">Missing Agreements</option>
-            </select>
+    <div class="card space-y-3">
+        <div class="search-group">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search referrers…">
+            <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="filter-bar">
+            <label class="filter-pill" :class="filterStatus !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <select x-model="filterStatus" @change="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="invited">Invited</option>
+                    <option value="active">Active</option>
+                    <option value="nda_signed">NDA Signed</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <label x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <select x-model="filterAgreement" @change="applyFilters()">
+                    <option value="">All Agreements</option>
+                    <option value="compliant">Fully Signed</option>
+                    <option value="missing">Missing Agreements</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <button x-show="filterStatus || filterAgreement || search"
+                    @click="filterStatus=''; filterAgreement=''; search=''; applyFilters()"
+                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Clear
+            </button>
+        </div>
         </div>
     </div>
 
