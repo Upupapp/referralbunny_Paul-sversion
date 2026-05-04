@@ -12,7 +12,16 @@ Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
 // ── Root — public landing (scrapers see OG tags; users get redirected) ───
-Route::get('/', function () {
+Route::get('/', function (\Illuminate\Http\Request $request) {
+    // Social scrapers — always return landing with OG tags
+    $ua = $request->userAgent() ?? '';
+    $scrapers = ['facebookexternalhit', 'Twitterbot', 'LinkedInBot', 'WhatsApp', 'Slackbot', 'TelegramBot'];
+    foreach ($scrapers as $bot) {
+        if (stripos($ua, $bot) !== false) {
+            return response(view('landing'), 200)
+                ->header('X-Robots-Tag', 'all');
+        }
+    }
     // Authenticated tenant admin → their portal
     if (auth('tenant')->check()) {
         $membership = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
@@ -25,8 +34,8 @@ Route::get('/', function () {
     if (auth('web')->check()) {
         return redirect()->route('platform.dashboard');
     }
-    // Guest (including social scrapers) → public landing page
-    return view('landing');
+    // Regular guest → tenant login
+    return redirect()->route('tenant.login');
 })->name('home');
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
