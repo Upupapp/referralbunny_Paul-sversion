@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TenantAuthController;
+use App\Http\Controllers\TenantInvitationController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ResellerController;
@@ -25,12 +27,28 @@ use Illuminate\Support\Facades\Route;
 // ── Public routes ─────────────────────────────────────────────
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// ── Tenant Admin Auth (public) ────────────────────────────────
+Route::post('/auth/tenant/login',    [TenantAuthController::class, 'login']);
+Route::post('/auth/tenant/register', [TenantAuthController::class, 'register']);
+Route::get('/auth/tenant/invite/{token}',          [TenantInvitationController::class, 'validate']);
+Route::post('/auth/tenant/invite/{token}/accept',  [TenantInvitationController::class, 'accept']);
+Route::post('/auth/tenant/join-request',           [TenantAuthController::class, 'joinRequest']);
+Route::get('/auth/tenant/lookup-tenant',           [TenantAuthController::class, 'lookupTenant']);
+
 // ── Protected routes ──────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Auth
+    // Auth — Super Admin
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me',      [AuthController::class, 'me']);
+
+    // Auth — Tenant Admin (uses same sanctum guard; tokenable_type distinguishes)
+    Route::post('/auth/tenant/logout',                [TenantAuthController::class, 'logout']);
+    Route::get('/auth/tenant/me',                     [TenantAuthController::class, 'me']);
+    Route::post('/auth/tenant/password/update',       [TenantAuthController::class, 'updatePassword']);
+    Route::post('/auth/tenant/password/mark-reviewed',[TenantAuthController::class, 'markPasswordReviewed']);
+    Route::post('/tenant-invitations',                [TenantInvitationController::class, 'store']);
+    Route::delete('/tenant-invitations/{id}',         [TenantInvitationController::class, 'revoke']);
 
     // Tenants
     Route::apiResource('tenants', TenantController::class);

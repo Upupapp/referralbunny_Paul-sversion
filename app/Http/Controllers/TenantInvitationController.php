@@ -1,0 +1,145 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Tenant;
+use App\Models\TenantInvitation;
+use App\Models\TenantMembership;
+use App\Models\TenantUser;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+class TenantInvitationController extends Controller
+{
+    /** GET /auth/tenant/invite/{token} — validate without consuming */
+    public function validate(string $token): JsonResponse
+    {
+        $invite = TenantInvitation::with('tenant')->where('token', $token)->first();
+
+        if (! $invite) {
+            return response()->json(['message' => 'This invitation link is invalid.', 'status' => 'invalid'], 404);
+        }
+
+        if ($invite->status === 'accepted') {
+            return response()->json(['message' => 'This invite was already accepted.', 'status' => 'accepted'], 409);
+        }
+
+        if ($invite->status === 'revoked') {
+            return response()->json(['message' => 'This invitation has been revoked.', 'status' => 'revoked'], 410);
+        }
+
+        if ($invite->status === 'expired' || now()->gt($invite->expires_at)) {
+            $invite->update(['status' => 'expired']);
+            return response()->json(['message' => 'This invitation has expired.', 'status' => 'expired'], 410);
+        }
+
+        return response()->json([
+            'id'          => $invite->id,
+            'tenant_id'   => $invite->tenant_id,
+            'tenant_name' => $invite->tenant?->name,
+            'email'       => $invite->email,
+            'role'        => $invite->role,
+            'expires_at'  => $invite->expires_at,
+            'status'      => $invite->status,
+        ]);
+    }
+
+    /** POST /auth/tenant/invite/{token}/accept — accept invite + create account */
+    public function accept(Request $request, string $token): JsonResponse
+    {
+        $invite = TenantInvitation::with('tenant')->where('token', $token)->first();
+
+        if (! $invite || ! $invite->isValid()) {
+            return response()->json(['message' => 'Invalid or expired invitation.', 'status' => 'invalid'], 410);
+        }
+
+        $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
+            'password'   => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = TenantUser::whereRaw('lower(email) = ?', [strtolower($invite->email)])->first();
+
+        if (! $user) {
+            $user = TenantUser::create([
+                'first_name' => $request->first_name,
+                'last_name'  => $request->last_name,
+                'email'      => strtolower($invite->email),
+                'password'   => Hash::make($request->password),
+                'status'     => 'active',
+            ]);
+        }
+
+        $membership = TenantMembership::updateOrCreate(
+            ['tenant_id' => $invite->tenant_id, 'tenant_user_id' => $user->id],
+            [
+                'role'                      => $invite->role,
+                'status'                    => 'active',
+                'joined_by_invitation'      => true,
+                'password_review_completed' => false,
+                'joined_at'                 => now(),
+            ]
+        );
+
+        $invite->update(['status' => 'accepted', 'accepted_at' => now()]);
+
+        $apiToken = $user->createToken('tenant-api-token')->plainTextToken;
+
+        return response()->json([
+            'user'        => [
+                'id'         => $user->id,
+                'first_name' => $user->first_name,
+                'last_name'  => $user->last_name,
+                'email'      => $user->email,
+                'status'     => $user->status,
+            ],
+            'token'       => $apiToken,
+            'memberships' => [[
+                'id'                        => $membership->id,
+                'tenant_id'                 => $invite->tenant_id,
+                'tenant_name'               => $invite->tenant?->name,
+                'tenant_slug'               => $invite->tenant?->slug,
+                'role'                      => $invite->role,
+                'status'                    => 'active',
+                'setup_completed'           => false,
+                'joined_by_invitation'      => true,
+                'password_review_completed' => false,
+            ]],
+        ], 201);
+    }
+
+    /** POST /tenant-invitations — create invite (protected, tenant admin only) */
+    public function store(Request $request): JsonResponse
+    {
+        $request->validate([
+            'tenant_id' => 'required|string|exists:tenants,id',
+            'email'     => 'required|email|max:255',
+            'role'      => 'nullable|in:owner,admin,member,viewer',
+        ]);
+
+        $invite = TenantInvitation::create([
+            'tenant_id'  => $request->tenant_id,
+            'email'      => strtolower($request->email),
+            'role'       => $request->role ?? 'admin',
+            'invited_by' => $request->user()?->id,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        return response()->json([
+            'invitation' => $invite,
+            'invite_url' => url('/tenant/invite/' . $invite->token),
+        ], 201);
+    }
+
+    /** DELETE /tenant-invitations/{id} — revoke invite */
+    public function revoke(string $id): JsonResponse
+    {
+        $invite = TenantInvitation::findOrFail($id);
+        $invite->update(['status' => 'revoked']);
+
+        return response()->json(['message' => 'Invitation revoked.']);
+    }
+}
