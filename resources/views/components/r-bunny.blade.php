@@ -44,13 +44,15 @@ $sizes = [
     'xl' => 'w-[320px] h-[320px]',
 ];
 
-$file   = $variants[$variant] ?? $variants['waving'];
-$alt    = $decorative ? '' : ($altTexts[$variant] ?? '');
-$sizing = $sizes[$size] ?? $sizes['md'];
+$file     = $variants[$variant] ?? $variants['waving'];
+$alt      = $decorative ? '' : ($altTexts[$variant] ?? '');
+$sizing   = $sizes[$size] ?? $sizes['md'];
+$filePath = public_path('images/mascots/' . $file);
+$version  = file_exists($filePath) ? filemtime($filePath) : 1;
 @endphp
 
 <img
-    src="/images/mascots/{{ $file }}"
+    src="/images/mascots/{{ $file }}?v={{ $version }}"
     alt="{{ $alt }}"
     @if($decorative) aria-hidden="true" @endif
     loading="lazy"
