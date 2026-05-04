@@ -34,7 +34,7 @@
            class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
             <div class="flex-1 min-w-0">
-                <x-rb-logo variant="wordmark" size="xs" :priority="true" :decorative="true" class="brightness-0 invert" />
+                <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
                 <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
             <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
