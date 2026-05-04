@@ -267,6 +267,139 @@
                 </div>
             </div>
 
+            {{-- Required Documents --}}
+            <div class="card" id="required-documents"
+                 x-data="requiredDocManager('{{ $tenant->id }}')">
+                <div class="flex items-start justify-between mb-1">
+                    <div>
+                        <h3 class="font-semibold text-[#1E1B4B]">Required Documents</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Documents resellers must submit before they can refer deals. Admin reviews and approves each submission.</p>
+                    </div>
+                    <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span class="hidden sm:inline ml-1">Add Document</span>
+                    </button>
+                </div>
+
+                <div class="mt-4">
+                    <div x-show="loading" class="flex items-center justify-center py-8 gap-2 text-gray-400">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span class="text-sm">Loading documents…</span>
+                    </div>
+
+                    <div x-show="!loading && docs.length === 0" class="text-center py-10 border-2 border-dashed border-gray-100 rounded-xl">
+                        <div class="flex justify-center mb-3">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600">No required documents yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Add a Valid ID or other document to require from resellers.</p>
+                        <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Document</button>
+                    </div>
+
+                    <div x-show="!loading && docs.length > 0" class="space-y-2">
+                        <template x-for="d in docs" :key="d.id">
+                            <div class="flex items-start gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                                     :class="d.is_active ? 'bg-blue-50' : 'bg-gray-100'">
+                                    <svg class="w-4 h-4" :class="d.is_active ? 'text-blue-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <p class="text-sm font-semibold text-[#1E1B4B]" x-text="d.label"></p>
+                                        <span x-show="d.is_required" class="badge badge-red text-xs py-0.5 px-2">Required</span>
+                                        <span x-show="!d.is_required" class="badge badge-gray text-xs py-0.5 px-2">Optional</span>
+                                        <span x-show="!d.is_active" class="badge badge-gray text-xs py-0.5 px-2">Inactive</span>
+                                    </div>
+                                    <p x-show="d.description" class="text-xs text-gray-400 mt-0.5 line-clamp-1" x-text="d.description"></p>
+                                    <div class="flex items-center gap-3 mt-1 flex-wrap">
+                                        <span class="text-xs text-gray-400" x-text="docTypeLabel(d.document_type)"></span>
+                                        <span x-show="d.accepted_formats" class="text-xs text-gray-400" x-text="'Accepts: ' + d.accepted_formats"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center">
+                                    <button @click="openEdit(d)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Edit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    </button>
+                                    <button @click="deleteDoc(d.id)" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Add / Edit Modal --}}
+                <div x-show="showModal" x-cloak
+                     class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+                     @keydown.escape.window="closeModal()">
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 class="font-semibold text-[#1E1B4B]" x-text="editId ? 'Edit Document' : 'Add Required Document'"></h3>
+                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="form-label">Document Label *</label>
+                                <input type="text" x-model="form.label" class="form-input" placeholder="e.g. Valid Government ID">
+                            </div>
+                            <div>
+                                <label class="form-label">Document Type *</label>
+                                <select x-model="form.document_type" class="form-input">
+                                    <option value="valid_id">Valid Government ID</option>
+                                    <option value="business_permit">Business Permit</option>
+                                    <option value="bir_registration">BIR / Tax Registration</option>
+                                    <option value="dti_sec_registration">DTI / SEC Registration</option>
+                                    <option value="bank_details">Bank Account Details</option>
+                                    <option value="selfie_with_id">Selfie with ID</option>
+                                    <option value="proof_of_address">Proof of Address</option>
+                                    <option value="other">Custom / Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Description</label>
+                                <textarea x-model="form.description" class="form-input" rows="2" placeholder="Instructions shown to resellers when submitting"></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label">Accepted Formats</label>
+                                <input type="text" x-model="form.accepted_formats" class="form-input" placeholder="PDF, JPG, PNG">
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                                <div>
+                                    <p class="text-sm font-medium text-[#1E1B4B]">Required for resellers</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Resellers cannot refer deals without this document being approved.</p>
+                                </div>
+                                <button type="button" @click="form.is_required = !form.is_required"
+                                        :class="form.is_required ? 'bg-[#7B61FF]' : 'bg-gray-300'"
+                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-4">
+                                    <span :class="form.is_required ? 'translate-x-6' : 'translate-x-1'"
+                                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+                                </button>
+                            </div>
+                            <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
+                            <div class="flex justify-end gap-3 pt-1">
+                                <button @click="closeModal()" class="btn-secondary">Cancel</button>
+                                <button @click="saveDoc()" :disabled="saving" class="btn-primary"
+                                        x-text="saving ? 'Saving…' : (editId ? 'Save Changes' : 'Add Document')"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div class="space-y-4">
@@ -278,6 +411,7 @@
                         ['label' => 'General Settings',        'href' => '#general-settings',  'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'],
                         ['label' => 'Contact Info',            'href' => '#contact-info',       'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
                         ['label' => 'Agreement Files',         'href' => '#agreement-files',    'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+                        ['label' => 'Required Documents',      'href' => '#required-documents', 'icon' => 'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2'],
                         ['label' => 'Pipeline & Stages',       'href' => '#',                   'icon' => 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2'],
                         ['label' => 'Custom Fields',           'href' => '#',                   'icon' => 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4'],
                         ['label' => 'Commission Rules',        'href' => '#',                   'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
@@ -416,6 +550,102 @@ function agreementManager(tenantId) {
                 this.$dispatch('show-toast', { type: 'success', message: 'Agreement deleted.' });
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Failed to delete agreement.' });
+            }
+        },
+    };
+}
+
+function requiredDocManager(tenantId) {
+    const docTypeLabels = {
+        valid_id:           'Valid Government ID',
+        business_permit:    'Business Permit',
+        bir_registration:   'BIR / Tax Registration',
+        dti_sec_registration:'DTI / SEC Registration',
+        bank_details:       'Bank Account Details',
+        selfie_with_id:     'Selfie with ID',
+        proof_of_address:   'Proof of Address',
+        other:              'Custom / Other',
+    };
+
+    return {
+        docs: [], loading: true,
+        showModal: false, saving: false, formError: '',
+        editId: null,
+        form: { label: '', document_type: 'valid_id', description: '', accepted_formats: 'PDF, JPG, PNG', is_required: true },
+
+        docTypeLabel(t) { return docTypeLabels[t] || t; },
+
+        async init() {
+            try {
+                const res = await fetch(`/api/required-documents?tenant_id=${tenantId}`);
+                const data = await res.json();
+                this.docs = Array.isArray(data) ? data : [];
+            } catch(e) { this.docs = []; }
+            this.loading = false;
+        },
+
+        openAdd() {
+            this.editId = null;
+            this.form = { label: '', document_type: 'valid_id', description: '', accepted_formats: 'PDF, JPG, PNG', is_required: true };
+            this.formError = '';
+            this.showModal = true;
+        },
+
+        openEdit(d) {
+            this.editId = d.id;
+            this.form = {
+                label:            d.label || '',
+                document_type:    d.document_type || 'other',
+                description:      d.description || '',
+                accepted_formats: d.accepted_formats || 'PDF, JPG, PNG',
+                is_required:      !!d.is_required,
+            };
+            this.formError = '';
+            this.showModal = true;
+        },
+
+        closeModal() { this.showModal = false; this.formError = ''; },
+
+        async saveDoc() {
+            if (!this.form.label.trim()) { this.formError = 'Document label is required.'; return; }
+            this.saving = true; this.formError = '';
+            try {
+                const url    = this.editId ? `/api/required-documents/${this.editId}` : '/api/required-documents';
+                const method = this.editId ? 'PUT' : 'POST';
+                const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
+                const res    = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify(body),
+                });
+                const data = await res.json();
+                if (data.id) {
+                    if (this.editId) {
+                        const i = this.docs.findIndex(d => d.id === this.editId);
+                        if (i !== -1) this.docs.splice(i, 1, data);
+                    } else {
+                        this.docs.push(data);
+                    }
+                    this.showModal = false;
+                    this.$dispatch('show-toast', { type: 'success', message: this.editId ? 'Document updated.' : 'Document added.' });
+                } else {
+                    this.formError = data.message || 'Failed to save document.';
+                }
+            } catch(e) { this.formError = 'Network error. Please try again.'; }
+            finally { this.saving = false; }
+        },
+
+        async deleteDoc(id) {
+            if (!confirm('Delete this document requirement? This will also remove all submission records.')) return;
+            try {
+                await fetch(`/api/required-documents/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                });
+                this.docs = this.docs.filter(d => d.id !== id);
+                this.$dispatch('show-toast', { type: 'success', message: 'Document requirement deleted.' });
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Failed to delete.' });
             }
         },
     };

@@ -16,7 +16,7 @@
      @open-invite-referrer.window="showInvite = true">
 
     {{-- Summary KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Referrers</span>
@@ -39,6 +39,15 @@
                    x-text="totalRequiredAgreements > 0 ? nonCompliantCount() : '—'"></p>
             </div>
             <div class="kpi-icon bg-orange-100 ml-3 shrink-0"><svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+        </div>
+        <div class="kpi-card">
+            <div class="flex-1 min-w-0">
+                <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Missing Docs</span>
+                <p class="text-2xl font-bold mt-1.5"
+                   :class="docNonCompliantCount() > 0 ? 'text-red-500' : 'text-[#1E1B4B]'"
+                   x-text="totalRequiredDocs > 0 ? docNonCompliantCount() : '—'"></p>
+            </div>
+            <div class="kpi-icon bg-red-100 ml-3 shrink-0"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg></div>
         </div>
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
@@ -79,8 +88,17 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <button x-show="filterStatus || filterAgreement || search"
-                    @click="filterStatus=''; filterAgreement=''; search=''; applyFilters()"
+            <label x-show="totalRequiredDocs > 0" class="filter-pill" :class="filterDoc !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
+                <select x-model="filterDoc" @change="applyFilters()">
+                    <option value="">All Doc Status</option>
+                    <option value="compliant">Docs Complete</option>
+                    <option value="missing">Missing Docs</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            <button x-show="filterStatus || filterAgreement || filterDoc || search"
+                    @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Clear
@@ -122,6 +140,7 @@
                         <th>Performance</th>
                         <th>Status</th>
                         <th x-show="totalRequiredAgreements > 0">Agreements</th>
+                        <th x-show="totalRequiredDocs > 0">Documents</th>
                         <th>Joined</th>
                         <th></th>
                     </tr>
@@ -193,6 +212,26 @@
                                 </button>
                             </td>
 
+                            {{-- Documents column --}}
+                            <td x-show="totalRequiredDocs > 0">
+                                <button @click="openDocuments(r)"
+                                        class="flex items-center gap-1.5 group/doc"
+                                        :title="docTooltip(r.id)">
+                                    <template x-if="isDocCompliant(r.id)">
+                                        <span class="badge badge-green text-xs py-0.5">
+                                            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            Complete
+                                        </span>
+                                    </template>
+                                    <template x-if="!isDocCompliant(r.id)">
+                                        <span class="badge badge-red text-xs py-0.5">
+                                            <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                            <span x-text="docSummary(r.id)"></span>
+                                        </span>
+                                    </template>
+                                </button>
+                            </td>
+
                             <td class="text-gray-400 text-sm tabular-nums"
                                 x-text="r.joined_date ? new Date(r.joined_date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                             <td>
@@ -204,6 +243,11 @@
                                     <button x-show="r.status === 'active'" @click="updateStatus(r.id, 'nda_signed')"
                                             class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
                                         Mark NDA
+                                    </button>
+                                    <button x-show="totalRequiredDocs > 0" @click="openDocuments(r)"
+                                            class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors"
+                                            title="Manage documents">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
                                     </button>
                                     <button x-show="totalRequiredAgreements > 0" @click="openAgreements(r)"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#7B61FF] transition-colors"
@@ -218,6 +262,127 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    {{-- Document Management Modal --}}
+    <div x-show="showDocuments" x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showDocuments = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                    <h3 class="font-semibold text-[#1E1B4B]">Required Documents</h3>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="activeDocReseller?.name"></p>
+                </div>
+                <button @click="showDocuments = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div x-show="loadingDocs" class="flex items-center justify-center py-8 gap-2 text-gray-400">
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span class="text-sm">Loading…</span>
+                </div>
+                <div x-show="!loadingDocs" class="space-y-3">
+                    <template x-for="d in activeResellerDocs" :key="d.id">
+                        <div class="p-4 rounded-xl border transition-colors"
+                             :class="{
+                                 'border-emerald-100 bg-emerald-50/40': d.submission_status === 'approved',
+                                 'border-blue-100 bg-blue-50/40':       d.submission_status === 'submitted',
+                                 'border-red-100 bg-red-50/40':         d.submission_status === 'rejected',
+                                 'border-gray-100':                      !d.submission_status || d.submission_status === 'not_submitted',
+                             }">
+                            <div class="flex items-start gap-3">
+                                {{-- Status icon --}}
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                     :class="{
+                                         'bg-emerald-100': d.submission_status === 'approved',
+                                         'bg-blue-100':    d.submission_status === 'submitted',
+                                         'bg-red-100':     d.submission_status === 'rejected',
+                                         'bg-gray-100':    !d.submission_status || d.submission_status === 'not_submitted',
+                                     }">
+                                    <template x-if="d.submission_status === 'approved'">
+                                        <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                    </template>
+                                    <template x-if="d.submission_status === 'submitted'">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </template>
+                                    <template x-if="d.submission_status === 'rejected'">
+                                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </template>
+                                    <template x-if="!d.submission_status || d.submission_status === 'not_submitted'">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                    </template>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="text-sm font-semibold text-[#1E1B4B]" x-text="d.label"></p>
+                                        <span x-show="d.is_required" class="badge badge-red text-xs py-0.5 px-1.5">Required</span>
+                                        <span x-show="!d.is_required" class="badge badge-gray text-xs py-0.5 px-1.5">Optional</span>
+                                    </div>
+                                    <p x-show="d.description" class="text-xs text-gray-400 mt-0.5" x-text="d.description"></p>
+
+                                    {{-- Status text --}}
+                                    <template x-if="d.submission_status === 'approved'">
+                                        <p class="text-xs text-emerald-600 font-medium mt-1">
+                                            Approved <span x-text="d.reviewed_at ? '— ' + new Date(d.reviewed_at).toLocaleDateString('en',{month:'short',day:'numeric'}) : ''"></span>
+                                        </p>
+                                    </template>
+                                    <template x-if="d.submission_status === 'submitted'">
+                                        <p class="text-xs text-blue-600 mt-1">Submitted — awaiting review</p>
+                                    </template>
+                                    <template x-if="d.submission_status === 'rejected'">
+                                        <div class="mt-1">
+                                            <p class="text-xs text-red-500 font-medium">Rejected — reseller must resubmit</p>
+                                            <p x-show="d.review_notes" class="text-xs text-red-400 mt-0.5" x-text="d.review_notes"></p>
+                                        </div>
+                                    </template>
+                                    <template x-if="!d.submission_status || d.submission_status === 'not_submitted'">
+                                        <p class="text-xs mt-1" :class="d.is_required ? 'text-gray-500' : 'text-gray-400'"
+                                           x-text="d.is_required ? 'Not yet submitted — required' : 'Not yet submitted (optional)'"></p>
+                                    </template>
+
+                                    <a x-show="d.file_url" :href="d.file_url" target="_blank"
+                                       class="text-xs text-purple-600 hover:text-purple-700 inline-flex items-center gap-1 mt-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        View File
+                                    </a>
+                                </div>
+                                {{-- Actions --}}
+                                <div class="shrink-0 flex flex-col gap-1.5 items-end">
+                                    <template x-if="!d.submission_status || d.submission_status === 'not_submitted'">
+                                        <button @click="markSubmitted(d)" :disabled="docSaving === d.id"
+                                                class="btn-secondary text-xs py-1.5 px-2.5"
+                                                x-text="docSaving === d.id ? '…' : 'Mark Submitted'"></button>
+                                    </template>
+                                    <template x-if="d.submission_status === 'submitted'">
+                                        <div class="flex gap-1.5">
+                                            <button @click="approveDoc(d)" :disabled="docSaving === d.id"
+                                                    class="btn-primary text-xs py-1.5 px-2.5"
+                                                    x-text="docSaving === d.id ? '…' : 'Approve'"></button>
+                                            <button @click="rejectDoc(d)" :disabled="docSaving === d.id"
+                                                    class="text-xs py-1.5 px-2.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                                    x-text="docSaving === d.id ? '…' : 'Reject'"></button>
+                                        </div>
+                                    </template>
+                                    <template x-if="d.submission_status === 'approved' || d.submission_status === 'rejected'">
+                                        <button @click="resetDocSubmission(d)" :disabled="docSaving === d.id"
+                                                class="text-xs text-gray-400 hover:text-red-500 underline transition-colors"
+                                                x-text="docSaving === d.id ? '…' : 'Reset'"></button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="activeResellerDocs.length === 0" class="text-center py-6 text-gray-400 text-sm">
+                        No required documents configured for this tenant.
+                    </div>
+                </div>
+                <div class="flex justify-end mt-5 pt-4 border-t border-gray-100">
+                    <button @click="showDocuments = false" class="btn-secondary">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -374,20 +539,27 @@
 function referrersModule(tenantId) {
     return {
         referrers: [], filtered: [], loading: true,
-        search: '', filterStatus: '', filterAgreement: '',
+        search: '', filterStatus: '', filterAgreement: '', filterDoc: '',
         showInvite: false, saving: false, formError: '',
         form: { name: '', email: '', phone: '', territory: '' },
 
         // Agreement data
         totalRequiredAgreements: 0,
-        resellerCompliance: {},   // { [reseller_id]: { acknowledged, required_total, fully_compliant } }
-
-        // Agreement modal
+        resellerCompliance: {},
         showAgreements: false,
         activeReseller: null,
         activeResellerAgreements: [],
         loadingAgreements: false,
         ackSaving: null,
+
+        // Document data
+        totalRequiredDocs: 0,
+        resellerDocCompliance: {},
+        showDocuments: false,
+        activeDocReseller: null,
+        activeResellerDocs: [],
+        loadingDocs: false,
+        docSaving: null,
 
         async init() {
             try {
@@ -397,14 +569,10 @@ function referrersModule(tenantId) {
             } catch(e) { this.referrers = []; }
 
             // Load compliance data in parallel
-            try {
-                const cr  = await fetch(`/api/agreements/compliance?tenant_id=${tenantId}`);
-                const cd  = await cr.json();
-                this.totalRequiredAgreements = cd.required_agreements || 0;
-                const map = {};
-                (cd.resellers || []).forEach(r => { map[r.reseller_id] = r; });
-                this.resellerCompliance = map;
-            } catch(e) {}
+            await Promise.all([
+                this.refreshCompliance(),
+                this.refreshDocCompliance(),
+            ]);
 
             this.applyFilters();
             this.loading = false;
@@ -416,9 +584,12 @@ function referrersModule(tenantId) {
                 const matchQ  = !q || (r.name||'').toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q) || (r.territory||'').toLowerCase().includes(q);
                 const matchSt = !this.filterStatus || r.status === this.filterStatus;
                 const matchAg = !this.filterAgreement
-                    || (this.filterAgreement === 'compliant'  && this.isCompliant(r.id))
-                    || (this.filterAgreement === 'missing'    && !this.isCompliant(r.id));
-                return matchQ && matchSt && matchAg;
+                    || (this.filterAgreement === 'compliant' && this.isCompliant(r.id))
+                    || (this.filterAgreement === 'missing'   && !this.isCompliant(r.id));
+                const matchDc = !this.filterDoc
+                    || (this.filterDoc === 'compliant' && this.isDocCompliant(r.id))
+                    || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
+                return matchQ && matchSt && matchAg && matchDc;
             });
         },
 
@@ -521,6 +692,135 @@ function referrersModule(tenantId) {
                 this.resellerCompliance = map;
                 this.applyFilters();
             } catch(e) {}
+        },
+
+        // ── Document helpers ─────────────────────────────────────────────
+
+        async refreshDocCompliance() {
+            try {
+                const res = await fetch(`/api/required-documents/compliance?tenant_id=${tenantId}`);
+                const data = await res.json();
+                this.totalRequiredDocs = data.required_documents || 0;
+                const map = {};
+                (data.resellers || []).forEach(r => { map[r.reseller_id] = r; });
+                this.resellerDocCompliance = map;
+                this.applyFilters();
+            } catch(e) {}
+        },
+
+        isDocCompliant(resellerId) {
+            if (this.totalRequiredDocs === 0) return true;
+            const c = this.resellerDocCompliance[resellerId];
+            return c ? c.fully_compliant : false;
+        },
+
+        docSummary(resellerId) {
+            const c = this.resellerDocCompliance[resellerId];
+            if (!c) return `0/${this.totalRequiredDocs}`;
+            return `${c.approved}/${c.required_total}`;
+        },
+
+        docTooltip(resellerId) {
+            if (this.isDocCompliant(resellerId)) return 'All required documents approved';
+            const c = this.resellerDocCompliance[resellerId];
+            const missing = c ? (c.required_total - c.approved) : this.totalRequiredDocs;
+            return `${missing} required document${missing === 1 ? '' : 's'} pending`;
+        },
+
+        docNonCompliantCount() {
+            if (this.totalRequiredDocs === 0) return 0;
+            return this.referrers.filter(r => !this.isDocCompliant(r.id)).length;
+        },
+
+        async openDocuments(reseller) {
+            this.activeDocReseller  = reseller;
+            this.activeResellerDocs = [];
+            this.showDocuments      = true;
+            this.loadingDocs        = true;
+            try {
+                const res  = await fetch(`/api/required-documents/reseller-status?tenant_id=${tenantId}&reseller_id=${reseller.id}`);
+                this.activeResellerDocs = await res.json();
+            } catch(e) { this.activeResellerDocs = []; }
+            this.loadingDocs = false;
+        },
+
+        async markSubmitted(doc) {
+            const fileUrl = prompt('Paste file URL (optional — leave blank if submitting manually):') ?? '';
+            this.docSaving = doc.id;
+            try {
+                const res = await fetch(`/api/required-documents/${doc.id}/submit`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ reseller_id: this.activeDocReseller.id, file_url: fileUrl || null }),
+                });
+                if ((await res.json()).submitted) {
+                    doc.submission_status = 'submitted';
+                    doc.file_url = fileUrl || null;
+                    doc.submitted_at = new Date().toISOString();
+                    await this.refreshDocCompliance();
+                    this.$dispatch('show-toast', { type: 'success', message: `${doc.label} marked as submitted.` });
+                }
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to record submission.' }); }
+            this.docSaving = null;
+        },
+
+        async approveDoc(doc) {
+            if (!doc.submission_id) return;
+            this.docSaving = doc.id;
+            try {
+                const res = await fetch(`/api/document-submissions/${doc.submission_id}/review`, {
+                    method:  'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ status: 'approved', reviewed_by: 'Admin' }),
+                });
+                if ((await res.json()).reviewed) {
+                    doc.submission_status = 'approved';
+                    doc.reviewed_at = new Date().toISOString();
+                    await this.refreshDocCompliance();
+                    this.$dispatch('show-toast', { type: 'success', message: `${doc.label} approved.` });
+                }
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to approve.' }); }
+            this.docSaving = null;
+        },
+
+        async rejectDoc(doc) {
+            const notes = prompt('Reason for rejection (shown to reseller):') ?? '';
+            if (!doc.submission_id) return;
+            this.docSaving = doc.id;
+            try {
+                const res = await fetch(`/api/document-submissions/${doc.submission_id}/review`, {
+                    method:  'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ status: 'rejected', reviewed_by: 'Admin', review_notes: notes || null }),
+                });
+                if ((await res.json()).reviewed) {
+                    doc.submission_status = 'rejected';
+                    doc.review_notes = notes;
+                    await this.refreshDocCompliance();
+                    this.$dispatch('show-toast', { type: 'success', message: `${doc.label} rejected.` });
+                }
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to reject.' }); }
+            this.docSaving = null;
+        },
+
+        async resetDocSubmission(doc) {
+            if (!confirm(`Reset submission for "${doc.label}"? The reseller will need to resubmit.`)) return;
+            if (!doc.submission_id) return;
+            this.docSaving = doc.id;
+            try {
+                await fetch(`/api/document-submissions/${doc.submission_id}`, {
+                    method:  'DELETE',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                });
+                doc.submission_status = 'not_submitted';
+                doc.submission_id     = null;
+                doc.file_url          = null;
+                doc.reviewed_at       = null;
+                doc.review_notes      = null;
+                await this.refreshDocCompliance();
+                this.$dispatch('show-toast', { type: 'success', message: `${doc.label} submission reset.` });
+            } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to reset.' }); }
+            this.docSaving = null;
         },
 
         // ── KPIs ──────────────────────────────────────────────────────────

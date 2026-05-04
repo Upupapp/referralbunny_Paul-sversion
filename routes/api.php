@@ -18,6 +18,7 @@ use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\RequiredDocumentController;
 use App\Http\Controllers\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -184,6 +185,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('organizations/{id}',                      [OrganizationController::class, 'update']);
     Route::patch('organizations/{id}',                    [OrganizationController::class, 'update']);
     Route::delete('organizations/{id}',                   [OrganizationController::class, 'destroy']);
+
+    // Required Documents (reseller KYC/verification)
+    Route::get('required-documents/compliance',              [RequiredDocumentController::class, 'compliance']);
+    Route::get('required-documents/reseller-status',         [RequiredDocumentController::class, 'resellerStatus']);
+    Route::get('required-documents',                         [RequiredDocumentController::class, 'index']);
+    Route::post('required-documents',                        [RequiredDocumentController::class, 'store']);
+    Route::put('required-documents/{id}',                   [RequiredDocumentController::class, 'update']);
+    Route::patch('required-documents/{id}',                 [RequiredDocumentController::class, 'update']);
+    Route::delete('required-documents/{id}',                [RequiredDocumentController::class, 'destroy']);
+    Route::post('required-documents/{docId}/submit',         [RequiredDocumentController::class, 'recordSubmission']);
+    Route::patch('document-submissions/{submissionId}/review',[RequiredDocumentController::class, 'review']);
+    Route::delete('document-submissions/{submissionId}',     [RequiredDocumentController::class, 'resetSubmission']);
 
     // Agreement Files
     Route::get('agreements/reseller-status',              [AgreementController::class, 'resellerStatus']);
