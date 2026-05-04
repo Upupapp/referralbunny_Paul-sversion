@@ -28,7 +28,7 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 @section('content')
-<div x-data="tenantDashboard('{{ $tenant->id }}')"
+<div x-data="tenantDashboard('{{ $tenant->id }}', {{ json_encode($currentResellerName) }})"
      x-init="init()"
      @open-add-deal.window="showAdd = true"
      class="space-y-5">
@@ -702,12 +702,71 @@ document.addEventListener('alpine:init', () => {
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Add Referral</h3>
-                <button @click="showAdd=false" class="text-gray-400 hover:text-gray-600">
+                <button @click="showAdd=false; clearLgu()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="form-label">Referral Name *</label><input type="text" x-model="form.name" class="form-input" placeholder="Full name or company"></div>
+
+                {{-- Step 1: LGU search --}}
+                <div>
+                    <label class="form-label">City / Municipality *</label>
+                    <div class="relative">
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <input type="text"
+                                   x-model="lguQuery"
+                                   @input.debounce.300ms="searchLgu()"
+                                   @keydown.escape="lguDropdown = false"
+                                   @keydown.arrow-down.prevent="lguFocus = Math.min(lguFocus+1, lguResults.length-1)"
+                                   @keydown.arrow-up.prevent="lguFocus = Math.max(lguFocus-1, 0)"
+                                   @keydown.enter.prevent="lguResults[lguFocus] && selectLgu(lguResults[lguFocus])"
+                                   class="form-input pl-9"
+                                   :class="lguSelected ? 'border-violet-300 bg-violet-50/30' : ''"
+                                   placeholder="Type city or municipality name…"
+                                   autocomplete="off">
+                            <button x-show="lguSelected" @click="clearLgu()"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        {{-- Dropdown --}}
+                        <div x-show="lguDropdown && lguResults.length > 0" x-cloak
+                             @click.outside="lguDropdown = false"
+                             class="absolute z-30 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden max-h-52 overflow-y-auto">
+                            <template x-for="(org, idx) in lguResults" :key="org.id">
+                                <button type="button"
+                                        @click="selectLgu(org)"
+                                        :class="idx === lguFocus ? 'bg-violet-50' : 'hover:bg-gray-50'"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors">
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                                         :style="`background:${org._d && org._d.lgu_type==='City' ? '#7B61FF' : '#3B82F6'}`"
+                                         x-text="(org.name||'').slice(0,2).toUpperCase()"></div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="org.name"></p>
+                                        <p class="text-xs text-gray-400 truncate" x-text="org.address"></p>
+                                    </div>
+                                </button>
+                            </template>
+                            <div x-show="lguSearching" class="px-4 py-3 text-xs text-gray-400 text-center">Searching…</div>
+                        </div>
+                    </div>
+
+                    {{-- Selected: standardized name preview --}}
+                    <div x-show="lguSelected" x-cloak class="mt-2 px-4 py-3 rounded-xl border border-violet-100" style="background:#F5F3FF">
+                        <p class="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-1">Standardized Name</p>
+                        <p class="text-sm font-semibold text-[#1E1B4B]" x-text="form.name"></p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Province: <span class="font-medium text-gray-700" x-text="form.data.province || '—'"></span>
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Stage + Deal Value --}}
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="form-label">Stage</label>
@@ -719,12 +778,30 @@ document.addEventListener('alpine:init', () => {
                             <option value="paid">Paid</option>
                         </select>
                     </div>
-                    <div><label class="form-label">Deal Value (₱)</label><input type="number" x-model="form.deal_value" class="form-input" placeholder="0"></div>
+                    <div>
+                        <label class="form-label">Deal Value (₱)</label>
+                        <input type="number" x-model="form.deal_value" class="form-input" placeholder="0">
+                    </div>
                 </div>
-                <div><label class="form-label">Referrer Name *</label><input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned referrer"></div>
+
+                {{-- Referrer Name --}}
+                <div>
+                    <label class="form-label">
+                        Referrer Name *
+                        <span x-show="form.reseller_name && autoFilledReferrer"
+                              class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                              style="background:#D1FAE5;color:#065F46">auto-filled</span>
+                    </label>
+                    <input type="text" x-model="form.reseller_name" class="form-input"
+                           placeholder="Assigned referrer"
+                           :class="autoFilledReferrer ? 'border-emerald-300 bg-emerald-50/30' : ''">
+                </div>
+
+                <p x-show="addError" class="text-xs text-red-600 font-medium" x-text="addError"></p>
                 <div class="flex justify-end gap-3">
-                    <button @click="showAdd=false" class="btn-secondary">Cancel</button>
-                    <button @click="addLead()" :disabled="saving" class="btn-primary" x-text="saving?'Saving…':'Add Referral'"></button>
+                    <button @click="showAdd=false; clearLgu()" class="btn-secondary">Cancel</button>
+                    <button @click="addLead()" :disabled="saving || !lguSelected" class="btn-primary"
+                            x-text="saving ? 'Saving…' : 'Add Referral'"></button>
                 </div>
             </div>
         </div>
@@ -733,12 +810,26 @@ document.addEventListener('alpine:init', () => {
 </div>
 
 <script>
-function tenantDashboard(tenantId) {
+function tenantDashboard(tenantId, currentResellerName) {
     return {
         leads: [], resellers: [], funnel: [], stats: {}, metric: {},
         maxCount: 1, maxLeadCount: 1, subscription: null,
-        showAdd: false, saving: false, dealSearch: '',
-        form: { name:'', stage:'introduction', deal_value:'', reseller_name:'' },
+        showAdd: false, saving: false, dealSearch: '', addError: '',
+
+        // LGU search
+        lguQuery: '', lguResults: [], lguDropdown: false, lguSearching: false,
+        lguSelected: null, lguFocus: 0,
+
+        // Referrer auto-fill
+        autoFilledReferrer: !!currentResellerName,
+
+        form: {
+            name: '',
+            stage: 'introduction',
+            deal_value: '',
+            reseller_name: currentResellerName || '',
+            data: { province: '', municipality: '' },
+        },
 
         async init() {
             const [lRes, rRes, fRes, mRes, sRes] = await Promise.all([
@@ -857,9 +948,52 @@ function tenantDashboard(tenantId) {
             return Math.floor(mins/1440)+'d ago';
         },
 
+        // ── LGU search ────────────────────────────────────────
+        async searchLgu() {
+            if (this.lguQuery.length < 2) { this.lguResults = []; this.lguDropdown = false; return; }
+            this.lguSearching = true;
+            this.lguDropdown  = true;
+            this.lguFocus     = 0;
+            try {
+                const p   = new URLSearchParams({ tenant_id: tenantId, search: this.lguQuery, per_page: 10 });
+                const res = await fetch(`/api/organizations?${p}`);
+                const json = await res.json();
+                this.lguResults = (json.data || []).map(o => {
+                    let _d = {};
+                    try { _d = typeof o.data === 'string' ? JSON.parse(o.data || '{}') : (o.data || {}); } catch(e) {}
+                    return { ...o, _d };
+                });
+            } catch(e) { this.lguResults = []; }
+            this.lguSearching = false;
+        },
+
+        selectLgu(org) {
+            this.lguSelected      = org;
+            this.lguDropdown      = false;
+            this.lguQuery         = org.name;
+            // Standardized name comes directly from the org record
+            this.form.name        = org.name;
+            // Province from address field
+            this.form.data.province    = org.address || '';
+            // Municipality = city/municipality name without the "Municipality of" / "City of" prefix
+            this.form.data.municipality = (org.name || '').replace(/^(?:Municipality|City) of\s+/i, '');
+        },
+
+        clearLgu() {
+            this.lguSelected           = null;
+            this.lguQuery              = '';
+            this.lguResults            = [];
+            this.lguDropdown           = false;
+            this.form.name             = '';
+            this.form.data.province    = '';
+            this.form.data.municipality = '';
+        },
+
         // ── Add deal ──────────────────────────────────────────
         async addLead() {
-            if (!this.form.name||!this.form.reseller_name) return;
+            this.addError = '';
+            if (!this.lguSelected)        { this.addError = 'Please select a city or municipality.'; return; }
+            if (!this.form.reseller_name) { this.addError = 'Referrer name is required.'; return; }
             this.saving = true;
             try {
                 const res = await fetch('/api/leads', {
@@ -874,7 +1008,15 @@ function tenantDashboard(tenantId) {
                     this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
                 }
                 this.showAdd = false;
-                this.form = {name:'',stage:'introduction',deal_value:'',reseller_name:''};
+                this.clearLgu();
+                this.form = {
+                    name: '',
+                    stage: 'introduction',
+                    deal_value: '',
+                    reseller_name: currentResellerName || '',
+                    data: { province: '', municipality: '' },
+                };
+                this.autoFilledReferrer = !!currentResellerName;
             } finally { this.saving = false; }
         },
     }

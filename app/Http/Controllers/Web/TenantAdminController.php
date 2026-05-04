@@ -92,11 +92,19 @@ class TenantAdminController extends Controller
             session()->put($lastSeenKey, now());
         }
 
-        // Keep old variable name for backwards compat with any other references
+        // Current user's reseller name — auto-populates the new deal form
+        $currentResellerName = null;
+        if (auth('tenant')->check()) {
+            $currentResellerName = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('email', auth('tenant')->user()->email)
+                ->value('name');
+        }
+
         $expiryAlert = null;
 
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing'),
+            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing', 'currentResellerName'),
             $this->configMeta($tenantId)
         ));
     }
