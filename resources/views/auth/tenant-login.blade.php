@@ -196,14 +196,14 @@
         <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
     </div>
 
-    {{-- Mascot + text grouped together in center --}}
+    {{-- Text + mascot grouped together in center --}}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.25rem;text-align:center">
-        <div class="am">
-            <x-r-bunny variant="rocket" size="lg" :decorative="true" />
-        </div>
         <div class="at">
             <h1 style="margin:0;font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:-.02em">Welcome to ReferralBunny.ai</h1>
             <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.6)">Set up, manage, and grow your referral programs.</p>
+        </div>
+        <div class="am">
+            <x-r-bunny variant="rocket" size="lg" :decorative="true" />
         </div>
     </div>
 
