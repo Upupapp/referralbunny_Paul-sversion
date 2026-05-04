@@ -553,6 +553,37 @@
 </div>
 
 <script>
+document.addEventListener('alpine:init', () => {
+    Alpine.store('anonConfirm', {
+        open: false, enabling: true, name: '', reseller: null, saving: false, _resolve: null,
+
+        show(reseller) {
+            this.reseller = reseller;
+            this.enabling = !reseller.is_anonymous;
+            this.name     = reseller.name;
+            this.saving   = false;
+            this.open     = true;
+        },
+        cancel() { this.open = false; this.reseller = null; },
+        async confirm() {
+            if (!this.reseller) return;
+            this.saving = true;
+            try {
+                await fetch(`/api/resellers/${this.reseller.id}`, {
+                    method:  'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body:    JSON.stringify({ is_anonymous: this.enabling }),
+                });
+                this.reseller.is_anonymous = this.enabling;
+            } finally {
+                this.saving = false;
+                this.open   = false;
+                this.reseller = null;
+            }
+        },
+    });
+});
+
 function referrersModule(tenantId) {
     return {
         referrers: [], filtered: [], loading: true,
@@ -611,17 +642,12 @@ function referrersModule(tenantId) {
         },
 
         // ── Anonymity ─────────────────────────────────────────────────────
-        async toggleAnonymous(reseller) {
-            const newVal = !reseller.is_anonymous;
-            try {
-                await fetch(`/api/resellers/${reseller.id}`, {
-                    method:  'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body:    JSON.stringify({ is_anonymous: newVal }),
-                });
-                reseller.is_anonymous = newVal;
-                this.applyFilters();
-            } catch(e) { console.error('Failed to update anonymity', e); }
+        showAnonConfirm: false,
+        anonConfirmReseller: null,
+        anonSaving: false,
+
+        toggleAnonymous(reseller) {
+            Alpine.store('anonConfirm').show(reseller);
         },
 
         // ── Agreement helpers ─────────────────────────────────────────────
@@ -913,4 +939,100 @@ function referrersModule(tenantId) {
     };
 }
 </script>
+
+{{-- ── ANONYMITY CONFIRMATION MODAL ───────────────────── --}}
+<div x-data x-show="$store.anonConfirm.open" x-cloak
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     @keydown.escape.window="$store.anonConfirm.cancel()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+
+        {{-- Header --}}
+        <div class="flex items-start gap-4 p-6 border-b border-gray-100">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                 :class="$store.anonConfirm.enabling ? 'bg-gray-100' : 'bg-amber-100'">
+                <svg class="w-5 h-5" :class="$store.anonConfirm.enabling ? 'text-gray-500' : 'text-amber-600'"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <template x-if="$store.anonConfirm.enabling">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                    </template>
+                    <template x-if="!$store.anonConfirm.enabling">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </template>
+                </svg>
+            </div>
+            <div>
+                <h3 class="font-semibold text-[#1E1B4B]"
+                    x-text="$store.anonConfirm.enabling ? 'Enable Anonymous Mode' : 'Remove Anonymous Mode'"></h3>
+                <p class="text-sm text-gray-500 mt-0.5"
+                   x-text="'For: ' + ($store.anonConfirm.name || 'this referrer')"></p>
+            </div>
+        </div>
+
+        {{-- Body --}}
+        <div class="p-6 space-y-4">
+
+            {{-- Enabling anonymity --}}
+            <template x-if="$store.anonConfirm.enabling">
+                <div class="space-y-3">
+                    <p class="text-sm text-gray-700 leading-relaxed">
+                        When anonymous mode is <strong>enabled</strong>, this referrer's identity will be hidden from other referrers across all shared screens including leaderboards, rankings, and referral lists.
+                    </p>
+                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-2.5">
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <p class="text-xs text-gray-600">Other referrers see <strong>"Anonymous Referrer"</strong> instead of the real name</p>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <p class="text-xs text-gray-600">Email, phone, and contact details are hidden from other referrers</p>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            <p class="text-xs text-gray-600"><strong>Tenant admins always see full details</strong> — anonymity only applies to other referrers</p>
+                        </div>
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <p class="text-xs text-gray-600">Performance scores and rankings remain visible — only identity is hidden</p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            {{-- Removing anonymity --}}
+            <template x-if="!$store.anonConfirm.enabling">
+                <div class="space-y-3">
+                    <p class="text-sm text-gray-700 leading-relaxed">
+                        When anonymous mode is <strong>removed</strong>, this referrer's real name and details will become visible to other referrers on leaderboards and shared screens.
+                    </p>
+                    <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2.5">
+                        <div class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <p class="text-xs text-amber-700">Their real name will appear on leaderboards and referral lists visible to other referrers</p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {{-- Actions --}}
+        <div class="flex gap-3 px-6 pb-6">
+            <button @click="$store.anonConfirm.cancel()"
+                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button @click="$store.anonConfirm.confirm()"
+                    :disabled="$store.anonConfirm.saving"
+                    :class="$store.anonConfirm.enabling
+                        ? 'bg-gray-800 hover:bg-gray-900 text-white'
+                        : 'bg-amber-500 hover:bg-amber-600 text-white'"
+                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                <span x-text="$store.anonConfirm.saving ? 'Saving…'
+                    : $store.anonConfirm.enabling ? 'Yes, enable anonymous mode'
+                    : 'Yes, remove anonymous mode'"></span>
+            </button>
+        </div>
+    </div>
+</div>
 @endsection

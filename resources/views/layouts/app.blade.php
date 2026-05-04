@@ -282,7 +282,7 @@
 
             {{-- Page title --}}
             <div class="min-w-0 flex-1 lg:flex-none">
-                <h1 class="text-[#1E1B4B] font-semibold text-sm lg:text-base truncate leading-tight">@yield('title', 'Dashboard')</h1>
+                <h1 class="font-semibold text-sm lg:text-base truncate leading-tight" style="color:#1E1B4B">@yield('title', 'Dashboard')</h1>
                 @hasSection('subtitle')
                     <p class="text-gray-400 text-xs truncate hidden sm:block">@yield('subtitle')</p>
                 @endif
