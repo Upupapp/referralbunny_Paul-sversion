@@ -30,21 +30,22 @@
            class="sidebar fixed inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-200 lg:relative lg:translate-x-0">
 
         {{-- Logo --}}
-        <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+        <a href="@isset($tenant){{ route('tenant.dashboard', $tenant->id) }}@else{{ route('platform.dashboard') }}@endisset"
+           class="flex items-center gap-3 px-5 py-5 border-b border-white/10 hover:bg-white/5 transition-colors">
             <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
                  style="background: linear-gradient(135deg, #FF6CAB, #7B61FF)">
                 🐰
             </div>
             <div>
                 <p class="font-bold text-white text-sm leading-none">Referral Bunny</p>
-                <p class="text-white/50 text-xs mt-0.5">{{ $platformLabel ?? 'Super Admin' }}</p>
+                <p class="text-white/50 text-xs mt-0.5">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
-            <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white">
+            <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
-        </div>
+        </a>
 
         {{-- Nav --}}
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
