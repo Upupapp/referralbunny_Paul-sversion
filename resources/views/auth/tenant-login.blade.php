@@ -39,28 +39,41 @@
 {{-- ── Intro animation ─────────────────────────────────── --}}
 <div id="intro-screen" x-ref="intro" :class="{ hidden: introSkipped }">
     {{-- Glow orbs --}}
-    <div class="glow-1 absolute w-[500px] h-[500px] rounded-full pointer-events-none -top-40 -left-40"
-         style="background:radial-gradient(circle,#7C3AED,transparent 70%)"></div>
-    <div class="glow-2 absolute w-[400px] h-[400px] rounded-full pointer-events-none -bottom-32 -right-32"
-         style="background:radial-gradient(circle,#3B82F6,transparent 70%)"></div>
+    <div class="glow-1 absolute w-[600px] h-[600px] rounded-full pointer-events-none -top-60 -left-60"
+         style="background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
+    <div class="glow-2 absolute w-[500px] h-[500px] rounded-full pointer-events-none -bottom-40 -right-40"
+         style="background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
 
-    <div class="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
+    <div class="relative z-10 flex flex-col items-center gap-6 px-6 text-center w-full max-w-sm">
+        {{-- Logo (wordmark only — no icon, avoids duplicate bunny) --}}
         <div class="intro-logo">
-            <x-rb-logo variant="stacked" size="lg" :priority="true" :decorative="true" />
+            <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
         </div>
+
+        {{-- R Bunny mascot — the hero of the intro --}}
         <div class="intro-bunny">
-            <x-r-bunny variant="waving" size="lg" :decorative="true" />
+            <x-r-bunny variant="waving" size="xl" :decorative="true" />
         </div>
+
+        {{-- Text — fades in at 3.5 s via CSS animation --}}
         <div class="intro-text">
-            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Welcome to ReferralBunny.ai</h1>
-            <p class="mt-2 text-white/70 text-sm sm:text-base">Set up, manage, and grow your referral programs.</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">
+                Welcome to ReferralBunny.ai
+            </h1>
+            <p class="mt-2 text-white/60 text-sm sm:text-base">
+                Set up, manage, and grow your referral programs.
+            </p>
         </div>
     </div>
 
-    <p class="intro-badge absolute bottom-10 text-white/30 text-xs tracking-widest uppercase">Tenant Admin Portal</p>
-    <button @click="skipIntro()" class="intro-skip absolute bottom-10 right-8 text-white/40 hover:text-white/80 text-sm transition-colors px-2 py-1 rounded">
-        Skip
-    </button>
+    {{-- Footer + Skip --}}
+    <div class="absolute bottom-8 w-full flex items-center justify-between px-8">
+        <p class="intro-badge text-white/30 text-xs tracking-widest uppercase">Tenant Admin Portal</p>
+        <button @click="skipIntro()"
+                class="intro-skip text-white/40 hover:text-white/80 text-sm transition-colors px-2 py-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+            Skip
+        </button>
+    </div>
 </div>
 
 {{-- ── Login page ──────────────────────────────────────── --}}
@@ -74,9 +87,9 @@
         <div class="absolute w-[400px] h-[400px] rounded-full opacity-10 -bottom-32 -right-32"
              style="background:radial-gradient(circle,#3B82F6,transparent 70%)"></div>
         <div class="relative z-10 text-center max-w-sm">
-            <x-rb-logo variant="stacked" size="lg" :priority="true" :decorative="true" class="mx-auto mb-8" />
-            <x-r-bunny variant="waving" size="lg" :decorative="true" class="mx-auto mb-8" />
-            <h2 class="text-2xl font-bold text-white mb-3">Welcome back.</h2>
+            <x-r-bunny variant="waving" size="xl" :decorative="true" class="mx-auto mb-6" />
+            <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" class="mx-auto mb-4" />
+            <h2 class="text-xl font-bold text-white mb-2">Welcome back.</h2>
             <p class="text-white/60 text-sm leading-relaxed">Manage your referral programs, leads, partners, and commissions from one place.</p>
         </div>
         <p class="absolute bottom-8 text-white/30 text-xs tracking-widest uppercase">Tenant Admin Portal</p>
@@ -87,7 +100,7 @@
 
         {{-- Mobile logo --}}
         <div class="lg:hidden mb-8 text-center">
-            <x-rb-logo variant="stacked" size="md" :priority="true" :decorative="true" class="mx-auto mb-2" />
+            <x-rb-logo variant="horizontal" size="md" :priority="true" :decorative="true" class="mx-auto mb-2" />
             <p class="text-xs text-gray-400 uppercase tracking-widest">Tenant Admin Portal</p>
         </div>
 
