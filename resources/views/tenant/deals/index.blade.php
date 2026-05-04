@@ -83,7 +83,7 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
             <button x-show="filterStage || filterStatus || filterCommission || filterProvince || search"
-                    @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; search=''; applyFilters()"
+                    @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; search=''; applyFilters()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Clear
@@ -354,7 +354,7 @@ function dealsModule(tenantId, showLocation) {
     return {
         leads: [], filtered: [], loading: true,
         viewMode: 'table',
-        search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '',
+        search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         form: { name: '', stage: 'introduction', base_cost: 0, added_amount: 0, reseller_name: '', province: '', municipality: '' },
@@ -368,11 +368,15 @@ function dealsModule(tenantId, showLocation) {
         ],
 
         async init() {
-            // Pre-filter from URL param (e.g. ?status=expiring from expiry alert)
-            const urlParams = new URLSearchParams(window.location.search);
-            const preStatus = urlParams.get('status');
+            // Pre-filter from URL params (e.g. from expiry alert notifications)
+            const urlParams    = new URLSearchParams(window.location.search);
+            const preStatus    = urlParams.get('status');
+            const preReseller  = urlParams.get('reseller_name');
             if (['expiring', 'expired', 'active'].includes(preStatus)) {
                 this.filterStatus = preStatus;
+            }
+            if (preReseller) {
+                this.filterReseller = decodeURIComponent(preReseller);
             }
             try {
                 const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
@@ -393,7 +397,8 @@ function dealsModule(tenantId, showLocation) {
                 const matchSx = !this.filterStatus     || l.status            === this.filterStatus;
                 const matchCo = !this.filterCommission || l.commission_status  === this.filterCommission;
                 const matchPr = !this.filterProvince   || (l.data?.province||'') === this.filterProvince;
-                return matchQ && matchSt && matchSx && matchCo && matchPr;
+                const matchRs = !this.filterReseller   || (l.reseller_name||'') === this.filterReseller;
+                return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs;
             });
         },
 

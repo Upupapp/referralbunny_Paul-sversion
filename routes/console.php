@@ -19,6 +19,7 @@ Schedule::command('search:reindex')->dailyAt('03:00');
 
 // ── Lead expiry ───────────────────────────────────────────────
 Schedule::command('leads:expire')->dailyAt('00:05');
+Schedule::command('leads:notify-expiring')->dailyAt('07:00');
 
 // ── Promo jobs ────────────────────────────────────────────────
 Schedule::command('promos:expire')->dailyAt('00:15');
