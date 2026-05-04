@@ -214,6 +214,9 @@
                         <select x-model="claimForm.stage" class="form-input">
                             <option value="introduction">Introduction</option>
                             <option value="presentation">Presentation</option>
+                            <option value="contract_sent">Contract Sent</option>
+                            <option value="signed">Signed</option>
+                            <option value="paid">Paid</option>
                         </select>
                     </div>
                     <div>
