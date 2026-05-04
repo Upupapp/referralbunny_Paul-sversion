@@ -55,7 +55,7 @@ document.addEventListener('alpine:init', () => {
     </div>
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         @php
         $kpis = [
@@ -67,27 +67,30 @@ document.addEventListener('alpine:init', () => {
         @endphp
 
         @foreach($kpis as $k)
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2.5">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100" style="padding:16px 18px">
+            {{-- Row 1: icon + label + menu --}}
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                          style="background:{{ $k['bg'] }};color:{{ $k['color'] }}">{!! $k['icon'] !!}</div>
                     <span class="text-sm font-medium text-gray-600">{{ $k['label'] }}</span>
                 </div>
-                <button class="text-gray-300 hover:text-gray-500 text-base font-bold leading-none">···</button>
+                <button class="text-gray-300 hover:text-gray-500 font-bold" style="font-size:16px;line-height:1">⋮</button>
             </div>
-            {{-- Slider --}}
-            <div class="relative mb-4" style="height:2px;background:#f3f4f6;border-radius:9999px">
-                <div class="absolute inset-y-0 left-0 rounded-full transition-all"
-                     style="background:{{ $k['line'] }}"
+            {{-- Row 2: slider line --}}
+            <div class="relative mb-3" style="height:2px;background:#f3f4f6;border-radius:9999px">
+                <div class="absolute inset-y-0 left-0 rounded-full"
+                     style="background:{{ $k['line'] }};transition:width .4s"
                      :style="`width:${{{ $k['pct'] }}}%`"></div>
-                <div class="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow border-2 transition-all"
-                     style="border-color:{{ $k['line'] }}"
-                     :style="`left:calc(${Math.min({{ $k['pct'] }},96)}% - 7px)`"></div>
+                <div class="absolute top-1/2 -translate-y-1/2 rounded-full bg-white shadow-sm border-2"
+                     style="width:14px;height:14px;border-color:{{ $k['line'] }};transition:left .4s"
+                     :style="`left:calc(${Math.min({{ $k['pct'] }},95)}% - 7px)`"></div>
             </div>
-            <p class="text-3xl font-bold text-[#1E1B4B] tabular-nums" x-text="{{ $k['val'] }}"></p>
-            <div class="flex items-center gap-2 mt-1.5">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+            {{-- Row 3: number --}}
+            <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums mb-1.5" x-text="{{ $k['val'] }}"></p>
+            {{-- Row 4: trend + helper --}}
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold"
                       :class="{{ $k['up'] }} ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'">
                     <svg class="w-3 h-3" viewBox="0 0 12 12" fill="none">
                         <path :d="{{ $k['up'] }} ? 'M2 9L6 4l4 5' : 'M2 3L6 8l4-5'" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
