@@ -116,14 +116,15 @@ class BillingController extends Controller
         }
 
         // Audit log
-        BillingAuditLog::create([
-            'id'          => (string) \Illuminate\Support\Str::uuid(),
-            'tenant_id'   => $tenantId,
-            'action'      => 'access_extended',
-            'description' => "Access extended by {$data['days']} day(s). " . ($data['note'] ?? ''),
-            'performed_by'=> $request->user()?->id ?? 1,
-            'metadata'    => json_encode(['days' => $data['days'], 'note' => $data['note'] ?? null]),
-            'created_at'  => now(),
+        BillingAuditLog::log('access_extended', [
+            'tenant_id'    => $tenantId,
+            'performed_by' => $request->user()?->id ?? 1,
+            'reason'       => "Access extended by {$data['days']} day(s). " . ($data['note'] ?? ''),
+            'after'        => [
+                'days'       => $data['days'],
+                'note'       => $data['note'] ?? null,
+                'reactivate' => $data['reactivate'] ?? false,
+            ],
         ]);
 
         return response()->json([

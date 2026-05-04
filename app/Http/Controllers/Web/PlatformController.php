@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\TenantMetric;
 use App\Models\UsageMetric;
 use App\Models\ApprovalRequest;
+use App\Models\BillingAuditLog;
 use App\Models\Lead;
 use App\Services\AnalyticsService;
 use App\Services\BillingService;
@@ -46,6 +47,12 @@ class PlatformController extends Controller
             ->get()
             ->keyBy('health_level');
 
+        // Manually extended access stats
+        $extendedTenantsCount = BillingAuditLog::where('action', 'access_extended')
+            ->distinct()
+            ->count('tenant_id');
+        $totalExtensions = BillingAuditLog::where('action', 'access_extended')->count();
+
         return view('platform.dashboard', [
             'tenants'             => $tenants,
             'stats'               => $summary,
@@ -54,8 +61,10 @@ class PlatformController extends Controller
             'recentNotifications' => $recentNotifications,
             'billing'             => $billingSummary,
             'approvalCount'       => $approvalCount,
-            'healthMetrics'       => $healthMetrics,
-            'importStats'         => $importStats,
+            'healthMetrics'          => $healthMetrics,
+            'importStats'            => $importStats,
+            'extendedTenantsCount'   => $extendedTenantsCount,
+            'totalExtensions'        => $totalExtensions,
         ]);
     }
 
