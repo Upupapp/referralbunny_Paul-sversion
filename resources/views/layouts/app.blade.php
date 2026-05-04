@@ -13,12 +13,12 @@
     <meta property="og:site_name"   content="ReferralBunny.ai">
     <meta property="og:title"       content="ReferralBunny.ai — Referral Management Platform">
     <meta property="og:description" content="Set up, manage, and grow your referral programs. Leads, partners, and commissions — all in one place.">
-    <meta property="og:image"       content="{{ config('app.url') }}/images/logos/referralbunny-social-avatar.webp">
+    <meta property="og:image"       content="https://referralbunny.ai/images/logos/referralbunny-social-avatar.png">
     <meta property="og:url"         content="{{ url()->current() }}">
     <meta name="twitter:card"       content="summary_large_image">
     <meta name="twitter:title"      content="ReferralBunny.ai — Referral Management Platform">
     <meta name="twitter:description" content="Set up, manage, and grow your referral programs. Leads, partners, and commissions — all in one place.">
-    <meta name="twitter:image"      content="{{ config('app.url') }}/images/logos/referralbunny-social-avatar.webp">
+    <meta name="twitter:image"      content="https://referralbunny.ai/images/logos/referralbunny-social-avatar.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
