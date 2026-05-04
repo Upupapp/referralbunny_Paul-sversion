@@ -247,3 +247,5 @@ Route::get('/leads',              [LeadController::class, 'index']);
 Route::get('/leads/{lead}',       [LeadController::class, 'show']);
 Route::get('/resellers',          [ResellerController::class, 'index']);
 Route::get('/messages',           [MessageController::class, 'index']);
+Route::get('/organizations',      [OrganizationController::class, 'index']);
+Route::get('/contacts',           [ContactController::class, 'index']);
