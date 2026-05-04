@@ -161,10 +161,18 @@
                         <tr class="table-row">
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
-                                         x-text="(r.name||'?').slice(0,2).toUpperCase()"></div>
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                         :class="r.is_anonymous ? 'bg-gray-100 text-gray-400' : 'bg-purple-100 text-purple-700'"
+                                         x-text="r.is_anonymous ? '🔒' : (r.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
-                                        <p class="font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                            <span x-show="r.is_anonymous"
+                                                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-gray-100 text-gray-500 shrink-0">
+                                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
+                                                anonymous
+                                            </span>
+                                        </div>
                                         <p class="text-xs text-gray-400 truncate" x-text="r.email"></p>
                                     </div>
                                 </div>
@@ -254,6 +262,15 @@
                                             title="Manage agreements">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </button>
+                                    {{-- Anonymity toggle — tenant admin only --}}
+                                    <button @click="toggleAnonymous(r)"
+                                            :title="r.is_anonymous ? 'Remove anonymity' : 'Make anonymous'"
+                                            :class="r.is_anonymous ? 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'"
+                                            class="p-1.5 rounded-lg transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
                                         </svg>
                                     </button>
                                 </div>
@@ -591,6 +608,20 @@ function referrersModule(tenantId) {
                     || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
                 return matchQ && matchSt && matchAg && matchDc;
             });
+        },
+
+        // ── Anonymity ─────────────────────────────────────────────────────
+        async toggleAnonymous(reseller) {
+            const newVal = !reseller.is_anonymous;
+            try {
+                await fetch(`/api/resellers/${reseller.id}`, {
+                    method:  'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body:    JSON.stringify({ is_anonymous: newVal }),
+                });
+                reseller.is_anonymous = newVal;
+                this.applyFilters();
+            } catch(e) { console.error('Failed to update anonymity', e); }
         },
 
         // ── Agreement helpers ─────────────────────────────────────────────

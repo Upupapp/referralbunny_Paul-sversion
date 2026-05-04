@@ -230,13 +230,20 @@ document.addEventListener('alpine:init', () => {
                         {{-- Avatar --}}
                         <div class="relative shrink-0">
                             <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                                 :style="`background:${['#7B61FF','#FF6CAB','#3B82F6','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'][i%8]}`"
-                                 x-text="r.name.slice(0,2).toUpperCase()"></div>
+                                 :style="`background:${r.is_anonymous ? '#9CA3AF' : ['#7B61FF','#FF6CAB','#3B82F6','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'][i%8]}`"
+                                 x-text="r.is_anonymous ? '🔒' : r.name.slice(0,2).toUpperCase()"></div>
                             <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full"></span>
                         </div>
                         {{-- Name + sub --}}
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="r.name"></p>
+                            <div class="flex items-center gap-1.5">
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                {{-- Tenant admin can see the anonymous badge as a reminder --}}
+                                <span x-show="r.is_anonymous"
+                                      class="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">
+                                    anonymous
+                                </span>
+                            </div>
                             <p class="text-xs text-gray-400 truncate mt-0.5"
                                x-text="(r.assigned_leads||0)+' deals · '+(r.performance_score||0)+'% rate'"></p>
                         </div>
