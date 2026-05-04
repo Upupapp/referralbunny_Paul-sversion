@@ -5,7 +5,7 @@
 @section('topbar-actions')
     <button x-data @click="$dispatch('open-claim-deal')" class="rs-btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        <span class="hidden sm:inline">Claim a Deal</span>
+        <span class="hidden sm:inline">Create a Deal</span>
     </button>
 @endsection
 
@@ -80,7 +80,7 @@
                             <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
                             <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                             <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
-                            <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Claim a Deal</button>
+                            <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Create a Deal</button>
                         </td></tr>
                     </template>
                     <template x-for="d in filtered" :key="d.id">
