@@ -6,7 +6,7 @@
 -- ── Organizations ────────────────────���────────────────────────��──────────
 CREATE TABLE IF NOT EXISTS organizations (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id    UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id    TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name         VARCHAR(255) NOT NULL,
     industry     VARCHAR(150),
     website      VARCHAR(500),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS organizations (
 -- ── Contacts (people) ──────────────────────���─────────────────────────────
 CREATE TABLE IF NOT EXISTS contacts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id       TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     first_name      VARCHAR(100) NOT NULL,
     last_name       VARCHAR(100),
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 -- ── Deal ↔ Contact many-to-many ───────────────────────────��──────────────
 CREATE TABLE IF NOT EXISTS deal_contacts (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id   TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     deal_id     UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
     contact_id  UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     role        VARCHAR(100),   -- e.g. "Decision Maker", "Champion", "Technical Lead"
