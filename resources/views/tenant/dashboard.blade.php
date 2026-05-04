@@ -36,9 +36,6 @@ document.addEventListener('alpine:init', () => {
     {{-- ── PAGE HEADER ─────────────────────────────────────── --}}
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-            <h1 class="text-xl font-bold text-[#1E1B4B]">{{ $tenant->program_name }}</h1>
-            <p class="text-sm text-gray-400 mt-0.5">{{ $tenant->name }} · Tenant Admin Portal</p>
-        </div>
         <div class="flex items-center gap-2 flex-wrap" x-show="subscription">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white border border-gray-200 text-gray-600">
                 <span class="w-1.5 h-1.5 rounded-full"
