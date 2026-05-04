@@ -29,7 +29,7 @@
             margin: 0; padding: 0;
             min-height: 100vh;
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(145deg, #1E1347 0%, #2D1B69 55%, #1a1040 100%);
+            background: linear-gradient(145deg, #060C18 0%, #0F1E40 55%, #040810 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -41,7 +41,7 @@
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             padding: 2rem 1.5rem;
-            background: linear-gradient(145deg, #1E1347 0%, #2D1B69 55%, #1a1040 100%);
+            background: linear-gradient(145deg, #060C18 0%, #0F1E40 55%, #040810 100%);
             transition: opacity .5s ease;
         }
         #intro.fading { opacity: 0; pointer-events: none; }
@@ -93,7 +93,7 @@
         .card-right {
             width: 380px;
             flex-shrink: 0;
-            background: linear-gradient(145deg, #1E1347 0%, #2D1B69 60%, #1a1040 100%);
+            background: linear-gradient(145deg, #060C18 0%, #0F1E40 60%, #040810 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -121,20 +121,20 @@
             transition: border-color .15s, box-shadow .15s, background .15s;
         }
         .field-input:focus {
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 3px rgba(139,92,246,.15);
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
             background: #fff;
         }
         .field-input::placeholder { color: #9ca3af; }
         .btn-primary {
-            width: 100%; background: #7c3aed; color: #fff;
+            width: 100%; background: #1D4ED8; color: #fff;
             border: none; border-radius: 12px; padding: .8125rem 1rem;
             font-size: .875rem; font-weight: 600; cursor: pointer;
             transition: background .15s; font-family: 'Inter', sans-serif;
             margin-top: .5rem;
         }
-        .btn-primary:hover  { background: #6d28d9; }
-        .btn-primary:active { background: #5b21b6; }
+        .btn-primary:hover  { background: #1E40AF; }
+        .btn-primary:active { background: #1E3A8A; }
         .pw-wrap { position: relative; }
         .pw-toggle {
             position: absolute; right: .875rem; top: 50%; transform: translateY(-50%);
@@ -154,8 +154,8 @@
 
 {{-- ═══════════ INTRO ═══════════════════════════════════════ --}}
 <div id="intro">
-    <div class="g1" style="position:absolute;width:500px;height:500px;border-radius:50%;top:-200px;left:-200px;pointer-events:none;background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
-    <div class="g2" style="position:absolute;width:400px;height:400px;border-radius:50%;bottom:-150px;right:-150px;pointer-events:none;background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
+    <div class="g1" style="position:absolute;width:500px;height:500px;border-radius:50%;top:-200px;left:-200px;pointer-events:none;background:radial-gradient(circle,#1D4ED8,transparent 65%)"></div>
+    <div class="g2" style="position:absolute;width:400px;height:400px;border-radius:50%;bottom:-150px;right:-150px;pointer-events:none;background:radial-gradient(circle,#F59E0B,transparent 65%)"></div>
 
     <div class="al" style="position:absolute;top:2rem;left:50%;transform:translateX(-50%);z-index:1">
         <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
@@ -167,7 +167,7 @@
             <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.7) !important">The referral management platform.</p>
         </div>
         <div class="am" style="width:220px;height:220px;flex-shrink:0">
-            <x-r-bunny variant="rocket" size="lg" :decorative="true" style="width:220px;height:220px;object-fit:contain" />
+            <x-r-bunny variant="tech" size="lg" :decorative="true" style="width:220px;height:220px;object-fit:contain" />
         </div>
     </div>
 
@@ -221,7 +221,7 @@
 
                 <div style="display:flex;align-items:center;margin:.75rem 0">
                     <label style="display:flex;align-items:center;gap:.5rem;font-size:.8125rem;color:#6b7280;cursor:pointer">
-                        <input type="checkbox" name="remember" style="accent-color:#7c3aed;width:14px;height:14px">
+                        <input type="checkbox" name="remember" style="accent-color:#1D4ED8;width:14px;height:14px">
                         Remember me
                     </label>
                 </div>
@@ -232,10 +232,10 @@
 
         {{-- RIGHT — brand panel --}}
         <div class="card-right">
-            <div style="position:absolute;width:260px;height:260px;border-radius:50%;top:-80px;right:-80px;opacity:.25;pointer-events:none;background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
-            <div style="position:absolute;width:200px;height:200px;border-radius:50%;bottom:-60px;left:-60px;opacity:.2;pointer-events:none;background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
+            <div style="position:absolute;width:260px;height:260px;border-radius:50%;top:-80px;right:-80px;opacity:.25;pointer-events:none;background:radial-gradient(circle,#1D4ED8,transparent 65%)"></div>
+            <div style="position:absolute;width:200px;height:200px;border-radius:50%;bottom:-60px;left:-60px;opacity:.2;pointer-events:none;background:radial-gradient(circle,#F59E0B,transparent 65%)"></div>
             <div style="position:relative;z-index:1">
-                <x-r-bunny variant="portal" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
+                <x-r-bunny variant="analyst" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
                 <x-rb-logo variant="white" size="xs" :priority="true" :decorative="true" style="display:block;margin:0 auto 1rem;opacity:.9" />
                 <h2 style="margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#fff;line-height:1.4">Manage the entire<br>platform from here.</h2>
                 <p style="margin:0 auto;font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.6;max-width:180px">Tenants, billing, analytics — full control.</p>
