@@ -16,13 +16,13 @@ class ExpireLeads extends Command
         $expired = DB::table('leads')
             ->whereIn('status', ['active', 'expiring'])
             ->where('days_left', '<=', 0)
-            ->update(['status' => 'expired', 'updated_at' => now()]);
+            ->update(['status' => 'expired']);
 
         // Warn: days_left is 1–7 and still active
         $expiring = DB::table('leads')
             ->where('status', 'active')
             ->whereBetween('days_left', [1, 7])
-            ->update(['status' => 'expiring', 'updated_at' => now()]);
+            ->update(['status' => 'expiring']);
 
         // Decrement days_left for all still-active/expiring deals
         $decremented = DB::table('leads')
