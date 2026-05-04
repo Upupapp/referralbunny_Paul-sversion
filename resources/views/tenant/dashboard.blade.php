@@ -511,67 +511,88 @@ document.addEventListener('alpine:init', () => {
     @endphp
     <div x-data="{ open: true }"
          x-show="open"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
          x-cloak
-         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(15,10,40,0.6);backdrop-filter:blur(4px)"
          @keydown.escape.window="open = false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" @click.stop>
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88vh] flex flex-col overflow-hidden" @click.stop>
 
-            {{-- Header --}}
-            <div class="flex items-start gap-4 px-6 pt-6 pb-4 border-b border-gray-100 shrink-0">
-                <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                     style="background:#EDE9FE">
-                    <svg class="w-5 h-5" style="color:#7B61FF" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                    </svg>
+            {{-- Gradient header --}}
+            <div class="shrink-0 px-6 pt-6 pb-5" style="background:linear-gradient(135deg,#1E1B4B 0%,#4C3FA0 100%)">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">{{ now()->format('l, F j') }}</p>
+                        <h3 class="text-white text-xl font-bold leading-tight">Good morning 👋</h3>
+                        <p class="text-white/60 text-sm mt-1">{{ $totalItems }} item{{ $totalItems > 1 ? 's' : '' }} need your attention today</p>
+                    </div>
+                    <button @click="open = false"
+                            class="w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0"
+                            style="background:rgba(255,255,255,0.15)" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-[#1E1B4B] text-base">Daily Briefing</h3>
-                    <p class="text-sm text-gray-400 mt-0.5">{{ now()->format('l, F j') }} · {{ $totalItems }} item{{ $totalItems > 1 ? 's' : '' }} need your attention</p>
+
+                {{-- Summary pills --}}
+                <div class="flex flex-wrap gap-2 mt-4">
+                    @if($expiringDeals->isNotEmpty())
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(245,158,11,0.25);color:#FCD34D">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>{{ $expiringDeals->count() }} Expiring
+                    </span>
+                    @endif
+                    @if($newDeals->isNotEmpty())
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(123,97,255,0.25);color:#C4B5FD">
+                        <span class="w-1.5 h-1.5 rounded-full bg-violet-300"></span>{{ $newDeals->count() }} New Deals
+                    </span>
+                    @endif
+                    @if($newInvited->isNotEmpty())
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(59,130,246,0.25);color:#93C5FD">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-300"></span>{{ $newInvited->count() }} Invited
+                    </span>
+                    @endif
+                    @if($newActive->isNotEmpty())
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style="background:rgba(16,185,129,0.25);color:#6EE7B7">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>{{ $newActive->count() }} Joined
+                    </span>
+                    @endif
                 </div>
-                <button @click="open = false" class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
             </div>
 
-            {{-- Scrollable body --}}
-            <div class="overflow-y-auto flex-1 divide-y divide-gray-50">
+            {{-- Scrollable sections --}}
+            <div class="overflow-y-auto flex-1 bg-gray-50/50">
 
                 {{-- Section 1: Expiring Deals --}}
                 @if($expiringDeals->isNotEmpty())
-                <div class="px-6 py-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#F59E0B"></span>
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Expiring Deals</p>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#FEF3C7;color:#D97706">{{ $expiringDeals->count() }}</span>
-                        </div>
+                <div class="px-5 pt-4 pb-3">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Expiring Deals</p>
                         <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
-                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                           class="text-[11px] font-semibold" style="color:#7B61FF">View all →</a>
                     </div>
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                         @foreach($expiringDeals->take(4) as $deal)
+                        @php $urgency = $deal->days_left <= 1 ? ['#FEE2E2','#DC2626'] : ($deal->days_left <= 3 ? ['#FEF3C7','#D97706'] : ['#FEF9C3','#CA8A04']); @endphp
                         <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
-                           class="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-orange-50 transition-colors group">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#F59E0B">
-                                    {{ strtoupper(substr($deal->name, 0, 2)) }}
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                    <p class="text-[10px] text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer' }}</p>
-                                </div>
+                           class="flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 hover:border-orange-200 hover:shadow-sm transition-all">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                 style="background:{{ $urgency[1] }}">
+                                {{ strtoupper(substr($deal->name, 0, 2)) }}
                             </div>
-                            <div class="text-right shrink-0 ml-3">
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#FEF3C7;color:#D97706">{{ $deal->days_left }}d left</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $deal->reseller_name ?? 'No referrer' }}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="inline-block text-xs font-bold px-2 py-0.5 rounded-full"
+                                      style="background:{{ $urgency[0] }};color:{{ $urgency[1] }}">{{ $deal->days_left }}d left</span>
                                 @if($deal->deal_value)<p class="text-[10px] text-gray-400 mt-0.5">₱{{ number_format($deal->deal_value) }}</p>@endif
                             </div>
                         </a>
                         @endforeach
                         @if($expiringDeals->count() > 4)
-                        <p class="text-xs text-gray-400 text-center py-1">+{{ $expiringDeals->count() - 4 }} more</p>
+                        <p class="text-xs text-gray-400 text-center py-1">+{{ $expiringDeals->count() - 4 }} more expiring deals</p>
                         @endif
                     </div>
                 </div>
@@ -579,93 +600,84 @@ document.addEventListener('alpine:init', () => {
 
                 {{-- Section 2: New Deals --}}
                 @if($newDeals->isNotEmpty())
-                <div class="px-6 py-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#7B61FF"></span>
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">New Deals</p>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#EDE9FE;color:#7B61FF">{{ $newDeals->count() }}</span>
-                        </div>
+                <div class="px-5 pt-3 pb-3">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">New Deals</p>
                         <a href="{{ route('tenant.deals', $tenant->id) }}"
-                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                           class="text-[11px] font-semibold" style="color:#7B61FF">View all →</a>
                     </div>
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                         @foreach($newDeals->take(4) as $deal)
                         <a href="{{ route('tenant.deals', $tenant->id) }}"
-                           class="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-violet-50 transition-colors">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#7B61FF">
-                                    {{ strtoupper(substr($deal->name, 0, 2)) }}
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                    <p class="text-[10px] text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
-                                </div>
+                           class="flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 hover:border-violet-200 hover:shadow-sm transition-all">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                 style="background:#7B61FF">
+                                {{ strtoupper(substr($deal->name, 0, 2)) }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $deal->reseller_name ?? 'No referrer' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
                             </div>
                             @if($deal->deal_value)
-                            <p class="text-xs font-bold text-[#1E1B4B] shrink-0 ml-3">₱{{ number_format($deal->deal_value) }}</p>
+                            <p class="text-sm font-bold text-[#1E1B4B] shrink-0">₱{{ number_format($deal->deal_value) }}</p>
                             @endif
                         </a>
                         @endforeach
                         @if($newDeals->count() > 4)
-                        <p class="text-xs text-gray-400 text-center py-1">+{{ $newDeals->count() - 4 }} more</p>
+                        <p class="text-xs text-gray-400 text-center py-1">+{{ $newDeals->count() - 4 }} more new deals</p>
                         @endif
                     </div>
                 </div>
                 @endif
 
-                {{-- Section 3: New Reseller Requests (invited, pending) --}}
+                {{-- Section 3: Pending Invites --}}
                 @if($newInvited->isNotEmpty())
-                <div class="px-6 py-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#3B82F6"></span>
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending Referrer Invites</p>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#DBEAFE;color:#2563EB">{{ $newInvited->count() }}</span>
-                        </div>
+                <div class="px-5 pt-3 pb-3">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Pending Referrer Invites</p>
                         <a href="{{ route('tenant.referrers', $tenant->id) }}"
-                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                           class="text-[11px] font-semibold" style="color:#7B61FF">View all →</a>
                     </div>
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                         @foreach($newInvited->take(4) as $r)
-                        <div class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-blue-50/50">
-                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#3B82F6">
+                        <div class="flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                 style="background:#3B82F6">
                                 {{ strtoupper(substr($r->name, 0, 2)) }}
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $r->name }}</p>
-                                <p class="text-[10px] text-gray-400 truncate">{{ $r->email }}</p>
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $r->name }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $r->email }}</p>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style="background:#DBEAFE;color:#2563EB">invited</span>
+                            <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                                  style="background:#DBEAFE;color:#1D4ED8">Invited</span>
                         </div>
                         @endforeach
                     </div>
                 </div>
                 @endif
 
-                {{-- Section 4: Newly Activated Resellers --}}
+                {{-- Section 4: New Active Resellers --}}
                 @if($newActive->isNotEmpty())
-                <div class="px-6 py-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#10B981"></span>
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">New Referrers Joined</p>
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="background:#D1FAE5;color:#059669">{{ $newActive->count() }}</span>
-                        </div>
+                <div class="px-5 pt-3 pb-4">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">New Referrers Joined</p>
                         <a href="{{ route('tenant.referrers', $tenant->id) }}"
-                           class="text-xs font-semibold" style="color:#7B61FF">View all →</a>
+                           class="text-[11px] font-semibold" style="color:#7B61FF">View all →</a>
                     </div>
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                         @foreach($newActive->take(4) as $r)
-                        <div class="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-emerald-50/50">
-                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:#10B981">
+                        <div class="flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                 style="background:#10B981">
                                 {{ strtoupper(substr($r->name, 0, 2)) }}
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $r->name }}</p>
-                                <p class="text-[10px] text-gray-400 truncate">{{ $r->email }}</p>
+                                <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $r->name }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $r->email }}</p>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style="background:#D1FAE5;color:#059669">active</span>
+                            <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                                  style="background:#D1FAE5;color:#065F46">Active</span>
                         </div>
                         @endforeach
                     </div>
@@ -675,8 +687,9 @@ document.addEventListener('alpine:init', () => {
             </div>
 
             {{-- Footer --}}
-            <div class="px-6 py-4 border-t border-gray-100 flex justify-end shrink-0">
-                <button @click="open = false" class="btn-secondary text-sm">
+            <div class="px-5 py-4 border-t border-gray-100 bg-white shrink-0">
+                <button @click="open = false"
+                        class="w-full py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
                     Dismiss for today
                 </button>
             </div>
