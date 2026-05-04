@@ -22,7 +22,7 @@
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Organizations</span>
-                <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="orgs.length"></p>
+                <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="meta.total.toLocaleString()"></p>
             </div>
             <div class="kpi-icon bg-purple-100 ml-3 shrink-0">
                 <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
@@ -59,30 +59,85 @@
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
+        {{-- Search --}}
         <div class="search-group">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search organizations…">
-            <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+            <input type="text" x-model="search" @input.debounce.400ms="resetAndFetch()"
+                   placeholder="Search city or municipality…">
+            <button x-show="search.length > 0" @click="search=''; resetAndFetch()"
                     class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
+
+        {{-- LGU-specific filters --}}
         <div class="filter-bar">
-            <label class="filter-pill" :class="filterIndustry !== '' ? 'active' : ''">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                <select x-model="filterIndustry" @change="applyFilters()">
-                    <option value="">All Industries</option>
-                    <template x-for="ind in industries" :key="ind">
-                        <option :value="ind" x-text="ind"></option>
+
+            {{-- Island Group (Luzon / Visayas / Mindanao) --}}
+            <label class="filter-pill" :class="filterIsland ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+                <select x-model="filterIsland" @change="filterRegion=''; filterProvince=''; resetAndFetch()">
+                    <option value="">All Islands</option>
+                    <option value="Luzon">Luzon</option>
+                    <option value="Visayas">Visayas</option>
+                    <option value="Mindanao">Mindanao</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            {{-- Region (cascades from island group) --}}
+            <label class="filter-pill" :class="filterRegion ? 'active' : ''"
+                   x-show="filterIsland || filterRegion">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                <select x-model="filterRegion" @change="filterProvince=''; resetAndFetch()">
+                    <option value="">All Regions</option>
+                    <template x-for="r in filteredRegionList" :key="r">
+                        <option :value="r" x-text="r"></option>
                     </template>
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <button x-show="filterIndustry || search"
-                    @click="filterIndustry=''; search=''; applyFilters()"
+
+            {{-- Province (cascades from region) --}}
+            <label class="filter-pill" :class="filterProvince ? 'active' : ''"
+                   x-show="filterRegion || filterProvince">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                <select x-model="filterProvince" @change="resetAndFetch()">
+                    <option value="">All Provinces</option>
+                    <template x-for="p in provinceOptions" :key="p">
+                        <option :value="p" x-text="p"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            {{-- LGU Type --}}
+            <label class="filter-pill" :class="filterType ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <select x-model="filterType" @change="resetAndFetch()">
+                    <option value="">Cities &amp; Municipalities</option>
+                    <option value="City">Cities only</option>
+                    <option value="Municipality">Municipalities only</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            {{-- Deal Status --}}
+            <label class="filter-pill" :class="filterHasDeal !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <select x-model="filterHasDeal" @change="resetAndFetch()">
+                    <option value="">All Deal Status</option>
+                    <option value="1">With Active Deals</option>
+                    <option value="0">No Deals Yet</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            <button x-show="filterIsland || filterRegion || filterProvince || filterType || filterHasDeal !== '' || search"
+                    @click="filterIsland=''; filterRegion=''; filterProvince=''; filterType=''; filterHasDeal=''; search=''; resetAndFetch()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                Clear
+                Clear all
             </button>
         </div>
     </div>
@@ -91,9 +146,11 @@
     <div class="card p-0 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <p class="text-sm font-semibold text-[#1E1B4B]">
-                <span x-text="filtered.length"></span> organizations
-                <span x-show="filterIndustry || search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
+                <span x-text="meta.total.toLocaleString()"></span> organizations
+                <span x-show="filterRegion||filterProvince||filterType||search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
             </p>
+            <p class="text-xs text-gray-400" x-show="meta.last_page > 1"
+               x-text="'Page ' + meta.page + ' of ' + meta.last_page"></p>
         </div>
 
         <div x-show="loading" class="flex items-center justify-center py-10 gap-3 text-gray-400">
@@ -106,59 +163,65 @@
                 <thead>
                     <tr class="table-head">
                         <th>Organization</th>
-                        <th>Industry</th>
-                        <th>City</th>
+                        <th>Province</th>
+                        <th>Region</th>
+                        <th>Type</th>
                         <th>Contacts</th>
                         <th>Deals</th>
                         <th>Deal Value</th>
-                        <th>Added</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-if="filtered.length === 0 && !loading">
+                    <template x-if="orgs.length === 0 && !loading">
                         <tr>
                             <td colspan="8" class="py-16 text-center">
                                 <div class="flex justify-center text-gray-300 mb-3">
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                                 </div>
-                                <p class="text-gray-400 text-sm" x-text="orgs.length === 0 ? 'No organizations yet. Add your first organization.' : 'No organizations match the filters.'"></p>
-                                <button x-show="orgs.length === 0" @click="openAdd()" class="btn-primary mt-3 text-sm">Add First Organization</button>
+                                <p class="text-gray-400 text-sm">No organizations match the current filters.</p>
                             </td>
                         </tr>
                     </template>
-                    <template x-for="o in filtered" :key="o.id">
+                    <template x-for="o in orgs" :key="o.id">
                         <tr class="table-row">
+                            {{-- Name --}}
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-[#EDE9FE] flex items-center justify-center text-[#7B61FF] text-xs font-bold shrink-0"
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                                         :style="`background:${o._d.lgu_type==='City' ? '#7B61FF' : '#3B82F6'}`"
                                          x-text="(o.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
                                         <p class="font-medium text-[#1E1B4B] truncate" x-text="o.name"></p>
-                                        <a x-show="o.website" :href="o.website" target="_blank"
-                                           class="text-xs text-purple-500 hover:text-purple-700 truncate block" x-text="o.website"></a>
+                                        <p class="text-xs text-gray-400 truncate" x-text="o.city"></p>
                                     </div>
                                 </div>
                             </td>
+                            {{-- Province --}}
+                            <td class="text-sm text-gray-600" x-text="o.address || '—'"></td>
+                            {{-- Region --}}
+                            <td class="text-xs text-gray-400"
+                                x-text="o._d.region || '—'"></td>
+                            {{-- Type --}}
                             <td>
-                                <span x-show="o.industry" class="badge badge-gray text-xs" x-text="o.industry"></span>
-                                <span x-show="!o.industry" class="text-gray-300 text-sm">—</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                      :class="o._d.lgu_type==='City' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
+                                      x-text="o._d.lgu_type || '—'"></span>
                             </td>
-                            <td class="text-gray-500 text-sm" x-text="o.city || '—'"></td>
+                            {{-- Contacts --}}
                             <td>
                                 <span x-show="o.contact_count > 0"
-                                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 text-xs font-semibold">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    <span x-text="o.contact_count"></span>
-                                </span>
+                                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 text-xs font-semibold"
+                                      x-text="o.contact_count"></span>
                                 <span x-show="!o.contact_count" class="text-gray-300 text-sm">—</span>
                             </td>
+                            {{-- Deals --}}
                             <td class="text-sm font-semibold text-[#1E1B4B] tabular-nums"
                                 x-text="o.deal_count > 0 ? o.deal_count : '—'"></td>
+                            {{-- Deal value --}}
                             <td class="text-sm font-semibold text-[#1E1B4B] tabular-nums"
                                 x-text="o.deal_value > 0 ? fmtValue(o.deal_value) : '—'"></td>
-                            <td class="text-gray-400 text-sm tabular-nums"
-                                x-text="o.created_at ? new Date(o.created_at).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
+                            {{-- Actions --}}
                             <td>
                                 <div class="flex items-center gap-1.5 justify-end">
                                     <button @click="openEdit(o)"
@@ -175,6 +238,29 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        {{-- Pagination --}}
+        <div x-show="meta.last_page > 1"
+             class="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+            <p class="text-xs text-gray-400"
+               x-text="`Showing ${((meta.page-1)*meta.per_page)+1}–${Math.min(meta.page*meta.per_page, meta.total)} of ${meta.total.toLocaleString()} organizations`"></p>
+            <div class="flex items-center gap-1.5">
+                <button @click="goPage(meta.page - 1)" :disabled="meta.page <= 1"
+                        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    ← Prev
+                </button>
+                <template x-for="p in pageNumbers()" :key="p">
+                    <button @click="goPage(p)"
+                            :class="p === meta.page ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                            class="w-8 h-8 rounded-lg text-xs font-semibold border transition-colors"
+                            x-text="p"></button>
+                </template>
+                <button @click="goPage(meta.page + 1)" :disabled="meta.page >= meta.last_page"
+                        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Next →
+                </button>
+            </div>
         </div>
     </div>
 
@@ -233,113 +319,187 @@
 </div>
 
 <script>
-function orgsModule(tenantId) {
-    return {
-        orgs: [], filtered: [],
-        loading: true,
-        search: '', filterIndustry: '',
-        showModal: false, saving: false, formError: '',
-        editId: null,
-        form: { name: '', industry: '', website: '', address: '', city: '', country: 'Philippines', notes: '' },
-
-        get industries() {
-            const set = new Set(this.orgs.map(o => o.industry).filter(Boolean));
-            return [...set].sort();
-        },
-
-        async init() {
-            try {
-                const res = await fetch(`/api/organizations?tenant_id=${tenantId}`);
-                this.orgs = await res.json();
-                if (!Array.isArray(this.orgs)) this.orgs = [];
-            } catch(e) { this.orgs = []; }
-            this.applyFilters();
-            this.loading = false;
-        },
-
-        applyFilters() {
-            const q = this.search.toLowerCase();
-            this.filtered = this.orgs.filter(o => {
-                const matchQ = !q || (o.name||'').toLowerCase().includes(q) || (o.city||'').toLowerCase().includes(q) || (o.industry||'').toLowerCase().includes(q);
-                const matchI = !this.filterIndustry || o.industry === this.filterIndustry;
-                return matchQ && matchI;
-            });
-        },
-
-        fmtValue(v) {
-            const n = Math.round(Number(v) || 0);
-            if (n >= 1000000) return '&#8369;' + (n/1000000).toFixed(1) + 'M';
-            if (n >= 1000)    return '&#8369;' + Math.round(n/1000) + 'K';
-            return n > 0 ? '&#8369;' + n.toLocaleString('en') : '—';
-        },
-
-        openAdd() {
-            this.editId = null;
-            this.form = { name: '', industry: '', website: '', address: '', city: '', country: 'Philippines', notes: '' };
-            this.formError = '';
-            this.showModal = true;
-        },
-
-        openEdit(o) {
-            this.editId = o.id;
-            this.form = {
-                name:     o.name || '',
-                industry: o.industry || '',
-                website:  o.website || '',
-                address:  o.address || '',
-                city:     o.city || '',
-                country:  o.country || 'Philippines',
-                notes:    o.notes || '',
-            };
-            this.formError = '';
-            this.showModal = true;
-        },
-
-        async saveOrg() {
-            if (!this.form.name.trim()) { this.formError = 'Organization name is required.'; return; }
-            this.saving = true; this.formError = '';
-            try {
-                const url    = this.editId ? `/api/organizations/${this.editId}` : '/api/organizations';
-                const method = this.editId ? 'PUT' : 'POST';
-                const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
-                const res    = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify(body),
-                });
-                const data = await res.json();
-                if (data.id) {
-                    if (this.editId) {
-                        const i = this.orgs.findIndex(o => o.id === this.editId);
-                        if (i !== -1) this.orgs.splice(i, 1, data);
-                    } else {
-                        this.orgs.unshift(data);
-                    }
-                    this.applyFilters();
-                    this.showModal = false;
-                    this.$dispatch('show-toast', { type: 'success', message: this.editId ? 'Organization updated.' : 'Organization added.' });
-                } else {
-                    this.formError = data.message || 'Failed to save organization.';
-                }
-            } catch(e) { this.formError = 'Network error. Please try again.'; }
-            finally { this.saving = false; }
-        },
-
-        async deleteOrg(id) {
-            if (!confirm('Delete this organization? Contacts linked to it will become unaffiliated.')) return;
-            try {
-                await fetch(`/api/organizations/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                });
-                this.orgs = this.orgs.filter(o => o.id !== id);
-                this.applyFilters();
-                this.$dispatch('show-toast', { type: 'success', message: 'Organization deleted.' });
-            } catch(e) {
-                this.$dispatch('show-toast', { type: 'error', message: 'Failed to delete organization.' });
-            }
-        },
+(function() {
+    const ISLAND_REGIONS = {
+        'Luzon':    ['NCR', 'CAR', 'Region I', 'Region II', 'Region III', 'Region IV-A', 'Region IV-B', 'Region V'],
+        'Visayas':  ['Region VI', 'Region VII', 'Region VIII'],
+        'Mindanao': ['Region IX', 'Region X', 'Region XI', 'Region XII', 'Region XIII', 'BARMM'],
     };
-}
+
+    const PH_REGIONS = {
+        'NCR – National Capital Region':              ['Metro Manila'],
+        'CAR – Cordillera Administrative Region':     ['Abra','Apayao','Benguet','Ifugao','Kalinga','Mountain Province'],
+        'Region I – Ilocos Region':                   ['Ilocos Norte','Ilocos Sur','La Union','Pangasinan'],
+        'Region II – Cagayan Valley':                 ['Batanes','Cagayan','Isabela','Nueva Vizcaya','Quirino'],
+        'Region III – Central Luzon':                 ['Aurora','Bataan','Bulacan','Nueva Ecija','Pampanga','Tarlac','Zambales'],
+        'Region IV-A – CALABARZON':                   ['Batangas','Cavite','Laguna','Quezon','Rizal'],
+        'Region IV-B – MIMAROPA':                     ['Marinduque','Occidental Mindoro','Oriental Mindoro','Palawan','Romblon'],
+        'Region V – Bicol Region':                    ['Albay','Camarines Norte','Camarines Sur','Catanduanes','Masbate','Sorsogon'],
+        'Region VI – Western Visayas':                ['Aklan','Antique','Capiz','Guimaras','Iloilo','Negros Occidental'],
+        'Region VII – Central Visayas':               ['Bohol','Cebu','Negros Oriental','Siquijor'],
+        'Region VIII – Eastern Visayas':              ['Biliran','Eastern Samar','Leyte','Northern Samar','Samar','Southern Leyte'],
+        'Region IX – Zamboanga Peninsula':            ['Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay'],
+        'Region X – Northern Mindanao':               ['Bukidnon','Camiguin','Lanao del Norte','Misamis Occidental','Misamis Oriental'],
+        'Region XI – Davao Region':                   ['Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental'],
+        'Region XII – SOCCSKSARGEN':                  ['Cotabato','Sarangani','South Cotabato','Sultan Kudarat'],
+        'Region XIII – Caraga':                       ['Agusan del Norte','Agusan del Sur','Dinagat Islands','Surigao del Norte','Surigao del Sur'],
+        'BARMM – Bangsamoro Autonomous Region':       ['Basilan','Lanao del Sur','Maguindanao del Norte','Maguindanao del Sur','Sulu','Tawi-Tawi'],
+    };
+
+    window.orgsModule = function(tenantId) {
+        return {
+            orgs: [],
+            loading: true,
+            search: '',
+            filterIsland: '',
+            filterRegion: '',
+            filterProvince: '',
+            filterType: '',
+            filterHasDeal: '',
+            meta: { total: 0, page: 1, per_page: 25, last_page: 1 },
+            showModal: false,
+            saving: false,
+            formError: '',
+            editId: null,
+            form: { name: '', industry: '', website: '', address: '', city: '', country: 'Philippines', notes: '' },
+
+            get regionList() {
+                return Object.keys(PH_REGIONS).sort();
+            },
+
+            // Regions filtered by selected island group
+            get filteredRegionList() {
+                if (!this.filterIsland) return this.regionList;
+                const prefixes = ISLAND_REGIONS[this.filterIsland] || [];
+                return this.regionList.filter(r => prefixes.some(p => r.startsWith(p)));
+            },
+
+            get provinceOptions() {
+                if (!this.filterRegion) return [];
+                return (PH_REGIONS[this.filterRegion] || []).slice().sort();
+            },
+
+            async init() {
+                await this.fetch();
+            },
+
+            async fetch() {
+                this.loading = true;
+                try {
+                    const p = new URLSearchParams({ tenant_id: tenantId, page: this.meta.page, per_page: this.meta.per_page });
+                    if (this.search)              p.set('search',       this.search);
+                    if (this.filterIsland)        p.set('island_group', this.filterIsland);
+                    if (this.filterRegion)        p.set('region',       this.filterRegion);
+                    if (this.filterProvince)      p.set('province',     this.filterProvince);
+                    if (this.filterType)          p.set('lgu_type',     this.filterType);
+                    if (this.filterHasDeal !== '') p.set('has_deal',    this.filterHasDeal);
+                    const res  = await fetch(`/api/organizations?${p}`);
+                    const json = await res.json();
+                    this.orgs  = (json.data || []).map(o => {
+                        let _d = {};
+                        try { _d = typeof o.data === 'string' ? JSON.parse(o.data || '{}') : (o.data || {}); } catch(e) {}
+                        return { ...o, _d };
+                    });
+                    this.meta = {
+                        total:     json.total     ?? 0,
+                        page:      json.page      ?? 1,
+                        per_page:  json.per_page  ?? 25,
+                        last_page: json.last_page ?? 1,
+                    };
+                } catch(e) {
+                    this.orgs = [];
+                }
+                this.loading = false;
+            },
+
+            resetAndFetch() {
+                this.meta.page = 1;
+                return this.fetch();
+            },
+
+            goPage(n) {
+                if (n < 1 || n > this.meta.last_page) return;
+                this.meta.page = n;
+                return this.fetch();
+            },
+
+            pageNumbers() {
+                const total = this.meta.last_page;
+                const cur   = this.meta.page;
+                if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+                const set = new Set([1, total, cur]);
+                for (let i = cur - 2; i <= cur + 2; i++) if (i > 0 && i <= total) set.add(i);
+                return [...set].sort((a, b) => a - b);
+            },
+
+            fmtValue(v) {
+                const n = Math.round(Number(v) || 0);
+                if (n >= 1000000) return '₱' + (n / 1000000).toFixed(1) + 'M';
+                if (n >= 1000)    return '₱' + Math.round(n / 1000) + 'K';
+                return n > 0 ? '₱' + n.toLocaleString('en') : '—';
+            },
+
+            openAdd() {
+                this.editId = null;
+                this.form = { name: '', industry: '', website: '', address: '', city: '', country: 'Philippines', notes: '' };
+                this.formError = '';
+                this.showModal = true;
+            },
+
+            openEdit(o) {
+                this.editId = o.id;
+                this.form = {
+                    name:     o.name     || '',
+                    industry: o.industry || '',
+                    website:  o.website  || '',
+                    address:  o.address  || '',
+                    city:     o.city     || '',
+                    country:  o.country  || 'Philippines',
+                    notes:    o.notes    || '',
+                };
+                this.formError = '';
+                this.showModal = true;
+            },
+
+            async saveOrg() {
+                if (!this.form.name.trim()) { this.formError = 'Organization name is required.'; return; }
+                this.saving = true; this.formError = '';
+                try {
+                    const url    = this.editId ? `/api/organizations/${this.editId}` : '/api/organizations';
+                    const method = this.editId ? 'PUT' : 'POST';
+                    const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
+                    const res    = await fetch(url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        body: JSON.stringify(body),
+                    });
+                    const data = await res.json();
+                    if (data.id) {
+                        this.showModal = false;
+                        this.$dispatch('show-toast', { type: 'success', message: this.editId ? 'Organization updated.' : 'Organization added.' });
+                        await this.fetch();
+                    } else {
+                        this.formError = data.message || 'Failed to save organization.';
+                    }
+                } catch(e) { this.formError = 'Network error. Please try again.'; }
+                finally { this.saving = false; }
+            },
+
+            async deleteOrg(id) {
+                if (!confirm('Delete this organization? Contacts linked to it will become unaffiliated.')) return;
+                try {
+                    await fetch(`/api/organizations/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    });
+                    this.$dispatch('show-toast', { type: 'success', message: 'Organization deleted.' });
+                    await this.fetch();
+                } catch(e) {
+                    this.$dispatch('show-toast', { type: 'error', message: 'Failed to delete organization.' });
+                }
+            },
+        };
+    };
+})();
 </script>
 @endsection

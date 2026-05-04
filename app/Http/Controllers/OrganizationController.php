@@ -9,36 +9,92 @@ use Illuminate\Support\Str;
 
 class OrganizationController extends Controller
 {
+    // Island group → region prefix mapping
+    private const ISLAND_REGIONS = [
+        'Luzon'   => ['NCR', 'CAR', 'Region I', 'Region II', 'Region III', 'Region IV-A', 'Region IV-B', 'Region V'],
+        'Visayas' => ['Region VI', 'Region VII', 'Region VIII'],
+        'Mindanao'=> ['Region IX', 'Region X', 'Region XI', 'Region XII', 'Region XIII', 'BARMM'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
-        $orgs = DB::table('organizations as o')
+        $perPage  = min(50, max(10, (int) $request->get('per_page', 25)));
+        $page     = max(1, (int) $request->get('page', 1));
+        $tenantId = $request->tenant_id;
+
+        $base = DB::table('organizations as o')
+            ->where('o.tenant_id', $tenantId);
+
+        // ── Filters ──────────────────────────────────────────────
+        if ($request->filled('search')) {
+            $term = '%' . strtolower($request->search) . '%';
+            $base->whereRaw("(lower(o.name) like ? or lower(o.city) like ?)", [$term, $term]);
+        }
+        if ($request->filled('island_group') && isset(self::ISLAND_REGIONS[$request->island_group])) {
+            $prefixes = self::ISLAND_REGIONS[$request->island_group];
+            $base->where(function ($q) use ($prefixes) {
+                foreach ($prefixes as $prefix) {
+                    $q->orWhereRaw("o.data->>'region' like ?", [$prefix . '%']);
+                }
+            });
+        }
+        if ($request->filled('region')) {
+            $base->whereRaw("o.data->>'region' = ?", [$request->region]);
+        }
+        if ($request->filled('province')) {
+            $base->where('o.address', $request->province);
+        }
+        if ($request->filled('lgu_type')) {
+            $base->whereRaw("o.data->>'lgu_type' = ?", [$request->lgu_type]);
+        }
+
+        $total = (clone $base)->count();
+
+        // Scoped sub-queries (tenant-only) keep joins fast
+        $orgs = (clone $base)
             ->leftJoin(
-                DB::raw('(SELECT organization_id, COUNT(*) as contact_count FROM contacts GROUP BY organization_id) cc'),
+                DB::raw("(SELECT organization_id, COUNT(*) as contact_count
+                          FROM contacts WHERE tenant_id = '{$tenantId}'
+                          GROUP BY organization_id) cc"),
                 'o.id', '=', 'cc.organization_id'
             )
             ->leftJoin(
-                DB::raw('(
-                    SELECT c2.organization_id,
-                           COUNT(DISTINCT dc.deal_id) as deal_count,
-                           COALESCE(SUM(l.deal_value), 0) as deal_value
-                    FROM contacts c2
-                    JOIN deal_contacts dc ON c2.id = dc.contact_id
-                    JOIN leads l ON dc.deal_id = l.id
-                    GROUP BY c2.organization_id
-                ) ds'),
+                DB::raw("(SELECT c2.organization_id,
+                                 COUNT(DISTINCT dc.deal_id) as deal_count,
+                                 COALESCE(SUM(l.deal_value), 0) as deal_value
+                          FROM contacts c2
+                          JOIN deal_contacts dc ON c2.id = dc.contact_id
+                          JOIN leads l ON dc.deal_id = l.id AND l.tenant_id = '{$tenantId}'
+                          WHERE c2.tenant_id = '{$tenantId}'
+                          GROUP BY c2.organization_id) ds"),
                 'o.id', '=', 'ds.organization_id'
             )
-            ->where('o.tenant_id', $request->tenant_id)
             ->select(
-                'o.*',
+                'o.id', 'o.name', 'o.address', 'o.city', 'o.data',
                 DB::raw('COALESCE(cc.contact_count, 0) as contact_count'),
                 DB::raw('COALESCE(ds.deal_count, 0) as deal_count'),
                 DB::raw('COALESCE(ds.deal_value, 0) as deal_value')
             )
+            ->orderBy('o.address')
             ->orderBy('o.name')
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
             ->get();
 
-        return response()->json($orgs);
+        // Apply has_deal filter post-join (cheaper than a sub-sub-query)
+        if ($request->filled('has_deal')) {
+            $orgs = $request->has_deal === '1'
+                ? $orgs->filter(fn($o) => $o->deal_count > 0)->values()
+                : $orgs->filter(fn($o) => $o->deal_count == 0)->values();
+        }
+
+        return response()->json([
+            'data'      => $orgs,
+            'total'     => $total,
+            'page'      => $page,
+            'per_page'  => $perPage,
+            'last_page' => (int) ceil($total / $perPage),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
