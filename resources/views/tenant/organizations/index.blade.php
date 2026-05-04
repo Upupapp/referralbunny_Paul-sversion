@@ -92,7 +92,7 @@
                 <select x-model="filterRegion" @change="filterProvince=''; resetAndFetch()">
                     <option value="">All Regions</option>
                     <template x-for="r in filteredRegionList" :key="r">
-                        <option :value="r" x-text="r"></option>
+                        <option :value="r" x-text="r.split(' – ')[0]"></option>
                     </template>
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -201,7 +201,7 @@
                             <td class="text-sm text-gray-600" x-text="o.address || '—'"></td>
                             {{-- Region --}}
                             <td class="text-xs text-gray-400"
-                                x-text="o._d.region || '—'"></td>
+                                x-text="o._d.region ? o._d.region.split(' – ')[0] : '—'"></td>
                             {{-- Type --}}
                             <td>
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium"
