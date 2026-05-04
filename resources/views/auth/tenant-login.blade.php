@@ -197,7 +197,7 @@
     </div>
 
     {{-- Mascot + text grouped together in center --}}
-    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.75rem;text-align:center">
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.25rem;text-align:center">
         <div class="am">
             <x-r-bunny variant="rocket" size="lg" :decorative="true" />
         </div>
