@@ -186,19 +186,12 @@
         });
     })();
 
-    // Intro logic
-    var KEY = 'referralbunny_tenant_intro_seen';
+    // Intro — always plays on every page load / refresh
     var intro = document.getElementById('intro');
-
-    if (sessionStorage.getItem(KEY) === '1') {
-        if (intro) intro.classList.add('gone');
-    } else {
-        var timer = setTimeout(advance, 5000);
-    }
+    var timer = setTimeout(advance, 5000);
 
     function advance() {
         clearTimeout(timer);
-        sessionStorage.setItem(KEY, '1');
         if (!intro) return;
         intro.classList.add('fading');
         setTimeout(function () { intro.classList.add('gone'); }, 500);
