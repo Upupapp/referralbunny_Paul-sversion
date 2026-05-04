@@ -46,6 +46,10 @@ return [
             'driver'   => 'session',
             'provider' => 'tenant_users',
         ],
+        'reseller' => [
+            'driver'   => 'session',
+            'provider' => 'resellers',
+        ],
     ],
 
     /*
@@ -73,6 +77,10 @@ return [
         'tenant_users' => [
             'driver' => 'eloquent',
             'model'  => App\Models\TenantUser::class,
+        ],
+        'resellers' => [
+            'driver' => 'eloquent',
+            'model'  => App\Models\Reseller::class,
         ],
 
         // 'users' => [

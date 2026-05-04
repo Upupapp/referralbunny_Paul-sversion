@@ -23,6 +23,9 @@ class LeadController extends Controller
         if ($request->filled('tenant_id')) {
             $query->where('tenant_id', $request->tenant_id);
         }
+        if ($request->filled('reseller_name')) {
+            $query->where('reseller_name', $request->reseller_name);
+        }
 
         return response()->json($query->get());
     }
@@ -96,12 +99,14 @@ class LeadController extends Controller
                 ->exists();
 
             if (!$exists) {
+                $setupToken = Str::random(64);
                 DB::table('resellers')->insert([
                     'id'                => (string) Str::uuid(),
                     'tenant_id'         => $data['tenant_id'],
                     'name'              => $data['reseller_name'],
-                    'email'             => $data['new_reseller_email'],
+                    'email'             => strtolower(trim($data['new_reseller_email'])),
                     'status'            => 'invited',
+                    'setup_token'       => $setupToken,
                     'assigned_leads'    => 1,
                     'closed_value'      => 0,
                     'performance_score' => 0,
@@ -112,16 +117,18 @@ class LeadController extends Controller
                 $resellerCreated = true;
 
                 $tenantName = DB::table('tenants')->where('id', $data['tenant_id'])->value('name') ?? 'Referral Bunny';
+                $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
                 try {
                     Mail::raw(
                         "Hi {$data['reseller_name']},\n\n"
                         . "You have been invited as a referrer for {$tenantName}'s referral program.\n\n"
-                        . "A deal has already been assigned to you: {$data['name']}.\n\n"
-                        . "You will receive login details once your account is fully set up.\n\n"
+                        . "A deal has already been submitted on your behalf: {$data['name']}.\n\n"
+                        . "Set up your referrer account here:\n{$setupUrl}\n\n"
+                        . "This link is unique to you. Once you set your password, you can log in to track your deals and commissions.\n\n"
                         . "— The {$tenantName} Team",
                         function ($message) use ($data, $tenantName) {
-                            $message->to($data['new_reseller_email'], $data['reseller_name'])
+                            $message->to(strtolower(trim($data['new_reseller_email'])), $data['reseller_name'])
                                     ->subject("You've been invited as a referrer for {$tenantName}");
                         }
                     );

@@ -2,33 +2,38 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Reseller extends Model
+class Reseller extends Authenticatable
 {
-    protected $table = 'resellers';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    use HasApiTokens, Notifiable;
+
+    protected $table      = 'resellers';
+    public    $incrementing = false;
+    protected $keyType    = 'string';
+    public    $timestamps = false; // resellers table has no updated_at
 
     protected $fillable = [
         'tenant_id', 'name', 'email', 'status',
         'assigned_leads', 'closed_value', 'performance_score',
         'joined_date', 'phone', 'territory', 'is_anonymous',
+        'password', 'setup_token', 'remember_token',
     ];
+
+    protected $hidden = ['password', 'remember_token', 'setup_token'];
 
     protected $casts = [
-        'joined_date'      => 'date',
-        'closed_value'     => 'decimal:2',
-        'assigned_leads'   => 'integer',
-        'performance_score'=> 'integer',
-        'is_anonymous'     => 'boolean',
+        'joined_date'       => 'date',
+        'closed_value'      => 'decimal:2',
+        'assigned_leads'    => 'integer',
+        'performance_score' => 'integer',
+        'is_anonymous'      => 'boolean',
+        'password'          => 'hashed',
     ];
 
-    /**
-     * Mask sensitive fields for non-admin viewers (e.g. other resellers).
-     * Tenant admins always receive the full record — never call this for admin views.
-     */
     public function toAnonymousArray(): array
     {
         return [

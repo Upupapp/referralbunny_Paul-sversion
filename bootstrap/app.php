@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'feature.access'    => \App\Http\Middleware\FeatureAccessMiddleware::class,
             'tenant.access'     => \App\Http\Middleware\EnsureTenantAccess::class,
+            'reseller.access'   => \App\Http\Middleware\EnsureResellerAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

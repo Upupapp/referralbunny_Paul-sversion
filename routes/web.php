@@ -4,6 +4,8 @@ use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\TenantAdminController;
 use App\Http\Controllers\Web\TenantAuthWebController;
+use App\Http\Controllers\ResellerPortalAuthController;
+use App\Http\Controllers\ResellerPortalController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -49,6 +51,24 @@ Route::get('/tenant/join',   fn() => view('auth.tenant-coming-soon', ['page' => 
 Route::get('/tenant/select', fn() => view('auth.tenant-coming-soon', ['page' => 'Select Workspace']))->name('tenant.select');
 Route::get('/tenant/onboarding/{tenantId}', fn($tenantId) => redirect()->route('tenant.dashboard', $tenantId))->name('tenant.onboarding');
 Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soon', ['page' => 'Update Password']))->name('tenant.first-signin-password');
+
+// ── Reseller Auth ────────────────────────────────────────────
+Route::get('/reseller/login',  [ResellerPortalAuthController::class, 'showLogin'])->name('reseller.login');
+Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post');
+Route::post('/reseller/logout',[ResellerPortalAuthController::class, 'logout'])->name('reseller.logout');
+Route::get('/reseller/setup',  [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
+Route::post('/reseller/setup', [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post');
+
+// ── Reseller Portal ────────────────────────────────────────────
+Route::middleware(['auth:reseller,web', 'reseller.access'])
+    ->prefix('reseller/{tenantId}')
+    ->name('reseller.')
+    ->group(function () {
+        Route::get('/dashboard',  [ResellerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/deals',      [ResellerPortalController::class, 'deals'])->name('deals');
+        Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
+        Route::get('/profile',    [ResellerPortalController::class, 'profile'])->name('profile');
+    });
 
 // ── Platform (Super Admin) ────────────────────────────────────
 Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {

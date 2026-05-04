@@ -25,7 +25,7 @@ create table if not exists tenant_users (
 );
 
 create unique index if not exists tenant_users_email_lower_idx
-  on tenant_users (lower(email));
+  on tenant_users (email);
 
 -- ── Tenant Memberships ────────────────────────────────────────
 create table if not exists tenant_memberships (
@@ -68,7 +68,7 @@ create table if not exists tenant_invitations (
 
 create index if not exists tenant_invitations_token_idx     on tenant_invitations (token);
 create index if not exists tenant_invitations_tenant_id_idx on tenant_invitations (tenant_id);
-create index if not exists tenant_invitations_email_idx     on tenant_invitations (lower(email));
+create index if not exists tenant_invitations_email_idx     on tenant_invitations (email);
 
 -- ── Tenant Access Requests ────────────────────────────────────
 create table if not exists tenant_access_requests (
@@ -89,7 +89,7 @@ create table if not exists tenant_access_requests (
 );
 
 create index if not exists tenant_access_requests_tenant_id_idx on tenant_access_requests (tenant_id);
-create index if not exists tenant_access_requests_email_idx     on tenant_access_requests (lower(email));
+create index if not exists tenant_access_requests_email_idx     on tenant_access_requests (email);
 
 -- ── LGU IDS Tenant Bootstrap ──────────────────────────────────
 -- Ensure the LGU IDS tenant row exists with full profile.
