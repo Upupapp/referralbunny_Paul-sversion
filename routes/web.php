@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\TenantAdminController;
+use App\Http\Controllers\Web\TenantAuthWebController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -12,6 +13,18 @@ Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
 // ── Redirect root to dashboard ────────────────────────────────
 Route::get('/', fn() => redirect()->route('platform.dashboard'));
+
+// ── Tenant Admin Auth ─────────────────────────────────────────
+Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
+Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post');
+Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
+
+// Stub pages — shown as "coming soon" until full Blade views are built
+Route::get('/tenant/create', fn() => view('auth.tenant-coming-soon', ['page' => 'Create Tenant']))->name('tenant.create');
+Route::get('/tenant/join',   fn() => view('auth.tenant-coming-soon', ['page' => 'Join Tenant']))->name('tenant.join');
+Route::get('/tenant/select', fn() => view('auth.tenant-coming-soon', ['page' => 'Select Workspace']))->name('tenant.select');
+Route::get('/tenant/onboarding/{tenantId}', fn($tenantId) => redirect()->route('tenant.dashboard', $tenantId))->name('tenant.onboarding');
+Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soon', ['page' => 'Update Password']))->name('tenant.first-signin-password');
 
 // ── Platform (Super Admin) ────────────────────────────────────
 Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
@@ -29,7 +42,7 @@ Route::middleware('auth')->prefix('platform')->name('platform.')->group(function
 });
 
 // ── Tenant app ────────────────────────────────────────────────
-Route::middleware('auth')->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
+Route::middleware(['auth:tenant,web'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}', [TenantAdminController::class, 'dealShow'])->name('deals.show');
