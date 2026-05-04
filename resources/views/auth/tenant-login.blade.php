@@ -39,9 +39,9 @@
         #intro.gone   { display: none !important; }
 
         .al { animation: aUp .8s ease-out .2s both; }
-        .am { animation: aUp .8s ease-out .5s both; }
-        .at { animation: aUp .6s ease-out 1s   both; }
-        .af { animation: aIn .5s ease-out 1.2s both; }
+        .am { animation: aUp .8s ease-out .4s both; }
+        .at { animation: aIn .6s ease-out .3s both; }
+        .af { animation: aIn .5s ease-out .5s both; }
         .g1 { animation: gp 5s ease-in-out infinite; }
         .g2 { animation: gp 5s ease-in-out 2.5s infinite; }
 
@@ -198,9 +198,9 @@
 
     {{-- Text + mascot grouped together in center --}}
     <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.25rem;text-align:center">
-        <div class="at">
-            <h1 style="margin:0;font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:-.02em">Welcome to ReferralBunny.ai</h1>
-            <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.6)">Set up, manage, and grow your referral programs.</p>
+        <div class="at" style="padding:0 1rem">
+            <h1 style="margin:0;font-size:1.5rem;font-weight:700;color:#ffffff !important;letter-spacing:-.02em;text-shadow:0 1px 8px rgba(0,0,0,.3)">Welcome to ReferralBunny.ai</h1>
+            <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.7) !important">Set up, manage, and grow your referral programs.</p>
         </div>
         <div class="am">
             <x-r-bunny variant="rocket" size="lg" :decorative="true" />
