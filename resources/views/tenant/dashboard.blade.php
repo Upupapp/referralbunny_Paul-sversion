@@ -385,6 +385,190 @@ function tenantDashboard(tenantId) {
     }
 }
 </script>
+
+@if($accessExtendedNotif)
+{{-- ═══════════════════════════════════════════════════
+     R BUNNY ACCESS EXTENDED POPUP
+     Shown once when super admin extends tenant access.
+     Dismissed via API → marks notification as read.
+     ═══════════════════════════════════════════════════ --}}
+<style>
+@keyframes rb-pop-in {
+    0%   { opacity:0; transform:scale(0.85) translateY(32px); }
+    65%  { transform:scale(1.02) translateY(-4px); }
+    100% { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes rb-fade-up {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+@keyframes rb-float {
+    0%,100% { transform:translateY(0); }
+    50%      { transform:translateY(-8px); }
+}
+@keyframes rb-confetti-fall {
+    0%   { transform:translateY(0) rotateZ(var(--r,0deg)); opacity:1; }
+    100% { transform:translateY(800px) rotateZ(calc(var(--r,0deg)+540deg)); opacity:0; }
+}
+.rb-modal   { animation: rb-pop-in .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+.rb-float   { animation: rb-float 3s ease-in-out infinite; }
+.rb-fade-1  { animation: rb-fade-up .4s ease-out .15s both; }
+.rb-fade-2  { animation: rb-fade-up .4s ease-out .30s both; }
+.rb-fade-3  { animation: rb-fade-up .4s ease-out .45s both; }
+.rb-fade-4  { animation: rb-fade-up .4s ease-out .60s both; }
+</style>
+
+<div x-data="rbAccessExtendedPopup('{{ $accessExtendedNotif->id }}')"
+     x-init="$nextTick(() => { if(show) launchConfetti(); })"
+     x-show="show" x-cloak
+     class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+
+    {{-- Backdrop --}}
+    <div class="absolute inset-0 bg-[#0D0B26]/70 backdrop-blur-md" @click="dismiss()"></div>
+
+    {{-- Confetti --}}
+    <div id="rb-confetti" class="absolute inset-0 overflow-hidden pointer-events-none z-10"></div>
+
+    {{-- Modal --}}
+    <div class="relative z-20 w-full max-w-sm rb-modal" @click.stop>
+        <div class="bg-white rounded-[24px] shadow-[0_24px_64px_rgba(123,97,255,0.22)] overflow-hidden">
+
+            {{-- Gradient header --}}
+            <div class="relative text-center px-6 pt-8 pb-7 overflow-hidden"
+                 style="background:linear-gradient(145deg,#1E1B4B 0%,#3B0764 40%,#7B61FF 75%,#FF6CAB 100%)">
+
+                {{-- Background orbs --}}
+                <div class="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-10 bg-white pointer-events-none"></div>
+                <div class="absolute bottom-0 -left-6 w-28 h-28 rounded-full opacity-10 bg-white pointer-events-none"></div>
+
+                {{-- R Bunny mascot --}}
+                <div class="rb-float inline-block mb-4">
+                    <img src="/images/mascots/r-bunny-celebration.webp"
+                         alt="R Bunny celebrating"
+                         class="w-28 h-28 object-contain mx-auto drop-shadow-lg">
+                </div>
+
+                <div class="rb-fade-1">
+                    <h2 class="text-[22px] font-bold text-white leading-tight mb-1">
+                        R Bunny extended<br>your access!
+                    </h2>
+                    <p class="text-white/60 text-sm">A gift from the Referral Bunny team</p>
+                </div>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-6 pb-6 pt-5 space-y-4">
+
+                {{-- Days pill --}}
+                <div class="rb-fade-2 flex items-center justify-center">
+                    <div class="flex items-center gap-3 px-5 py-3 rounded-2xl"
+                         style="background:linear-gradient(135deg,#F0EFFA,#FDF2F8);border:1.5px solid #E9D5FF">
+                        <svg class="w-5 h-5 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <div>
+                            <p class="text-xs text-purple-400 font-semibold uppercase tracking-wide leading-none mb-0.5">Access Extended</p>
+                            <p class="text-xl font-bold text-[#1E1B4B] leading-none">
+                                +{{ $accessExtendedNotif->metadata_json['days'] ?? '?' }}
+                                {{ ($accessExtendedNotif->metadata_json['days'] ?? 1) === 1 ? 'Day' : 'Days' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Message --}}
+                <div class="rb-fade-3 text-center">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        {{ $accessExtendedNotif->message }}
+                    </p>
+                    @if(!empty($accessExtendedNotif->metadata_json['reactivated']))
+                    <div class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Account Reactivated
+                    </div>
+                    @endif
+                </div>
+
+                {{-- CTA --}}
+                <div class="rb-fade-4 flex gap-2.5 pt-1">
+                    <button @click="dismiss()"
+                            class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:text-[#1E1B4B] hover:bg-gray-50 transition-all font-medium border border-gray-200">
+                        Got it
+                    </button>
+                    <button @click="dismiss()"
+                            class="flex-[2] btn-primary text-sm justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                        Continue to Dashboard
+                    </button>
+                </div>
+
+                <p class="rb-fade-4 text-center text-[11px] text-gray-400">
+                    {{ $tenant->name }} · {{ $tenant->program_name }}
+                </p>
+            </div>
+        </div>
+
+        {{-- Close button --}}
+        <button @click="dismiss()"
+                class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors border border-gray-100">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+function rbAccessExtendedPopup(notifId) {
+    return {
+        show: true,
+
+        async dismiss() {
+            this.show = false;
+            try {
+                await fetch(`/api/notifications/${notifId}`, {
+                    method:  'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({ is_read: true, is_dismissed: true }),
+                });
+            } catch(e) { /* silent — popup already closed */ }
+        },
+
+        launchConfetti() {
+            const container = document.getElementById('rb-confetti');
+            if (!container) return;
+            const colors = ['#7B61FF','#FF6CAB','#10B981','#F59E0B','#3B82F6','#EC4899'];
+            for (let i = 0; i < 60; i++) {
+                const el       = document.createElement('div');
+                const color    = colors[Math.floor(Math.random() * colors.length)];
+                const isCircle = Math.random() > 0.5;
+                const w        = Math.random() * 9 + 4;
+                const h        = isCircle ? w : w * 0.4;
+                const dur      = (Math.random() * 1.8 + 1.5).toFixed(2);
+                const delay    = (Math.random() * 0.6).toFixed(2);
+                el.style.cssText = `
+                    position:absolute;left:${Math.random()*100}%;top:-${h*2}px;
+                    width:${w}px;height:${h}px;background:${color};opacity:.85;
+                    border-radius:${isCircle?'50%':'2px'};
+                    --r:${Math.random()*360}deg;
+                    animation:rb-confetti-fall ${dur}s ease-in ${delay}s forwards;
+                `;
+                container.appendChild(el);
+                setTimeout(() => el.remove(), (+dur + +delay) * 1000 + 200);
+            }
+        },
+    };
+}
+</script>
+@endif
+
 @endsection
 
 

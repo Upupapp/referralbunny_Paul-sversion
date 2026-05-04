@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Invoice;
@@ -114,6 +115,36 @@ class BillingController extends Controller
         if (($data['reactivate'] ?? false) && $tenant->status === 'inactive') {
             $tenant->update(['status' => 'trial']);
         }
+
+        // In-app notification for the tenant admin portal
+        Notification::create([
+            'id'            => (string) \Illuminate\Support\Str::uuid(),
+            'tenant_id'     => $tenantId,
+            'category'      => 'billing',
+            'type'          => 'access_extended',
+            'priority'      => 'high',
+            'message'       => "R Bunny extended your access by {$data['days']} day" . ($data['days'] > 1 ? 's' : '') . '.' . ($data['note'] ? ' ' . $data['note'] : ''),
+            'channel'       => 'in_app',
+            'is_read'       => false,
+            'is_dismissed'  => false,
+            'metadata_json' => [
+                'days'        => $data['days'],
+                'note'        => $data['note'] ?? null,
+                'extended_at' => now()->toISOString(),
+                'reactivated' => $data['reactivate'] ?? false,
+            ],
+            'sent_at'       => now(),
+        ]);
+
+        // Email placeholder — wire up when mail provider is integrated
+        // TODO: dispatch(new \App\Jobs\SendAccessExtendedEmail($tenant, $data['days'], $data['note'] ?? null));
+        \Illuminate\Support\Facades\Log::info('[EMAIL PLACEHOLDER] Access extended notification', [
+            'tenant_id'    => $tenantId,
+            'to'           => $tenant->admin_email,
+            'days'         => $data['days'],
+            'note'         => $data['note'] ?? null,
+            'subject'      => "R Bunny extended your access by {$data['days']} day(s) — {$tenant->name}",
+        ]);
 
         // Audit log
         BillingAuditLog::log('access_extended', [

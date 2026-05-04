@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use Illuminate\Http\Request;
@@ -31,8 +32,15 @@ class TenantAdminController extends Controller
         $tenant->load(['metric']);
         $metric = $tenant->metric;
 
+        $accessExtendedNotif = Notification::where('tenant_id', $tenantId)
+            ->where('type', 'access_extended')
+            ->where('is_dismissed', false)
+            ->where('is_read', false)
+            ->latest()
+            ->first();
+
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric'),
+            compact('tenant', 'metric', 'accessExtendedNotif'),
             $this->configMeta($tenantId)
         ));
     }
