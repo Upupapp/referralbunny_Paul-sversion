@@ -21,6 +21,29 @@
         </div>
     </div>
 
+    {{-- R Bunny help card --}}
+    <div class="flex gap-3 p-4 rounded-xl bg-[#F0EFFA] border border-purple-100">
+        <x-r-bunny variant="helper" size="sm" :decorative="true" class="shrink-0 mt-0.5" />
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-[#1E1B4B] mb-0.5">R Bunny's Settings Tips</p>
+            <p class="text-xs text-gray-500 leading-relaxed mb-2">These settings apply to your entire referral program. Changes take effect immediately for all referrers and deals.</p>
+            <ul class="space-y-1">
+                @foreach([
+                    'Agreement files must be signed before referrers can submit deals.',
+                    'Commission rules affect all new and pending deals.',
+                    'Pipeline stages define how deals move from intro to paid.',
+                ] as $tip)
+                <li class="flex items-start gap-1.5 text-xs text-gray-500">
+                    <svg class="w-3.5 h-3.5 text-purple-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ $tip }}
+                </li>
+                @endforeach
+            </ul>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         <div class="lg:col-span-2 space-y-4">
