@@ -404,20 +404,36 @@
 
     {{-- ── TAB 2: Import Jobs ── --}}
     <div x-show="activeTab === 2" class="space-y-4">
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div class="search-group flex-1">
+        <div class="space-y-3">
+            <div class="search-group">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" x-model="jobSearch" @input.debounce="filterJobs()" placeholder="Search import jobs…">
+                <button x-show="jobSearch.length > 0" @click="jobSearch = ''; filterJobs()"
+                        class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <select x-model="jobStatusFilter" @change="loadJobs()" class="form-input sm:w-44">
-                <option value="">All Status</option>
-                <option value="importing">Importing</option>
-                <option value="completed">Completed</option>
-                <option value="completed_with_errors">With Errors</option>
-                <option value="failed">Failed</option>
-                <option value="waiting_for_approval">Awaiting Approval</option>
-                <option value="canceled">Canceled</option>
-            </select>
+            <div class="filter-bar">
+                <label class="filter-pill" :class="jobStatusFilter !== '' ? 'active' : ''">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <select x-model="jobStatusFilter" @change="loadJobs()">
+                        <option value="">All Status</option>
+                        <option value="importing">Importing</option>
+                        <option value="completed">Completed</option>
+                        <option value="completed_with_errors">With Errors</option>
+                        <option value="failed">Failed</option>
+                        <option value="waiting_for_approval">Awaiting Approval</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </label>
+                <button x-show="jobStatusFilter || jobSearch"
+                        @click="jobStatusFilter=''; jobSearch=''; loadJobs()"
+                        class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Clear
+                </button>
+            </div>
         </div>
 
         <div class="card p-0 overflow-hidden">
