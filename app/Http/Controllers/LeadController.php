@@ -8,6 +8,10 @@ use App\Models\LeadNote;
 use App\Models\CommissionSplit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class LeadController extends Controller
 {
@@ -26,18 +30,19 @@ class LeadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'tenant_id'        => 'required|string|exists:tenants,id',
-            'name'             => 'required|string',
-            'stage'            => 'required|string',
-            'status'           => 'nullable|in:active,expiring,expired,reassigned,declined',
-            'days_left'        => 'nullable|integer',
-            'reseller_name'    => 'required|string',
-            'commission_status'=> 'nullable|in:pending,locked,paid',
-            'base_cost'        => 'nullable|numeric|min:0',
-            'added_amount'     => 'nullable|numeric|min:0',
-            'deal_value'       => 'nullable|numeric',
-            'data'             => 'nullable|array',
-            'commission_splits'=> 'nullable|array',
+            'tenant_id'          => 'required|string|exists:tenants,id',
+            'name'               => 'required|string',
+            'stage'              => 'required|string',
+            'status'             => 'nullable|in:active,expiring,expired,reassigned,declined',
+            'days_left'          => 'nullable|integer',
+            'reseller_name'      => 'required|string',
+            'new_reseller_email' => 'nullable|email',
+            'commission_status'  => 'nullable|in:pending,locked,paid',
+            'base_cost'          => 'nullable|numeric|min:0',
+            'added_amount'       => 'nullable|numeric|min:0',
+            'deal_value'         => 'nullable|numeric',
+            'data'               => 'nullable|array',
+            'commission_splits'  => 'nullable|array',
         ]);
 
         $baseCost    = (float) ($data['base_cost']    ?? 0);
@@ -77,7 +82,60 @@ class LeadController extends Controller
             'date'    => now()->toDateString(),
         ]);
 
-        return response()->json($lead->load(['commissionSplits', 'notes', 'history']), 201);
+        // Auto-create reseller + send invite if a new email was provided
+        $resellerCreated = false;
+        $inviteSent      = false;
+
+        if (!empty($data['new_reseller_email'])) {
+            $exists = DB::table('resellers')
+                ->where('tenant_id', $data['tenant_id'])
+                ->where(function ($q) use ($data) {
+                    $q->where('name', $data['reseller_name'])
+                      ->orWhere('email', $data['new_reseller_email']);
+                })
+                ->exists();
+
+            if (!$exists) {
+                DB::table('resellers')->insert([
+                    'id'                => (string) Str::uuid(),
+                    'tenant_id'         => $data['tenant_id'],
+                    'name'              => $data['reseller_name'],
+                    'email'             => $data['new_reseller_email'],
+                    'status'            => 'invited',
+                    'assigned_leads'    => 1,
+                    'closed_value'      => 0,
+                    'performance_score' => 0,
+                    'is_anonymous'      => false,
+                    'joined_date'       => now()->toDateString(),
+                    'created_at'        => now(),
+                ]);
+                $resellerCreated = true;
+
+                $tenantName = DB::table('tenants')->where('id', $data['tenant_id'])->value('name') ?? 'Referral Bunny';
+
+                try {
+                    Mail::raw(
+                        "Hi {$data['reseller_name']},\n\n"
+                        . "You have been invited as a referrer for {$tenantName}'s referral program.\n\n"
+                        . "A deal has already been assigned to you: {$data['name']}.\n\n"
+                        . "You will receive login details once your account is fully set up.\n\n"
+                        . "— The {$tenantName} Team",
+                        function ($message) use ($data, $tenantName) {
+                            $message->to($data['new_reseller_email'], $data['reseller_name'])
+                                    ->subject("You've been invited as a referrer for {$tenantName}");
+                        }
+                    );
+                    $inviteSent = true;
+                } catch (\Throwable $e) {
+                    Log::warning("Reseller invite email failed for {$data['new_reseller_email']}: {$e->getMessage()}");
+                }
+            }
+        }
+
+        return response()->json(array_merge(
+            $lead->load(['commissionSplits', 'notes', 'history'])->toArray(),
+            ['reseller_created' => $resellerCreated, 'invite_sent' => $inviteSent]
+        ), 201);
     }
 
     public function show(Lead $lead): JsonResponse

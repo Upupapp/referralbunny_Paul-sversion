@@ -791,10 +791,31 @@ document.addEventListener('alpine:init', () => {
                         <span x-show="form.reseller_name && autoFilledReferrer"
                               class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                               style="background:#D1FAE5;color:#065F46">auto-filled</span>
+                        <span x-show="resellerIsNew"
+                              class="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                              style="background:#FEF3C7;color:#D97706">new referrer</span>
                     </label>
                     <input type="text" x-model="form.reseller_name" class="form-input"
+                           @input="form.new_reseller_email = ''"
                            placeholder="Assigned referrer"
-                           :class="autoFilledReferrer ? 'border-emerald-300 bg-emerald-50/30' : ''">
+                           :class="autoFilledReferrer ? 'border-emerald-300 bg-emerald-50/30' : (resellerIsNew ? 'border-amber-300' : '')">
+                </div>
+
+                {{-- New referrer email (shown when name doesn't match any existing reseller) --}}
+                <div x-show="resellerIsNew" x-cloak>
+                    <div class="flex items-start gap-2.5 px-4 py-3 rounded-xl mb-3" style="background:#FFFBEB;border:1px solid #FDE68A">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-xs text-amber-700 leading-relaxed">
+                            <strong x-text="form.reseller_name"></strong> is not an existing referrer.
+                            Enter their email below — a referrer account will be created and an invitation sent automatically.
+                        </p>
+                    </div>
+                    <label class="form-label">Referrer Email *</label>
+                    <input type="email" x-model="form.new_reseller_email" class="form-input"
+                           placeholder="referrer@email.com"
+                           :class="resellerIsNew && !form.new_reseller_email ? 'border-amber-300' : ''">
                 </div>
 
                 <p x-show="addError" class="text-xs text-red-600 font-medium" x-text="addError"></p>
@@ -823,11 +844,18 @@ function tenantDashboard(tenantId, currentResellerName) {
         // Referrer auto-fill
         autoFilledReferrer: !!currentResellerName,
 
+        get resellerIsNew() {
+            if (!this.form.reseller_name || this.form.reseller_name.length < 2) return false;
+            const q = this.form.reseller_name.toLowerCase();
+            return !this.resellers.some(r => (r.name || '').toLowerCase() === q);
+        },
+
         form: {
             name: '',
             stage: 'introduction',
             deal_value: '',
             reseller_name: currentResellerName || '',
+            new_reseller_email: '',
             data: { province: '', municipality: '' },
         },
 
@@ -994,6 +1022,9 @@ function tenantDashboard(tenantId, currentResellerName) {
             this.addError = '';
             if (!this.lguSelected)        { this.addError = 'Please select a city or municipality first.'; return; }
             if (!this.form.reseller_name) { this.addError = 'Referrer name is required.'; return; }
+            if (this.resellerIsNew && !this.form.new_reseller_email) {
+                this.addError = 'Please enter the referrer\'s email to create their account.'; return;
+            }
             this.saving = true;
             try {
                 const payload = {
@@ -1034,10 +1065,14 @@ function tenantDashboard(tenantId, currentResellerName) {
                     stage: 'introduction',
                     deal_value: '',
                     reseller_name: currentResellerName || '',
+                    new_reseller_email: '',
                     data: { province: '', municipality: '' },
                 };
                 this.autoFilledReferrer = !!currentResellerName;
-                this.$dispatch('show-toast', { type: 'success', message: `Referral "${lead.name}" added successfully.` });
+                let msg = `Referral "${lead.name}" added successfully.`;
+                if (lead.reseller_created && lead.invite_sent)  msg += ` Invitation sent to ${this.form.new_reseller_email}.`;
+                if (lead.reseller_created && !lead.invite_sent) msg += ` Referrer account created (invite email could not be sent).`;
+                this.$dispatch('show-toast', { type: 'success', message: msg });
             } catch(e) {
                 this.addError = 'Network error. Please try again.';
             } finally {
