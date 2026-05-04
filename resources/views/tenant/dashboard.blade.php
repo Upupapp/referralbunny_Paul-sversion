@@ -127,10 +127,10 @@ document.addEventListener('alpine:init', () => {
                         <div class="border-t border-dashed border-gray-100 w-full"></div>
                     </div>
                     {{-- Bars --}}
-                    <div class="flex items-end justify-around pb-7 gap-1.5 relative" style="height:160px">
+                    <div class="flex items-end justify-between pb-7 gap-2 relative" style="height:160px">
                         <template x-for="stage in funnel" :key="stage.stage">
                             <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
-                                 class="relative flex flex-col items-center gap-1 cursor-pointer" style="width:26px;flex-shrink:0">
+                                 class="relative flex flex-col items-center gap-1 cursor-pointer flex-1" style="max-width:48px">
                                 {{-- Tooltip --}}
                                 <div x-show="hov" x-cloak
                                      class="absolute z-10 bottom-full mb-2 bg-[#1E1B4B] text-white rounded-xl px-3 py-2 text-center shadow-lg pointer-events-none"
@@ -148,8 +148,9 @@ document.addEventListener('alpine:init', () => {
                                          style="background:#7B61FF;border-radius:9999px"
                                          :style="`opacity:${hov?1:0}`"></div>
                                 </div>
-                                <span class="text-[9px] text-gray-400 text-center leading-tight truncate w-full text-center"
-                                      x-text="stage.label.split(' ')[0]"></span>
+                                <span class="text-[9px] text-gray-400 text-center leading-tight w-full"
+                                      style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"
+                                      x-text="stage.label"></span>
                             </div>
                         </template>
                     </div>
