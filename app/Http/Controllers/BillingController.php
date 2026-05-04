@@ -76,6 +76,63 @@ class BillingController extends Controller
         return response()->json(['message' => 'Tenant suspended.']);
     }
 
+    public function extendAccess(Request $request, string $tenantId): JsonResponse
+    {
+        $data = $request->validate([
+            'days'       => 'required|integer|min:1|max:365',
+            'note'       => 'nullable|string|max:500',
+            'reactivate' => 'boolean',
+        ]);
+
+        $tenant = \App\Models\Tenant::findOrFail($tenantId);
+        $sub    = Subscription::where('tenant_id', $tenantId)->latest()->first();
+
+        if ($sub) {
+            // Extend trial_end_date if on trial, else extend next_billing_date
+            if ($sub->trial_end_date) {
+                $base = $sub->trial_end_date->isFuture()
+                    ? $sub->trial_end_date
+                    : now();
+                $sub->trial_end_date = $base->addDays($data['days']);
+            } else {
+                $base = $sub->next_billing_date && $sub->next_billing_date->isFuture()
+                    ? $sub->next_billing_date
+                    : now();
+                $sub->next_billing_date = $base->addDays($data['days']);
+            }
+
+            // Reactivate if requested or if currently suspended/inactive
+            if (($data['reactivate'] ?? false) || in_array($sub->status, ['suspended', 'canceled'])) {
+                $sub->status     = $sub->trial_end_date ? 'trial' : 'active';
+                $sub->canceled_at = null;
+            }
+
+            $sub->save();
+        }
+
+        // Sync tenant status
+        if (($data['reactivate'] ?? false) && $tenant->status === 'inactive') {
+            $tenant->update(['status' => 'trial']);
+        }
+
+        // Audit log
+        BillingAuditLog::create([
+            'id'          => (string) \Illuminate\Support\Str::uuid(),
+            'tenant_id'   => $tenantId,
+            'action'      => 'access_extended',
+            'description' => "Access extended by {$data['days']} day(s). " . ($data['note'] ?? ''),
+            'performed_by'=> $request->user()?->id ?? 1,
+            'metadata'    => json_encode(['days' => $data['days'], 'note' => $data['note'] ?? null]),
+            'created_at'  => now(),
+        ]);
+
+        return response()->json([
+            'message'      => "Access extended by {$data['days']} day(s).",
+            'subscription' => $sub,
+            'tenant_status'=> $tenant->fresh()->status,
+        ]);
+    }
+
     // ── Invoices ──────────────────────────────────────────────
     public function invoices(Request $request): JsonResponse
     {

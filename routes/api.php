@@ -100,8 +100,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('billing/credits',                       [BillingController::class, 'issueCredit']);
     Route::get('billing/audit-log',                      [BillingController::class, 'auditLog']);
     Route::get('billing/tenants/{tenantId}/subscription',[BillingController::class, 'tenantSubscription']);
-    Route::post('billing/tenants/{tenantId}/trial',      [BillingController::class, 'activateTrial']);
-    Route::post('billing/tenants/{tenantId}/suspend',    [BillingController::class, 'suspendTenant']);
+    Route::post('billing/tenants/{tenantId}/trial',          [BillingController::class, 'activateTrial']);
+    Route::post('billing/tenants/{tenantId}/suspend',        [BillingController::class, 'suspendTenant']);
+    Route::post('billing/tenants/{tenantId}/extend-access',  [BillingController::class, 'extendAccess']);
     Route::post('billing/subscriptions/{subscription}/activate', [BillingController::class, 'activateSubscription']);
     Route::post('billing/subscriptions/{subscription}/cancel',   [BillingController::class, 'cancelSubscription']);
     Route::get('export/billing',                         [TenantMetricController::class, 'exportLeads']);

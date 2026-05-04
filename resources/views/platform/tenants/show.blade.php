@@ -35,6 +35,12 @@
                 <p class="text-gray-400 text-xs mt-0.5">ID: {{ $tenant->id }}</p>
             </div>
             <div class="flex flex-wrap gap-2 shrink-0">
+                <button x-data @click="$dispatch('open-extend-access')" class="btn-secondary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Extend Access
+                </button>
                 <a href="{{ route('tenant.dashboard', $tenant->id) }}" class="btn-primary">Open Tenant</a>
             </div>
         </div>
@@ -164,6 +170,168 @@
         </div>
     </div>
 </div>
+
+{{-- ═══════════════════════════════════════════
+     EXTEND ACCESS MODAL
+     ═══════════════════════════════════════════ --}}
+<div x-data="extendAccessModal('{{ $tenant->id }}', '{{ $tenant->status }}')"
+     @open-extend-access.window="open()"
+     x-show="show" x-cloak
+     class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+     @keydown.escape.window="show = false">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-[#1E1B4B]">Extend Access</h3>
+                    <p class="text-xs text-gray-400">{{ $tenant->name }}</p>
+                </div>
+            </div>
+            <button @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+
+            {{-- Quick presets --}}
+            <div>
+                <label class="form-label">Extend by</label>
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                    <template x-for="preset in [30, 60, 90, 180]" :key="preset">
+                        <button type="button"
+                                @click="days = preset; custom = false"
+                                :class="days === preset && !custom
+                                    ? 'bg-[#7B61FF] text-white border-[#7B61FF]'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:text-purple-600'"
+                                class="py-2.5 rounded-xl border text-sm font-semibold transition-colors">
+                            <span x-text="preset"></span>d
+                        </button>
+                    </template>
+                </div>
+                <button type="button" @click="custom = !custom; if(custom) days = customDays"
+                        :class="custom ? 'text-purple-600' : 'text-gray-400'"
+                        class="text-xs font-medium hover:text-purple-600 transition-colors">
+                    + Custom number of days
+                </button>
+                <div x-show="custom" class="mt-2">
+                    <div class="flex items-center gap-2">
+                        <input type="number" x-model.number="customDays" @input="days = customDays"
+                               min="1" max="365" class="form-input w-28 text-center" placeholder="0">
+                        <span class="text-sm text-gray-500">days</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Current status info --}}
+            <div class="p-3 rounded-xl bg-gray-50 text-sm space-y-1.5">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Current Status</span>
+                    <span class="font-semibold capitalize"
+                          :class="{
+                              'text-emerald-600': tenantStatus === 'active',
+                              'text-blue-600':    tenantStatus === 'trial',
+                              'text-gray-500':    tenantStatus === 'inactive',
+                              'text-red-500':     tenantStatus === 'suspended',
+                          }" x-text="tenantStatus"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Access extended by</span>
+                    <span class="font-semibold text-purple-600" x-text="days + ' day' + (days !== 1 ? 's' : '')"></span>
+                </div>
+            </div>
+
+            {{-- Reactivate toggle (shown only when inactive/suspended) --}}
+            <div x-show="tenantStatus === 'inactive' || tenantStatus === 'suspended'"
+                 class="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+                <div>
+                    <p class="text-sm font-medium text-amber-800">Reactivate tenant</p>
+                    <p class="text-xs text-amber-600 mt-0.5">Set status back to Trial after extending</p>
+                </div>
+                <button type="button" @click="reactivate = !reactivate"
+                        :class="reactivate ? 'bg-amber-500' : 'bg-gray-300'"
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-3">
+                    <span :class="reactivate ? 'translate-x-6' : 'translate-x-1'"
+                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+                </button>
+            </div>
+
+            {{-- Note --}}
+            <div>
+                <label class="form-label">Internal note <span class="text-gray-400 font-normal">(optional)</span></label>
+                <textarea x-model="note" class="form-input" rows="2"
+                          placeholder="Reason for extension, e.g. client requested trial extension…"></textarea>
+            </div>
+
+            <p x-show="error" class="text-xs text-red-600 font-medium" x-text="error"></p>
+
+            <div class="flex justify-end gap-3 pt-1">
+                <button @click="show = false" class="btn-secondary">Cancel</button>
+                <button @click="submit()" :disabled="saving || days < 1" class="btn-primary"
+                        x-text="saving ? 'Extending…' : 'Extend Access'"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function extendAccessModal(tenantId, tenantStatus) {
+    return {
+        show:        false,
+        saving:      false,
+        error:       '',
+        days:        30,
+        custom:      false,
+        customDays:  30,
+        reactivate:  tenantStatus === 'inactive' || tenantStatus === 'suspended',
+        note:        '',
+        tenantStatus,
+
+        open() { this.show = true; this.error = ''; },
+
+        async submit() {
+            if (this.days < 1) { this.error = 'Please select at least 1 day.'; return; }
+            this.saving = true; this.error = '';
+            try {
+                const res = await fetch(`/api/billing/tenants/${tenantId}/extend-access`, {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({
+                        days:       this.days,
+                        note:       this.note || null,
+                        reactivate: this.reactivate,
+                    }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.show = false;
+                    this.$dispatch('show-toast', { type: 'success', message: data.message });
+                    // Update displayed tenant status if reactivated
+                    if (data.tenant_status) this.tenantStatus = data.tenant_status;
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    this.error = data.message || 'Failed to extend access.';
+                }
+            } catch(e) {
+                this.error = 'Network error. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+}
+</script>
 
 {{-- ═══════════════════════════════════════════
      CONGRATULATION POPUP — tenant just created
