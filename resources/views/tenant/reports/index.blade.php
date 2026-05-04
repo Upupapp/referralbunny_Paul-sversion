@@ -120,13 +120,18 @@
                 <h3 class="font-semibold text-[#1E1B4B]">Pipeline Funnel</h3>
                 <x-info-tip text="Lead count at each pipeline stage. Bar height is relative to the busiest stage. Taller bars = more leads at that point in the sales process." />
             </div>
-            <div class="flex items-end gap-2 h-40 overflow-x-auto pb-2" x-show="funnel.length > 0">
+            <div class="flex items-end gap-3 h-40 overflow-x-auto pb-2" x-show="funnel.length > 0">
                 <template x-for="stage in funnel" :key="stage.stage">
-                    <div class="flex-1 min-w-[56px] flex flex-col items-center gap-1">
+                    <div class="rb-bar-wrap flex-1 min-w-[52px] flex flex-col items-center gap-1.5 cursor-pointer">
                         <span class="text-xs font-semibold text-[#1E1B4B]" x-text="stage.count"></span>
-                        <div class="w-full rounded-t-lg transition-all"
-                             :style="'height:' + Math.max(8,(stage.count/maxCount)*120) + 'px; background:linear-gradient(180deg,#7B61FF,#FF6CAB)'"
-                             x-show="maxCount > 0"></div>
+                        <div class="w-full transition-all duration-200 relative overflow-hidden"
+                             :style="`height:${Math.max(12,(stage.count/maxCount)*130)}px; border-radius:9999px;`"
+                             x-show="maxCount > 0">
+                            <div class="absolute inset-0" style="background:rgba(123,97,255,.13); border-radius:9999px"></div>
+                            <div class="absolute inset-0 hatch-bar" style="border-radius:9999px"></div>
+                            <div class="absolute inset-0 rb-bar-solid transition-opacity duration-150"
+                                 style="background:#7B61FF; border-radius:9999px; opacity:0"></div>
+                        </div>
                         <span class="text-xs text-gray-400 text-center capitalize" x-text="stage.label"></span>
                     </div>
                 </template>

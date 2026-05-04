@@ -23,6 +23,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <style>
+        /* ── ReferralBunny bar chart — pill + hatch standard ─────── */
+        .hatch-bar {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(123, 97, 255, 0.42) 0px,
+                rgba(123, 97, 255, 0.42) 2.5px,
+                transparent 2.5px,
+                transparent 7px
+            );
+        }
+        .rb-bar-wrap:hover .hatch-bar  { opacity: 0; }
+        .rb-bar-wrap:hover .rb-bar-solid { opacity: 1 !important; }
+    </style>
 </head>
 <body class="bg-[#F0EFFA] font-sans antialiased">
 
