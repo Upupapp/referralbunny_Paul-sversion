@@ -500,6 +500,79 @@ document.addEventListener('alpine:init', () => {
         </div>
     </div>
 
+    {{-- ── EXPIRY ALERT (once per day, server-gated) ──────────── --}}
+    @if(isset($expiryAlert) && $expiryAlert->count() > 0)
+    <div x-data="{ open: true }"
+         x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="open = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
+
+            {{-- Header --}}
+            <div class="flex items-start gap-4 px-6 pt-6 pb-4 border-b border-gray-100">
+                <div class="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-[#1E1B4B] text-base">
+                        {{ $expiryAlert->count() }} Deal{{ $expiryAlert->count() > 1 ? 's' : '' }} Expiring Soon
+                    </h3>
+                    <p class="text-sm text-gray-400 mt-0.5">These referrals need your attention today.</p>
+                </div>
+                <button @click="open = false" class="text-gray-400 hover:text-gray-600 transition-colors shrink-0 mt-0.5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            {{-- Deal list --}}
+            <div class="px-6 py-3 space-y-1 max-h-64 overflow-y-auto">
+                @foreach($expiryAlert as $deal)
+                <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+                             style="background:#F59E0B">
+                            {{ strtoupper(substr($deal->name, 0, 2)) }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
+                            <p class="text-xs text-gray-400 truncate">{{ $deal->reseller_name ?? 'No referrer assigned' }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-4">
+                        <span class="inline-block text-xs font-bold px-2.5 py-0.5 rounded-full"
+                              style="background:#FEF3C7;color:#D97706">
+                            {{ $deal->days_left }}d left
+                        </span>
+                        @if($deal->deal_value)
+                        <p class="text-xs text-gray-400 mt-0.5">₱{{ number_format($deal->deal_value) }}</p>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                <button @click="open = false"
+                        class="btn-secondary text-sm">
+                    Dismiss for today
+                </button>
+                <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
+                   class="btn-primary text-sm">
+                    View {{ $expiryAlert->count() }} Expiring Deal{{ $expiryAlert->count() > 1 ? 's' : '' }}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- ── ADD DEAL MODAL ───────────────────────────────────── --}}
     <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>

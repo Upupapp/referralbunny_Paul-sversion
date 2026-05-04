@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TenantAdminController extends Controller
 {
@@ -39,8 +40,24 @@ class TenantAdminController extends Controller
             ->latest()
             ->first();
 
+        // Expiry alert — shown once per day per tenant session
+        $sessionKey   = "expiry_alert_{$tenantId}_" . now()->format('Y-m-d');
+        $expiryAlert  = null;
+        if (!session()->has($sessionKey)) {
+            session()->put($sessionKey, true);
+            $expiryAlert = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'expiring')
+                ->select('id', 'name', 'days_left', 'deal_value', 'reseller_name')
+                ->orderBy('days_left')
+                ->get();
+            if ($expiryAlert->isEmpty()) {
+                $expiryAlert = null;
+            }
+        }
+
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric', 'accessExtendedNotif'),
+            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert'),
             $this->configMeta($tenantId)
         ));
     }

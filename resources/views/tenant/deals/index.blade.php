@@ -368,6 +368,12 @@ function dealsModule(tenantId, showLocation) {
         ],
 
         async init() {
+            // Pre-filter from URL param (e.g. ?status=expiring from expiry alert)
+            const urlParams = new URLSearchParams(window.location.search);
+            const preStatus = urlParams.get('status');
+            if (['expiring', 'expired', 'active'].includes(preStatus)) {
+                this.filterStatus = preStatus;
+            }
             try {
                 const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
                 this.leads = Array.isArray(await res.clone().json()) ? await res.json() : [];
