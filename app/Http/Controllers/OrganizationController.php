@@ -103,11 +103,16 @@ class OrganizationController extends Controller
         $province = $request->province;
 
         // Org IDs that already have a non-expired, non-declined active deal
-        $claimedOrgIds = DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->whereNotNull('organization_id')
-            ->whereNotIn('status', ['expired', 'declined'])
-            ->pluck('organization_id');
+        // Wrapped in try/catch in case organization_id column hasn't been migrated yet
+        try {
+            $claimedOrgIds = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('organization_id')
+                ->whereNotIn('status', ['expired', 'declined'])
+                ->pluck('organization_id');
+        } catch (\Throwable $e) {
+            $claimedOrgIds = collect(); // treat all as available if column missing
+        }
 
         $query = DB::table('organizations as o')
             ->where('o.tenant_id', $tenantId)
@@ -117,7 +122,7 @@ class OrganizationController extends Controller
             $query->where('o.address', $province);
         }
 
-        $orgs = $query->orderByRaw("o.data->>'lgu_type' desc") // Cities first
+        $orgs = $query->orderByRaw("o.data->>'lgu_type' desc nulls last")
                       ->orderBy('o.name')
                       ->get()
                       ->map(function ($org) use ($claimedOrgIds) {
@@ -132,7 +137,7 @@ class OrganizationController extends Controller
                           ];
                       });
 
-        return response()->json($orgs);
+        return response()->json($orgs->values());
     }
 
     public function store(Request $request): JsonResponse

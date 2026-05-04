@@ -158,7 +158,12 @@
                     </div>
 
                     <div x-show="!loadingOrgs && claimProvince && availableOrgs.length === 0" class="text-center py-8">
-                        <p class="text-sm text-gray-400">All municipalities in this province are claimed.</p>
+                        <p class="text-sm text-gray-400">No municipalities found for this province.</p>
+                        <p class="text-xs text-gray-400 mt-1">Try selecting a different province.</p>
+                    </div>
+                    <div x-show="!loadingOrgs && availableOrgs.length > 0 && availableOrgs.every(o => o.claimed)" class="px-3 py-3 rounded-xl text-center" style="background:#FFFBEB;border:1px solid #FDE68A">
+                        <p class="text-sm font-medium text-amber-700">All municipalities in this province are currently claimed.</p>
+                        <p class="text-xs text-amber-600 mt-0.5">Try another province or check back when a deal expires.</p>
                     </div>
 
                     <div x-show="!loadingOrgs && availableOrgs.length > 0" class="space-y-1.5 mt-1">
