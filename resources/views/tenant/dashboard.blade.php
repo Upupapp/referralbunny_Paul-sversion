@@ -106,72 +106,77 @@ document.addEventListener('alpine:init', () => {
     <div style="display:grid;grid-template-columns:4fr 3fr 5fr;gap:1rem">
 
         {{-- Bar Chart: Referral Pipeline --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center justify-between mb-5">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" style="display:flex;flex-direction:column">
+            <div class="flex items-center justify-between mb-4 shrink-0">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Pipeline</h3>
-                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
+                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
                     <option>Monthly</option><option>Quarterly</option><option>All Time</option>
                 </select>
             </div>
 
-            <div class="flex gap-2">
-                {{-- Y-axis --}}
-                <div class="flex flex-col justify-between text-right pb-7 shrink-0" style="width:20px">
-                    <span class="text-[9px] text-gray-300" x-text="maxCount"></span>
-                    <span class="text-[9px] text-gray-300" x-text="Math.ceil(maxCount*.5)"></span>
-                    <span class="text-[9px] text-gray-300">0</span>
-                </div>
-                {{-- Chart area --}}
-                <div class="flex-1 relative">
-                    {{-- Dashed grid lines --}}
-                    <div class="absolute inset-0 pb-7 flex flex-col justify-between pointer-events-none" aria-hidden="true">
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
+            {{-- Chart body: grows to fill card --}}
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+                <div style="display:flex;gap:8px;align-items:flex-end;height:100%">
+                    {{-- Y-axis labels --}}
+                    <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;width:16px;flex-shrink:0;padding-bottom:22px;height:100%">
+                        <span class="text-[9px] text-gray-300" x-text="maxCount"></span>
+                        <span class="text-[9px] text-gray-300" x-text="Math.ceil(maxCount*.5)"></span>
+                        <span class="text-[9px] text-gray-300">0</span>
                     </div>
-                    {{-- Bars --}}
-                    <div class="flex items-end justify-between pb-7 gap-2 relative" style="height:160px">
-                        <template x-for="stage in funnel" :key="stage.stage">
-                            <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
-                                 class="relative flex flex-col items-center gap-1 cursor-pointer flex-1" style="max-width:48px">
-                                {{-- Tooltip --}}
-                                <div x-show="hov" x-cloak
-                                     class="absolute z-10 bottom-full mb-2 bg-[#1E1B4B] text-white rounded-xl px-3 py-2 text-center shadow-lg pointer-events-none"
-                                     style="white-space:nowrap;transform:translateX(-50%);left:50%;min-width:90px">
-                                    <p class="text-[10px] text-white/60" x-text="stage.label"></p>
-                                    <p class="text-sm font-bold" x-text="stage.count+' deals'"></p>
+                    {{-- Bars area --}}
+                    <div style="flex:1;position:relative;height:100%">
+                        {{-- Dashed grid lines --}}
+                        <div style="position:absolute;inset:0;padding-bottom:22px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none" aria-hidden="true">
+                            <div class="border-t border-dashed border-gray-100 w-full"></div>
+                            <div class="border-t border-dashed border-gray-100 w-full"></div>
+                            <div class="border-t border-dashed border-gray-100 w-full"></div>
+                        </div>
+                        {{-- Bars row --}}
+                        <div style="position:absolute;bottom:0;left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;gap:6px">
+                            <template x-for="stage in funnel" :key="stage.stage">
+                                <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
+                                     style="flex:1;max-width:48px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative">
+                                    {{-- Tooltip --}}
+                                    <div x-show="hov" x-cloak
+                                         class="absolute z-10 bg-[#1E1B4B] text-white rounded-xl px-3 py-2 text-center shadow-lg pointer-events-none"
+                                         style="bottom:calc(100% + 6px);white-space:nowrap;left:50%;transform:translateX(-50%);min-width:90px">
+                                        <p class="text-[10px] text-white/60" x-text="stage.label"></p>
+                                        <p class="text-sm font-bold" x-text="stage.count+' deals'"></p>
+                                    </div>
+                                    {{-- Bar --}}
+                                    <div class="w-full relative overflow-hidden transition-all duration-200"
+                                         :style="`height:${Math.max(10,(stage.count/maxCount)*130)}px;border-radius:9999px`">
+                                        <div class="absolute inset-0" style="background:rgba(123,97,255,.10);border-radius:9999px"></div>
+                                        <div class="absolute inset-0 hatch-bar transition-opacity duration-150" style="border-radius:9999px"
+                                             :style="`opacity:${hov?0:1}`"></div>
+                                        <div class="absolute inset-0 transition-opacity duration-150"
+                                             style="background:#7B61FF;border-radius:9999px"
+                                             :style="`opacity:${hov?1:0}`"></div>
+                                    </div>
+                                    {{-- Label --}}
+                                    <span class="text-[9px] text-gray-400 text-center leading-tight w-full"
+                                          style="height:22px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"
+                                          x-text="stage.label"></span>
                                 </div>
-                                {{-- Bar --}}
-                                <div class="w-full relative overflow-hidden transition-all duration-200"
-                                     :style="`height:${Math.max(10,(stage.count/maxCount)*130)}px;border-radius:9999px`">
-                                    <div class="absolute inset-0" style="background:rgba(123,97,255,.10);border-radius:9999px"></div>
-                                    <div class="absolute inset-0 hatch-bar transition-opacity duration-150" style="border-radius:9999px"
-                                         :style="`opacity:${hov?0:1}`"></div>
-                                    <div class="absolute inset-0 transition-opacity duration-150"
-                                         style="background:#7B61FF;border-radius:9999px"
-                                         :style="`opacity:${hov?1:0}`"></div>
-                                </div>
-                                <span class="text-[9px] text-gray-400 text-center leading-tight w-full"
-                                      style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"
-                                      x-text="stage.label"></span>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                     </div>
                 </div>
+                <div x-show="funnel.length===0" class="flex items-center justify-center h-24 text-sm text-gray-400">No pipeline data</div>
             </div>
-            {{-- Count labels above bars (small) --}}
-            <div x-show="funnel.length===0" class="flex items-center justify-center h-24 text-sm text-gray-400">No pipeline data</div>
         </div>
 
         {{-- Area Chart: Referral Trend --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div class="flex items-center justify-between mb-2">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" style="display:flex;flex-direction:column">
+            {{-- Header --}}
+            <div class="flex items-center justify-between mb-2 shrink-0">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Trend</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
                     <option>Monthly</option><option>Weekly</option>
                 </select>
             </div>
-            <div class="flex items-center gap-3 mb-4">
+            {{-- Headline stat --}}
+            <div class="flex items-center gap-2 mb-3 shrink-0">
                 <p class="text-2xl font-bold text-[#1E1B4B]" x-text="conversionRate()+'%'"></p>
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
                     <svg class="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 9L6 4l4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -179,32 +184,34 @@ document.addEventListener('alpine:init', () => {
                 </span>
                 <span class="text-xs text-gray-400">6-month trend</span>
             </div>
-            <div style="height:110px">
-                <svg width="100%" height="110" viewBox="0 0 300 100" preserveAspectRatio="none" style="display:block">
+            {{-- SVG fills remaining space --}}
+            <div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end">
+                <svg width="100%" height="100%" viewBox="0 0 300 80" preserveAspectRatio="none" style="display:block;flex:1;min-height:60px">
                     <defs>
                         <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#7B61FF" stop-opacity="0.22"/>
                             <stop offset="100%" stop-color="#7B61FF" stop-opacity="0"/>
                         </linearGradient>
                     </defs>
-                    <template x-if="areaChartData().length>1">
+                    <template x-if="areaChartData().length>1 && !areaChartData().every(d=>d.count===0)">
                         <g>
-                            <path :d="areaPath(areaChartData(),300,95).area" fill="url(#trendGrad)"/>
-                            <path :d="areaPath(areaChartData(),300,95).line" fill="none" stroke="#7B61FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <template x-for="(pt,i) in areaPath(areaChartData(),300,95).pts" :key="i">
+                            <path :d="areaPath(areaChartData(),300,75).area" fill="url(#trendGrad)"/>
+                            <path :d="areaPath(areaChartData(),300,75).line" fill="none" stroke="#7B61FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <template x-for="(pt,i) in areaPath(areaChartData(),300,75).pts" :key="i">
                                 <circle :cx="pt.x" :cy="pt.y" r="3.5" fill="white" stroke="#7B61FF" stroke-width="2"/>
                             </template>
                         </g>
                     </template>
                     <template x-if="areaChartData().every(d=>d.count===0)">
-                        <line x1="0" y1="70" x2="300" y2="70" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="6,4"/>
+                        <line x1="0" y1="65" x2="300" y2="65" stroke="#e5e7eb" stroke-width="1.5" stroke-dasharray="6,4"/>
                     </template>
                 </svg>
-            </div>
-            <div class="flex justify-between mt-1">
-                <template x-for="m in areaChartData()" :key="m.label">
-                    <span class="text-[9px] text-gray-300" x-text="m.label"></span>
-                </template>
+                {{-- X-axis labels pinned to bottom --}}
+                <div class="flex justify-between mt-2 shrink-0">
+                    <template x-for="m in areaChartData()" :key="m.label">
+                        <span class="text-[9px] text-gray-300" x-text="m.label"></span>
+                    </template>
+                </div>
             </div>
         </div>
 
