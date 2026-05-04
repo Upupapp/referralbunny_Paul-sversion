@@ -31,16 +31,13 @@
 
         {{-- Logo --}}
         <a href="@isset($tenant){{ route('tenant.dashboard', $tenant->id) }}@else{{ route('platform.dashboard') }}@endisset"
-           class="flex items-center gap-3 px-5 py-5 border-b border-white/10 hover:bg-white/5 transition-colors">
-            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                 style="background: linear-gradient(135deg, #FF6CAB, #7B61FF)">
-                🐰
+           class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
+            <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
+            <div class="flex-1 min-w-0">
+                <x-rb-logo variant="wordmark" size="xs" :priority="true" :decorative="true" class="brightness-0 invert" />
+                <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
-            <div>
-                <p class="font-bold text-white text-sm leading-none">Referral Bunny</p>
-                <p class="text-white/50 text-xs mt-0.5">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
-            </div>
-            <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white">
+            <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
