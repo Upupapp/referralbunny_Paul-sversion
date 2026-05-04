@@ -103,10 +103,10 @@ document.addEventListener('alpine:init', () => {
     </div>
 
     {{-- ── CHARTS ROW ───────────────────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <div style="display:grid;grid-template-columns:4fr 3fr 5fr;gap:1rem">
 
-        {{-- Bar Chart: Referral Pipeline (4 cols) --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-4">
+        {{-- Bar Chart: Referral Pipeline --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-5">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Pipeline</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
@@ -163,8 +163,8 @@ document.addEventListener('alpine:init', () => {
             <div x-show="funnel.length===0" class="flex items-center justify-center h-24 text-sm text-gray-400">No pipeline data</div>
         </div>
 
-        {{-- Area Chart: Referral Trend (3 cols) --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-3">
+        {{-- Area Chart: Referral Trend --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Trend</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
@@ -208,8 +208,8 @@ document.addEventListener('alpine:init', () => {
             </div>
         </div>
 
-        {{-- Top Resellers panel (5 cols) — styled like Chat reference --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-5">
+        {{-- Top Resellers panel --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Top Resellers</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
