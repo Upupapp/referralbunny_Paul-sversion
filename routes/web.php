@@ -11,8 +11,19 @@ Route::get('/login',  [AuthWebController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
-// ── Redirect root to dashboard ────────────────────────────────
-Route::get('/', fn() => redirect()->route('platform.dashboard'));
+// ── Root redirect — guard-aware ───────────────────────────────
+Route::get('/', function () {
+    if (auth('tenant')->check()) {
+        // Tenant admin → send to their tenant portal, never the platform
+        $membership = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
+            ->where('status', 'active')
+            ->first();
+        return $membership
+            ? redirect()->route('tenant.dashboard', $membership->tenant_id)
+            : redirect()->route('tenant.login');
+    }
+    return redirect()->route('platform.dashboard');
+});
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
@@ -42,7 +53,7 @@ Route::middleware('auth')->prefix('platform')->name('platform.')->group(function
 });
 
 // ── Tenant app ────────────────────────────────────────────────
-Route::middleware(['auth:tenant,web'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
+Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}', [TenantAdminController::class, 'dealShow'])->name('deals.show');

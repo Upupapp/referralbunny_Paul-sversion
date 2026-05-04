@@ -16,7 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(HandleCors::class);
         $middleware->statefulApi();
         $middleware->alias([
-            'feature.access' => \App\Http\Middleware\FeatureAccessMiddleware::class,
+            'feature.access'    => \App\Http\Middleware\FeatureAccessMiddleware::class,
+            'tenant.access'     => \App\Http\Middleware\EnsureTenantAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
