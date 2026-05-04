@@ -687,11 +687,16 @@ document.addEventListener('alpine:init', () => {
             </div>
 
             {{-- Footer --}}
-            <div class="px-5 py-4 border-t border-gray-100 bg-white shrink-0">
+            <div class="px-5 py-4 border-t border-gray-100 bg-white shrink-0 flex gap-3">
                 <button @click="open = false"
-                        class="w-full py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
-                    Dismiss for today
+                        class="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
+                    Skip
                 </button>
+                <a href="{{ route('tenant.deals', $tenant->id) }}?status=expiring"
+                   class="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white text-center transition-colors"
+                   style="background:#7B61FF" onmouseover="this.style.background='#6D4FE8'" onmouseout="this.style.background='#7B61FF'">
+                    View
+                </a>
             </div>
         </div>
     </div>
