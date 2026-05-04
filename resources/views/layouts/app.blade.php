@@ -64,7 +64,7 @@
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
             <div class="flex-1 min-w-0">
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
-                <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant)Tenant Portal@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
+                <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
             <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

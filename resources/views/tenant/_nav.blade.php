@@ -46,21 +46,6 @@ $groups = [
 ];
 @endphp
 
-{{-- Workspace card --}}
-<div class="px-4 pt-2 pb-3">
-    <p class="text-[9px] font-bold text-white/25 uppercase tracking-widest mb-1.5 px-1">Workspace</p>
-    <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/10 border border-white/5">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
-             style="background-color: {{ $tenant->accent_color ?? '#7B61FF' }}">
-            {{ strtoupper(substr($tenant->name, 0, 2)) }}
-        </div>
-        <div class="min-w-0 flex-1">
-            <p class="text-white text-sm font-semibold truncate leading-tight">{{ $tenant->name }}</p>
-            <p class="text-white/40 text-[11px] truncate mt-0.5">{{ $tenant->program_name ?? 'Referral Program' }}</p>
-        </div>
-        <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400/50"></span>
-    </div>
-</div>
 
 {{-- Navigation groups --}}
 @foreach($groups as $group)
