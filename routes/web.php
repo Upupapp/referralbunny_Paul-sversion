@@ -102,8 +102,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/users',           [TenantAdminController::class, 'users'])->name('users');
-    Route::get('/billing',         [TenantAdminController::class, 'billing'])->name('billing');
-    Route::get('/settings',        [TenantAdminController::class, 'settings'])->name('settings');
+    Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
+    Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');
 
     Route::get('/leads', function($tenantId) {
         $tenant = \App\Models\Tenant::findOrFail($tenantId);

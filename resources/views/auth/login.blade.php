@@ -222,11 +222,18 @@
                     </div>
                 </div>
 
-                <div style="display:flex;align-items:center;margin:.75rem 0">
-                    <label style="display:flex;align-items:center;gap:.5rem;font-size:.8125rem;color:#6b7280;cursor:pointer">
-                        <input type="checkbox" name="remember" style="accent-color:#1D4ED8;width:14px;height:14px">
-                        Remember me
-                    </label>
+                <div style="display:flex;align-items:flex-start;gap:.625rem;margin:.875rem 0 1rem">
+                    <input type="checkbox" id="remember_sa" name="remember"
+                           style="margin-top:2px;width:16px;height:16px;accent-color:#1D4ED8;cursor:pointer;flex-shrink:0"
+                           aria-describedby="remember_sa_hint">
+                    <div>
+                        <label for="remember_sa" style="font-size:.8125rem;font-weight:500;color:#374151;cursor:pointer;display:block">
+                            Keep me signed in on this device
+                        </label>
+                        <p id="remember_sa_hint" style="margin:.125rem 0 0;font-size:.6875rem;color:#9CA3AF;line-height:1.4">
+                            For security, only keep Super Admin sessions signed in on trusted devices.
+                        </p>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary">Sign In</button>

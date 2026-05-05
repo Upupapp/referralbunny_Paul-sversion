@@ -275,6 +275,19 @@
                     <a href="#" class="forgot">Forgot password?</a>
                 </div>
 
+                <div style="display:flex;align-items:flex-start;gap:.625rem;margin:.875rem 0 .75rem">
+                    <input type="checkbox" id="remember_tenant" name="remember"
+                           style="margin-top:2px;width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0"
+                           aria-describedby="remember_tenant_hint">
+                    <div>
+                        <label for="remember_tenant" style="font-size:.8125rem;font-weight:500;color:#374151;cursor:pointer;display:block">
+                            Keep me signed in on this device
+                        </label>
+                        <p id="remember_tenant_hint" style="margin:.125rem 0 0;font-size:.6875rem;color:#9CA3AF;line-height:1.4">
+                            Use this only on your personal or trusted device.
+                        </p>
+                    </div>
+                </div>
                 <button type="submit" class="btn-primary">Sign In</button>
             </form>
 

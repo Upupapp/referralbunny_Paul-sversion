@@ -17,10 +17,10 @@ class TenantUser extends Authenticatable
     protected $keyType    = 'string';
 
     protected $fillable = [
-        'id', 'first_name', 'last_name', 'email', 'password', 'status',
+        'id', 'first_name', 'last_name', 'email', 'password', 'status', 'remember_token',
     ];
 
-    protected $hidden = ['password'];
+    protected $hidden = ['password', 'remember_token'];
 
     protected $casts = ['id' => 'string'];
 
