@@ -648,5 +648,6 @@ function toastSystem() {
     }
 }
 </script>
+@stack('scripts')
 </body>
 </html>
