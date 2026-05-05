@@ -150,8 +150,14 @@ class TenantAdminController extends Controller
 
     public function messages($tenantId)
     {
-        $tenant = Tenant::findOrFail($tenantId);
-        return view('tenant.messages.index', compact('tenant'));
+        $tenant    = Tenant::findOrFail($tenantId);
+        $resellers = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->whereIn('status', ['active', 'invited'])
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
+        return view('tenant.messages.index', compact('tenant', 'resellers'));
     }
 
     public function reports($tenantId)

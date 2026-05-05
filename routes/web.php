@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\PlatformController;
+use App\Http\Controllers\Web\MessageController;
 use App\Http\Controllers\Web\TenantAdminController;
 use App\Http\Controllers\Web\TenantAuthWebController;
 use App\Http\Controllers\ResellerPortalAuthController;
@@ -98,7 +99,11 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
     Route::get('/referrers',       [TenantAdminController::class, 'referrers'])->name('referrers');
     Route::get('/tasks',           [TenantAdminController::class, 'tasks'])->name('tasks');
-    Route::get('/messages',        [TenantAdminController::class, 'messages'])->name('messages');
+    Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
+    Route::get('/messages/threads',                      [MessageController::class, 'threads'])->name('messages.threads');
+    Route::post('/messages/threads',                     [MessageController::class, 'startThread'])->name('messages.start');
+    Route::get('/messages/threads/{threadId}',           [MessageController::class, 'threadMessages'])->name('messages.thread');
+    Route::post('/messages/threads/{threadId}',          [MessageController::class, 'sendMessage'])->name('messages.send');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/users',           [TenantAdminController::class, 'users'])->name('users');
