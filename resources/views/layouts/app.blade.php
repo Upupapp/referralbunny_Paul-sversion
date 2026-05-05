@@ -390,9 +390,12 @@
                             </template>
                         </div>
                         @php
-                            $notifAllUrl = auth('tenant')->check()
-                                ? route('tenant.notifications', optional(\App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())->where('status','active')->first())->tenant_id ?? '#')
-                                : (auth('web')->check() ? route('platform.dashboard') : '#');
+                            $notifAllUrl = '#';
+                            if (auth('tenant')->check() && isset($tenant)) {
+                                $notifAllUrl = route('tenant.notifications', $tenant->id);
+                            } elseif (auth('web')->check()) {
+                                $notifAllUrl = route('platform.dashboard');
+                            }
                         @endphp
                         <div class="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
                             <a href="{{ $notifAllUrl }}" @click="open = false"

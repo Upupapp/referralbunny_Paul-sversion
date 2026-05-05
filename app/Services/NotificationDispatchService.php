@@ -181,7 +181,8 @@ class NotificationDispatchService
                 )->orWhere(fn($q) =>
                     $q->whereNull('notifiable_type')->whereNull('tenant_id')
                 )
-            )->whereNull('archived_at');
+            )->whereNull('archived_at')
+             ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
         if ($tenantId && $type === 'tenant_admin') {
@@ -192,7 +193,8 @@ class NotificationDispatchService
                 )->orWhere(fn($q) =>
                     $q->where('tenant_id', $tenantId)->whereNull('notifiable_type')
                 )
-            )->whereNull('archived_at');
+            )->whereNull('archived_at')
+             ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
         return $q;

@@ -20,7 +20,7 @@ class NotificationsController extends Controller
     public function markRead(Request $request, string $tenantId, string $notificationId)
     {
         $this->findUserNotification($notificationId)->update(['is_read' => true]);
-        return back()->with('success', 'Marked as read.');
+        return response()->json(['ok' => true]);
     }
 
     public function archive(Request $request, string $tenantId, string $notificationId)

@@ -83,14 +83,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('messages/{message}',[MessageController::class, 'update']);
     Route::delete('messages/{message}',[MessageController::class, 'destroy']);
 
-    // Notifications
-    Route::apiResource('notifications', NotificationController::class);
+    // Notifications — specific routes MUST be before apiResource to avoid {notification} binding conflict
     Route::post('notifications/mark-all-read',           [NotificationController::class, 'markAllRead']);
     Route::get('notifications/unread-count',             [NotificationController::class, 'unreadCount']);
-    // Auth-aware per-user notification endpoints
     Route::get('notifications/mine',                     [NotificationController::class, 'mine']);
     Route::get('notifications/mine/unread-count',        [NotificationController::class, 'mineUnreadCount']);
     Route::post('notifications/mine/mark-all-read',      [NotificationController::class, 'markMineRead']);
+    Route::apiResource('notifications', NotificationController::class);
 
     // Analytics + Tenant Metrics
     Route::get('analytics/summary',                      [TenantMetricController::class, 'platformSummary']);
