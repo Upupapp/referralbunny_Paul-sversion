@@ -46,17 +46,20 @@
     <div class="header">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
-                <td align="center" style="padding-bottom:16px">
-                    <img src="https://referralbunny.ai/images/logos/referralbunny-white-logo.webp"
-                         alt="ReferralBunny.ai" height="36"
-                         style="height:36px;width:auto;display:block;margin:0 auto">
+                <td align="center" style="padding-bottom:20px">
+                    {{-- PNG logo — most compatible across all email clients --}}
+                    <img src="https://referralbunny.ai/images/logos/referralbunny-social-avatar.png"
+                         alt="ReferralBunny.ai" width="64" height="64"
+                         style="width:64px;height:64px;border-radius:16px;display:block;margin:0 auto 12px">
+                    <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px">referralbunny.ai</div>
                 </td>
             </tr>
             <tr>
-                <td align="center">
+                <td align="center" style="padding-bottom:16px">
+                    {{-- Mascot --}}
                     <img src="https://referralbunny.ai/images/mascots/r-bunny-portal.webp"
-                         alt="" aria-hidden="true" width="110" height="110"
-                         style="width:110px;height:110px;object-fit:contain;display:block;margin:0 auto 12px">
+                         alt="" width="100" height="100"
+                         style="width:100px;height:100px;object-fit:contain;display:block;margin:0 auto">
                 </td>
             </tr>
             @if(isset($headerLabel))
