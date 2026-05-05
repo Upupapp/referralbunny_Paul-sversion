@@ -8,39 +8,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script>if(!sessionStorage.getItem('rb_intro_reseller')){document.documentElement.classList.add('show-intro');}</script>
     <style>
         * { box-sizing: border-box; }
-        #intro { display: none; }
-        html.show-intro #intro { display: flex; }
         body {
             margin: 0; padding: 0; min-height: 100vh;
             font-family: 'Inter', sans-serif;
             background: linear-gradient(145deg, #052E2A 0%, #0F6B5F 55%, #042320 100%);
             display: flex; align-items: center; justify-content: center;
         }
-        #intro {
-            position: fixed; inset: 0; z-index: 100;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            padding: 2rem 1.5rem;
-            background: linear-gradient(145deg, #052E2A 0%, #0F6B5F 55%, #042320 100%);
-            transition: opacity .5s ease;
-        }
-        #intro-footer { position: absolute; bottom: 2rem; left: 1.5rem; right: 1.5rem; display: flex; align-items: center; justify-content: space-between; }
-        #intro.fading { opacity: 0; pointer-events: none; }
-        #intro.gone   { display: none !important; }
-        .al { animation: aUp .8s ease-out .2s both; }
-        .am { animation: aUp .8s ease-out .4s both; }
-        .at { animation: aIn .6s ease-out .3s both; }
-        .af { animation: aIn .5s ease-out .5s both; }
-        .g1 { animation: gp 5s ease-in-out infinite; }
-        .g2 { animation: gp 5s ease-in-out 2.5s infinite; }
-        @keyframes aUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
-        @keyframes aIn { from{opacity:0} to{opacity:1} }
-        @keyframes gp  { 0%,100%{opacity:.18} 50%{opacity:.3} }
-        @media (prefers-reduced-motion: reduce) { #intro { display: none !important; } }
-
         .login-page { width: 100%; padding: 1.5rem; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .login-card { width: 100%; max-width: 900px; display: flex; border-radius: 24px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,.45); min-height: 580px; }
         .card-left  { flex: 1; background: #ffffff; display: flex; flex-direction: column; justify-content: center; padding: 3rem; }
@@ -73,29 +48,6 @@
 </head>
 <body>
 
-{{-- Intro --}}
-<div id="intro">
-    <div class="g1" style="position:absolute;width:500px;height:500px;border-radius:50%;top:-200px;left:-200px;pointer-events:none;background:radial-gradient(circle,#0D9488,transparent 65%)"></div>
-    <div class="g2" style="position:absolute;width:400px;height:400px;border-radius:50%;bottom:-150px;right:-150px;pointer-events:none;background:radial-gradient(circle,#14B8A6,transparent 65%)"></div>
-    <div class="al" style="position:absolute;top:2rem;left:50%;transform:translateX(-50%);z-index:1">
-        <x-rb-logo variant="white" size="sm" :priority="true" :decorative="true" />
-    </div>
-    <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.25rem;text-align:center">
-        <div class="at" style="padding:0 1rem">
-            <h1 style="margin:0;font-size:1.5rem;font-weight:700;color:#ffffff;letter-spacing:-.02em;text-shadow:0 1px 8px rgba(0,0,0,.3)">Welcome, Referrer!</h1>
-            <p style="margin:.375rem 0 0;font-size:.875rem;color:rgba(255,255,255,.7)">Track your deals, commissions, and more.</p>
-        </div>
-        <div class="am" style="width:220px;height:220px;flex-shrink:0">
-            <x-r-bunny variant="rocket" size="lg" :decorative="true" style="width:220px;height:220px;object-fit:contain" />
-        </div>
-    </div>
-    <div id="intro-footer" class="af">
-        <span style="font-size:.625rem;color:rgba(255,255,255,.3);letter-spacing:.15em;text-transform:uppercase">Referrer Portal</span>
-        <button onclick="skipIntro()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:.875rem;cursor:pointer;padding:.25rem .5rem;border-radius:6px;font-family:'Inter',sans-serif" onmouseover="this.style.color='rgba(255,255,255,.8)'" onmouseout="this.style.color='rgba(255,255,255,.4)'">Skip</button>
-    </div>
-</div>
-
-{{-- Login --}}
 <div class="login-page">
     <div class="login-card">
 
@@ -186,15 +138,5 @@
     </div>
 </div>
 
-<script>
-    var intro = document.getElementById('intro');
-    var timer;
-    if (document.documentElement.classList.contains('show-intro')) {
-        sessionStorage.setItem('rb_intro_reseller', '1');
-        timer = setTimeout(advance, 5000);
-    }
-    function advance() { clearTimeout(timer); if (!intro) return; intro.classList.add('fading'); setTimeout(function(){ intro.classList.add('gone'); }, 500); }
-    function skipIntro() { advance(); }
-</script>
 </body>
 </html>
