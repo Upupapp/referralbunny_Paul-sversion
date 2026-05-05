@@ -107,6 +107,17 @@ Route::middleware('auth')->prefix('platform')->name('platform.')->group(function
     Route::get('/import/{job}',        [PlatformController::class, 'importShow'])->name('import.show');
 });
 
+// ── Messaging thread endpoints — accessible by tenant admins AND resellers ──
+Route::middleware(['auth:tenant,reseller,web'])
+    ->prefix('tenant/{tenantId}/messages')
+    ->name('tenant.messages.')
+    ->group(function () {
+        Route::get('/threads',             [MessageController::class, 'threads'])->name('threads');
+        Route::post('/threads',            [MessageController::class, 'startThread'])->name('start');
+        Route::get('/threads/{threadId}',  [MessageController::class, 'threadMessages'])->name('thread');
+        Route::post('/threads/{threadId}', [MessageController::class, 'sendMessage'])->name('send');
+    });
+
 // ── Tenant app ────────────────────────────────────────────────
 Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
@@ -117,10 +128,6 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/referrers',       [TenantAdminController::class, 'referrers'])->name('referrers');
     Route::get('/tasks',           [TenantAdminController::class, 'tasks'])->name('tasks');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
-    Route::get('/messages/threads',                      [MessageController::class, 'threads'])->name('messages.threads');
-    Route::post('/messages/threads',                     [MessageController::class, 'startThread'])->name('messages.start');
-    Route::get('/messages/threads/{threadId}',           [MessageController::class, 'threadMessages'])->name('messages.thread');
-    Route::post('/messages/threads/{threadId}',          [MessageController::class, 'sendMessage'])->name('messages.send');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/users',           [TenantAdminController::class, 'users'])->name('users');

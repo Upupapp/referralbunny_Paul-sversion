@@ -14,17 +14,18 @@
     x-init="init()"
     x-ref="root"
     class="flex flex-col"
-    style="height: calc(100vh - 88px);"
+    style="height: calc(100dvh - 88px); min-height: 400px;"
 >
 
-    {{-- Chat Panel — fills remaining height --}}
+    {{-- Chat Panel --}}
     <div class="card p-0 overflow-hidden flex flex-1 min-h-0">
 
         {{-- ── Left: Thread List ────────────────────────────── --}}
-        <div class="w-72 border-r border-gray-100 flex flex-col shrink-0 min-h-0">
+        <div :class="mobilePane === 'list' ? 'flex' : 'hidden lg:flex'"
+             class="w-full lg:w-72 border-r border-gray-100 flex-col shrink-0 min-h-0">
 
             {{-- Left header --}}
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
                 <div>
                     <h2 class="text-sm font-bold text-[#1E1B4B]">Messages</h2>
                     <p class="text-[10px] text-gray-400 mt-0.5">
@@ -104,6 +105,9 @@
                         <p x-show="search">No results</p>
                         <p x-show="!search && activeTab === 'needs_reply'">No pending replies</p>
                         <p x-show="!search && activeTab !== 'needs_reply'">No conversations yet</p>
+                        <button x-show="!search && activeTab !== 'needs_reply'"
+                                @click="openCompose = true"
+                                class="mt-3 btn-primary text-xs">Start a Conversation</button>
                     </div>
                 </template>
 
@@ -131,6 +135,10 @@
                                           class="shrink-0 w-4 h-4 rounded-full bg-[#7B61FF] flex items-center justify-center">
                                         <span class="text-[8px] font-bold text-white" x-text="thread.admin_unread"></span>
                                     </span>
+                                    {{-- Chevron on mobile --}}
+                                    <svg class="lg:hidden w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
                                 </div>
                             </div>
                         </div>
@@ -140,9 +148,10 @@
         </div>
 
         {{-- ── Right: Active Thread ─────────────────────────── --}}
-        <div class="flex-1 flex flex-col min-w-0">
+        <div :class="mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'"
+             class="flex-1 flex-col min-w-0">
 
-            {{-- No thread selected --}}
+            {{-- No thread selected (desktop only) --}}
             <template x-if="!activeThread">
                 <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
                     <div class="w-14 h-14 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-3">
@@ -160,14 +169,21 @@
                 <div class="flex flex-col h-full min-h-0">
 
                     {{-- Thread header --}}
-                    <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
+                    <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+                        {{-- Back button (mobile only) --}}
+                        <button @click="mobilePane = 'list'; activeThread = null"
+                                class="lg:hidden p-1.5 -ml-0.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
                         <div class="w-8 h-8 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
                              x-text="activeThread.reseller_name?.charAt(0).toUpperCase()"></div>
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-sm text-[#1E1B4B] truncate" x-text="activeThread.reseller_name"></p>
                             <p class="text-[10px] text-gray-400 truncate" x-text="activeThread.reseller_email"></p>
                         </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-full px-2.5 py-1 shrink-0">
+                        <span class="hidden sm:inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-full px-2.5 py-1 shrink-0">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
                             In-app
                         </span>
@@ -175,7 +191,7 @@
 
                     {{-- Reminder banner --}}
                     <template x-if="activeThreadReminder">
-                        <div class="mx-3 mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                        <div class="mx-3 mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 shrink-0">
                             <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
@@ -185,7 +201,7 @@
                     </template>
 
                     {{-- Messages --}}
-                    <div class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" x-ref="messageArea">
+                    <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0" x-ref="messageArea">
                         <template x-if="loadingMessages">
                             <div class="flex justify-center py-8">
                                 <svg class="w-4 h-4 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
@@ -205,7 +221,7 @@
                                         ? 'text-white rounded-2xl rounded-br-sm'
                                         : 'bg-gray-100 text-[#1E1B4B] rounded-2xl rounded-bl-sm'"
                                      :style="msg.sender_type === 'admin' ? 'background:linear-gradient(135deg,#7B61FF,#9B8BFF)' : ''"
-                                     class="max-w-[70%] px-4 py-2.5">
+                                     class="max-w-[78%] sm:max-w-[70%] px-3.5 sm:px-4 py-2.5">
                                     <p class="text-sm leading-relaxed whitespace-pre-wrap" x-text="msg.body"></p>
                                     <p :class="msg.sender_type === 'admin' ? 'text-white/50' : 'text-gray-400'"
                                        class="text-[10px] mt-1 text-right" :title="msg.created_at_full"
@@ -216,10 +232,10 @@
                     </div>
 
                     {{-- Compose --}}
-                    <div class="p-3 border-t border-gray-100 shrink-0">
+                    <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
                         <form @submit.prevent="sendReply()" class="flex gap-2 items-end">
                             <textarea x-model="replyBody" placeholder="Type a message…" rows="1"
-                                      class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-[#7B61FF]/20 focus:border-[#7B61FF] transition-all"
+                                      class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-[#7B61FF]/20 focus:border-[#7B61FF] transition-all"
                                       style="min-height:40px; max-height:120px;"
                                       @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
                                       @keydown.enter.prevent.exact="sendReply()"
@@ -237,7 +253,6 @@
                                 </svg>
                             </button>
                         </form>
-                        <p class="text-[9px] text-gray-400 mt-1.5 pl-1">Enter to send · Shift+Enter for new line</p>
                     </div>
 
                 </div>
@@ -246,7 +261,7 @@
     </div>
 
     {{-- New Message Modal --}}
-    <div x-show="openCompose" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div x-show="openCompose" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
         <div @click="openCompose = false" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
@@ -319,6 +334,7 @@ function messaging() {
         activeTab:            'all',
         needsReplyCount:      0,
         activeThreadReminder: null,
+        mobilePane:           'list',
 
         get filteredThreads() {
             const q    = this.search.toLowerCase();
@@ -373,6 +389,7 @@ function messaging() {
             this.activeMessages       = [];
             this.activeThreadReminder = null;
             this.loadingMessages      = true;
+            this.mobilePane           = 'chat';
 
             try {
                 const r = await fetch('/api/message-reminders/active', { headers: hdrs() });

@@ -49,23 +49,36 @@ class MessageController extends Controller
             ['id' => (string) Str::uuid()]
         );
 
+        $isReseller = auth('reseller')->check();
+        $senderType = $isReseller ? 'reseller' : 'admin';
+        $senderId   = $isReseller
+            ? (string) auth('reseller')->id()
+            : (string) (auth('tenant')->id() ?? auth('web')->id());
         $senderName = $this->senderName();
 
         $msg = ThreadMessage::create([
             'id'          => (string) Str::uuid(),
             'thread_id'   => $thread->id,
             'tenant_id'   => $tenantId,
-            'sender_type' => 'admin',
-            'sender_id'   => (string) (auth('tenant')->id() ?? auth('web')->id()),
+            'sender_type' => $senderType,
+            'sender_id'   => $senderId,
             'sender_name' => $senderName,
             'body'        => $request->body,
         ]);
 
-        $thread->update([
-            'last_message_at'      => now(),
-            'last_message_preview' => Str::limit($request->body, 80),
-            'reseller_unread'      => DB::raw('reseller_unread + 1'),
-        ]);
+        if ($isReseller) {
+            $thread->update([
+                'last_message_at'      => now(),
+                'last_message_preview' => Str::limit($request->body, 80),
+                'admin_unread'         => DB::raw('admin_unread + 1'),
+            ]);
+        } else {
+            $thread->update([
+                'last_message_at'      => now(),
+                'last_message_preview' => Str::limit($request->body, 80),
+                'reseller_unread'      => DB::raw('reseller_unread + 1'),
+            ]);
+        }
 
         return response()->json([
             'thread_id' => $thread->id,
@@ -111,6 +124,11 @@ class MessageController extends Controller
             ->where('id', $threadId)
             ->firstOrFail();
 
+        $isReseller = Auth::guard('reseller')->check();
+        $senderType = $isReseller ? 'reseller' : 'admin';
+        $senderId   = $isReseller
+            ? (string) Auth::guard('reseller')->id()
+            : (string) (Auth::guard('tenant')->id() ?? Auth::guard('web')->id());
         $senderName = $this->senderName();
 
         // Resolve any active reminders for this thread for the current sender
@@ -124,26 +142,35 @@ class MessageController extends Controller
             'id'          => (string) Str::uuid(),
             'thread_id'   => $threadId,
             'tenant_id'   => $tenantId,
-            'sender_type' => 'admin',
-            'sender_id'   => (string) (auth('tenant')->id() ?? auth('web')->id()),
+            'sender_type' => $senderType,
+            'sender_id'   => $senderId,
             'sender_name' => $senderName,
             'body'        => $request->body,
         ]);
 
-        $thread->update([
-            'last_message_at'      => now(),
-            'last_message_preview' => Str::limit($request->body, 80),
-            'reseller_unread'      => DB::raw('reseller_unread + 1'),
-        ]);
+        if ($isReseller) {
+            $thread->update([
+                'last_message_at'      => now(),
+                'last_message_preview' => Str::limit($request->body, 80),
+                'admin_unread'         => DB::raw('admin_unread + 1'),
+            ]);
+        } else {
+            $thread->update([
+                'last_message_at'      => now(),
+                'last_message_preview' => Str::limit($request->body, 80),
+                'reseller_unread'      => DB::raw('reseller_unread + 1'),
+            ]);
+        }
 
         return response()->json($this->formatMessage($msg));
     }
 
     private function senderName(): string
     {
-        if (auth('tenant')->check()) return auth('tenant')->user()->name;
-        if (auth('web')->check())    return auth('web')->user()->name;
-        return 'Admin';
+        if (auth('reseller')->check()) return auth('reseller')->user()->name;
+        if (auth('tenant')->check())   return auth('tenant')->user()->name;
+        if (auth('web')->check())      return auth('web')->user()->name;
+        return 'Unknown';
     }
 
     private function formatMessage(ThreadMessage $m): array

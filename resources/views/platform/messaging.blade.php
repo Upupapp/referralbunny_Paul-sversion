@@ -13,7 +13,7 @@
 <div class="space-y-5" x-data="messaging()" x-init="init()" @open-compose.window="showCompose = true">
 
     {{-- Stats --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         @foreach([
             ['Total Sent', 'total', 'bg-purple-100', 'text-purple-600'],
             ['Delivered', 'delivered', 'bg-emerald-100', 'text-emerald-600'],
@@ -67,7 +67,7 @@
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead><tr class="table-head">
-                    <th>Recipient</th><th>Subject</th><th>Channel</th><th>Status</th><th>Date</th>
+                    <th>Recipient</th><th class="hidden sm:table-cell">Subject</th><th class="hidden sm:table-cell">Channel</th><th>Status</th><th class="hidden md:table-cell">Date</th>
                 </tr></thead>
                 <tbody>
                     <template x-if="loading">
@@ -79,15 +79,15 @@
                     <template x-for="msg in messages" :key="msg.id">
                         <tr class="table-row">
                             <td x-text="msg.recipient_name || msg.recipient_email || '—'"></td>
-                            <td class="max-w-xs truncate" x-text="msg.subject || msg.body?.slice(0,50) || '—'"></td>
-                            <td>
+                            <td class="hidden sm:table-cell max-w-xs truncate" x-text="msg.subject || msg.body?.slice(0,50) || '—'"></td>
+                            <td class="hidden sm:table-cell">
                                 <span class="badge badge-purple capitalize" x-text="msg.channel || 'in_app'"></span>
                             </td>
                             <td>
                                 <span :class="{'badge':true,'badge-green':msg.status==='delivered','badge-red':msg.status==='failed','badge-orange':msg.status==='pending','badge-blue':msg.status==='sent'}"
                                       x-text="msg.status || 'sent'"></span>
                             </td>
-                            <td class="text-gray-400 text-xs" x-text="msg.created_at ? new Date(msg.created_at).toLocaleDateString() : '—'"></td>
+                            <td class="hidden md:table-cell text-gray-400 text-xs" x-text="msg.created_at ? new Date(msg.created_at).toLocaleDateString() : '—'"></td>
                         </tr>
                     </template>
                 </tbody>

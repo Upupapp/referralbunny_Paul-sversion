@@ -2,7 +2,7 @@
 @section('title', 'Messages')
 
 @section('content')
-<div x-data="resellerChat()" x-init="init()" class="flex flex-col" style="height:calc(100vh - 88px)">
+<div x-data="resellerChat()" x-init="init()" class="flex flex-col" style="height:calc(100dvh - 88px); min-height:400px;">
 
     <div class="card p-0 overflow-hidden flex flex-1 min-h-0">
 
@@ -42,17 +42,17 @@
         <div class="flex-1 flex flex-col min-h-0">
 
             {{-- Thread header --}}
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
+            <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2.5 shrink-0">
                 <div class="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs shrink-0">
                     {{ strtoupper(substr($tenant->name, 0, 1)) }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-[#1E1B4B]">{{ $tenant->name }}</p>
-                    <p class="text-[10px] text-gray-400">Workspace Admin · In-app messaging</p>
+                    <p class="font-semibold text-sm text-[#1E1B4B] truncate">{{ $tenant->name }}</p>
+                    <p class="text-[10px] text-gray-400">Workspace Admin · In-app</p>
                 </div>
-                <span class="hidden sm:inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-full px-2.5 py-1 shrink-0">
+                <span class="inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-full px-2 py-1 shrink-0">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                    Connected
+                    <span class="hidden sm:inline">Connected</span>
                 </span>
             </div>
 
@@ -76,7 +76,7 @@
                                     ? 'text-white rounded-2xl rounded-br-sm'
                                     : 'bg-gray-100 text-[#1E1B4B] rounded-2xl rounded-bl-sm'"
                                  :style="msg.sender_type === 'reseller' ? 'background:linear-gradient(135deg,#0D9488,#14B8A6)' : ''"
-                                 class="max-w-[72%] px-4 py-2.5">
+                                 class="max-w-[78%] sm:max-w-[72%] px-3.5 sm:px-4 py-2.5">
                                 <p class="text-sm leading-relaxed whitespace-pre-wrap" x-text="msg.body"></p>
                                 <p :class="msg.sender_type === 'reseller' ? 'text-white/50' : 'text-gray-400'"
                                    class="text-[10px] mt-1 text-right"
@@ -93,7 +93,7 @@
                                 ? 'text-white rounded-2xl rounded-br-sm'
                                 : 'bg-gray-100 text-[#1E1B4B] rounded-2xl rounded-bl-sm'"
                              :style="msg.sender_type === 'reseller' ? 'background:linear-gradient(135deg,#0D9488,#14B8A6)' : ''"
-                             class="max-w-[72%] px-4 py-2.5">
+                             class="max-w-[78%] sm:max-w-[72%] px-3.5 sm:px-4 py-2.5">
                             <p class="text-sm leading-relaxed whitespace-pre-wrap" x-text="msg.body"></p>
                             <p :class="msg.sender_type === 'reseller' ? 'text-white/50' : 'text-gray-400'"
                                class="text-[10px] mt-1 text-right"
@@ -104,13 +104,13 @@
             </div>
 
             {{-- Compose --}}
-            <div class="p-3 border-t border-gray-100 shrink-0">
+            <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
                 @if(!$thread)
                     <p class="text-xs text-gray-400 mb-2 text-center">Start the conversation — your admin will be notified.</p>
                 @endif
                 <form @submit.prevent="send()" class="flex gap-2 items-end">
                     <textarea x-model="body" placeholder="Type a message…" rows="1"
-                              class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all"
+                              class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all"
                               style="min-height:40px; max-height:120px;"
                               @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
                               @keydown.enter.prevent.exact="send()"
@@ -128,7 +128,6 @@
                         </svg>
                     </button>
                 </form>
-                <p class="text-[9px] text-gray-400 mt-1.5 pl-1">Enter to send · Shift+Enter for new line</p>
             </div>
         </div>
     </div>
