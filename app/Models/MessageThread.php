@@ -11,7 +11,7 @@ class MessageThread extends Model
     protected $keyType  = 'string';
 
     protected $fillable = [
-        'id', 'tenant_id', 'reseller_id',
+        'id', 'tenant_id', 'reseller_id', 'deal_id', 'status',
         'last_message_at', 'last_message_preview',
         'admin_unread', 'reseller_unread',
     ];

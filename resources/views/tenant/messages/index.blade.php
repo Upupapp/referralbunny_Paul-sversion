@@ -70,6 +70,30 @@
 
         {{-- Left: Thread List --}}
         <div class="w-72 border-r border-gray-100 flex flex-col shrink-0">
+            {{-- Tabs --}}
+            <div class="flex border-b border-gray-100">
+                <button
+                    @click="activeTab = 'all'; loadThreads()"
+                    :class="activeTab === 'all' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-xs font-medium py-2.5 transition-colors"
+                >All</button>
+                <button
+                    @click="activeTab = 'needs_reply'; loadNeedsReply()"
+                    :class="activeTab === 'needs_reply' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-xs font-medium py-2.5 transition-colors relative"
+                >
+                    Needs Reply
+                    <span x-show="needsReplyCount > 0"
+                          class="absolute -top-0.5 right-1 w-4 h-4 rounded-full bg-orange-400 text-white text-[9px] font-bold flex items-center justify-center"
+                          x-text="needsReplyCount > 9 ? '9+' : needsReplyCount"></span>
+                </button>
+                <button
+                    @click="activeTab = 'unread'; loadThreads()"
+                    :class="activeTab === 'unread' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-xs font-medium py-2.5 transition-colors"
+                >Unread</button>
+            </div>
+
             <div class="p-3 border-b border-gray-100">
                 <input
                     x-model="search"
@@ -178,6 +202,17 @@
                             </span>
                         </div>
                     </div>
+
+                    {{-- Reminder banner for this thread --}}
+                    <template x-if="activeThreadReminder">
+                        <div class="mx-3 mt-2 flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
+                            <svg class="w-3.5 h-3.5 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <p class="text-xs text-orange-700 flex-1" x-text="activeThreadReminder?.body"></p>
+                            <button @click="resolveThreadReminder()" class="text-[10px] text-orange-500 hover:text-orange-700 font-medium shrink-0">Dismiss</button>
+                        </div>
+                    </template>
 
                     {{-- Messages scroll area --}}
                     <div class="flex-1 overflow-y-auto p-4 space-y-3" x-ref="messageArea">
@@ -311,23 +346,30 @@
 function messaging() {
     const BASE = '{{ url("tenant/" . $tenant->id . "/messages") }}';
     const CSRF = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const hdrs = (extra = {}) => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...extra });
+    const postHdrs = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF });
 
     return {
-        threads:        [],
-        activeThread:   null,
-        activeMessages: [],
-        openCompose:    false,
-        search:         '',
-        replyBody:      '',
-        sending:        false,
-        loading:        false,
-        loadingMessages: false,
-        compose:        { reseller_id: '', body: '' },
+        threads:             [],
+        activeThread:        null,
+        activeMessages:      [],
+        openCompose:         false,
+        search:              '',
+        replyBody:           '',
+        sending:             false,
+        loading:             false,
+        loadingMessages:     false,
+        compose:             { reseller_id: '', body: '' },
+        activeTab:           'all',
+        needsReplyCount:     0,
+        activeThreadReminder: null,
 
         get filteredThreads() {
-            if (!this.search) return this.threads;
             const q = this.search.toLowerCase();
-            return this.threads.filter(t =>
+            let list = this.threads;
+            if (this.activeTab === 'unread') list = list.filter(t => t.admin_unread > 0);
+            if (!q) return list;
+            return list.filter(t =>
                 t.reseller_name.toLowerCase().includes(q) ||
                 (t.last_message_preview ?? '').toLowerCase().includes(q)
             );
@@ -340,14 +382,34 @@ function messaging() {
         async init() {
             window.__messaging = this;
             await this.loadThreads();
+            await this.loadNeedsReplyCount();
+        },
+
+        async loadNeedsReplyCount() {
+            try {
+                const r    = await fetch('/api/message-reminders/active', { headers: hdrs() });
+                const data = await r.json();
+                this.needsReplyCount = data.count ?? 0;
+            } catch(e) {}
+        },
+
+        async loadNeedsReply() {
+            this.activeTab = 'needs_reply';
+            this.loading   = true;
+            try {
+                const r    = await fetch('/api/message-reminders/needs-reply', { headers: hdrs() });
+                const data = await r.json();
+                this.threads = data.threads ?? [];
+            } finally {
+                this.loading = false;
+            }
         },
 
         async loadThreads() {
-            this.loading = true;
+            this.activeTab = 'all';
+            this.loading   = true;
             try {
-                const r = await fetch(`${BASE}/threads`, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                });
+                const r      = await fetch(`${BASE}/threads`, { headers: hdrs() });
                 this.threads = await r.json();
             } finally {
                 this.loading = false;
@@ -355,13 +417,21 @@ function messaging() {
         },
 
         async selectThread(thread) {
-            this.activeThread   = { ...thread };
-            this.activeMessages = [];
-            this.loadingMessages = true;
+            this.activeThread        = { ...thread };
+            this.activeMessages      = [];
+            this.activeThreadReminder = null;
+            this.loadingMessages      = true;
+
+            // Check if there's an active reminder for this thread
             try {
-                const r = await fetch(`${BASE}/threads/${thread.id}`, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                });
+                const r    = await fetch('/api/message-reminders/active', { headers: hdrs() });
+                const data = await r.json();
+                const match = (data.reminders ?? []).find(rem => rem.thread_id === thread.id);
+                if (match) this.activeThreadReminder = match;
+            } catch(e) {}
+
+            try {
+                const r = await fetch(`${BASE}/threads/${thread.id}`, { headers: hdrs() });
                 const data = await r.json();
                 this.activeThread   = { ...this.activeThread, ...data.thread };
                 this.activeMessages = data.messages;
@@ -372,6 +442,17 @@ function messaging() {
                 this.loadingMessages = false;
                 this.$nextTick(() => this.scrollToBottom());
             }
+        },
+
+        async resolveThreadReminder() {
+            if (!this.activeThreadReminder) return;
+            try {
+                await fetch('/api/message-reminders/dismiss', {
+                    method: 'POST', headers: postHdrs(),
+                    body: JSON.stringify({ deduplication_key: this.activeThreadReminder.deduplication_key }),
+                });
+            } catch(e) {}
+            this.activeThreadReminder = null;
         },
 
         async sendReply() {
@@ -391,7 +472,9 @@ function messaging() {
                 const msg = await r.json();
                 this.activeMessages.push(msg);
                 this.updateThreadPreview(this.activeThread.id, msg);
-                this.replyBody = '';
+                this.replyBody            = '';
+                this.activeThreadReminder = null;
+                this.needsReplyCount      = Math.max(0, this.needsReplyCount - 1);
                 this.$nextTick(() => {
                     this.scrollToBottom();
                     this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));

@@ -8,6 +8,7 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ResellerController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\MessageReminderController;
 use App\Http\Controllers\TenantMetricController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\WebhookController;
@@ -82,6 +83,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('messages/{message}', [MessageController::class, 'update']);
     Route::patch('messages/{message}',[MessageController::class, 'update']);
     Route::delete('messages/{message}',[MessageController::class, 'destroy']);
+
+    // Message reminders (R Bunny AI Dialog)
+    Route::get('message-reminders/active',         [MessageReminderController::class, 'active']);
+    Route::get('message-reminders/needs-reply',    [MessageReminderController::class, 'needsReply']);
+    Route::get('message-reminders/suggestions',    [MessageReminderController::class, 'suggestedReplies']);
+    Route::post('message-reminders/snooze',        [MessageReminderController::class, 'snooze']);
+    Route::post('message-reminders/resolve',       [MessageReminderController::class, 'resolve']);
+    Route::post('message-reminders/dismiss',       [MessageReminderController::class, 'dismiss']);
 
     // Notifications — specific routes MUST be before apiResource to avoid {notification} binding conflict
     Route::post('notifications/mark-all-read',           [NotificationController::class, 'markAllRead']);

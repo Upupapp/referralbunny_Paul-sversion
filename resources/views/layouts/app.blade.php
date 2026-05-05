@@ -670,6 +670,14 @@ function toastSystem() {
     }
 }
 </script>
+{{-- R Bunny AI Dialog — smart messaging reminder assistant --}}
+@auth('tenant')
+    <x-brand.r-bunny-ai-dialog />
+@endauth
+@auth('web')
+    <x-brand.r-bunny-ai-dialog />
+@endauth
+
 @stack('scripts')
 </body>
 </html>

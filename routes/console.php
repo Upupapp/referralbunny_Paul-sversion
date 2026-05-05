@@ -25,6 +25,9 @@ Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00'); // Reset usage 
 // ── Search index ──────────────────────────────────────────────
 Schedule::command('search:reindex')->dailyAt('03:00');
 
+// ── Message reminders (R Bunny AI Dialog) ────────────────────
+Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
+
 // ── Lead expiry & pipeline ────────────────────────────────────
 Schedule::command('leads:expire')->dailyAt('00:05');
 Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30');

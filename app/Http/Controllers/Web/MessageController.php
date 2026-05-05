@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\MessageThread;
 use App\Models\Reseller;
 use App\Models\ThreadMessage;
+use App\Services\Messaging\MessageReminderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -110,6 +112,13 @@ class MessageController extends Controller
             ->firstOrFail();
 
         $senderName = $this->senderName();
+
+        // Resolve any active reminders for this thread for the current sender
+        if (Auth::guard('tenant')->check()) {
+            app(MessageReminderService::class)->resolveForThread($threadId, 'tenant_admin', (string) Auth::guard('tenant')->id());
+        } elseif (Auth::guard('reseller')->check()) {
+            app(MessageReminderService::class)->resolveForThread($threadId, 'reseller', (string) Auth::guard('reseller')->id());
+        }
 
         $msg = ThreadMessage::create([
             'id'          => (string) Str::uuid(),
