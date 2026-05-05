@@ -159,6 +159,17 @@
                 Check your invitation email for the setup link.<br>
                 Need help? Contact your program administrator.
             </p>
+
+            <div class="form-wrap" style="padding-top:.75rem;border-top:1px solid #f0fdfa;margin-top:.25rem">
+                <a href="{{ route('portal.select') }}"
+                   style="display:inline-flex;align-items:center;gap:.375rem;font-size:.75rem;color:#9ca3af;text-decoration:none;transition:color .15s"
+                   onmouseover="this.style.color='#14b8a6'" onmouseout="this.style.color='#9ca3af'">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back to portal selection
+                </a>
+            </div>
         </div>
 
         <div class="card-right">

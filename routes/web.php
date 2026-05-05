@@ -38,9 +38,12 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     if (auth('web')->check()) {
         return redirect()->route('platform.dashboard');
     }
-    // Regular guest → tenant login
-    return redirect()->route('tenant.login');
+    // Regular guest → portal selection
+    return redirect()->route('portal.select');
 })->name('home');
+
+// ── Portal selection ──────────────────────────────────────────
+Route::get('/select-portal', fn() => view('auth.portal-select'))->name('portal.select');
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
