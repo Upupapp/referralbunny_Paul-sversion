@@ -18,7 +18,7 @@
      @open-add-org.window="openAdd()">
 
     {{-- KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Organizations</span>
@@ -162,10 +162,10 @@
                 <thead>
                     <tr class="table-head">
                         <th>Organization</th>
-                        <th>Province</th>
-                        <th>Region</th>
-                        <th>Type</th>
-                        <th>Contacts</th>
+                        <th class="hidden sm:table-cell">Province</th>
+                        <th class="hidden md:table-cell">Region</th>
+                        <th class="hidden md:table-cell">Type</th>
+                        <th class="hidden lg:table-cell">Contacts</th>
                         <th>Deals</th>
                         <th>Deal Value</th>
                         <th></th>
@@ -197,18 +197,18 @@
                                 </div>
                             </td>
                             {{-- Province --}}
-                            <td class="text-sm text-gray-600" x-text="o.address || '—'"></td>
+                            <td class="hidden sm:table-cell text-sm text-gray-600" x-text="o.address || '—'"></td>
                             {{-- Region --}}
-                            <td class="text-xs text-gray-400"
+                            <td class="hidden md:table-cell text-xs text-gray-400"
                                 x-text="o._d.region ? o._d.region.split(' – ')[0] : '—'"></td>
                             {{-- Type --}}
-                            <td>
+                            <td class="hidden md:table-cell">
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium"
                                       :class="o._d.lgu_type==='City' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
                                       x-text="o._d.lgu_type || '—'"></span>
                             </td>
                             {{-- Contacts --}}
-                            <td>
+                            <td class="hidden lg:table-cell">
                                 <span x-show="o.contact_count > 0"
                                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 text-xs font-semibold"
                                       x-text="o.contact_count"></span>

@@ -19,7 +19,7 @@
     </div>
 
     {{-- KPI Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         @php
         $kpis = [
             ['label'=>'My Deals',       'value'=>$stats['total'],                  'icon'=>'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',             'bg'=>'#CCFBF1','color'=>'#0D9488','sub'=>'Total submitted'],
@@ -29,16 +29,16 @@
         ];
         @endphp
         @foreach($kpis as $k)
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-medium text-gray-500">{{ $k['label'] }}</span>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4">
+            <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <span class="text-[11px] sm:text-xs font-medium text-gray-500 truncate pr-1">{{ $k['label'] }}</span>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0"
                      style="background:{{ $k['bg'] }};color:{{ $k['color'] }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $k['icon'] }}"/></svg>
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $k['icon'] }}"/></svg>
                 </div>
             </div>
-            <p class="text-2xl font-bold" style="color:#1E1B4B">{{ $k['value'] }}</p>
-            <p class="text-xs text-gray-400 mt-1">{{ $k['sub'] }}</p>
+            <p class="text-xl sm:text-2xl font-bold truncate" style="color:#1E1B4B">{{ $k['value'] }}</p>
+            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">{{ $k['sub'] }}</p>
         </div>
         @endforeach
     </div>

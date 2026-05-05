@@ -126,17 +126,17 @@
                     <tr class="table-head">
                         @php
                         $sortCols = [
-                            ['key'=>'name',              'label'=>'Deal',       'tip'=>'Sort A → Z or Z → A'],
-                            ['key'=>'stage',             'label'=>'Stage',      'tip'=>'Sort by pipeline progress'],
-                            ['key'=>'reseller',          'label'=>'Referrer',   'tip'=>'Sort A → Z or Z → A'],
-                            ['key'=>'value',             'label'=>'Value',      'tip'=>'Sort highest or lowest first'],
-                            ['key'=>'commission',        'label'=>'Commission', 'tip'=>'Sort by commission status'],
-                            ['key'=>'days_left',         'label'=>'Days Left',  'tip'=>'Sort most urgent (fewest days) first'],
-                            ['key'=>'status',            'label'=>'Status',     'tip'=>'Sort by deal status'],
+                            ['key'=>'name',       'label'=>'Deal',       'tip'=>'Sort A → Z or Z → A',                    'hidden'=>''],
+                            ['key'=>'stage',      'label'=>'Stage',      'tip'=>'Sort by pipeline progress',              'hidden'=>''],
+                            ['key'=>'reseller',   'label'=>'Referrer',   'tip'=>'Sort A → Z or Z → A',                    'hidden'=>'hidden sm:table-cell'],
+                            ['key'=>'value',      'label'=>'Value',      'tip'=>'Sort highest or lowest first',           'hidden'=>''],
+                            ['key'=>'commission', 'label'=>'Commission', 'tip'=>'Sort by commission status',              'hidden'=>'hidden md:table-cell'],
+                            ['key'=>'days_left',  'label'=>'Days Left',  'tip'=>'Sort most urgent (fewest days) first',   'hidden'=>'hidden md:table-cell'],
+                            ['key'=>'status',     'label'=>'Status',     'tip'=>'Sort by deal status',                    'hidden'=>''],
                         ];
                         @endphp
                         @foreach($sortCols as $col)
-                        <th class="cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        <th class="cursor-pointer select-none hover:bg-gray-100 transition-colors {{ $col['hidden'] }}"
                             @click="sort('{{ $col['key'] }}')"
                             title="{{ $col['tip'] }}">
                             <div class="flex items-center gap-1.5">
@@ -186,12 +186,12 @@
                             <td>
                                 <span :class="stageBadge(lead.stage)" x-text="stageLabel(lead.stage)"></span>
                             </td>
-                            <td class="text-gray-600 text-sm" x-text="lead.reseller_name || '—'"></td>
+                            <td class="hidden sm:table-cell text-gray-600 text-sm" x-text="lead.reseller_name || '—'"></td>
                             <td class="font-semibold text-[#1E1B4B]" x-text="formatValue(lead.deal_value)"></td>
-                            <td>
+                            <td class="hidden md:table-cell">
                                 <span :class="commissionBadge(lead.commission_status)" x-text="(lead.commission_status || 'pending').charAt(0).toUpperCase() + (lead.commission_status || 'pending').slice(1)"></span>
                             </td>
-                            <td>
+                            <td class="hidden md:table-cell">
                                 <span :class="daysClass(lead.days_left)" x-text="(lead.days_left ?? 21) + 'd'"></span>
                             </td>
                             <td>

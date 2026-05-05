@@ -130,7 +130,7 @@
     </div>
 
     {{-- Tenant KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         @php
         $kpis = [
             ['label'=>'Total Tenants',     'tip'=>'All organizations registered on the platform, regardless of subscription status.',                         'value'=>$stats['total_tenants'],   'sub'=>$stats['active_tenants'].' active',                    'bg'=>'bg-purple-100','color'=>'text-purple-600','icon'=>'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5', 'href'=>route('platform.tenants')],

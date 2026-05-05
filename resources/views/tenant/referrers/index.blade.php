@@ -16,7 +16,7 @@
      @open-invite-referrer.window="showInvite = true">
 
     {{-- Summary KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Referrers</span>
@@ -134,14 +134,14 @@
                 <thead>
                     <tr class="table-head">
                         <th>Referrer</th>
-                        <th>Territory</th>
+                        <th class="hidden md:table-cell">Territory</th>
                         <th>Deals</th>
                         <th class="flex items-center gap-1">Closed Value @if($showLocation ?? false)<x-tax-tip />@endif</th>
-                        <th>Performance</th>
+                        <th class="hidden md:table-cell">Performance</th>
                         <th>Status</th>
-                        <th x-show="totalRequiredAgreements > 0">Agreements</th>
-                        <th x-show="totalRequiredDocs > 0">Documents</th>
-                        <th>Joined</th>
+                        <th class="hidden lg:table-cell" x-show="totalRequiredAgreements > 0">Agreements</th>
+                        <th class="hidden lg:table-cell" x-show="totalRequiredDocs > 0">Documents</th>
+                        <th class="hidden lg:table-cell">Joined</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -177,12 +177,12 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-gray-500 text-sm" x-text="r.territory || '—'"></td>
+                            <td class="hidden md:table-cell text-gray-500 text-sm" x-text="r.territory || '—'"></td>
                             <td class="text-sm tabular-nums">
                                 <span class="font-semibold text-[#1E1B4B]" x-text="r.assigned_leads || 0"></span>
                             </td>
                             <td class="font-semibold text-[#1E1B4B] tabular-nums" x-text="formatValue(r.closed_value)"></td>
-                            <td>
+                            <td class="hidden md:table-cell">
                                 <div class="flex items-center gap-2 min-w-24">
                                     <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                         <div class="h-full rounded-full transition-all"
@@ -201,7 +201,7 @@
                             </td>
 
                             {{-- Agreements column (only shown when agreements exist) --}}
-                            <td x-show="totalRequiredAgreements > 0">
+                            <td class="hidden lg:table-cell" x-show="totalRequiredAgreements > 0">
                                 <button @click="openAgreements(r)"
                                         class="flex items-center gap-1.5 group/agr"
                                         :title="agreementTooltip(r.id)">
@@ -221,7 +221,7 @@
                             </td>
 
                             {{-- Documents column --}}
-                            <td x-show="totalRequiredDocs > 0">
+                            <td class="hidden lg:table-cell" x-show="totalRequiredDocs > 0">
                                 <button @click="openDocuments(r)"
                                         class="flex items-center gap-1.5 group/doc"
                                         :title="docTooltip(r.id)">
@@ -240,7 +240,7 @@
                                 </button>
                             </td>
 
-                            <td class="text-gray-400 text-sm tabular-nums"
+                            <td class="hidden lg:table-cell text-gray-400 text-sm tabular-nums"
                                 x-text="r.joined_date ? new Date(r.joined_date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                             <td>
                                 <div class="flex items-center gap-1.5 justify-end">

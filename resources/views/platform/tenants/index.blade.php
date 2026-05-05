@@ -105,16 +105,16 @@
             <table class="w-full">
                 <thead><tr class="table-head">
                     <th>Tenant</th>
-                    <th>Industry</th>
-                    <th>Admin</th>
-                    <th>
+                    <th class="hidden md:table-cell">Industry</th>
+                    <th class="hidden lg:table-cell">Admin</th>
+                    <th class="hidden sm:table-cell">
                         <span class="inline-flex items-center gap-1">
                             Health
                             <x-info-tip text="Platform health score (0–100). Healthy = 80+, Needs Attention = 50–79, At Risk = below 50." position="bottom" />
                         </span>
                     </th>
                     <th>Status</th>
-                    <th>Created</th>
+                    <th class="hidden md:table-cell">Created</th>
                     <th></th>
                 </tr></thead>
                 <tbody>
@@ -133,18 +133,18 @@
                                 </div>
                             </div>
                         </td>
-                        <td>
+                        <td class="hidden md:table-cell">
                             @if($tenant->industry)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium">{{ $tenant->industry }}</span>
                             @else
                                 <span class="text-gray-300 text-sm">—</span>
                             @endif
                         </td>
-                        <td>
+                        <td class="hidden lg:table-cell">
                             <p class="text-sm text-gray-700">{{ $tenant->admin_name ?: '—' }}</p>
                             <p class="text-xs text-gray-400">{{ $tenant->admin_email }}</p>
                         </td>
-                        <td>
+                        <td class="hidden sm:table-cell">
                             @if($metric)
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm font-bold tabular-nums {{ $metric->health_score >= 80 ? 'text-emerald-600' : ($metric->health_score >= 50 ? 'text-orange-500' : 'text-red-500') }}">
@@ -168,7 +168,7 @@
                                 'badge-gray'   => $tenant->status === 'inactive',
                             ])>{{ ucfirst($tenant->status) }}</span>
                         </td>
-                        <td class="text-gray-400 text-sm tabular-nums">{{ $tenant->created_at->format('M d, Y') }}</td>
+                        <td class="hidden md:table-cell text-gray-400 text-sm tabular-nums">{{ $tenant->created_at->format('M d, Y') }}</td>
                         <td>
                             <div class="flex items-center gap-1.5 justify-end">
                                 <a href="{{ route('platform.tenants.show', $tenant->id) }}"

@@ -71,7 +71,7 @@
             <table class="w-full">
                 <thead>
                     <tr class="table-head">
-                        <th>Organization</th><th>Stage</th><th>Value</th><th>Commission</th><th>Status</th><th>Days Left</th>
+                        <th>Organization</th><th>Stage</th><th>Value</th><th class="hidden sm:table-cell">Commission</th><th>Status</th><th class="hidden sm:table-cell">Days Left</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -98,7 +98,7 @@
                             </td>
                             <td class="text-sm text-gray-600 capitalize" x-text="(d.stage||'').replace('_',' ')"></td>
                             <td class="text-sm font-bold tabular-nums" style="color:#1E1B4B" x-text="d.deal_value ? '₱'+Number(d.deal_value).toLocaleString() : '₱0'"></td>
-                            <td>
+                            <td class="hidden sm:table-cell">
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
                                       :class="{'bg-violet-100 text-violet-700': d.commission_status==='pending','bg-amber-100 text-amber-700': d.commission_status==='locked','bg-emerald-100 text-emerald-700': d.commission_status==='paid'}"
                                       x-text="d.commission_status || 'pending'"></span>
@@ -108,7 +108,7 @@
                                       :class="{'bg-emerald-100 text-emerald-700':d.status==='active','bg-amber-100 text-amber-700':d.status==='expiring','bg-red-100 text-red-600':d.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(d.status||'')}"
                                       x-text="d.status || 'active'"></span>
                             </td>
-                            <td class="text-sm tabular-nums"
+                            <td class="hidden sm:table-cell text-sm tabular-nums"
                                 :class="(d.days_left||21) <= 3 ? 'text-red-500 font-bold' : (d.days_left||21) <= 7 ? 'text-amber-500 font-semibold' : 'text-gray-500'"
                                 x-text="(d.days_left ?? 21) + 'd'"></td>
                         </tr>

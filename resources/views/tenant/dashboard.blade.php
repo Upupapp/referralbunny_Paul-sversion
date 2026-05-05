@@ -35,7 +35,7 @@ document.addEventListener('alpine:init', () => {
 
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
         @php
         $kpis = [
@@ -47,15 +47,15 @@ document.addEventListener('alpine:init', () => {
         @endphp
 
         @foreach($kpis as $k)
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100" style="padding:16px 18px">
+        <div class="kpi-inline-card bg-white rounded-2xl shadow-sm border border-gray-100" style="padding:16px 18px">
             {{-- Row 1: icon + label + menu --}}
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0"
                          style="background:{{ $k['bg'] }};color:{{ $k['color'] }}">{!! $k['icon'] !!}</div>
-                    <span class="text-sm font-medium text-gray-600">{{ $k['label'] }}</span>
+                    <span class="kpi-label text-xs sm:text-sm font-medium text-gray-600 truncate">{{ $k['label'] }}</span>
                 </div>
-                <button class="text-gray-300 hover:text-gray-500 font-bold" style="font-size:16px;line-height:1">⋮</button>
+                <button class="text-gray-300 hover:text-gray-500 font-bold shrink-0 ml-1" style="font-size:14px;line-height:1">⋮</button>
             </div>
             {{-- Row 2: slider line --}}
             <div class="relative mb-3" style="height:2px;background:#f3f4f6;border-radius:9999px">
@@ -67,7 +67,7 @@ document.addEventListener('alpine:init', () => {
                      :style="`left:calc(${Math.min({{ $k['pct'] }},95)}% - 7px)`"></div>
             </div>
             {{-- Row 3: number --}}
-            <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums mb-1.5" x-text="{{ $k['val'] }}"></p>
+            <p class="kpi-value text-xl sm:text-2xl font-bold text-[#1E1B4B] tabular-nums mb-1 sm:mb-1.5" x-text="{{ $k['val'] }}"></p>
             {{-- Row 4: trend + helper --}}
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold"

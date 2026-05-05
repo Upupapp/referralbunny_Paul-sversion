@@ -8,7 +8,7 @@
 <div class="space-y-6" x-data="reportsPage('{{ $tenant->id }}')" x-init="init()">
 
     {{-- Financial Summary --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide flex items-center gap-1">Total Contract Value @if($showLocation ?? false)<x-tax-tip />@endif</span>
@@ -69,7 +69,7 @@
     </div>
 
     {{-- KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 mb-1.5">

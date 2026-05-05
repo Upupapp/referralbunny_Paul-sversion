@@ -18,7 +18,7 @@
      @open-add-contact.window="openAdd()">
 
     {{-- KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Contacts</span>
@@ -116,11 +116,11 @@
                 <thead>
                     <tr class="table-head">
                         <th>Contact</th>
-                        <th>Job Title</th>
-                        <th>Organization</th>
+                        <th class="hidden md:table-cell">Job Title</th>
+                        <th class="hidden sm:table-cell">Organization</th>
                         <th>Deals</th>
-                        <th>Status</th>
-                        <th>Added</th>
+                        <th class="hidden sm:table-cell">Status</th>
+                        <th class="hidden lg:table-cell">Added</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -148,8 +148,8 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-gray-500 text-sm" x-text="c.job_title || '—'"></td>
-                            <td>
+                            <td class="hidden md:table-cell text-gray-500 text-sm" x-text="c.job_title || '—'"></td>
+                            <td class="hidden sm:table-cell">
                                 <span x-show="c.org_name" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 text-gray-700 text-xs font-medium border border-gray-100">
                                     <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                                     <span x-text="c.org_name"></span>
@@ -164,14 +164,14 @@
                                 </span>
                                 <span x-show="!c.deal_count" class="text-gray-300 text-sm">—</span>
                             </td>
-                            <td>
+                            <td class="hidden sm:table-cell">
                                 <span :class="{
                                     'badge badge-green':  c.status === 'active',
                                     'badge badge-gray':   c.status === 'inactive',
                                     'badge badge-blue':   c.status === 'prospect',
                                 }" x-text="c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : '—'"></span>
                             </td>
-                            <td class="text-gray-400 text-sm tabular-nums"
+                            <td class="hidden lg:table-cell text-gray-400 text-sm tabular-nums"
                                 x-text="c.created_at ? new Date(c.created_at).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                             <td>
                                 <div class="flex items-center gap-1.5 justify-end">

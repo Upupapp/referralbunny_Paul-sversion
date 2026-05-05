@@ -177,14 +177,57 @@ body {
     max-width: 160px; /* prevent overflow on small screens */
 }
 
-/* Responsive: on very small screens stack filter bar */
+/* ── Mobile / Responsive overrides ──────────────────────────── */
+
+/* KPI card — compact on small screens */
+@media (max-width: 640px) {
+    .kpi-card {
+        padding: 0.875rem !important;
+    }
+    .kpi-card p[class*="text-2xl"],
+    .kpi-card p[class*="text-3xl"] {
+        font-size: 1.25rem !important;
+        line-height: 1.75rem !important;
+    }
+    .kpi-icon {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+    }
+
+    /* Card — tighter on phones */
+    .card { padding: 1rem !important; }
+
+    /* Page headings */
+    h1.text-2xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+    h1.text-xl  { font-size: 1.125rem !important; line-height: 1.5rem !important; }
+
+    /* Reduce table cell padding for mobile */
+    .table-head th { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+    .table-row td  { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+
+    /* Filter pill select max-width loosened on mobile */
+    .filter-pill select { max-width: 120px; }
+}
+
+/* Stack filter bar */
 @media (max-width: 480px) {
     .filter-bar {
         flex-wrap: wrap;
         gap: 0.375rem;
     }
-    .filter-pill {
-        flex-shrink: 0;
+    .filter-pill { flex-shrink: 0; }
+}
+
+/* Dashboard inline-styled KPI cards */
+@media (max-width: 640px) {
+    .kpi-inline-card {
+        padding: 12px 14px !important;
+    }
+    .kpi-inline-card .kpi-value {
+        font-size: 1.25rem !important;
+    }
+    .kpi-inline-card .kpi-label {
+        font-size: 0.6875rem !important;
     }
 }
 
