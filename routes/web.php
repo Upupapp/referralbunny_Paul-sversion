@@ -39,8 +39,8 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     if (auth('web')->check()) {
         return redirect()->route('platform.dashboard');
     }
-    // Regular guest → portal selection
-    return redirect()->route('portal.select');
+    // Regular guest → show portal selection directly (no extra redirect)
+    return view('auth.portal-select');
 })->name('home');
 
 // ── Portal selection ──────────────────────────────────────────
