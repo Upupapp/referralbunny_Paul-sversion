@@ -4,7 +4,10 @@ use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\MessageController;
 use App\Http\Controllers\Web\NotificationsController;
+use App\Http\Controllers\Web\PlatformProfileController;
+use App\Http\Controllers\Web\ResellerProfileController;
 use App\Http\Controllers\Web\TenantAdminController;
+use App\Http\Controllers\Web\TenantProfileController;
 use App\Http\Controllers\Web\TenantSignupWebController;
 use App\Http\Controllers\Web\TenantAuthWebController;
 use App\Http\Controllers\ResellerPortalAuthController;
@@ -72,9 +75,20 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::get('/dashboard',  [ResellerPortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/deals',      [ResellerPortalController::class, 'deals'])->name('deals');
         Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
-        Route::get('/profile',    [ResellerPortalController::class, 'profile'])->name('profile');
+        Route::get('/profile',           [ResellerProfileController::class, 'show'])->name('profile');
+        Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');
+        Route::post('/profile/photo',    [ResellerProfileController::class, 'updatePhoto'])->name('profile.photo');
+        Route::delete('/profile/photo',  [ResellerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
         Route::get('/messages',   [ResellerPortalController::class, 'messages'])->name('messages');
     });
+
+// ── Super Admin Profile ───────────────────────────────────────
+Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
+    Route::get('/profile',           [PlatformProfileController::class, 'show'])->name('profile');
+    Route::post('/profile',          [PlatformProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo',    [PlatformProfileController::class, 'updatePhoto'])->name('profile.photo');
+    Route::delete('/profile/photo',  [PlatformProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+});
 
 // ── Platform (Super Admin) ────────────────────────────────────
 Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
@@ -126,6 +140,10 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/leads/{leadId}', fn($tenantId, $leadId) => view('tenant.leads.show', ['tenantId' => $tenantId, 'leadId' => $leadId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('leads.show');
     Route::get('/resellers',      fn($tenantId) => view('tenant.resellers.index', ['tenantId' => $tenantId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('resellers');
     Route::get('/notifications',  [NotificationsController::class, 'index'])->name('notifications');
+    Route::get('/profile',              [TenantProfileController::class, 'show'])->name('profile');
+    Route::post('/profile',             [TenantProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo',       [TenantProfileController::class, 'updatePhoto'])->name('profile.photo');
+    Route::delete('/profile/photo',     [TenantProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
     Route::post('/notifications/{notificationId}/read',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/{notificationId}/archive', [NotificationsController::class, 'archive'])->name('notifications.archive');
     Route::post('/notifications/mark-all-read',            [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');

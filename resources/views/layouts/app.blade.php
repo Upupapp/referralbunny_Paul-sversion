@@ -450,6 +450,20 @@
                             @endif
                         </div>
 
+                        {{-- Profile link --}}
+                        @php
+                            $profileRoute = '#';
+                            if ($isSuperAdmin)    $profileRoute = route('platform.profile');
+                            elseif ($isTenantAdmin && isset($tenant)) $profileRoute = route('tenant.profile', $tenant->id);
+                        @endphp
+                        <div class="py-1 border-b border-gray-100">
+                            <a href="{{ $profileRoute }}" @click="open = false"
+                               class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                My Profile
+                            </a>
+                        </div>
+
                         {{-- Super Admin only: platform links --}}
                         @if($isSuperAdmin)
                         <div class="py-1">

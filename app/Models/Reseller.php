@@ -14,13 +14,15 @@ class Reseller extends Authenticatable
     protected $table      = 'resellers';
     public    $incrementing = false;
     protected $keyType    = 'string';
-    public    $timestamps = false; // resellers table has no updated_at
+    public    $timestamps = true; // updated_at added in migration_v24
 
     protected $fillable = [
         'tenant_id', 'name', 'email', 'status',
         'assigned_leads', 'closed_value', 'performance_score',
         'joined_date', 'phone', 'territory', 'is_anonymous',
         'password', 'setup_token', 'remember_token',
+        'nickname', 'job_title', 'department', 'organization',
+        'location', 'timezone', 'language', 'bio', 'profile_photo_path',
     ];
 
     protected $hidden = ['password', 'remember_token', 'setup_token'];
@@ -53,5 +55,26 @@ class Reseller extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return \App\Services\UserDisplayNameService::resolve($this, (bool) $this->is_anonymous, 'referrer');
+    }
+
+    public function getDisplayNameForAttribute(): string
+    {
+        // Safe version — always respects anonymity
+        return \App\Services\UserDisplayNameService::resolve($this, (bool) $this->is_anonymous, 'referrer');
+    }
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        return \App\Services\UserDisplayNameService::photoUrl($this, (bool) $this->is_anonymous);
+    }
+
+    public function getInitialsAttribute(): string
+    {
+        return \App\Services\UserDisplayNameService::initials($this, (bool) $this->is_anonymous);
     }
 }

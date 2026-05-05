@@ -18,6 +18,8 @@ class TenantUser extends Authenticatable
 
     protected $fillable = [
         'id', 'first_name', 'last_name', 'email', 'password', 'status', 'remember_token',
+        'nickname', 'phone_number', 'job_title', 'department', 'organization',
+        'location', 'timezone', 'language', 'bio', 'profile_photo_path',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -41,6 +43,21 @@ class TenantUser extends Authenticatable
 
     public function getFullNameAttribute(): string
     {
-        return "{$this->first_name} {$this->last_name}";
+        return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return \App\Services\UserDisplayNameService::resolve($this, false, 'tenant_admin');
+    }
+
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        return \App\Services\UserDisplayNameService::photoUrl($this);
+    }
+
+    public function getInitialsAttribute(): string
+    {
+        return \App\Services\UserDisplayNameService::initials($this);
     }
 }

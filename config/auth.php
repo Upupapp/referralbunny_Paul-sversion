@@ -50,6 +50,10 @@ return [
             'driver'   => 'session',
             'provider' => 'resellers',
         ],
+        'partner' => [
+            'driver'   => 'session',
+            'provider' => 'partners',
+        ],
     ],
 
     /*
@@ -81,6 +85,10 @@ return [
         'resellers' => [
             'driver' => 'eloquent',
             'model'  => App\Models\Reseller::class,
+        ],
+        'partners' => [
+            'driver' => 'eloquent',
+            'model'  => App\Models\Partner::class,
         ],
 
         // 'users' => [
