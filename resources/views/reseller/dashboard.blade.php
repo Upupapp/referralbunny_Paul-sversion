@@ -14,7 +14,7 @@
 
     {{-- Welcome --}}
     <div>
-        <h2 class="text-xl font-bold" style="color:#1E1B4B">Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }}, {{ explode(' ', $reseller->name)[0] }}!</h2>
+        <h2 class="text-xl font-bold" style="color:#1E1B4B">Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }}, {{ explode(' ', $reseller->name ?? 'Referrer')[0] }}!</h2>
         <p class="text-sm text-gray-400 mt-0.5">{{ now()->format('l, F j, Y') }} · {{ $tenant->name }}</p>
     </div>
 

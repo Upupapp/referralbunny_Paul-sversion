@@ -67,7 +67,7 @@
                     {{ $initials }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-white text-sm font-medium truncate leading-tight">{{ $r->name }}</p>
+                    <p class="text-white text-sm font-medium truncate leading-tight">{{ $r->name ?? 'Referrer' }}</p>
                     <p class="text-white/40 text-[10px] truncate mt-0.5">Referrer</p>
                 </div>
                 <form action="{{ route('reseller.logout') }}" method="POST">

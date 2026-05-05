@@ -8,7 +8,7 @@
         <div class="flex items-center gap-4 mb-6">
             <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shrink-0"
                  style="background: linear-gradient(135deg, #14B8A6, #0D9488)">
-                {{ strtoupper(collect(explode(' ', $reseller->name))->map(fn($w) => $w[0] ?? '')->take(2)->implode('')) }}
+                {{ strtoupper(collect(explode(' ', $reseller->name ?? 'R'))->map(fn($w) => $w[0] ?? '')->take(2)->implode('')) }}
             </div>
             <div>
                 <h2 class="text-lg font-bold" style="color:#1E1B4B">{{ $reseller->name }}</h2>
