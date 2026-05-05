@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -26,7 +27,7 @@ class PipelineStageWarning extends Mailable
     {
         $urgency = $this->daysLeft <= 1 ? 'URGENT: ' : '';
         return new Envelope(
-            to:      [$this->resellerEmail => $this->resellerName],
+            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "{$urgency}\"{$this->dealName}\" needs your attention — {$this->daysLeft}d left",
         );
     }

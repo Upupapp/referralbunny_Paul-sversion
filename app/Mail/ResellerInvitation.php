@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -23,7 +24,7 @@ class ResellerInvitation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [$this->resellerEmail => $this->resellerName],
+            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "You've been invited as a referrer for {$this->tenantName}",
         );
     }
