@@ -120,3 +120,25 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/leads/{leadId}', fn($tenantId, $leadId) => view('tenant.leads.show', ['tenantId' => $tenantId, 'leadId' => $leadId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('leads.show');
     Route::get('/resellers',      fn($tenantId) => view('tenant.resellers.index', ['tenantId' => $tenantId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('resellers');
 });
+
+// ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────
+// These mirror the /tenant/{tenantId}/* routes above.
+// DetectTenantSubdomain injects tenantId from subdomain lookup.
+Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
+    ->middleware(['tenant.subdomain', 'auth:tenant,web', 'tenant.access'])
+    ->group(function () {
+        Route::get('/',            [TenantAdminController::class, 'dashboard'])->name('tenant.sub.home');
+        Route::get('/dashboard',   [TenantAdminController::class, 'dashboard'])->name('tenant.sub.dashboard');
+        Route::get('/deals',       [TenantAdminController::class, 'deals'])->name('tenant.sub.deals');
+        Route::get('/deals/{dealId}', [TenantAdminController::class, 'dealShow'])->name('tenant.sub.deals.show');
+        Route::get('/contacts',    [TenantAdminController::class, 'contacts'])->name('tenant.sub.contacts');
+        Route::get('/organizations',[TenantAdminController::class, 'organizations'])->name('tenant.sub.organizations');
+        Route::get('/referrers',   [TenantAdminController::class, 'referrers'])->name('tenant.sub.referrers');
+        Route::get('/tasks',       [TenantAdminController::class, 'tasks'])->name('tenant.sub.tasks');
+        Route::get('/messages',    [TenantAdminController::class, 'messages'])->name('tenant.sub.messages');
+        Route::get('/reports',     [TenantAdminController::class, 'reports'])->name('tenant.sub.reports');
+        Route::get('/imports',     [TenantAdminController::class, 'imports'])->name('tenant.sub.imports');
+        Route::get('/users',       [TenantAdminController::class, 'users'])->name('tenant.sub.users');
+        Route::get('/billing',     [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('tenant.sub.billing');
+        Route::get('/settings',    [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('tenant.sub.settings');
+    });

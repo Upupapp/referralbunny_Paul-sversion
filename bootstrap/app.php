@@ -16,10 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(HandleCors::class);
         $middleware->statefulApi();
         $middleware->alias([
-            'feature.access'    => \App\Http\Middleware\FeatureAccessMiddleware::class,
-            'tenant.access'     => \App\Http\Middleware\EnsureTenantAccess::class,
-            'reseller.access'   => \App\Http\Middleware\EnsureResellerAccess::class,
-            'password.confirm'  => \Illuminate\Auth\Middleware\RequirePassword::class,
+            'feature.access'     => \App\Http\Middleware\FeatureAccessMiddleware::class,
+            'tenant.access'      => \App\Http\Middleware\EnsureTenantAccess::class,
+            'reseller.access'    => \App\Http\Middleware\EnsureResellerAccess::class,
+            'password.confirm'   => \Illuminate\Auth\Middleware\RequirePassword::class,
+            'tenant.subdomain'   => \App\Http\Middleware\DetectTenantSubdomain::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
