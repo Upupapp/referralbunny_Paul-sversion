@@ -141,8 +141,7 @@ class ResellerPortalAuthController extends Controller
 
         $reseller = Reseller::where('setup_token', $token)->first();
         if (!$reseller) {
-            return redirect()->route('reseller.login')
-                ->withErrors(['setup' => 'This setup link is invalid or has already been used. Please contact your administrator.']);
+            return view('auth.reseller-link-expired');
         }
 
         return view('auth.reseller-setup', compact('reseller', 'token'));
