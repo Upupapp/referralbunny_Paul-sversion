@@ -22,8 +22,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script>if(!sessionStorage.getItem('rb_intro_tenant')){document.documentElement.classList.add('show-intro');}</script>
     <style>
         * { box-sizing: border-box; }
+        #intro { display: none; }
+        html.show-intro #intro { display: flex; }
 
         body {
             margin: 0; padding: 0;
@@ -299,7 +302,11 @@
 
 <script>
     var intro = document.getElementById('intro');
-    var timer = setTimeout(advance, 5000);
+    var timer;
+    if (document.documentElement.classList.contains('show-intro')) {
+        sessionStorage.setItem('rb_intro_tenant', '1');
+        timer = setTimeout(advance, 5000);
+    }
     function advance() {
         clearTimeout(timer);
         if (!intro) return;
