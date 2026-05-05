@@ -8,6 +8,7 @@ use App\Events\DealExpired;
 use App\Events\ResellerJoined;
 use App\Listeners\HandleCommissionStatusChanged;
 use App\Listeners\HandleDealCreated;
+use App\Listeners\HandleDealExpired;
 use App\Listeners\HandleResellerJoined;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -24,9 +25,10 @@ class AppServiceProvider extends ServiceProvider
             request()->server->set('HTTPS', 'on');
         }
 
-        // Email event bindings
+        // Event → email + in-app notification bindings
         Event::listen(DealCreated::class,              HandleDealCreated::class);
         Event::listen(ResellerJoined::class,           HandleResellerJoined::class);
         Event::listen(CommissionStatusChanged::class,  HandleCommissionStatusChanged::class);
+        Event::listen(DealExpired::class,              HandleDealExpired::class);
     }
 }

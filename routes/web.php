@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\MessageController;
+use App\Http\Controllers\Web\NotificationsController;
 use App\Http\Controllers\Web\TenantAdminController;
 use App\Http\Controllers\Web\TenantAuthWebController;
 use App\Http\Controllers\ResellerPortalAuthController;
@@ -124,6 +125,10 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     })->name('leads');
     Route::get('/leads/{leadId}', fn($tenantId, $leadId) => view('tenant.leads.show', ['tenantId' => $tenantId, 'leadId' => $leadId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('leads.show');
     Route::get('/resellers',      fn($tenantId) => view('tenant.resellers.index', ['tenantId' => $tenantId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('resellers');
+    Route::get('/notifications',  [NotificationsController::class, 'index'])->name('notifications');
+    Route::post('/notifications/{notificationId}/read',    [NotificationsController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/{notificationId}/archive', [NotificationsController::class, 'archive'])->name('notifications.archive');
+    Route::post('/notifications/mark-all-read',            [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');
 });
 
 // ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────

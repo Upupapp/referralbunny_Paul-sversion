@@ -359,7 +359,10 @@
                          class="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                             <h3 class="font-semibold text-[#1E1B4B] text-sm">Notifications</h3>
-                            <span x-show="count > 0" class="badge badge-red text-xs" x-text="count + ' unread'"></span>
+                            <button x-show="count > 0" @click.stop="markAllRead()"
+                                    class="text-[10px] text-purple-500 hover:text-purple-700 font-medium">
+                                Mark all read
+                            </button>
                         </div>
                         <div class="max-h-80 overflow-y-auto divide-y divide-gray-50">
                             <template x-if="notifs.length === 0">
@@ -373,24 +376,29 @@
                                    class="flex items-start gap-3 px-4 py-3 hover:bg-[#F0EFFA] transition-colors">
                                     <span :class="{
                                         'w-2 h-2 rounded-full mt-1.5 shrink-0': true,
-                                        'bg-red-500':    n.priority === 'critical',
+                                        'bg-red-500':    ['critical','urgent'].includes(n.priority),
                                         'bg-orange-500': n.priority === 'high',
-                                        'bg-blue-400':   n.priority === 'medium',
-                                        'bg-gray-400':   !['critical','high','medium'].includes(n.priority),
+                                        'bg-[#7B61FF]':  ['normal','medium'].includes(n.priority),
+                                        'bg-gray-400':   ['low'].includes(n.priority),
                                     }"></span>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs text-gray-700 leading-relaxed line-clamp-2" x-text="n.message"></p>
-                                        <p class="text-xs text-gray-400 mt-0.5" x-text="n.created_at ? new Date(n.created_at).toLocaleDateString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''"></p>
+                                        <p class="text-xs font-semibold text-gray-800 leading-snug truncate" x-text="n.title || n.message"></p>
+                                        <p class="text-xs text-gray-500 leading-relaxed line-clamp-2 mt-0.5" x-show="n.title" x-text="n.message"></p>
+                                        <p class="text-[10px] text-gray-400 mt-1" x-text="n.created_ago || ''"></p>
                                     </div>
                                 </a>
                             </template>
                         </div>
-                        @if(auth('web')->check())
-                        <div class="px-4 py-3 border-t border-gray-100 bg-gray-50">
-                            <a href="{{ route('platform.dashboard') }}" @click="open = false"
+                        @php
+                            $notifAllUrl = auth('tenant')->check()
+                                ? route('tenant.notifications', optional(\App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())->where('status','active')->first())->tenant_id ?? '#')
+                                : (auth('web')->check() ? route('platform.dashboard') : '#');
+                        @endphp
+                        <div class="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                            <a href="{{ $notifAllUrl }}" @click="open = false"
                                class="text-xs text-purple-600 hover:text-purple-700 font-medium">View all notifications</a>
+                            <span x-show="count > 0" class="text-[10px] text-gray-400" x-text="count + ' unread'"></span>
                         </div>
-                        @endif
                     </div>
                 </div>
 
@@ -534,11 +542,22 @@ function notifPanel() {
         count: 0,
         async load() {
             try {
-                const res   = await fetch('/api/notifications?is_read=false&limit=6');
-                const data  = await res.json();
-                this.notifs = Array.isArray(data) ? data.slice(0, 6) : [];
-                this.count  = this.notifs.length;
+                const res  = await fetch('/api/notifications/mine?unread=true&limit=6', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                this.notifs = Array.isArray(data.items) ? data.items : [];
+                this.count  = data.unread_count ?? this.notifs.length;
             } catch(e) { this.notifs = []; this.count = 0; }
+        },
+        async markAllRead() {
+            try {
+                await fetch('/api/notifications/mine/mark-all-read', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                this.notifs = []; this.count = 0;
+            } catch(e) {}
         },
     }
 }

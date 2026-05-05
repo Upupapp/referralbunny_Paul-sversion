@@ -6,6 +6,7 @@ use App\Events\DealCreated;
 use App\Mail\ResellerDealCreated;
 use App\Mail\TenantAdminNewDeal;
 use App\Services\EmailLogger;
+use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
 
 class HandleDealCreated
@@ -13,6 +14,7 @@ class HandleDealCreated
     public function handle(DealCreated $event): void
     {
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
+        $dispatcher = app(NotificationDispatchService::class);
 
         // 1. Notify reseller (if they have an email and account)
         $email = $event->resellerEmail
@@ -41,7 +43,42 @@ class HandleDealCreated
             );
         }
 
-        // 2. Notify tenant admins
+        // 2a. In-app: notify reseller
+        if ($email) {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $event->tenantId)
+                ->where('email', $email)
+                ->select('id')
+                ->first();
+            if ($reseller) {
+                $dispatcher->dispatchToReseller(
+                    resellerId:   $reseller->id,
+                    tenantId:     $event->tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        "Deal created: {$event->leadName}",
+                    body:         "Your deal has been created successfully.",
+                    actionUrl:    url("/reseller/{$event->tenantId}/deals"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $event->leadId,
+                );
+            }
+        }
+
+        // 2b. In-app: notify tenant admins
+        $dispatcher->dispatchToTenantAdmins(
+            tenantId:     $event->tenantId,
+            category:     'deal_pipeline',
+            priority:     'normal',
+            title:        "New deal created: {$event->leadName}",
+            body:         "{$event->resellerName} created a new deal.",
+            actionUrl:    url("/tenant/{$event->tenantId}/deals"),
+            actionLabel:  'Review Deal',
+            dedupeSuffix: $event->leadId,
+            metadata:     ['deal_id' => $event->leadId, 'stage' => $event->stage],
+        );
+
+        // 2. Email: notify tenant admins
         $admins = DB::table('tenant_memberships as tm')
             ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
             ->where('tm.tenant_id', $event->tenantId)

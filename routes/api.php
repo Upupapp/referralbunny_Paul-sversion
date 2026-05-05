@@ -87,6 +87,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('notifications', NotificationController::class);
     Route::post('notifications/mark-all-read',           [NotificationController::class, 'markAllRead']);
     Route::get('notifications/unread-count',             [NotificationController::class, 'unreadCount']);
+    // Auth-aware per-user notification endpoints
+    Route::get('notifications/mine',                     [NotificationController::class, 'mine']);
+    Route::get('notifications/mine/unread-count',        [NotificationController::class, 'mineUnreadCount']);
+    Route::post('notifications/mine/mark-all-read',      [NotificationController::class, 'markMineRead']);
 
     // Analytics + Tenant Metrics
     Route::get('analytics/summary',                      [TenantMetricController::class, 'platformSummary']);

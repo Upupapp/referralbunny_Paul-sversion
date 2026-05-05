@@ -6,6 +6,7 @@ use App\Events\ResellerJoined;
 use App\Mail\ResellerWelcome;
 use App\Mail\TenantAdminNewReseller;
 use App\Services\EmailLogger;
+use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
 
 class HandleResellerJoined
@@ -13,6 +14,33 @@ class HandleResellerJoined
     public function handle(ResellerJoined $event): void
     {
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
+        $dispatcher = app(NotificationDispatchService::class);
+
+        // 0. In-app: welcome reseller
+        $dispatcher->dispatchToReseller(
+            resellerId:   $event->resellerId,
+            tenantId:     $event->tenantId,
+            category:     'account_profile',
+            priority:     'normal',
+            title:        'Your reseller account is ready',
+            body:         "You can now access your reseller dashboard for {$tenantName}.",
+            actionUrl:    url("/reseller/{$event->tenantId}/dashboard"),
+            actionLabel:  'Open Dashboard',
+            dedupeSuffix: $event->resellerId,
+        );
+
+        // 0b. In-app: notify tenant admins
+        $dispatcher->dispatchToTenantAdmins(
+            tenantId:     $event->tenantId,
+            category:     'reseller_referrer',
+            priority:     'normal',
+            title:        "New reseller joined: {$event->resellerName}",
+            body:         "A new reseller has joined your workspace.",
+            actionUrl:    url("/tenant/{$event->tenantId}/referrers"),
+            actionLabel:  'View Reseller',
+            dedupeSuffix: $event->resellerId,
+            metadata:     ['reseller_id' => $event->resellerId],
+        );
 
         // 1. Welcome email to reseller
         EmailLogger::send(
