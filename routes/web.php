@@ -73,6 +73,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::get('/deals',      [ResellerPortalController::class, 'deals'])->name('deals');
         Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
         Route::get('/profile',    [ResellerPortalController::class, 'profile'])->name('profile');
+        Route::get('/messages',   [ResellerPortalController::class, 'messages'])->name('messages');
     });
 
 // ── Platform (Super Admin) ────────────────────────────────────

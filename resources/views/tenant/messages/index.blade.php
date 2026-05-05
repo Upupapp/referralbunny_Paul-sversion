@@ -6,14 +6,6 @@
 @endsection
 
 @section('topbar-actions')
-    <button onclick="window.__messaging && (window.__messaging.openCompose = true)"
-            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-            style="background: linear-gradient(135deg,#7B61FF,#9B8BFF)">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        <span class="hidden sm:inline">New Message</span>
-    </button>
 @endsection
 
 @section('content')
@@ -159,15 +151,7 @@
                         </svg>
                     </div>
                     <h3 class="text-[#1E1B4B] font-semibold text-sm">Select a conversation</h3>
-                    <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list or start a new message.</p>
-                    <button @click="openCompose = true"
-                            class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md"
-                            style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        New Message
-                    </button>
+                    <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list, or tap <strong>+</strong> to start a new message.</p>
                 </div>
             </template>
 

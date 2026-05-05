@@ -80,4 +80,31 @@ class ResellerPortalController extends Controller
         $tenant   = Tenant::findOrFail($tenantId);
         return view('reseller.profile', compact('reseller', 'tenant'));
     }
+
+    public function messages($tenantId)
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+
+        $thread = \App\Models\MessageThread::where('tenant_id', $tenantId)
+            ->where('reseller_id', $reseller->id)
+            ->first();
+
+        $messages = $thread
+            ? \App\Models\ThreadMessage::where('thread_id', $thread->id)
+                ->orderBy('created_at')
+                ->get()
+            : collect();
+
+        // Mark reseller's unread messages as read
+        if ($thread && $thread->reseller_unread > 0) {
+            $thread->update(['reseller_unread' => 0]);
+            \App\Models\ThreadMessage::where('thread_id', $thread->id)
+                ->where('sender_type', 'admin')
+                ->where('is_read', false)
+                ->update(['is_read' => true, 'read_at' => now()]);
+        }
+
+        return view('reseller.messages', compact('reseller', 'tenant', 'thread', 'messages'));
+    }
 }
