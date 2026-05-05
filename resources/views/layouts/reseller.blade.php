@@ -57,20 +57,28 @@
 
         {{-- Bottom profile --}}
         @php
-            $r        = auth('reseller')->user() ?? $reseller;
-            $initials = strtoupper(collect(explode(' ', $r->name ?? 'R'))->map(fn($w) => $w[0] ?? '')->take(2)->implode(''));
+            $r           = auth('reseller')->user() ?? ($reseller ?? null);
+            $displayName = $r ? (\App\Services\UserDisplayNameService::resolve($r, false, 'referrer')) : 'Referrer';
+            $photoUrl    = $r?->profile_photo_path ? asset('storage/'.$r->profile_photo_path) : null;
+            $initials    = $r ? \App\Services\UserDisplayNameService::initials($r, false) : 'R';
         @endphp
         <div class="px-4 py-4 border-t border-white/10">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                     style="background: linear-gradient(135deg, #14B8A6, #0D9488)">
-                    {{ $initials }}
-                </div>
+            <a href="{{ isset($tenant) ? route('reseller.profile', $tenant->id) : '#' }}"
+               class="flex items-center gap-3 group">
+                @if($photoUrl)
+                    <img src="{{ $photoUrl }}" alt="Photo"
+                         class="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/20">
+                @else
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                         style="background: linear-gradient(135deg, #14B8A6, #0D9488)">
+                        {{ $initials }}
+                    </div>
+                @endif
                 <div class="flex-1 min-w-0">
-                    <p class="text-white text-sm font-medium truncate leading-tight">{{ $r->name ?? 'Referrer' }}</p>
-                    <p class="text-white/40 text-[10px] truncate mt-0.5">Referrer</p>
+                    <p class="text-white text-sm font-medium truncate leading-tight group-hover:text-teal-300 transition-colors">{{ $displayName }}</p>
+                    <p class="text-white/40 text-[10px] truncate mt-0.5">Referrer · My Profile</p>
                 </div>
-                <form action="{{ route('reseller.logout') }}" method="POST">
+                <form action="{{ route('reseller.logout') }}" method="POST" @click.stop>
                     @csrf
                     <button type="submit" class="text-white/40 hover:text-white transition-colors" title="Logout">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +86,7 @@
                         </svg>
                     </button>
                 </form>
-            </div>
+            </a>
         </div>
     </aside>
 
@@ -95,6 +103,21 @@
             </div>
             <div class="flex items-center gap-2">
                 @yield('topbar-actions')
+
+                {{-- Notification bell --}}
+                @if(isset($tenant))
+                <a href="{{ route('reseller.notifications', $tenant->id) }}"
+                   class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+                   x-data="{ count: 0 }"
+                   x-init="fetch('/api/notifications/mine/unread-count',{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}}).then(r=>r.json()).then(d=>count=d.count??0).catch(()=>{})"
+                   title="Notifications">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span x-show="count > 0" x-text="count > 9 ? '9+' : count"
+                          class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-0.5 bg-teal-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none"></span>
+                </a>
+                @endif
             </div>
         </header>
 
@@ -116,5 +139,6 @@
     </template>
 </div>
 
+@stack('scripts')
 </body>
 </html>

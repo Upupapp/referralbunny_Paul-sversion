@@ -148,6 +148,20 @@ class NotificationController extends Controller
         return response()->json(['message' => 'Deleted.']);
     }
 
+    /** Mark a single notification as read — called from web routes (tenant/reseller portals). */
+    public function markNotifRead(Request $request, string $notifId): \Illuminate\Http\JsonResponse
+    {
+        [$type, $id] = $this->resolveCurrentUser();
+        if (!$type || !$id) return response()->json(['ok' => false], 403);
+
+        Notification::where('id', $notifId)
+            ->where('notifiable_type', $type)
+            ->where('notifiable_id', $id)
+            ->update(['is_read' => true]);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function markAllRead(Request $request, NotificationService $service): JsonResponse
     {
         $service->markAllRead($request->tenant_id ?? null);

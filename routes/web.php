@@ -79,7 +79,9 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',    [ResellerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',  [ResellerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
-        Route::get('/messages',   [ResellerPortalController::class, 'messages'])->name('messages');
+        Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
+        Route::get('/notifications',                    [ResellerPortalController::class, 'notifications'])->name('notifications');
+        Route::post('/notifications/{id}/read',         [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');
     });
 
 // ── Super Admin Profile ───────────────────────────────────────

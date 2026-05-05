@@ -107,4 +107,11 @@ class ResellerPortalController extends Controller
 
         return view('reseller.messages', compact('reseller', 'tenant', 'thread', 'messages'));
     }
+
+    public function notifications($tenantId)
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+        return view('reseller.notifications', compact('reseller', 'tenant'));
+    }
 }
