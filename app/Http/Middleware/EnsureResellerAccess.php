@@ -10,9 +10,10 @@ class EnsureResellerAccess
 {
     public function handle(Request $request, Closure $next)
     {
-        // Super admin can access any reseller portal for oversight
+        // Super admins use the tenant admin portal, not the reseller portal
         if (Auth::guard('web')->check()) {
-            return $next($request);
+            $tenantId = $request->route('tenantId');
+            return redirect()->route('tenant.dashboard', $tenantId);
         }
 
         if (!Auth::guard('reseller')->check()) {
