@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Events\CommissionStatusChanged;
+use App\Events\DealCreated;
+use App\Events\DealExpired;
+use App\Events\ResellerJoined;
+use App\Listeners\HandleCommissionStatusChanged;
+use App\Listeners\HandleDealCreated;
+use App\Listeners\HandleResellerJoined;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,5 +23,10 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
             request()->server->set('HTTPS', 'on');
         }
+
+        // Email event bindings
+        Event::listen(DealCreated::class,              HandleDealCreated::class);
+        Event::listen(ResellerJoined::class,           HandleResellerJoined::class);
+        Event::listen(CommissionStatusChanged::class,  HandleCommissionStatusChanged::class);
     }
 }

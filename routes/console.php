@@ -1,6 +1,14 @@
 <?php
 
+use App\Jobs\Emails\SendResellerDailySummariesJob;
+use App\Jobs\Emails\SendSuperAdminDailySummaryJob;
+use App\Jobs\Emails\SendTenantAdminDailyBriefingJob;
 use Illuminate\Support\Facades\Schedule;
+
+// ── Email jobs (Asia/Manila timezone) ─────────────────────────
+Schedule::job(new SendSuperAdminDailySummaryJob)->dailyAt('08:00')->timezone('Asia/Manila');
+Schedule::job(new SendTenantAdminDailyBriefingJob)->dailyAt('08:00')->timezone('Asia/Manila');
+Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('Asia/Manila');
 
 // ── Daily jobs ────────────────────────────────────────────────
 Schedule::command('metrics:calculate')->dailyAt('01:00');

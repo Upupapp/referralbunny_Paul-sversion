@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ResellerJoined;
 use App\Mail\ResellerInvitation;
 use App\Mail\ResellerPasswordReset;
 use App\Models\Reseller;
@@ -171,6 +172,14 @@ class ResellerPortalAuthController extends Controller
 
         $reseller = $reseller->fresh();
         Auth::guard('reseller')->login($reseller);
+
+        // Fire event → sends welcome email + notifies tenant admins
+        ResellerJoined::dispatch(
+            resellerId:    $reseller->id,
+            resellerName:  $reseller->name,
+            resellerEmail: $reseller->email,
+            tenantId:      $reseller->tenant_id,
+        );
 
         return redirect()->route('reseller.dashboard', $reseller->tenant_id);
     }

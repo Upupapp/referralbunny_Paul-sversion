@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommissionStatusChanged;
+use App\Events\DealCreated as DealCreatedEvent;
 use App\Mail\ResellerInvitation;
 use App\Models\Lead;
 use App\Models\LeadHistory;
@@ -120,6 +122,17 @@ class LeadController extends Controller
             'date'    => now()->toDateString(),
         ]);
 
+        // Fire event → triggers deal created emails (reseller + tenant admin)
+        DealCreatedEvent::dispatch(
+            leadId:        $lead->id,
+            leadName:      $lead->name,
+            tenantId:      $lead->tenant_id,
+            resellerName:  $lead->reseller_name,
+            stage:         $lead->stage,
+            dealValue:     (float) ($lead->deal_value ?? 0),
+            daysLeft:      $lead->days_left ?? 21,
+        );
+
         // Auto-create reseller + send invite if a new email was provided
         $resellerCreated = false;
         $inviteSent      = false;
@@ -212,6 +225,18 @@ class LeadController extends Controller
                 $data['days_left'] = $stageRule->max_days;
                 $data['status']    = 'active';
             }
+        }
+
+        // Fire commission status event if changed
+        if (isset($data['commission_status']) && $data['commission_status'] !== $lead->commission_status) {
+            CommissionStatusChanged::dispatch(
+                leadId:        $lead->id,
+                leadName:      $lead->name,
+                tenantId:      $lead->tenant_id,
+                resellerName:  $lead->reseller_name,
+                newStatus:     $data['commission_status'],
+                dealValue:     (float) ($lead->deal_value ?? 0),
+            );
         }
 
         $lead->update($data);
