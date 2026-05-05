@@ -69,6 +69,7 @@ class TenantSignupWebController extends Controller
             DB::table('tenants')->insert([
                 'id'                 => $tenantId,
                 'name'               => $data['workspace_name'],
+                'program_name'       => $data['workspace_name'],
                 'industry'           => $data['industry'],
                 'country'            => $data['country'],
                 'timezone'           => $data['timezone'],
