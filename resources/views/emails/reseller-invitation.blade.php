@@ -1,6 +1,11 @@
 @extends('emails.layouts.base', ['headerLabel' => 'Referrer Invitation', 'subject' => "You've been invited as a referrer"])
 
 @section('content')
+<div style="text-align:center;margin-bottom:24px">
+    <img src="https://referralbunny.ai/images/mascots/r-bunny-portal.webp"
+         alt="" width="120" height="120"
+         style="width:120px;height:120px;object-fit:contain;display:inline-block;background:transparent">
+</div>
 <p class="greeting">Hi {{ $resellerName }}! 👋</p>
 
 <p class="text">
