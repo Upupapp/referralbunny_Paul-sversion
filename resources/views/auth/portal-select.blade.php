@@ -141,13 +141,18 @@
                 </div>
             </a>
 
-            {{-- Already have an account? --}}
-            <p class="text-center text-white/40 text-xs mt-1 a4">
-                Already have an account?
-                <a href="{{ route('tenant.login') }}" style="color:rgba(167,139,250,0.8);text-decoration:none" onmouseover="this.style.color='rgba(167,139,250,1)'" onmouseout="this.style.color='rgba(167,139,250,0.8)'">Sign in as workspace admin</a>
-                or
-                <a href="{{ route('reseller.login') }}" style="color:rgba(45,212,191,0.8);text-decoration:none" onmouseover="this.style.color='rgba(45,212,191,1)'" onmouseout="this.style.color='rgba(45,212,191,0.8)'">sign in as referrer</a>
-            </p>
+            {{-- Sign In button --}}
+            <div class="a4" style="margin-top:.75rem">
+                <a href="{{ route('signin.select') }}"
+                   style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.875rem 1rem;border-radius:1.25rem;border:1.5px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;transition:all .2s ease;font-family:'Inter',sans-serif"
+                   onmouseover="this.style.background='rgba(255,255,255,0.10)';this.style.borderColor='rgba(255,255,255,0.28)'"
+                   onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.borderColor='rgba(255,255,255,0.18)'">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                    Sign In
+                </a>
+            </div>
 
         </div>
 

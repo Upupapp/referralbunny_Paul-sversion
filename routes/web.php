@@ -45,6 +45,7 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
 
 // ── Portal selection ──────────────────────────────────────────
 Route::get('/select-portal', fn() => view('auth.portal-select'))->name('portal.select');
+Route::get('/sign-in',       fn() => view('auth.signin-select'))->name('signin.select');
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
