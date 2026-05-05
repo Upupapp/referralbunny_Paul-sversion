@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResellerInvitation;
 use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -80,15 +81,12 @@ class ResellerController extends Controller
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
         try {
-            Mail::raw(
-                "Hi {$data['name']},\n\n"
-                . "You've been invited as a referrer for {$tenantName}'s referral program.\n\n"
-                . "Set up your account and start claiming deals:\n{$setupUrl}\n\n"
-                . "This link is unique to you. Once you set your password, you can log in to track your deals and commissions.\n\n"
-                . "— The {$tenantName} Team",
-                fn($msg) => $msg->to($data['email'], $data['name'])
-                               ->subject("You've been invited as a referrer for {$tenantName}")
-            );
+            Mail::send(new ResellerInvitation(
+                resellerName:  $data['name'],
+                resellerEmail: $data['email'],
+                tenantName:    $tenantName,
+                setupUrl:      $setupUrl,
+            ));
         } catch (\Throwable $e) {
             Log::warning("Reseller invite email failed for {$data['email']}: {$e->getMessage()}");
         }

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\PipelineStageWarning;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -74,15 +75,15 @@ class CheckPipelineStageLimits extends Command
 
                     if ($resellerEmail) {
                         try {
-                            Mail::raw(
-                                "Hi {$lead->reseller_name},\n\n"
-                                . "Action required: Your deal \"{$lead->name}\" has only {$lead->days_left} day(s) left in the {$rule->stage} stage.\n\n"
-                                . "If the deal is not advanced before the deadline, it may be made available for reassignment.\n\n"
-                                . "Log in to take action: " . url('/reseller/login') . "\n\n"
-                                . "— The {$tenantName} Team",
-                                fn($msg) => $msg->to($resellerEmail, $lead->reseller_name)
-                                               ->subject("Urgent: \"{$lead->name}\" needs your attention")
-                            );
+                            Mail::send(new PipelineStageWarning(
+                                resellerName:  $lead->reseller_name,
+                                resellerEmail: $resellerEmail,
+                                tenantName:    $tenantName,
+                                dealName:      $lead->name,
+                                stage:         $rule->stage,
+                                daysLeft:      $lead->days_left,
+                                loginUrl:      url('/reseller/login'),
+                            ));
                             $notified++;
                         } catch (\Throwable $e) {
                             Log::warning("Pipeline warning email failed: {$e->getMessage()}");

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResellerInvitation;
 use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
@@ -154,18 +155,13 @@ class LeadController extends Controller
                 $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
                 try {
-                    Mail::raw(
-                        "Hi {$data['reseller_name']},\n\n"
-                        . "You have been invited as a referrer for {$tenantName}'s referral program.\n\n"
-                        . "A deal has already been submitted on your behalf: {$data['name']}.\n\n"
-                        . "Set up your referrer account here:\n{$setupUrl}\n\n"
-                        . "This link is unique to you. Once you set your password, you can log in to track your deals and commissions.\n\n"
-                        . "— The {$tenantName} Team",
-                        function ($message) use ($data, $tenantName) {
-                            $message->to(strtolower(trim($data['new_reseller_email'])), $data['reseller_name'])
-                                    ->subject("You've been invited as a referrer for {$tenantName}");
-                        }
-                    );
+                    Mail::send(new ResellerInvitation(
+                        resellerName:  $data['reseller_name'],
+                        resellerEmail: strtolower(trim($data['new_reseller_email'])),
+                        tenantName:    $tenantName,
+                        setupUrl:      $setupUrl,
+                        dealName:      $data['name'],
+                    ));
                     $inviteSent = true;
                 } catch (\Throwable $e) {
                     Log::warning("Reseller invite email failed for {$data['new_reseller_email']}: {$e->getMessage()}");

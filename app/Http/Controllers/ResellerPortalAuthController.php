@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResellerInvitation;
+use App\Mail\ResellerPasswordReset;
 use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -80,15 +82,12 @@ class ResellerPortalAuthController extends Controller
             DB::table('resellers')->where('id', $reseller->id)->update(['setup_token' => $token]);
 
             try {
-                Mail::raw(
-                    "Hi {$reseller->name},\n\n"
-                    . "We received a request to reset your password for {$tenantName}'s referrer portal.\n\n"
-                    . "Click the link below to set a new password:\n{$resetUrl}\n\n"
-                    . "If you didn't request this, you can safely ignore this email.\n\n"
-                    . "— The {$tenantName} Team",
-                    fn($msg) => $msg->to($reseller->email, $reseller->name)
-                                   ->subject("Reset your referrer portal password")
-                );
+                Mail::send(new ResellerPasswordReset(
+                    resellerName:  $reseller->name,
+                    resellerEmail: $reseller->email,
+                    tenantName:    $tenantName,
+                    resetUrl:      $resetUrl,
+                ));
             } catch (\Throwable $e) {
                 Log::warning("Reseller password reset email failed: {$e->getMessage()}");
             }
