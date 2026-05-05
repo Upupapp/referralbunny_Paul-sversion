@@ -15,15 +15,13 @@
             min-height: 100vh;
             font-family: 'Inter', sans-serif;
             background: linear-gradient(145deg, #1E1347 0%, #2D1B69 55%, #1a1040 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background-attachment: fixed;
         }
         .login-page {
             width: 100%;
-            padding: 1.5rem;
+            padding: 2rem 1.5rem;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             min-height: 100vh;
         }
@@ -40,10 +38,8 @@
             background: #ffffff;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             padding: 2.5rem 3rem;
-            overflow-y: auto;
-            max-height: 100vh;
         }
         .card-right {
             width: 360px;
@@ -55,12 +51,14 @@
             justify-content: center;
             padding: 2.5rem;
             text-align: center;
-            position: relative;
+            position: sticky;
+            top: 0;
+            height: 100vh;
             overflow: hidden;
         }
         @media (max-width: 767px) {
             .card-right { display: none !important; }
-            .card-left  { padding: 2.5rem 1.75rem; }
+            .card-left  { padding: 2rem 1.5rem; }
         }
         .form-wrap { max-width: 380px; }
         .field-label {
