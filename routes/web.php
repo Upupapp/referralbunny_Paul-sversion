@@ -16,30 +16,17 @@ Route::get('/login',  [AuthWebController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
-// ── Root — public landing (scrapers see OG tags; users get redirected) ───
+// ── Root — always show portal selection (scrapers get OG landing) ────────
 Route::get('/', function (\Illuminate\Http\Request $request) {
-    // Social scrapers — always return landing with OG tags
-    $ua = $request->userAgent() ?? '';
+    // Social scrapers — return landing page with OG tags
+    $ua       = $request->userAgent() ?? '';
     $scrapers = ['facebookexternalhit', 'Twitterbot', 'LinkedInBot', 'WhatsApp', 'Slackbot', 'TelegramBot'];
     foreach ($scrapers as $bot) {
         if (stripos($ua, $bot) !== false) {
-            return response(view('landing'), 200)
-                ->header('X-Robots-Tag', 'all');
+            return response(view('landing'), 200)->header('X-Robots-Tag', 'all');
         }
     }
-    // Authenticated tenant admin → their portal
-    if (auth('tenant')->check()) {
-        $membership = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
-            ->where('status', 'active')->first();
-        return $membership
-            ? redirect()->route('tenant.dashboard', $membership->tenant_id)
-            : view('auth.portal-select');
-    }
-    // Authenticated super admin → platform
-    if (auth('web')->check()) {
-        return redirect()->route('platform.dashboard');
-    }
-    // Regular guest → show portal selection directly (no extra redirect)
+    // Everyone else — always show the portal selection screen
     return view('auth.portal-select');
 })->name('home');
 
