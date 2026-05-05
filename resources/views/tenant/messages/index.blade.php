@@ -6,7 +6,9 @@
 @endsection
 
 @section('topbar-actions')
-    <button onclick="window.__messaging && (window.__messaging.openCompose = true)" class="btn-primary">
+    <button onclick="window.__messaging && (window.__messaging.openCompose = true)"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+            style="background: linear-gradient(135deg,#7B61FF,#9B8BFF)">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -19,129 +21,123 @@
     x-data="messaging()"
     x-init="init()"
     x-ref="root"
-    class="flex flex-col gap-4"
+    class="flex flex-col"
+    style="height: calc(100vh - 88px);"
 >
 
-    {{-- Stats --}}
-    <div class="grid grid-cols-3 gap-4">
-        <div class="card">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-[#1E1B4B]" x-text="threads.length">0</p>
-                    <p class="text-xs text-gray-400">Conversations</p>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-[#1E1B4B]" x-text="totalUnread">0</p>
-                    <p class="text-xs text-gray-400">Unread</p>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-[#1E1B4B]">{{ $resellers->count() }}</p>
-                    <p class="text-xs text-gray-400">Resellers</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Chat Panel — fills remaining height --}}
+    <div class="card p-0 overflow-hidden flex flex-1 min-h-0">
 
-    {{-- Chat Panel --}}
-    <div class="card p-0 overflow-hidden flex" style="height: calc(100vh - 260px); min-height: 420px;">
+        {{-- ── Left: Thread List ────────────────────────────── --}}
+        <div class="w-72 border-r border-gray-100 flex flex-col shrink-0 min-h-0">
 
-        {{-- Left: Thread List --}}
-        <div class="w-72 border-r border-gray-100 flex flex-col shrink-0">
+            {{-- Left header --}}
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-[#1E1B4B]">Messages</h2>
+                    <p class="text-[10px] text-gray-400 mt-0.5">
+                        <span x-text="threads.length">0</span> conversation<span x-show="threads.length !== 1">s</span>
+                        <template x-if="totalUnread > 0">
+                            <span> · <span x-text="totalUnread"></span> unread</span>
+                        </template>
+                    </p>
+                </div>
+                <button @click="openCompose = true"
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
+                        style="background: linear-gradient(135deg,#7B61FF,#9B8BFF)"
+                        title="New Message">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+            </div>
+
             {{-- Tabs --}}
-            <div class="flex border-b border-gray-100">
+            <div class="flex border-b border-gray-100 shrink-0">
                 <button
                     @click="activeTab = 'all'; loadThreads()"
-                    :class="activeTab === 'all' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
-                    class="flex-1 text-xs font-medium py-2.5 transition-colors"
+                    :class="activeTab === 'all'
+                        ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold'
+                        : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-[11px] py-2.5 transition-colors"
                 >All</button>
                 <button
                     @click="activeTab = 'needs_reply'; loadNeedsReply()"
-                    :class="activeTab === 'needs_reply' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
-                    class="flex-1 text-xs font-medium py-2.5 transition-colors relative"
+                    :class="activeTab === 'needs_reply'
+                        ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold'
+                        : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-[11px] py-2.5 transition-colors relative"
                 >
                     Needs Reply
                     <span x-show="needsReplyCount > 0"
-                          class="absolute -top-0.5 right-1 w-4 h-4 rounded-full bg-orange-400 text-white text-[9px] font-bold flex items-center justify-center"
+                          class="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-orange-400 text-white text-[8px] font-bold flex items-center justify-center"
                           x-text="needsReplyCount > 9 ? '9+' : needsReplyCount"></span>
                 </button>
                 <button
                     @click="activeTab = 'unread'; loadThreads()"
-                    :class="activeTab === 'unread' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF]' : 'text-gray-400 hover:text-gray-600'"
-                    class="flex-1 text-xs font-medium py-2.5 transition-colors"
+                    :class="activeTab === 'unread'
+                        ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold'
+                        : 'text-gray-400 hover:text-gray-600'"
+                    class="flex-1 text-[11px] py-2.5 transition-colors"
                 >Unread</button>
             </div>
 
-            <div class="p-3 border-b border-gray-100">
-                <input
-                    x-model="search"
-                    type="text"
-                    placeholder="Search conversations..."
-                    class="form-input text-sm py-2 w-full"
-                >
+            {{-- Search --}}
+            <div class="p-2.5 border-b border-gray-100 shrink-0">
+                <div class="relative">
+                    <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input x-model="search" type="text" placeholder="Search..."
+                           class="w-full text-xs py-2 pl-8 pr-3 bg-gray-50 rounded-lg border-0 outline-none focus:ring-1 focus:ring-[#7B61FF] focus:bg-white transition-all">
+                </div>
             </div>
 
+            {{-- Thread list --}}
             <div class="flex-1 overflow-y-auto">
-                {{-- Loading --}}
                 <template x-if="loading">
                     <div class="p-6 text-center">
-                        <svg class="w-5 h-5 animate-spin text-[#7B61FF] mx-auto" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <svg class="w-4 h-4 animate-spin text-[#7B61FF] mx-auto" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
                         </svg>
                     </div>
                 </template>
 
-                {{-- Empty state --}}
                 <template x-if="!loading && filteredThreads.length === 0">
-                    <div class="p-6 text-center text-gray-400 text-sm">
-                        <p x-show="search">No results for "<span x-text="search"></span>"</p>
-                        <p x-show="!search">No conversations yet</p>
+                    <div class="px-4 py-8 text-center text-gray-400 text-xs">
+                        <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                        </svg>
+                        <p x-show="search">No results</p>
+                        <p x-show="!search && activeTab === 'needs_reply'">No pending replies</p>
+                        <p x-show="!search && activeTab !== 'needs_reply'">No conversations yet</p>
                     </div>
                 </template>
 
-                {{-- Thread items --}}
                 <template x-for="thread in filteredThreads" :key="thread.id">
                     <button
                         @click="selectThread(thread)"
-                        class="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50"
-                        :class="activeThread?.id === thread.id ? 'bg-purple-50 border-l-[3px] border-l-[#7B61FF]' : 'border-l-[3px] border-l-transparent'"
+                        class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70"
+                        :class="activeThread?.id === thread.id
+                            ? 'bg-[#F5F3FF] border-l-[3px] border-l-[#7B61FF]'
+                            : 'border-l-[3px] border-l-transparent'"
                     >
                         <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full bg-[#EDE9FE] flex items-center justify-center shrink-0">
-                                <span class="text-[#7B61FF] font-bold text-sm" x-text="thread.reseller_name.charAt(0).toUpperCase()"></span>
-                            </div>
+                            <div class="w-8 h-8 rounded-full bg-[#EDE9FE] flex items-center justify-center shrink-0 text-[#7B61FF] font-bold text-xs"
+                                 x-text="thread.reseller_name.charAt(0).toUpperCase()"></div>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center justify-between gap-1">
-                                    <span class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="thread.reseller_name"></span>
-                                    <span class="text-[10px] text-gray-400 shrink-0" x-text="thread.last_message_at ?? ''"></span>
+                                    <span class="text-xs font-semibold text-[#1E1B4B] truncate"
+                                          :class="thread.admin_unread > 0 ? 'font-bold' : ''"
+                                          x-text="thread.reseller_name"></span>
+                                    <span class="text-[9px] text-gray-400 shrink-0" x-text="thread.last_message_at ?? ''"></span>
                                 </div>
                                 <div class="flex items-center justify-between gap-1 mt-0.5">
-                                    <p class="text-xs text-gray-400 truncate" x-text="thread.last_message_preview || 'Start a conversation'"></p>
-                                    <span x-show="thread.admin_unread > 0" class="shrink-0 w-4 h-4 rounded-full bg-[#7B61FF] flex items-center justify-center">
-                                        <span class="text-[9px] font-bold text-white" x-text="thread.admin_unread"></span>
+                                    <p class="text-[11px] text-gray-400 truncate" x-text="thread.last_message_preview || 'No messages yet'"></p>
+                                    <span x-show="thread.admin_unread > 0"
+                                          class="shrink-0 w-4 h-4 rounded-full bg-[#7B61FF] flex items-center justify-center">
+                                        <span class="text-[8px] font-bold text-white" x-text="thread.admin_unread"></span>
                                     </span>
                                 </div>
                             </div>
@@ -149,32 +145,25 @@
                     </button>
                 </template>
             </div>
-
-            <div class="p-3 border-t border-gray-100">
-                <button @click="openCompose = true" class="btn-primary w-full justify-center text-sm gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    New Message
-                </button>
-            </div>
         </div>
 
-        {{-- Right: Active Thread --}}
+        {{-- ── Right: Active Thread ─────────────────────────── --}}
         <div class="flex-1 flex flex-col min-w-0">
 
             {{-- No thread selected --}}
             <template x-if="!activeThread">
                 <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
-                    <div class="w-16 h-16 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-4">
-                        <svg class="w-8 h-8 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-14 h-14 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-3">
+                        <svg class="w-7 h-7 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
                         </svg>
                     </div>
-                    <h3 class="text-[#1E1B4B] font-semibold text-base">Select a conversation</h3>
-                    <p class="text-gray-400 text-sm mt-1 max-w-xs">Choose a conversation from the list, or start a new message to a reseller.</p>
-                    <button @click="openCompose = true" class="btn-primary mt-5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h3 class="text-[#1E1B4B] font-semibold text-sm">Select a conversation</h3>
+                    <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list or start a new message.</p>
+                    <button @click="openCompose = true"
+                            class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md"
+                            style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
                         New Message
@@ -184,105 +173,91 @@
 
             {{-- Active thread --}}
             <template x-if="activeThread">
-                <div class="flex flex-col h-full">
+                <div class="flex flex-col h-full min-h-0">
 
                     {{-- Thread header --}}
                     <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-3 shrink-0">
-                        <div class="w-9 h-9 rounded-full bg-[#EDE9FE] flex items-center justify-center">
-                            <span class="text-[#7B61FF] font-bold text-sm" x-text="activeThread.reseller_name?.charAt(0).toUpperCase()"></span>
+                        <div class="w-8 h-8 rounded-full bg-[#EDE9FE] flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
+                             x-text="activeThread.reseller_name?.charAt(0).toUpperCase()"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm text-[#1E1B4B] truncate" x-text="activeThread.reseller_name"></p>
+                            <p class="text-[10px] text-gray-400 truncate" x-text="activeThread.reseller_email"></p>
                         </div>
-                        <div>
-                            <p class="font-semibold text-sm text-[#1E1B4B]" x-text="activeThread.reseller_name"></p>
-                            <p class="text-xs text-gray-400" x-text="activeThread.reseller_email"></p>
-                        </div>
-                        <div class="ml-auto">
-                            <span class="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-50 rounded-full px-2.5 py-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                In-app · delivery via app & email later
-                            </span>
-                        </div>
+                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-full px-2.5 py-1 shrink-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            In-app
+                        </span>
                     </div>
 
-                    {{-- Reminder banner for this thread --}}
+                    {{-- Reminder banner --}}
                     <template x-if="activeThreadReminder">
-                        <div class="mx-3 mt-2 flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
-                            <svg class="w-3.5 h-3.5 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="mx-3 mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                            <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
-                            <p class="text-xs text-orange-700 flex-1" x-text="activeThreadReminder?.body"></p>
-                            <button @click="resolveThreadReminder()" class="text-[10px] text-orange-500 hover:text-orange-700 font-medium shrink-0">Dismiss</button>
+                            <p class="text-[11px] text-amber-700 flex-1" x-text="activeThreadReminder?.body"></p>
+                            <button @click="resolveThreadReminder()" class="text-[10px] text-amber-500 hover:text-amber-700 font-medium shrink-0">✕</button>
                         </div>
                     </template>
 
-                    {{-- Messages scroll area --}}
-                    <div class="flex-1 overflow-y-auto p-4 space-y-3" x-ref="messageArea">
-
+                    {{-- Messages --}}
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0" x-ref="messageArea">
                         <template x-if="loadingMessages">
                             <div class="flex justify-center py-8">
-                                <svg class="w-5 h-5 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <svg class="w-4 h-4 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
                                 </svg>
                             </div>
                         </template>
 
                         <template x-if="!loadingMessages && activeMessages.length === 0">
-                            <div class="text-center text-gray-400 text-sm py-10">No messages yet — send the first one below.</div>
+                            <div class="text-center text-gray-400 text-xs py-10">No messages yet — send the first one below.</div>
                         </template>
 
                         <template x-for="msg in activeMessages" :key="msg.id">
                             <div :class="msg.sender_type === 'admin' ? 'flex justify-end' : 'flex justify-start'">
-                                <div
-                                    :class="msg.sender_type === 'admin'
-                                        ? 'bg-[#7B61FF] text-white rounded-2xl rounded-br-sm'
+                                <div :class="msg.sender_type === 'admin'
+                                        ? 'text-white rounded-2xl rounded-br-sm'
                                         : 'bg-gray-100 text-[#1E1B4B] rounded-2xl rounded-bl-sm'"
-                                    class="max-w-[72%] px-4 py-2.5"
-                                >
+                                     :style="msg.sender_type === 'admin' ? 'background:linear-gradient(135deg,#7B61FF,#9B8BFF)' : ''"
+                                     class="max-w-[70%] px-4 py-2.5">
                                     <p class="text-sm leading-relaxed whitespace-pre-wrap" x-text="msg.body"></p>
-                                    <p
-                                        :class="msg.sender_type === 'admin' ? 'text-white/60' : 'text-gray-400'"
-                                        class="text-[10px] mt-1 text-right"
-                                        :title="msg.created_at_full"
-                                        x-text="msg.created_at"
-                                    ></p>
+                                    <p :class="msg.sender_type === 'admin' ? 'text-white/50' : 'text-gray-400'"
+                                       class="text-[10px] mt-1 text-right" :title="msg.created_at_full"
+                                       x-text="msg.created_at"></p>
                                 </div>
                             </div>
                         </template>
                     </div>
 
-                    {{-- Compose bar --}}
+                    {{-- Compose --}}
                     <div class="p-3 border-t border-gray-100 shrink-0">
                         <form @submit.prevent="sendReply()" class="flex gap-2 items-end">
-                            <textarea
-                                x-model="replyBody"
-                                placeholder="Type a message..."
-                                rows="1"
-                                class="form-input flex-1 text-sm resize-none"
-                                style="min-height:38px; max-height:120px;"
-                                @input="$el.style.height='38px'; $el.style.height=$el.scrollHeight+'px'"
-                                @keydown.enter.prevent.exact="sendReply()"
-                                @keydown.enter.shift.prevent="replyBody += '\n'"
-                            ></textarea>
-                            <button
-                                type="submit"
-                                class="btn-primary shrink-0 h-[38px] px-4"
-                                :disabled="!replyBody.trim() || sending"
-                            >
+                            <textarea x-model="replyBody" placeholder="Type a message…" rows="1"
+                                      class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-[#7B61FF]/20 focus:border-[#7B61FF] transition-all"
+                                      style="min-height:40px; max-height:120px;"
+                                      @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
+                                      @keydown.enter.prevent.exact="sendReply()"
+                                      @keydown.enter.shift.prevent="replyBody += '\n'"></textarea>
+                            <button type="submit"
+                                    class="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all hover:shadow-md disabled:opacity-40"
+                                    style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
+                                    :disabled="!replyBody.trim() || sending">
                                 <svg x-show="!sending" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                 </svg>
                                 <svg x-show="sending" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
                                 </svg>
                             </button>
                         </form>
-                        <p class="text-[10px] text-gray-400 mt-1.5">Enter to send · Shift+Enter for new line</p>
+                        <p class="text-[9px] text-gray-400 mt-1.5 pl-1">Enter to send · Shift+Enter for new line</p>
                     </div>
 
                 </div>
             </template>
-
         </div>
     </div>
 
@@ -290,49 +265,46 @@
     <div x-show="openCompose" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div @click="openCompose = false" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg" @click.stop>
-            <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+            <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
                 <div>
-                    <h3 class="text-[#1E1B4B] font-bold text-lg">New Message</h3>
-                    <p class="text-gray-400 text-sm mt-0.5">Send a message to a reseller</p>
+                    <h3 class="text-[#1E1B4B] font-bold text-base">New Message</h3>
+                    <p class="text-gray-400 text-xs mt-0.5">Send a message to a reseller</p>
                 </div>
-                <button @click="openCompose = false" class="text-gray-400 hover:text-gray-600 transition-colors p-1">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button @click="openCompose = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
-
             <form @submit.prevent="startThread()" class="px-6 py-5 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">To</label>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">To</label>
                     <select x-model="compose.reseller_id" class="form-input w-full text-sm" required>
-                        <option value="">Select a reseller...</option>
+                        <option value="">Select a reseller…</option>
                         @foreach($resellers as $reseller)
-                            <option value="{{ $reseller->id }}">{{ $reseller->name }}  ·  {{ $reseller->email }}</option>
+                            <option value="{{ $reseller->id }}">{{ $reseller->name }} · {{ $reseller->email }}</option>
                         @endforeach
                     </select>
                     @if($resellers->isEmpty())
-                        <p class="text-xs text-amber-600 mt-1.5">No active resellers yet. Invite resellers from the Resellers page first.</p>
+                        <p class="text-xs text-amber-600 mt-1.5">No active resellers yet.</p>
                     @endif
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
-                    <textarea
-                        x-model="compose.body"
-                        rows="5"
-                        placeholder="Write your message here..."
-                        class="form-input w-full text-sm resize-none"
-                        required
-                    ></textarea>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Message</label>
+                    <textarea x-model="compose.body" rows="5" placeholder="Write your message…"
+                              class="form-input w-full text-sm resize-none" required></textarea>
                 </div>
-                <div class="flex gap-3 justify-end pt-1">
-                    <button type="button" @click="openCompose = false" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary" :disabled="sending || !compose.reseller_id || !compose.body.trim()">
-                        <svg x-show="sending" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" @click="openCompose = false" class="btn-secondary text-sm">Cancel</button>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
+                            style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
+                            :disabled="sending || !compose.reseller_id || !compose.body.trim()">
+                        <svg x-show="sending" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
                         </svg>
-                        <span x-text="sending ? 'Sending...' : 'Send Message'"></span>
+                        <span x-text="sending ? 'Sending…' : 'Send Message'"></span>
                     </button>
                 </div>
             </form>
@@ -350,23 +322,23 @@ function messaging() {
     const postHdrs = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF });
 
     return {
-        threads:             [],
-        activeThread:        null,
-        activeMessages:      [],
-        openCompose:         false,
-        search:              '',
-        replyBody:           '',
-        sending:             false,
-        loading:             false,
-        loadingMessages:     false,
-        compose:             { reseller_id: '', body: '' },
-        activeTab:           'all',
-        needsReplyCount:     0,
+        threads:              [],
+        activeThread:         null,
+        activeMessages:       [],
+        openCompose:          false,
+        search:               '',
+        replyBody:            '',
+        sending:              false,
+        loading:              false,
+        loadingMessages:      false,
+        compose:              { reseller_id: '', body: '' },
+        activeTab:            'all',
+        needsReplyCount:      0,
         activeThreadReminder: null,
 
         get filteredThreads() {
-            const q = this.search.toLowerCase();
-            let list = this.threads;
+            const q    = this.search.toLowerCase();
+            let   list = this.threads;
             if (this.activeTab === 'unread') list = list.filter(t => t.admin_unread > 0);
             if (!q) return list;
             return list.filter(t =>
@@ -387,9 +359,9 @@ function messaging() {
 
         async loadNeedsReplyCount() {
             try {
-                const r    = await fetch('/api/message-reminders/active', { headers: hdrs() });
-                const data = await r.json();
-                this.needsReplyCount = data.count ?? 0;
+                const r = await fetch('/api/message-reminders/active', { headers: hdrs() });
+                const d = await r.json();
+                this.needsReplyCount = d.count ?? 0;
             } catch(e) {}
         },
 
@@ -397,12 +369,10 @@ function messaging() {
             this.activeTab = 'needs_reply';
             this.loading   = true;
             try {
-                const r    = await fetch('/api/message-reminders/needs-reply', { headers: hdrs() });
-                const data = await r.json();
-                this.threads = data.threads ?? [];
-            } finally {
-                this.loading = false;
-            }
+                const r = await fetch('/api/message-reminders/needs-reply', { headers: hdrs() });
+                const d = await r.json();
+                this.threads = d.threads ?? [];
+            } finally { this.loading = false; }
         },
 
         async loadThreads() {
@@ -411,31 +381,27 @@ function messaging() {
             try {
                 const r      = await fetch(`${BASE}/threads`, { headers: hdrs() });
                 this.threads = await r.json();
-            } finally {
-                this.loading = false;
-            }
+            } finally { this.loading = false; }
         },
 
         async selectThread(thread) {
-            this.activeThread        = { ...thread };
-            this.activeMessages      = [];
+            this.activeThread         = { ...thread };
+            this.activeMessages       = [];
             this.activeThreadReminder = null;
             this.loadingMessages      = true;
 
-            // Check if there's an active reminder for this thread
             try {
-                const r    = await fetch('/api/message-reminders/active', { headers: hdrs() });
-                const data = await r.json();
-                const match = (data.reminders ?? []).find(rem => rem.thread_id === thread.id);
-                if (match) this.activeThreadReminder = match;
+                const r = await fetch('/api/message-reminders/active', { headers: hdrs() });
+                const d = await r.json();
+                const m = (d.reminders ?? []).find(rem => rem.thread_id === thread.id);
+                if (m) this.activeThreadReminder = m;
             } catch(e) {}
 
             try {
                 const r = await fetch(`${BASE}/threads/${thread.id}`, { headers: hdrs() });
-                const data = await r.json();
-                this.activeThread   = { ...this.activeThread, ...data.thread };
-                this.activeMessages = data.messages;
-                // clear unread in list
+                const d = await r.json();
+                this.activeThread   = { ...this.activeThread, ...d.thread };
+                this.activeMessages = d.messages;
                 const t = this.threads.find(x => x.id === thread.id);
                 if (t) t.admin_unread = 0;
             } finally {
@@ -459,14 +425,8 @@ function messaging() {
             if (!this.replyBody.trim() || this.sending) return;
             this.sending = true;
             try {
-                const r = await fetch(`${BASE}/threads/${this.activeThread.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type':    'application/json',
-                        'Accept':          'application/json',
-                        'X-CSRF-TOKEN':    CSRF,
-                        'X-Requested-With':'XMLHttpRequest',
-                    },
+                const r   = await fetch(`${BASE}/threads/${this.activeThread.id}`, {
+                    method: 'POST', headers: postHdrs(),
                     body: JSON.stringify({ body: this.replyBody }),
                 });
                 const msg = await r.json();
@@ -479,9 +439,7 @@ function messaging() {
                     this.scrollToBottom();
                     this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));
                 });
-            } finally {
-                this.sending = false;
-            }
+            } finally { this.sending = false; }
         },
 
         async startThread() {
@@ -489,24 +447,16 @@ function messaging() {
             this.sending = true;
             try {
                 const r = await fetch(`${BASE}/threads`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type':    'application/json',
-                        'Accept':          'application/json',
-                        'X-CSRF-TOKEN':    CSRF,
-                        'X-Requested-With':'XMLHttpRequest',
-                    },
+                    method: 'POST', headers: postHdrs(),
                     body: JSON.stringify(this.compose),
                 });
-                const data = await r.json();
+                const d = await r.json();
                 this.openCompose = false;
                 this.compose     = { reseller_id: '', body: '' };
                 await this.loadThreads();
-                const thread = this.threads.find(t => t.id === data.thread_id);
+                const thread = this.threads.find(t => t.id === d.thread_id);
                 if (thread) this.selectThread(thread);
-            } finally {
-                this.sending = false;
-            }
+            } finally { this.sending = false; }
         },
 
         updateThreadPreview(threadId, msg) {
