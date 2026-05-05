@@ -44,10 +44,29 @@
 <body>
 <div class="wrapper">
     <div class="header">
-        <div style="color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.02em">referralbunny.ai</div>
-        @if(isset($headerLabel))
-        <div class="header-label">{{ $headerLabel }}</div>
-        @endif
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+                <td align="center" style="padding-bottom:16px">
+                    <img src="https://referralbunny.ai/images/logos/referralbunny-white-logo.webp"
+                         alt="ReferralBunny.ai" height="36"
+                         style="height:36px;width:auto;display:block;margin:0 auto">
+                </td>
+            </tr>
+            <tr>
+                <td align="center">
+                    <img src="https://referralbunny.ai/images/mascots/r-bunny-portal.webp"
+                         alt="" aria-hidden="true" width="110" height="110"
+                         style="width:110px;height:110px;object-fit:contain;display:block;margin:0 auto 12px">
+                </td>
+            </tr>
+            @if(isset($headerLabel))
+            <tr>
+                <td align="center">
+                    <div class="header-label">{{ $headerLabel }}</div>
+                </td>
+            </tr>
+            @endif
+        </table>
     </div>
     <div class="body">
         @yield('content')
