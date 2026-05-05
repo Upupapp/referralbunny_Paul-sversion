@@ -33,7 +33,7 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
             ->where('status', 'active')->first();
         return $membership
             ? redirect()->route('tenant.dashboard', $membership->tenant_id)
-            : redirect()->route('tenant.login');
+            : view('auth.portal-select');
     }
     // Authenticated super admin → platform
     if (auth('web')->check()) {
