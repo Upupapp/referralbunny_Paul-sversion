@@ -97,19 +97,19 @@
                 <span class="text-3xl hidden">🐰</span>
             </div>
             <h1 class="text-white font-bold text-2xl leading-tight">ReferralBunny.ai</h1>
-            <p class="text-white/50 text-sm mt-1">Choose how you'd like to sign in</p>
+            <p class="text-white/50 text-sm mt-1">Build your own referral program or join an existing one.</p>
         </div>
 
         {{-- Portal cards --}}
         <div class="flex flex-col gap-3">
 
-            {{-- Workspace Admin --}}
-            <a href="{{ route('tenant.login') }}" class="portal-card portal-card-tenant a2">
+            {{-- Build a Referral Program --}}
+            <a href="{{ route('tenant.create') }}" class="portal-card portal-card-tenant a2">
                 <div class="flex items-center justify-between w-full">
                     <div class="icon-wrap" style="background: rgba(123,97,255,0.2)">
                         <svg class="w-6 h-6" style="color: #a78bfa" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
                         </svg>
                     </div>
                     <svg class="w-5 h-5 text-white card-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,18 +117,18 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-white font-semibold text-base leading-tight">Workspace Admin</p>
-                    <p class="text-white/50 text-sm mt-0.5">Manage deals, referrers, and commissions</p>
+                    <p class="text-white font-semibold text-base leading-tight">Build a Referral Program</p>
+                    <p class="text-white/50 text-sm mt-0.5">Create a workspace and manage your referrers, deals, and commissions.</p>
                 </div>
             </a>
 
-            {{-- Referrer / Reseller --}}
-            <a href="{{ route('reseller.login') }}" class="portal-card portal-card-reseller a3">
+            {{-- Join a Referral Program --}}
+            <a href="{{ route('tenant.join') }}" class="portal-card portal-card-reseller a3">
                 <div class="flex items-center justify-between w-full">
                     <div class="icon-wrap" style="background: rgba(20,184,166,0.2)">
                         <svg class="w-6 h-6" style="color: #2dd4bf" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                         </svg>
                     </div>
                     <svg class="w-5 h-5 text-white card-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,10 +136,18 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="text-white font-semibold text-base leading-tight">Referrer / Reseller</p>
-                    <p class="text-white/50 text-sm mt-0.5">Track your deals and commission status</p>
+                    <p class="text-white font-semibold text-base leading-tight">Join a Referral Program</p>
+                    <p class="text-white/50 text-sm mt-0.5">Accept an invite, enter a program code, or find an existing program.</p>
                 </div>
             </a>
+
+            {{-- Already have an account? --}}
+            <p class="text-center text-white/40 text-xs mt-1 a4">
+                Already have an account?
+                <a href="{{ route('tenant.login') }}" style="color:rgba(167,139,250,0.8);text-decoration:none" onmouseover="this.style.color='rgba(167,139,250,1)'" onmouseout="this.style.color='rgba(167,139,250,0.8)'">Sign in as workspace admin</a>
+                or
+                <a href="{{ route('reseller.login') }}" style="color:rgba(45,212,191,0.8);text-decoration:none" onmouseover="this.style.color='rgba(45,212,191,1)'" onmouseout="this.style.color='rgba(45,212,191,0.8)'">sign in as referrer</a>
+            </p>
 
         </div>
 

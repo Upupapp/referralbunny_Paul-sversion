@@ -232,8 +232,8 @@
             <div class="divider form-wrap"><span>or</span></div>
 
             <div class="form-wrap" style="display:flex;gap:.5rem">
-                <a href="{{ route('tenant.create') }}" class="btn-secondary">Create a tenant</a>
-                <a href="{{ route('tenant.join') }}"   class="btn-secondary">Join a tenant</a>
+                <a href="{{ route('tenant.create') }}" class="btn-secondary">Build a program</a>
+                <a href="{{ route('tenant.join') }}"   class="btn-secondary">Join a program</a>
             </div>
 
             <div class="form-wrap" style="padding-top:.5rem;border-top:1px solid #f3f4f6;margin-top:.25rem">

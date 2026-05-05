@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\MessageController;
 use App\Http\Controllers\Web\NotificationsController;
 use App\Http\Controllers\Web\TenantAdminController;
+use App\Http\Controllers\Web\TenantSignupWebController;
 use App\Http\Controllers\Web\TenantAuthWebController;
 use App\Http\Controllers\ResellerPortalAuthController;
 use App\Http\Controllers\ResellerPortalController;
@@ -50,9 +51,16 @@ Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->na
 Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post');
 Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
 
-// Stub pages — shown as "coming soon" until full Blade views are built
-Route::get('/tenant/create', fn() => view('auth.tenant-coming-soon', ['page' => 'Create Tenant']))->name('tenant.create');
-Route::get('/tenant/join',   fn() => view('auth.tenant-coming-soon', ['page' => 'Join Tenant']))->name('tenant.join');
+// ── Build a Referral Program (Tenant Signup) ─────────────────
+Route::get('/tenant/create',  [TenantSignupWebController::class, 'showBuild'])->name('tenant.create');
+Route::post('/tenant/create', [TenantSignupWebController::class, 'build'])->name('tenant.create.post');
+
+// ── Join a Referral Program ───────────────────────────────────
+Route::get('/tenant/join',         [TenantSignupWebController::class, 'showJoin'])->name('tenant.join');
+Route::get('/join-referral-program', [TenantSignupWebController::class, 'showJoin'])->name('join.program');
+Route::get('/tenant/invite/{token}', [TenantSignupWebController::class, 'showInvite'])->name('tenant.invite.show');
+
+// ── Other tenant stubs ────────────────────────────────────────
 Route::get('/tenant/select', fn() => view('auth.tenant-coming-soon', ['page' => 'Select Workspace']))->name('tenant.select');
 Route::get('/tenant/onboarding/{tenantId}', fn($tenantId) => redirect()->route('tenant.dashboard', $tenantId))->name('tenant.onboarding');
 Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soon', ['page' => 'Update Password']))->name('tenant.first-signin-password');
