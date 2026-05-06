@@ -320,31 +320,59 @@
 
 {{-- Invite Modal --}}
 @if($isAdmin)
-<div id="invite-modal" class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="background: rgba(0,0,0,.5)" x-data>
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @click.stop>
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h3 class="font-bold text-[#1E1B4B] text-base">Invite Team Member</h3>
+<div id="invite-modal"
+     class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     style="background: rgba(0,0,0,.5)" x-data
+     @keydown.escape.window="document.getElementById('invite-modal').classList.add('hidden')">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto flex flex-col"
+         @click.stop>
+
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 sticky top-0 bg-white rounded-t-2xl sm:rounded-t-2xl">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-[#1E1B4B] text-base">Invite Team Member</h3>
+            </div>
             <button onclick="document.getElementById('invite-modal').classList.add('hidden')"
-                    class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                    class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                    aria-label="Close invite modal">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
-        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4">
+
+        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4 flex-1">
             @csrf
+
+            {{-- Inline error (visible when modal auto-opens after a failed submit) --}}
+            @if($errors->any())
+                <div class="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-3.5 py-3">
+                    <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm text-red-600 font-medium">{{ $errors->first() }}</p>
+                </div>
+            @endif
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5" for="inv-email">Email address</label>
                 <input id="inv-email" name="email" type="email" required
-                       class="w-full border border-gray-200 bg-gray-50 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
-                       placeholder="colleague@company.com" value="{{ old('email') }}">
+                       class="w-full border {{ $errors->has('email') ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50' }} rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
+                       placeholder="colleague@company.com"
+                       value="{{ old('email') }}"
+                       autocomplete="email">
             </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5" for="inv-role">Role</label>
                 <select id="inv-role" name="role" required
-                        class="w-full border border-gray-200 bg-gray-50 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all">
-                    <option value="">Select a role</option>
+                        class="w-full border {{ $errors->has('role') ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50' }} rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all">
+                    <option value="">Select a role…</option>
                     @if(in_array($actingRole, ['owner', 'admin']))
                         <option value="admin"   {{ old('role') === 'admin'   ? 'selected' : '' }}>Admin — Full access except ownership transfer</option>
                         <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager — Daily operations, billing optional</option>
@@ -352,15 +380,33 @@
                     <option value="member"  {{ old('role') === 'member'  ? 'selected' : '' }}>Member — Standard team access</option>
                     <option value="viewer"  {{ old('role') === 'viewer'  ? 'selected' : '' }}>Viewer — Read-only access</option>
                 </select>
+                <p class="text-[11px] text-gray-400 mt-1">
+                    You can only invite roles below your own level.
+                </p>
             </div>
-            <div class="flex gap-2.5 pt-1">
+
+            {{-- Role descriptions --}}
+            @if(in_array($actingRole, ['owner', 'admin']))
+            <div class="bg-[#F8F7FF] rounded-xl p-3 space-y-1.5 border border-violet-100">
+                <p class="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-2">Role Summary</p>
+                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Admin</span> — Full access. No billing or ownership transfer.</p>
+                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Manager</span> — Daily ops. Billing access optional.</p>
+                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Member</span> — Standard team access. View + own tasks.</p>
+                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Viewer</span> — Read-only. No changes allowed.</p>
+            </div>
+            @endif
+
+            <div class="flex gap-2.5 pt-1 pb-2">
                 <button type="button"
                         onclick="document.getElementById('invite-modal').classList.add('hidden')"
                         class="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
                 <button type="submit"
-                        class="flex-1 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
+                        class="flex-1 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
                     Send Invitation
                 </button>
             </div>

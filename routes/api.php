@@ -248,6 +248,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
         Route::post('task/complete',     [\App\Http\Controllers\OnboardingController::class, 'completeTask']);
         Route::post('task/dismiss',      [\App\Http\Controllers\OnboardingController::class, 'dismissTask']);
         Route::post('snooze',            [\App\Http\Controllers\OnboardingController::class, 'snooze']);
+        Route::post('wake-up',           [\App\Http\Controllers\OnboardingController::class, 'wakeUp']);
     });
 
     // Feature Access Control

@@ -54,4 +54,9 @@ class OnboardingController extends Controller
         $hours = max(1, min(168, $hours)); // 1h – 7 days
         return response()->json($this->onboarding->snooze($hours));
     }
+
+    public function wakeUp(): JsonResponse
+    {
+        return response()->json($this->onboarding->clearSnooze());
+    }
 }

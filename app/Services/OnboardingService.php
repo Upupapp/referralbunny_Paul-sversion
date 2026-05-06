@@ -338,6 +338,19 @@ class OnboardingService
         return $this->getStatus();
     }
 
+    /**
+     * Clear the snooze (wake up) without changing anything else.
+     */
+    public function clearSnooze(): array
+    {
+        $state = $this->getState();
+        if (! $state) return [];
+
+        $state->snoozed_until = null;
+        $state->save();
+        return $this->getStatus();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────
 
     public function walkthroughSteps(string $roleKey): array
@@ -517,19 +530,39 @@ class OnboardingService
         }
 
         if (Auth::guard('tenant')->check()) {
-            $u        = Auth::guard('tenant')->user();
-            $tenantId = request()->route('tenantId')
-                ?? session('current_tenant_id')
-                ?? DB::table('tenant_memberships')
+            $u = Auth::guard('tenant')->user();
+
+            // Priority: route param → request body/query (validated below) → first active membership
+            $requestedTenantId = request()->route('tenantId')
+                ?? request()->input('tenant_id')
+                ?? request()->query('tenant_id');
+
+            if ($requestedTenantId) {
+                // Validate the user actually belongs to this tenant (prevent tenant-hopping)
+                $membership = DB::table('tenant_memberships')
+                    ->where('tenant_user_id', $u->id)
+                    ->where('tenant_id', $requestedTenantId)
+                    ->where('status', 'active')
+                    ->first();
+                $tenantId = $membership ? $requestedTenantId : null;
+            } else {
+                $tenantId = null;
+            }
+
+            // Final fallback: first active membership
+            if (! $tenantId) {
+                $tenantId = DB::table('tenant_memberships')
                     ->where('tenant_user_id', $u->id)
                     ->where('status', 'active')
                     ->value('tenant_id');
+            }
 
             $roleKey = 'member';
             if ($tenantId) {
                 $role    = DB::table('tenant_memberships')
                     ->where('tenant_user_id', $u->id)
                     ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
                     ->value('role');
                 $roleKey = $role ?? 'member';
             }

@@ -5,8 +5,9 @@
     Separate from the messaging reminder bot (bottom-right).
     Shows onboarding progress, next task suggestion, and task list.
 --}}
+@php $onboardingTenantId = isset($tenant) ? $tenant->id : null; @endphp
 <div
-    x-data="onboardingBot()"
+    x-data="onboardingBot(@json($onboardingTenantId))"
     x-init="init()"
     @onboarding-walkthrough-done.window="onWalkthroughDone()"
     class="fixed bottom-5 left-5 z-[140]"
@@ -116,7 +117,14 @@
                     </svg>
                 </button>
 
-                <div x-show="showTasks" x-collapse class="space-y-1.5 pt-1">
+                <div x-show="showTasks"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 -translate-y-1"
+                     class="space-y-1.5 pt-1">
                     <template x-for="task in tasks" :key="task.key">
                         <div class="flex items-center gap-2.5 py-1.5">
                             <div class="shrink-0 w-4 h-4 rounded-full flex items-center justify-center"
@@ -191,27 +199,24 @@
              alt="R Bunny"
              class="w-6 h-6 object-contain shrink-0"
              loading="lazy">
-        <span class="text-xs font-semibold text-[#1E1B4B]">
-            <template x-if="!fullyReady">
-                <span x-text="`Setup · ${progressPercent}%`"></span>
-            </template>
-            <template x-if="fullyReady">
-                <span class="text-emerald-600">Ready! 🎉</span>
-            </template>
+        <span class="text-xs font-semibold"
+              :class="fullyReady ? 'text-emerald-600' : 'text-[#1E1B4B]'"
+              x-text="fullyReady ? 'Ready! 🎉' : `Setup · ${progressPercent}%`">
         </span>
-        <template x-if="!fullyReady">
-            <span class="w-2 h-2 rounded-full bg-[#7B61FF] animate-pulse" aria-hidden="true"></span>
-        </template>
+        <span x-show="!fullyReady"
+              class="w-2 h-2 rounded-full bg-[#7B61FF] animate-pulse shrink-0"
+              aria-hidden="true"></span>
     </button>
 </div>
 
 @push('scripts')
 <script>
-function onboardingBot() {
-    const CSRF  = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
-    const hdrs  = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
-    const pHdrs = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF() });
-    const post  = (url, body = {}) => fetch(url, { method: 'POST', headers: pHdrs(), body: JSON.stringify(body) });
+function onboardingBot(tenantId) {
+    const CSRF    = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const apiBase = tenantId ? `/api/onboarding/status?tenant_id=${encodeURIComponent(tenantId)}` : '/api/onboarding/status';
+    const hdrs    = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
+    const pHdrs   = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF() });
+    const post    = (url, body = {}) => fetch(url, { method: 'POST', headers: pHdrs(), body: JSON.stringify(tenantId ? { ...body, tenant_id: tenantId } : body) });
 
     return {
         open:                false,
@@ -233,7 +238,7 @@ function onboardingBot() {
 
         async load() {
             try {
-                const res  = await fetch('/api/onboarding/status', { headers: hdrs() });
+                const res  = await fetch(apiBase, { headers: hdrs() });
                 const data = await res.json();
                 if (!data.enabled) return;
 
@@ -288,7 +293,7 @@ function onboardingBot() {
 
         async wakeUp() {
             try {
-                const res  = await post('/api/onboarding/snooze', { hours: 0 });
+                const res  = await post('/api/onboarding/wake-up');
                 const data = await res.json();
                 this._applyStatus(data);
             } catch(e) {}

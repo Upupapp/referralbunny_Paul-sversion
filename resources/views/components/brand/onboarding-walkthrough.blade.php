@@ -4,8 +4,9 @@
     Included once in each authenticated layout. Shows automatically on first sign-in.
     Max 5 steps, role-based, skip-friendly, resumable.
 --}}
+@php $onboardingTenantId = isset($tenant) ? $tenant->id : null; @endphp
 <div
-    x-data="onboardingWalkthrough()"
+    x-data="onboardingWalkthrough(@json($onboardingTenantId))"
     x-init="init()"
     @keydown.escape.window="if(visible) skip()"
     style="pointer-events:none"
@@ -137,12 +138,13 @@
 
 @push('scripts')
 <script>
-function onboardingWalkthrough() {
-    const CSRF = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
-    const post = (url, body = {}) => fetch(url, {
+function onboardingWalkthrough(tenantId) {
+    const CSRF    = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const apiBase = tenantId ? `/api/onboarding/status?tenant_id=${encodeURIComponent(tenantId)}` : '/api/onboarding/status';
+    const post    = (url, body = {}) => fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF(), 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(tenantId ? { ...body, tenant_id: tenantId } : body),
     });
 
     return {
@@ -155,7 +157,7 @@ function onboardingWalkthrough() {
 
         async init() {
             try {
-                const res = await fetch('/api/onboarding/status', {
+                const res = await fetch(apiBase, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 const data = await res.json();
