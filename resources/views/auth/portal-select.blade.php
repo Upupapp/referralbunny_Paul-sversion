@@ -91,10 +91,8 @@
         <div class="flex flex-col items-center text-center mb-8 a1">
             <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg"
                  style="background: linear-gradient(135deg, #FF6CAB, #7B61FF)">
-                <img src="/images/logos/referralbunny-social-avatar.png"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-                     class="w-12 h-12 rounded-xl object-cover" alt="R Bunny">
-                <span class="text-3xl hidden">🐰</span>
+                <img src="/images/logos/referralbunny-icon-only.webp"
+                     class="w-12 h-12 rounded-xl object-cover" alt="ReferralBunny.ai">
             </div>
             <h1 class="text-white font-bold text-2xl leading-tight">ReferralBunny.ai</h1>
             <p class="text-white/50 text-sm mt-1">Build your own referral program or join an existing one.</p>

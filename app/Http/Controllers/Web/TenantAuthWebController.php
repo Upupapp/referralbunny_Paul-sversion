@@ -109,12 +109,6 @@ class TenantAuthWebController extends Controller
             return back()->withErrors(['tenant_id' => 'You do not have access to that workspace.']);
         }
 
-        // First-time invited user password review
-        if ($membership->joined_by_invitation && ! $membership->password_review_completed) {
-            session(['tenant_membership_id' => $membership->id]);
-            return redirect()->route('tenant.first-signin-password');
-        }
-
         return redirect()->route('tenant.dashboard', $tenantId);
     }
 
@@ -133,16 +127,6 @@ class TenantAuthWebController extends Controller
         // Single tenant — go straight in
         if ($memberships->count() === 1) {
             $m = $memberships->first();
-
-            // First-time invited user password review
-            if ($m->joined_by_invitation && ! $m->password_review_completed) {
-                session(['tenant_membership_id' => $m->id]);
-                return redirect()->route('tenant.first-signin-password');
-            }
-
-            if (! $m->setup_completed) {
-                return redirect()->route('tenant.onboarding', $m->tenant_id);
-            }
 
             return redirect()->route('tenant.dashboard', $m->tenant_id);
         }

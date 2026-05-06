@@ -106,25 +106,31 @@ class TenantSignupWebController extends Controller
     /** Handle invite token web redirect (for links like /tenant/invite/{token}) */
     public function showInvite(string $token)
     {
-        // Check reseller setup token
+        // Check reseller setup token first
         $reseller = DB::table('resellers')->where('setup_token', $token)->first();
         if ($reseller) {
             return redirect()->route('reseller.setup', ['token' => $token]);
         }
 
-        // Check tenant invitation
+        // Check tenant invitation token — delegate to the canonical invite acceptance flow
         $invite = DB::table('tenant_invitations')->where('token', $token)->first();
+
         if (!$invite) {
-            return view('auth.invite-invalid', ['reason' => 'not_found']);
+            return redirect()->route('tenant.login')
+                ->withErrors(['email' => 'This invite link is invalid or does not exist.']);
         }
+
         if ($invite->status === 'accepted') {
             return redirect()->route('tenant.login')
                 ->with('success', 'This invitation has already been accepted. Please sign in.');
         }
+
         if ($invite->status === 'revoked' || ($invite->expires_at && now()->gt($invite->expires_at))) {
-            return view('auth.invite-invalid', ['reason' => 'expired']);
+            // Reuse the canonical expired-invite view (token is just used for display context)
+            return view('auth.tenant-invite-expired', ['invitation' => null]);
         }
 
-        return view('auth.accept-invite', compact('invite', 'token'));
+        // Valid invite — hand off to the canonical acceptance route
+        return redirect()->route('tenant.accept-invite.show', $token);
     }
 }

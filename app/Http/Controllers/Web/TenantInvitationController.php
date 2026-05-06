@@ -92,13 +92,15 @@ class TenantInvitationController extends Controller
 
         if (! $alreadyMember) {
             TenantMembership::create([
-                'tenant_id'            => $invitation->tenant_id,
-                'tenant_user_id'       => $user->id,
-                'role'                 => $invitation->role,
-                'status'               => 'active',
-                'joined_by_invitation' => true,
-                'joined_at'            => now(),
-                'invited_by_user_id'   => $invitation->invited_by,
+                'tenant_id'                 => $invitation->tenant_id,
+                'tenant_user_id'            => $user->id,
+                'role'                      => $invitation->role,
+                'status'                    => 'active',
+                'joined_by_invitation'      => true,
+                'joined_at'                 => now(),
+                'invited_by_user_id'        => $invitation->invited_by,
+                'password_review_completed' => true, // no password review step exists; skip on all future logins
+                'setup_completed'           => true,
             ]);
         }
 

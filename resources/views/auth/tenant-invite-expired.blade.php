@@ -43,9 +43,10 @@
                  alt="" width="80" height="80"
                  style="width:80px;height:80px;object-fit:contain">
         </div>
-        <h1 style="margin:0 0 .5rem;font-size:1.25rem;font-weight:700;color:#111827">Invitation Expired</h1>
+        <h1 style="margin:0 0 .5rem;font-size:1.25rem;font-weight:700;color:#111827">Invitation Unavailable</h1>
         <p style="margin:0 0 1.75rem;font-size:.875rem;color:#6b7280;line-height:1.6">
-            This invitation link is invalid or has already expired. Please contact the workspace admin to send a new invitation.
+            This invitation link is invalid, has expired, or has already been accepted.
+            Please contact the workspace administrator to send a new invitation.
         </p>
         <a href="{{ route('tenant.login') }}" class="btn">Back to Sign In</a>
     </div>
