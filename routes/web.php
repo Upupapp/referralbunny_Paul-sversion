@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\AuthWebController;
+use App\Http\Controllers\Web\ContactsImportController;
 use App\Http\Controllers\Web\LguIdsImportController;
 use App\Http\Controllers\Web\TenantDealImportController;
 use App\Http\Controllers\Web\PlatformController;
@@ -84,6 +85,17 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
         Route::get('/notifications',                    [ResellerPortalController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/{id}/read',         [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');
+
+        // ── Contacts Import (Reseller) ────────────────────────────
+        Route::get('/contacts/imports',                             [ContactsImportController::class, 'index'])->name('contacts.imports');
+        Route::get('/contacts/imports/template',                    [ContactsImportController::class, 'downloadTemplate'])->name('contacts.imports.template');
+        Route::post('/contacts/imports/upload',                     [ContactsImportController::class, 'upload'])->name('contacts.imports.upload');
+        Route::get('/contacts/imports/{batchId}',                   [ContactsImportController::class, 'preview'])->name('contacts.imports.preview');
+        Route::post('/contacts/imports/{batchId}/rows/{rowId}',     [ContactsImportController::class, 'approveRow'])->name('contacts.imports.approve-row');
+        Route::post('/contacts/imports/{batchId}/bulk-approve',     [ContactsImportController::class, 'bulkApprove'])->name('contacts.imports.bulk-approve');
+        Route::post('/contacts/imports/{batchId}/execute',          [ContactsImportController::class, 'execute'])->name('contacts.imports.execute');
+        Route::get('/contacts/imports/{batchId}/report',            [ContactsImportController::class, 'show'])->name('contacts.imports.show');
+        Route::get('/contacts/imports/{batchId}/failed',            [ContactsImportController::class, 'downloadFailed'])->name('contacts.imports.failed');
     });
 
 // ── Partner Auth ──────────────────────────────────────────────
@@ -212,6 +224,17 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/imports/deals/{batchId}/execute',      [TenantDealImportController::class, 'execute'])->name('imports.deals.execute');
     Route::get('/imports/deals/{batchId}/report',        [TenantDealImportController::class, 'show'])->name('imports.deals.show');
     Route::get('/imports/deals/{batchId}/failed',        [TenantDealImportController::class, 'downloadFailed'])->name('imports.deals.failed');
+
+    // ── Contacts Import ───────────────────────────────────────────
+    Route::get('/imports/contacts',                           [ContactsImportController::class, 'index'])->name('imports.contacts');
+    Route::get('/imports/contacts/template',                  [ContactsImportController::class, 'downloadTemplate'])->name('imports.contacts.template');
+    Route::post('/imports/contacts/upload',                   [ContactsImportController::class, 'upload'])->name('imports.contacts.upload');
+    Route::get('/imports/contacts/{batchId}',                 [ContactsImportController::class, 'preview'])->name('imports.contacts.preview');
+    Route::post('/imports/contacts/{batchId}/rows/{rowId}',   [ContactsImportController::class, 'approveRow'])->name('imports.contacts.approve-row');
+    Route::post('/imports/contacts/{batchId}/bulk-approve',   [ContactsImportController::class, 'bulkApprove'])->name('imports.contacts.bulk-approve');
+    Route::post('/imports/contacts/{batchId}/execute',        [ContactsImportController::class, 'execute'])->name('imports.contacts.execute');
+    Route::get('/imports/contacts/{batchId}/report',          [ContactsImportController::class, 'show'])->name('imports.contacts.show');
+    Route::get('/imports/contacts/{batchId}/failed',          [ContactsImportController::class, 'downloadFailed'])->name('imports.contacts.failed');
 });
 
 // ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────
