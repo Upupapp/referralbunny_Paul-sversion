@@ -92,7 +92,7 @@
         <div class="filter-bar">
             <label class="filter-pill" :class="filterStatus !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <select x-model="filterStatus" @change="applyFilters()">
+                <select x-model="filterStatus" @change="applyFilters()" autocomplete="off">
                     <option value="">All Status</option>
                     <option value="invited">Invited</option>
                     <option value="active">Active</option>
@@ -108,7 +108,7 @@
             </label>
             <label x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                <select x-model="filterAgreement" @change="applyFilters()">
+                <select x-model="filterAgreement" @change="applyFilters()" autocomplete="off">
                     <option value="">All Agreements</option>
                     <option value="compliant">Fully Signed</option>
                     <option value="missing">Missing Agreements</option>
@@ -117,7 +117,7 @@
             </label>
             <label x-show="totalRequiredDocs > 0" class="filter-pill" :class="filterDoc !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
-                <select x-model="filterDoc" @change="applyFilters()">
+                <select x-model="filterDoc" @change="applyFilters()" autocomplete="off">
                     <option value="">All Doc Status</option>
                     <option value="compliant">Docs Complete</option>
                     <option value="missing">Missing Docs</option>
@@ -698,13 +698,19 @@ function referrersModule(tenantId) {
 
         applyFilters() {
             const q = this.search.toLowerCase();
+            // Only apply compliance/doc filters when data has actually loaded
+            const agLoaded = Object.keys(this.resellerCompliance).length > 0;
+            const dcLoaded = Object.keys(this.resellerDocCompliance).length > 0;
+
             this.filtered = this.referrers.filter(r => {
                 const matchQ  = !q || (r.name||'').toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q) || (r.territory||'').toLowerCase().includes(q);
                 const matchSt = !this.filterStatus || r.status === this.filterStatus;
-                const matchAg = !this.filterAgreement
+                // Agreement filter: only restrict if compliance data is loaded
+                const matchAg = !this.filterAgreement || !agLoaded
                     || (this.filterAgreement === 'compliant' && this.isCompliant(r.id))
                     || (this.filterAgreement === 'missing'   && !this.isCompliant(r.id));
-                const matchDc = !this.filterDoc
+                // Document filter: only restrict if doc compliance data is loaded
+                const matchDc = !this.filterDoc || !dcLoaded
                     || (this.filterDoc === 'compliant' && this.isDocCompliant(r.id))
                     || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
                 return matchQ && matchSt && matchAg && matchDc;
