@@ -105,7 +105,10 @@ class TenantUserManagementController extends Controller
             'memberships',
             'pendingInvites',
             'isAdmin',
-        ) + ['permissionService' => $this->permissionService]);
+        ) + [
+            'permissionService' => $this->permissionService,
+            'actingRole'        => $acting->role,
+        ]);
     }
 
     // ── Invite ────────────────────────────────────────────────────

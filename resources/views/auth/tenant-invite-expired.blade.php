@@ -38,10 +38,10 @@
         <div style="margin-bottom:1.25rem">
             <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
         </div>
-        <div style="width:56px;height:56px;border-radius:16px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
-            <svg width="28" height="28" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+        <div style="margin:0 auto 1rem;display:flex;justify-content:center">
+            <img src="/images/mascots/r-bunny-warning-error.webp"
+                 alt="" width="80" height="80"
+                 style="width:80px;height:80px;object-fit:contain">
         </div>
         <h1 style="margin:0 0 .5rem;font-size:1.25rem;font-weight:700;color:#111827">Invitation Expired</h1>
         <p style="margin:0 0 1.75rem;font-size:.875rem;color:#6b7280;line-height:1.6">

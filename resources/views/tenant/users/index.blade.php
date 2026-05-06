@@ -320,7 +320,7 @@
 
 {{-- Invite Modal --}}
 @if($isAdmin)
-<div id="invite-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+<div id="invite-modal" class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-center justify-center p-4"
      style="background: rgba(0,0,0,.5)" x-data>
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @click.stop>
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -345,7 +345,6 @@
                 <select id="inv-role" name="role" required
                         class="w-full border border-gray-200 bg-gray-50 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all">
                     <option value="">Select a role</option>
-                    @php $actingRole = optional(request()->get('_tenant_membership'))->role ?? 'admin'; @endphp
                     @if(in_array($actingRole, ['owner', 'admin']))
                         <option value="admin"   {{ old('role') === 'admin'   ? 'selected' : '' }}>Admin — Full access except ownership transfer</option>
                         <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager — Daily operations, billing optional</option>
