@@ -65,25 +65,6 @@
     </div>
 
 
-    {{-- TEMP DEBUG: remove after fix --}}
-    <div style="background:#fef08a;border:1px solid #ca8a04;padding:8px 12px;border-radius:8px;font-size:11px;font-family:monospace;">
-        <strong>OUTER DEBUG:</strong>
-        loading=<span x-text="loading"></span>
-        &nbsp;|&nbsp; search=<span x-text="JSON.stringify(search)"></span>
-        &nbsp;|&nbsp; status=<span x-text="JSON.stringify(filterStatus)"></span>
-        &nbsp;|&nbsp; doc=<span x-text="JSON.stringify(filterDoc)"></span>
-        &nbsp;|&nbsp; referrers=<span x-text="referrers.length"></span>
-        &nbsp;|&nbsp; filtered=<span x-text="filtered.length"></span>
-    </div>
-    {{-- INNER DEBUG: always visible, outside x-show --}}
-    <div style="background:#fce7f3;border:1px solid #db2777;padding:8px 12px;border-radius:8px;font-size:11px;font-family:monospace;">
-        <strong>INNER (x-for test):</strong>
-        <template x-for="r in filtered" :key="r.id">
-            <span x-text="' ['+r.name+']'"></span>
-        </template>
-        <span x-show="filtered.length === 0">(filtered is empty)</span>
-    </div>
-
     {{-- Filter bar --}}
     <div class="card space-y-3">
         <div class="search-group">
@@ -188,12 +169,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- TEMP DEBUG ROW --}}
-                    <tr style="background:#fef9c3;"><td colspan="9" style="padding:6px 12px;font-size:11px;font-family:monospace;" x-text="'[DEBUG] loading='+loading+' referrers='+referrers.length+' filtered='+filtered.length+' filter:'+filterStatus+'|'+filterAgreement+'|'+filterDoc+'|'+JSON.stringify(search)"></td></tr>
-                    <template x-for="r in filtered" :key="r.id">
-                        <tr style="background:#dcfce7;"><td colspan="9" style="padding:6px 12px;font-size:11px;font-family:monospace;" x-text="'ROW: '+r.name+' ('+r.status+') id='+r.id"></td></tr>
-                    </template>
-                    {{-- END TEMP DEBUG --}}
                     <template x-if="filtered.length === 0 && !loading">
                         <tr>
                             <td colspan="9" class="py-16 text-center">
@@ -718,7 +693,6 @@ function referrersModule(tenantId) {
         },
 
         applyFilters() {
-          try {
             // Fast-path: nothing is filtering — show everything
             if (!this.search && !this.filterStatus && !this.filterAgreement && !this.filterDoc) {
                 this.filtered = this.referrers.slice();
@@ -743,7 +717,6 @@ function referrersModule(tenantId) {
                     || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
                 return matchQ && matchSt && matchAg && matchDc;
             });
-          } catch(e) { console.error('applyFilters threw:', e); }
         },
 
         // ── Anonymity ─────────────────────────────────────────────────────
