@@ -28,6 +28,9 @@ Schedule::command('search:reindex')->dailyAt('03:00');
 // ── Message reminders (R Bunny AI Dialog) ────────────────────
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
 
+// ── Invitation reminders (invitee + inviter) ──────────────────
+Schedule::command('invitations:send-reminders')->hourly();
+
 // ── Lead expiry & pipeline ────────────────────────────────────
 Schedule::command('leads:expire')->dailyAt('00:05');
 Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30');

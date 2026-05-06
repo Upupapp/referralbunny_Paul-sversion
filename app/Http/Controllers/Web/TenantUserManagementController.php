@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TenantInvitationMail;
+use App\Mail\TenantInvitationRevokedMail;
 use App\Models\Tenant;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\InvitationReminderService;
 use App\Services\NotificationDispatchService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 class TenantUserManagementController extends Controller
@@ -18,6 +22,7 @@ class TenantUserManagementController extends Controller
     public function __construct(
         private PermissionService           $permissionService,
         private NotificationDispatchService $notifications,
+        private InvitationReminderService   $reminderService,
     ) {}
 
     // ── Helpers ───────────────────────────────────────────────────
@@ -163,16 +168,28 @@ class TenantUserManagementController extends Controller
             return back()->withErrors(['email' => 'A pending invitation already exists for this email.'])->withInput();
         }
 
-        $invitedById = Auth::guard('tenant')->id();
+        $invitedById    = Auth::guard('tenant')->id();
+        $permPreset     = $request->input('permissions_preset');
 
         $invitation = TenantInvitation::create([
-            'tenant_id'  => $tenantId,
-            'email'      => $email,
-            'role'       => $invitedRole,
-            'status'     => 'pending',
-            'invited_by' => $invitedById,
-            'expires_at' => now()->addDays(7),
+            'tenant_id'          => $tenantId,
+            'email'              => $email,
+            'role'               => $invitedRole,
+            'status'             => 'pending',
+            'invited_by'         => $invitedById,
+            'expires_at'         => now()->addDays(7),
+            'permissions_preset' => $permPreset ?: null,
         ]);
+
+        // Send initial invitation email
+        try {
+            Mail::send(new TenantInvitationMail($invitation));
+        } catch (\Throwable) {
+            // queue failure — don't block UI
+        }
+
+        // Initialise reminder schedule
+        $this->reminderService->initialiseSchedule($invitation);
 
         // Notify all tenant admins
         $this->notifications->dispatchToTenantAdmins(
@@ -202,9 +219,17 @@ class TenantUserManagementController extends Controller
             ->where('status', 'pending')
             ->firstOrFail();
 
-        // Extend expiry by 7 days from now
-        $invitation->expires_at = now()->addDays(7);
-        $invitation->save();
+        // Rate-limited manual resend (24h window)
+        if (! $this->reminderService->manualResend($invitation)) {
+            return back()->withErrors(['resend' => 'You can only resend this invitation once every 24 hours.']);
+        }
+
+        // Send the invitation email again
+        try {
+            Mail::send(new TenantInvitationMail($invitation));
+        } catch (\Throwable) {
+            // silent — rate limit already updated
+        }
 
         $this->notifications->dispatchToTenantAdmins(
             tenantId:    $tenantId,
@@ -227,13 +252,23 @@ class TenantUserManagementController extends Controller
         $acting = $this->actingMembership($tenantId);
         $this->requireAdminAccess($acting);
 
-        $invitation = TenantInvitation::where('id', $inviteId)
+        $invitation = TenantInvitation::with('tenant')->where('id', $inviteId)
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->firstOrFail();
 
         $invitation->status = 'revoked';
         $invitation->save();
+
+        // Suppress all future reminders
+        $this->reminderService->suppress($invitation, 'revoked');
+
+        // Notify the invitee that their invitation was cancelled
+        try {
+            Mail::send(new TenantInvitationRevokedMail($invitation));
+        } catch (\Throwable) {
+            // silent
+        }
 
         return back()->with('success', "Invitation for {$invitation->email} has been revoked.");
     }
@@ -342,5 +377,39 @@ class TenantUserManagementController extends Controller
         $membership->save();
 
         return back()->with('success', 'User has been removed from this workspace.');
+    }
+
+    // ── Send Reminder Now (manual, rate-limited) ──────────────────
+
+    public function sendReminderNow(string $tenantId, string $inviteId)
+    {
+        $acting = $this->actingMembership($tenantId);
+        $this->requireAdminAccess($acting);
+
+        $invitation = TenantInvitation::with('tenant')->where('id', $inviteId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'pending')
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
+
+        // 24h rate limit
+        if ($invitation->last_manual_resend_at &&
+            now()->lt($invitation->last_manual_resend_at->addHours(24))) {
+            $nextAllowed = $invitation->last_manual_resend_at->addHours(24)->diffForHumans();
+            return back()->withErrors(['reminder' => "You can send the next manual reminder {$nextAllowed}."]);
+        }
+
+        // Send invitee reminder email immediately
+        $sent = $this->reminderService->sendInviteeReminder($invitation);
+
+        // Update rate limit timestamp regardless (prevents rapid retries on mail failure)
+        $invitation->last_manual_resend_at = now();
+        $invitation->save();
+
+        if ($sent) {
+            return back()->with('success', "Reminder sent to {$invitation->email}.");
+        }
+
+        return back()->withErrors(['reminder' => 'Could not send the reminder at this time. Please try again later.']);
     }
 }

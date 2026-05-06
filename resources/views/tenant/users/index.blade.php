@@ -196,43 +196,120 @@
 
             {{-- Pending Invitations --}}
             <div class="card">
-                <h3 class="font-semibold text-[#1E1B4B] text-sm mb-3">Pending Invitations</h3>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Pending Invitations</h3>
+                    @if($pendingInvites->count() > 0)
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
+                            {{ $pendingInvites->count() }}
+                        </span>
+                    @endif
+                </div>
                 @forelse($pendingInvites as $invite)
-                    <div class="py-2.5 border-b border-gray-50 last:border-0">
+                    @php
+                        $isExpiringSoon  = $invite->expires_at->diffInHours(now()) <= 24;
+                        $canManualRemind = ! $invite->last_manual_resend_at
+                            || now()->gte($invite->last_manual_resend_at->addHours(24));
+                        $autoReminders   = $invite->reminder_count ?? 0;
+                    @endphp
+                    <div class="py-3 border-b border-gray-50 last:border-0">
                         <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-xs font-medium text-[#1E1B4B] truncate">{{ $invite->email }}</p>
-                                <p class="text-[11px] text-gray-400 mt-0.5">
-                                    {{ ucfirst($invite->role) }} · expires {{ $invite->expires_at->diffForHumans() }}
-                                </p>
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
+                                        {{ match($invite->role) {
+                                            'admin'   => 'bg-violet-100 text-violet-700',
+                                            'manager' => 'bg-sky-100 text-sky-700',
+                                            'member'  => 'bg-green-100 text-green-700',
+                                            default   => 'bg-gray-100 text-gray-600',
+                                        } }}">
+                                        {{ ucfirst($invite->role) }}
+                                    </span>
+                                    @if($isExpiringSoon)
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">
+                                            Expires soon
+                                        </span>
+                                    @else
+                                        <span class="text-[10px] text-gray-400">
+                                            expires {{ $invite->expires_at->diffForHumans() }}
+                                        </span>
+                                    @endif
+                                    @if($autoReminders > 0)
+                                        <span class="text-[10px] text-gray-400">
+                                            · {{ $autoReminders }}/3 reminder{{ $autoReminders !== 1 ? 's' : '' }} sent
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
+
                             @if($isAdmin)
-                                <div class="flex items-center gap-1 shrink-0">
-                                    <form method="POST" action="{{ route('tenant.invitations.resend', [$tenant->id, $invite->id]) }}">
-                                        @csrf
-                                        <button type="submit" title="Resend"
-                                                class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                <div class="flex items-center gap-1 shrink-0" x-data="{ open: false }">
+                                    <div class="relative">
+                                        <button @click="open = !open"
+                                                class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M12 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
                                             </svg>
                                         </button>
-                                    </form>
-                                    <form method="POST" action="{{ route('tenant.invitations.revoke', [$tenant->id, $invite->id]) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" title="Revoke"
-                                                class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
-                                        </button>
-                                    </form>
+                                        <div x-show="open" @click.away="open = false"
+                                             class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-1 text-sm">
+
+                                            {{-- Resend (extends expiry) --}}
+                                            <form method="POST" action="{{ route('tenant.invitations.resend', [$tenant->id, $invite->id]) }}">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 transition-colors text-xs">
+                                                    Resend &amp; extend 7 days
+                                                </button>
+                                            </form>
+
+                                            {{-- Manual reminder (rate-limited) --}}
+                                            <form method="POST" action="{{ route('tenant.invitations.remind-now', [$tenant->id, $invite->id]) }}">
+                                                @csrf
+                                                <button type="submit"
+                                                        @if(! $canManualRemind) disabled title="Available again {{ optional($invite->last_manual_resend_at)->addHours(24)->diffForHumans() }}" @endif
+                                                        class="w-full text-left px-3.5 py-2 transition-colors text-xs
+                                                            {{ $canManualRemind ? 'text-violet-600 hover:bg-violet-50' : 'text-gray-300 cursor-not-allowed' }}">
+                                                    Send reminder now
+                                                </button>
+                                            </form>
+
+                                            <div class="border-t border-gray-50 my-1"></div>
+
+                                            {{-- Revoke --}}
+                                            <form method="POST" action="{{ route('tenant.invitations.revoke', [$tenant->id, $invite->id]) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                        onclick="return confirm('Revoke this invitation? The invitee will be notified.')"
+                                                        class="w-full text-left px-3.5 py-2 text-red-500 hover:bg-red-50 transition-colors text-xs">
+                                                    Revoke invitation
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
                         </div>
+
+                        {{-- R Bunny warning for near-expiry --}}
+                        @if($isExpiringSoon && $isAdmin)
+                            <div class="mt-2 flex items-center gap-2 bg-amber-50 rounded-lg px-2.5 py-2">
+                                <img src="/images/mascots/r-bunny-warning-error.webp"
+                                     alt="" class="w-6 h-6 object-contain shrink-0" loading="lazy">
+                                <p class="text-[10px] text-amber-700 font-medium">
+                                    This invitation expires {{ $invite->expires_at->diffForHumans() }}.
+                                    Resend to extend the deadline.
+                                </p>
+                            </div>
+                        @endif
                     </div>
                 @empty
-                    <p class="text-sm text-gray-400 text-center py-4">No pending invitations</p>
+                    <div class="flex flex-col items-center py-8 text-center">
+                        <img src="/images/mascots/r-bunny-sleeping.webp"
+                             alt="" class="w-12 h-12 object-contain mb-2" loading="lazy">
+                        <p class="text-xs text-gray-400">No pending invitations</p>
+                    </div>
                 @endforelse
             </div>
 

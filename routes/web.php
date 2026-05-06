@@ -193,8 +193,9 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/users/{userId}/billing-toggle',      [TenantUserManagementController::class, 'toggleBilling'])->name('users.billing-toggle');
     Route::post('/users/{userId}/deactivate',          [TenantUserManagementController::class, 'deactivateUser'])->name('users.deactivate');
     Route::delete('/users/{userId}',                   [TenantUserManagementController::class, 'removeUser'])->name('users.remove');
-    Route::post('/invitations/{inviteId}/resend',      [TenantUserManagementController::class, 'resendInvite'])->name('invitations.resend');
-    Route::delete('/invitations/{inviteId}',           [TenantUserManagementController::class, 'revokeInvite'])->name('invitations.revoke');
+    Route::post('/invitations/{inviteId}/resend',        [TenantUserManagementController::class, 'resendInvite'])->name('invitations.resend');
+    Route::post('/invitations/{inviteId}/remind-now',    [TenantUserManagementController::class, 'sendReminderNow'])->name('invitations.remind-now');
+    Route::delete('/invitations/{inviteId}',             [TenantUserManagementController::class, 'revokeInvite'])->name('invitations.revoke');
 
     Route::get('/leads', function($tenantId) {
         $tenant = \App\Models\Tenant::findOrFail($tenantId);

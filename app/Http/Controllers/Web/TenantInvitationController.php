@@ -3,19 +3,23 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TenantInvitationAcceptedMail;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\InvitationReminderService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class TenantInvitationController extends Controller
 {
     public function __construct(
         private NotificationDispatchService $notifications,
+        private InvitationReminderService   $reminderService,
     ) {}
 
     // ── Show accept page ──────────────────────────────────────────
@@ -98,10 +102,22 @@ class TenantInvitationController extends Controller
             ]);
         }
 
-        // Mark invitation as accepted
+        // Mark invitation as accepted and suppress further reminders
         $invitation->status      = 'accepted';
         $invitation->accepted_at = now();
         $invitation->save();
+
+        $this->reminderService->suppress($invitation, 'accepted');
+
+        // Email the inviter (if they exist and are different from acceptee)
+        $inviter = $invitation->invitedBy;
+        if ($inviter && $inviter->id !== $user->id) {
+            try {
+                Mail::send(new TenantInvitationAcceptedMail($invitation, $inviter, $user));
+            } catch (\Throwable) {
+                // silent
+            }
+        }
 
         // Notify tenant admins
         $this->notifications->dispatchToTenantAdmins(
