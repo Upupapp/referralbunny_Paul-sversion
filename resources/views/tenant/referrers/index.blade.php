@@ -709,12 +709,17 @@ document.addEventListener('alpine:init', () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    this.reseller.status = 'deactivated';
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer deactivated. Access has been removed.' }}));
-                    if (data.needs_review) {
-                        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'warning', message: 'This Referrer had active deals. Review them for reassignment.' }}));
-                    }
+                    // Notify the referrers list to update the row status
+                    const resellerId = this.reseller.id;
+                    window.dispatchEvent(new CustomEvent('referrer-deactivated', { detail: { id: resellerId } }));
+                    // Close modal first, then show toasts so they are visible
                     this.cancel();
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer deactivated. Access has been removed.' }}));
+                        if (data.needs_review) {
+                            setTimeout(() => window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'warning', message: 'This Referrer had active deals. Review them for reassignment.' }})), 400);
+                        }
+                    }, 50);
                 } else {
                     this.error = data.error || data.message || 'Deactivation failed. Please try again.';
                     this.saving = false;
@@ -823,6 +828,13 @@ function referrersModule(tenantId) {
             // Listen for successful invite from the pure-JS modal
             window.addEventListener('referrer-invited', (e) => {
                 this.referrers.unshift(e.detail);
+                this.applyFilters();
+            });
+
+            // Listen for deactivation from the store modal
+            window.addEventListener('referrer-deactivated', (e) => {
+                const r = this.referrers.find(r => r.id === e.detail.id);
+                if (r) r.status = 'deactivated';
                 this.applyFilters();
             });
 
