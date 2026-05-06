@@ -557,9 +557,7 @@
                 <div class="flex justify-end gap-3 pt-1">
                     <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
                     <button @click="invite()" :disabled="saving" class="btn-secondary"
-                            style="background:#FF5733;color:#fff;border-color:#FF5733">
-                        <span x-text="saving ? 'Inviting…' : 'Send Invitation'">Send Invitation</span>
-                    </button>
+                            style="background:#FF5733;color:#fff;border-color:#FF5733">Send Invitation</button>
                 </div>
             </div>
         </div>
