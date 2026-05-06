@@ -514,43 +514,47 @@
 
     {{-- Invite Modal --}}
     <template x-if="$store.referrersInvite.show">
-        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box"
+        <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem"
              @click="$store.referrersInvite.show = false; resetForm()">
-            <div style="background:#fff;border-radius:1rem;box-shadow:0 25px 60px rgba(0,0,0,0.3);width:100%;max-width:440px;box-sizing:border-box"
+            <div style="position:relative;background:#ffffff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.35);width:440px;max-width:calc(100vw - 2rem);box-sizing:border-box;overflow:hidden"
                  @click.stop>
                 {{-- Header --}}
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6">
-                    <h3 style="margin:0;font-size:.9375rem;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f3f4f6">
+                    <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
                     <button @click="$store.referrersInvite.show = false; resetForm()"
-                            style="background:none;border:none;cursor:pointer;padding:.25rem;color:#9ca3af;line-height:0">
+                            style="display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;border-radius:6px">
                         <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
                 {{-- Body --}}
-                <div style="padding:1.5rem">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                <div style="padding:24px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
                         <div>
-                            <label class="form-label">Full Name *</label>
+                            <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Full Name *</label>
                             <input type="text" x-model="form.name" class="form-input" placeholder="Juan dela Cruz">
                         </div>
                         <div>
-                            <label class="form-label">Email *</label>
+                            <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Email *</label>
                             <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com">
                         </div>
                         <div>
-                            <label class="form-label">Phone</label>
+                            <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Phone</label>
                             <input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX">
                         </div>
                         <div>
-                            <label class="form-label">Territory</label>
+                            <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Territory</label>
                             <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
                         </div>
                     </div>
-                    <p x-show="formError" class="text-xs text-red-600" x-text="formError" style="margin-bottom:.75rem"></p>
-                    <div style="display:flex;justify-content:flex-end;gap:.75rem">
-                        <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                        <button @click="invite()" :disabled="saving" class="btn-primary">
-                            <span x-text="saving ? 'Inviting…' : 'Send Invitation'">Send Invitation</span>
+                    <p x-show="formError" x-text="formError" style="font-size:12px;color:#dc2626;margin-bottom:12px"></p>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
+                        <button @click="$store.referrersInvite.show = false; resetForm()"
+                                style="padding:8px 18px;background:#ffffff;color:#374151;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap">
+                            Cancel
+                        </button>
+                        <button @click="invite()" :disabled="saving"
+                                style="padding:8px 18px;background:#FF5733;color:#ffffff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">
+                            Send Invitation
                         </button>
                     </div>
                 </div>
