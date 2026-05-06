@@ -327,7 +327,7 @@
 
                 <div>
                     <label class="form-label">
-                        {{ $leadLabel }} Name *
+                        Deal Name *
                         @if($showLocation)
                         <span x-show="nameAutoFilled" class="ml-1 text-xs text-purple-500 font-normal">(auto-filled from location)</span>
                         @endif
