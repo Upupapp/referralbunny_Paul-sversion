@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\CommissionStatusChanged;
 use App\Events\DealCreated as DealCreatedEvent;
 use App\Mail\ResellerInvitation;
+use App\Models\DealPartner;
 use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
@@ -21,8 +22,16 @@ class LeadController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Lead::with(['commissionSplits', 'notes', 'history', 'attachments', 'links'])
-            ->orderBy('created_at', 'desc');
+        $relations = ['commissionSplits', 'notes', 'history', 'attachments', 'links'];
+
+        // Include partner associations when explicitly requested (Referrer portal deal list).
+        // Eager-loads DealPartner + Partner user in a single query per lead batch (no N+1).
+        $includePartners = $request->boolean('include_partners');
+        if ($includePartners) {
+            $relations[] = 'dealPartners.partner';
+        }
+
+        $query = Lead::with($relations)->orderBy('created_at', 'desc');
 
         // Derive tenant from authenticated context, never from user input
         $tenantId = TenantContext::id();
@@ -31,13 +40,33 @@ class LeadController extends Controller
         } elseif (!TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');
         }
-        // Super admin can optionally filter by tenant_id query param (already resolved in TenantContext)
 
         if ($request->filled('reseller_name')) {
             $query->where('reseller_name', $request->reseller_name);
         }
 
-        return response()->json($query->get());
+        $leads = $query->get();
+
+        if ($includePartners) {
+            // Map partner data into a clean `partners` array on each lead.
+            // Only active DealPartner records are included.
+            $leads = $leads->map(function (Lead $lead) {
+                $data = $lead->toArray();
+                $data['partners'] = $lead->dealPartners
+                    ->where('status', 'active')
+                    ->map(fn(DealPartner $dp) => [
+                        'id'             => $dp->partner_user_id,
+                        'display_name'   => $dp->partner?->display_name ?? null,
+                        'email'          => $dp->partner?->email ?? null,
+                        'setup_complete' => $dp->partner?->isSetupComplete() ?? false,
+                    ])
+                    ->values()
+                    ->toArray();
+                return $data;
+            });
+        }
+
+        return response()->json($leads);
     }
 
     public function store(Request $request): JsonResponse

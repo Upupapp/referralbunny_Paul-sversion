@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
+use App\Models\TenantMembership;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TenantAdminController extends Controller
@@ -112,7 +115,27 @@ class TenantAdminController extends Controller
     public function deals($tenantId)
     {
         $tenant = Tenant::findOrFail($tenantId);
-        return view('tenant.deals.index', array_merge(['tenant' => $tenant], $this->configMeta($tenantId)));
+
+        // Resolve referrer visibility for current user.
+        // Super admin (web guard) and owner/admin always see referrer names.
+        // Tenant Manager respects their view_referrers permission.
+        $canViewReferrers = true;
+        if (Auth::guard('tenant')->check()) {
+            $userId     = Auth::guard('tenant')->id();
+            $membership = TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+
+            if ($membership && $membership->role === 'manager') {
+                $canViewReferrers = app(PermissionService::class)->can($membership, 'view_referrers');
+            }
+        }
+
+        return view('tenant.deals.index', array_merge(
+            ['tenant' => $tenant, 'canViewReferrers' => $canViewReferrers],
+            $this->configMeta($tenantId)
+        ));
     }
 
     public function dealShow($tenantId, $dealId)

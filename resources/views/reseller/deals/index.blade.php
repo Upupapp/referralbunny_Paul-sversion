@@ -71,12 +71,18 @@
             <table class="w-full">
                 <thead>
                     <tr class="table-head">
-                        <th>Organization</th><th>Stage</th><th>Value</th><th class="hidden sm:table-cell">Commission</th><th>Status</th><th class="hidden sm:table-cell">Days Left</th>
+                        <th>Organization</th>
+                        <th>Stage</th>
+                        <th>Value</th>
+                        <th class="hidden md:table-cell">Partner</th>
+                        <th class="hidden sm:table-cell">Commission</th>
+                        <th>Status</th>
+                        <th class="hidden sm:table-cell">Days Left</th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-if="filtered.length === 0 && !loading">
-                        <tr><td colspan="6" class="py-14 text-center">
+                        <tr><td colspan="7" class="py-14 text-center">
                             <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
                             <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                             <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
@@ -93,11 +99,31 @@
                                     <div class="min-w-0">
                                         <p class="font-medium text-sm truncate" style="color:#1E1B4B" x-text="d.name"></p>
                                         <p class="text-xs text-gray-400 truncate" x-text="d.data?.province || ''"></p>
+                                        {{-- Partner info visible on mobile (md and below hides the Partner column) --}}
+                                        <div class="md:hidden mt-0.5" x-show="(d.partners||[]).length > 0">
+                                            <span class="text-xs text-indigo-600 font-medium" x-text="partnerLabel(d)"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
                             <td class="text-sm text-gray-600 capitalize" x-text="(d.stage||'').replace('_',' ')"></td>
                             <td class="text-sm font-bold tabular-nums" style="color:#1E1B4B" x-text="d.deal_value ? '₱'+Number(d.deal_value).toLocaleString() : '₱0'"></td>
+                            {{-- Partner column — desktop only --}}
+                            <td class="hidden md:table-cell">
+                                <template x-if="(d.partners||[]).length === 0">
+                                    <span class="text-xs text-gray-400 italic">No partner added</span>
+                                </template>
+                                <template x-if="(d.partners||[]).length > 0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-xs font-medium text-gray-700 truncate max-w-[120px]"
+                                              x-text="d.partners[0].display_name || d.partners[0].email || 'Partner'"></span>
+                                        <template x-if="d.partners.length > 1">
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-semibold shrink-0"
+                                                  x-text="'+' + (d.partners.length - 1) + ' more'"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </td>
                             <td class="hidden sm:table-cell">
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
                                       :class="{'bg-violet-100 text-violet-700': d.commission_status==='pending','bg-amber-100 text-amber-700': d.commission_status==='locked','bg-emerald-100 text-emerald-700': d.commission_status==='paid'}"
@@ -287,12 +313,20 @@ function resellerDeals(tenantId, resellerName) {
             const preStatus = urlParams.get('status');
             if (['expiring','expired','active'].includes(preStatus)) this.filterStatus = preStatus;
             try {
-                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}`);
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1`);
                 const data = await res.json();
                 this.leads = Array.isArray(data) ? data : [];
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
+        },
+
+        // Returns a compact partner label for mobile secondary line.
+        partnerLabel(d) {
+            const p = d.partners || [];
+            if (p.length === 0) return '';
+            const first = p[0].display_name || p[0].email || 'Partner';
+            return p.length === 1 ? first : first + ' +' + (p.length - 1) + ' more';
         },
 
         applyFilters() {

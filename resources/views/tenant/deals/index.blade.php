@@ -31,7 +31,7 @@
 
 @section('content')
 <div class="space-y-5"
-     x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }})"
+     x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
      @open-add-deal.window="showAdd = true">
 
@@ -206,7 +206,17 @@
                             <td>
                                 <span :class="stageBadge(lead.stage)" x-text="stageLabel(lead.stage)"></span>
                             </td>
-                            <td class="hidden sm:table-cell text-gray-600 text-sm" x-text="lead.reseller_name || '—'"></td>
+                            <td class="hidden sm:table-cell">
+                                <template x-if="!canViewReferrers">
+                                    <span class="badge badge-gray text-xs">Restricted</span>
+                                </template>
+                                <template x-if="canViewReferrers && lead.reseller_name">
+                                    <span class="text-gray-700 text-sm" x-text="lead.reseller_name"></span>
+                                </template>
+                                <template x-if="canViewReferrers && !lead.reseller_name">
+                                    <span class="badge badge-gray text-xs">Unassigned</span>
+                                </template>
+                            </td>
                             <td class="font-semibold text-[#1E1B4B]" x-text="formatValue(lead.deal_value)"></td>
                             <td class="hidden md:table-cell">
                                 <span :class="commissionBadge(lead.commission_status)" x-text="(lead.commission_status || 'pending').charAt(0).toUpperCase() + (lead.commission_status || 'pending').slice(1)"></span>
@@ -252,7 +262,12 @@
                             <a :href="'/tenant/{{ $tenant->id }}/deals/' + lead.id"
                                class="block card p-3 hover:shadow-md transition-shadow cursor-pointer">
                                 <p class="font-medium text-[#1E1B4B] text-sm truncate" x-text="lead.name"></p>
-                                <p class="text-xs text-gray-400 mt-0.5" x-text="lead.reseller_name || 'No referrer'"></p>
+                                <template x-if="!canViewReferrers">
+                                    <p class="text-xs text-gray-300 mt-0.5">Restricted</p>
+                                </template>
+                                <template x-if="canViewReferrers">
+                                    <p class="text-xs text-gray-400 mt-0.5" x-text="lead.reseller_name || 'Unassigned'"></p>
+                                </template>
                                 <div class="flex items-center justify-between mt-2">
                                     <span class="text-xs font-semibold text-gray-700" x-text="formatValue(lead.deal_value)"></span>
                                     <span :class="commissionBadge(lead.commission_status) + ' text-xs'" x-text="lead.commission_status || 'pending'"></span>
@@ -370,9 +385,10 @@
 </div>
 
 <script>
-function dealsModule(tenantId, showLocation) {
+function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
         leads: [], filtered: [], loading: true,
+        canViewReferrers,
         viewMode: 'table',
         search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
         sortCol: 'created_at', sortDir: 'desc',
@@ -410,7 +426,7 @@ function dealsModule(tenantId, showLocation) {
             const q = this.search.toLowerCase();
             this.filtered = this.leads.filter(l => {
                 const matchQ  = !q || (l.name||'').toLowerCase().includes(q)
-                                   || (l.reseller_name||'').toLowerCase().includes(q)
+                                   || (this.canViewReferrers && (l.reseller_name||'').toLowerCase().includes(q))
                                    || (l.data?.province||'').toLowerCase().includes(q)
                                    || (l.data?.municipality||'').toLowerCase().includes(q);
                 const matchSt = !this.filterStage      || l.stage             === this.filterStage;
