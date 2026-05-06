@@ -238,6 +238,18 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('agreements/{agreementId}/acknowledge',   [AgreementController::class, 'acknowledge']);
     Route::delete('agreements/{agreementId}/acknowledge', [AgreementController::class, 'revokeAcknowledgment']);
 
+    // Onboarding — works for all authenticated guards (web, tenant, reseller, partner)
+    Route::prefix('onboarding')->group(function () {
+        Route::get('status',             [\App\Http\Controllers\OnboardingController::class, 'status']);
+        Route::post('start',             [\App\Http\Controllers\OnboardingController::class, 'start']);
+        Route::post('advance',           [\App\Http\Controllers\OnboardingController::class, 'advance']);
+        Route::post('complete',          [\App\Http\Controllers\OnboardingController::class, 'complete']);
+        Route::post('skip',              [\App\Http\Controllers\OnboardingController::class, 'skip']);
+        Route::post('task/complete',     [\App\Http\Controllers\OnboardingController::class, 'completeTask']);
+        Route::post('task/dismiss',      [\App\Http\Controllers\OnboardingController::class, 'dismissTask']);
+        Route::post('snooze',            [\App\Http\Controllers\OnboardingController::class, 'snooze']);
+    });
+
     // Feature Access Control
     Route::get('feature-access/usage',               [FeatureAccessController::class, 'usage']);
     Route::get('feature-access/check',               [FeatureAccessController::class, 'check']);

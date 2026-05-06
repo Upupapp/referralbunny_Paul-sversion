@@ -684,12 +684,22 @@ function toastSystem() {
     }
 }
 </script>
-{{-- R Bunny AI Dialog — smart messaging reminder assistant --}}
+{{-- R Bunny AI Dialog — smart messaging reminder assistant (bottom-right) --}}
 @auth('tenant')
     <x-brand.r-bunny-ai-dialog />
 @endauth
 @auth('web')
     <x-brand.r-bunny-ai-dialog />
+@endauth
+
+{{-- R Bunny Onboarding — first sign-in walkthrough + bot (bottom-left) --}}
+@auth('tenant')
+    <x-brand.onboarding-walkthrough />
+    <x-brand.onboarding-bot />
+@endauth
+@auth('web')
+    <x-brand.onboarding-walkthrough />
+    <x-brand.onboarding-bot />
 @endauth
 
 @stack('scripts')

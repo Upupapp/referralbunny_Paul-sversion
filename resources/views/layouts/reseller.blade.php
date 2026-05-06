@@ -139,6 +139,10 @@
     </template>
 </div>
 
+{{-- R Bunny Onboarding — first sign-in walkthrough + bot (bottom-left) --}}
+<x-brand.onboarding-walkthrough />
+<x-brand.onboarding-bot />
+
 @stack('scripts')
 </body>
 </html>
