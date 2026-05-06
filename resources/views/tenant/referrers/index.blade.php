@@ -515,8 +515,8 @@
     {{-- Invite Modal — mirrors anonConfirm pattern (x-data + Tailwind flex classes already in CSS) --}}
     <div x-show="$store.referrersInvite.show"
          x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)"
+         class="fixed inset-0 flex items-center justify-center p-4"
+         style="z-index:9000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)"
          @click="$store.referrersInvite.show = false; resetForm()">
 
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.stop
@@ -556,8 +556,8 @@
                 <p x-text="formError" :class="formError ? 'text-xs text-red-600 mb-1' : 'hidden'"></p>
                 <div class="flex justify-end gap-3 pt-1">
                     <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="invite()" :disabled="saving" class="btn-secondary"
-                            style="background:#FF5733;color:#fff;border-color:#FF5733">Send Invitation</button>
+                    <button @click="if(!saving) invite()" class="btn-secondary"
+                            style="background:#FF5733;color:#fff;border-color:#FF5733;cursor:pointer">Send Invitation</button>
                 </div>
             </div>
         </div>
