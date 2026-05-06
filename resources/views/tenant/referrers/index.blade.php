@@ -513,16 +513,23 @@
     </div>
 
     {{-- Invite Modal --}}
-    <div x-show="$store.referrersInvite.show" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" @click="$store.referrersInvite.show = false; resetForm()">
-        <div class="bg-white rounded-2xl shadow-xl w-full" style="max-width:440px;overflow:hidden" @click.stop>
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-[#1E1B4B]">Invite Referrer</h3>
-                <button @click="$store.referrersInvite.show = false; resetForm()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <div x-show="$store.referrersInvite.show"
+         x-cloak
+         style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box"
+         @click="$store.referrersInvite.show = false; resetForm()">
+        <div style="background:#fff;border-radius:1rem;box-shadow:0 25px 60px rgba(0,0,0,0.3);width:100%;max-width:440px;box-sizing:border-box"
+             @click.stop>
+            {{-- Header --}}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6">
+                <h3 style="margin:0;font-size:.9375rem;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
+                <button @click="$store.referrersInvite.show = false; resetForm()"
+                        style="background:none;border:none;cursor:pointer;padding:.25rem;color:#9ca3af;line-height:0">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {{-- Body --}}
+            <div style="padding:1.5rem">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
                     <div>
                         <label class="form-label">Full Name *</label>
                         <input type="text" x-model="form.name" class="form-input" placeholder="Juan dela Cruz">
@@ -540,8 +547,8 @@
                         <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
                     </div>
                 </div>
-                <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
-                <div class="flex justify-end gap-3">
+                <p x-show="formError" class="text-xs text-red-600" x-text="formError" style="margin-bottom:.75rem"></p>
+                <div style="display:flex;justify-content:flex-end;gap:.75rem">
                     <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
                     <button @click="invite()" :disabled="saving" class="btn-primary" x-text="saving ? 'Inviting…' : 'Send Invitation'"></button>
                 </div>
