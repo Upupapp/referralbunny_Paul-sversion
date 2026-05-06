@@ -67,13 +67,21 @@
 
     {{-- TEMP DEBUG: remove after fix --}}
     <div style="background:#fef08a;border:1px solid #ca8a04;padding:8px 12px;border-radius:8px;font-size:11px;font-family:monospace;">
-        search="<span x-text="JSON.stringify(search)"></span>"
-        &nbsp;|&nbsp; status="<span x-text="JSON.stringify(filterStatus)"></span>"
-        &nbsp;|&nbsp; agreement="<span x-text="JSON.stringify(filterAgreement)"></span>"
-        &nbsp;|&nbsp; doc="<span x-text="JSON.stringify(filterDoc)"></span>"
+        <strong>OUTER DEBUG:</strong>
+        loading=<span x-text="loading"></span>
+        &nbsp;|&nbsp; search=<span x-text="JSON.stringify(search)"></span>
+        &nbsp;|&nbsp; status=<span x-text="JSON.stringify(filterStatus)"></span>
+        &nbsp;|&nbsp; doc=<span x-text="JSON.stringify(filterDoc)"></span>
         &nbsp;|&nbsp; referrers=<span x-text="referrers.length"></span>
         &nbsp;|&nbsp; filtered=<span x-text="filtered.length"></span>
-        &nbsp;|&nbsp; totalRequiredDocs=<span x-text="totalRequiredDocs"></span>
+    </div>
+    {{-- INNER DEBUG: always visible, outside x-show --}}
+    <div style="background:#fce7f3;border:1px solid #db2777;padding:8px 12px;border-radius:8px;font-size:11px;font-family:monospace;">
+        <strong>INNER (x-for test):</strong>
+        <template x-for="r in filtered" :key="r.id">
+            <span x-text="' ['+r.name+']'"></span>
+        </template>
+        <span x-show="filtered.length === 0">(filtered is empty)</span>
     </div>
 
     {{-- Filter bar --}}
@@ -711,6 +719,7 @@ function referrersModule(tenantId) {
         },
 
         applyFilters() {
+          try {
             // Fast-path: nothing is filtering — show everything
             if (!this.search && !this.filterStatus && !this.filterAgreement && !this.filterDoc) {
                 this.filtered = this.referrers.slice();
@@ -735,6 +744,7 @@ function referrersModule(tenantId) {
                     || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
                 return matchQ && matchSt && matchAg && matchDc;
             });
+          } catch(e) { console.error('applyFilters threw:', e); }
         },
 
         // ── Anonymity ─────────────────────────────────────────────────────
