@@ -148,11 +148,16 @@ class TenantInvitationController extends Controller
             ->with('tenant')
             ->get();
 
+        $tenantName = $invitation->tenant?->name ?? 'your workspace';
+        $roleLabel  = ucfirst($invitation->role);
+
         if ($activeMemberships->count() > 1) {
             session(['pending_tenant_select' => $activeMemberships->pluck('tenant_id')->toArray()]);
-            return redirect()->route('tenant.select-workspace');
+            return redirect()->route('tenant.select-workspace')
+                ->with('success', "Welcome! You've joined {$tenantName} as {$roleLabel}. Select a workspace to continue.");
         }
 
-        return redirect()->route('tenant.dashboard', $invitation->tenant_id);
+        return redirect()->route('tenant.dashboard', $invitation->tenant_id)
+            ->with('success', "Welcome to {$tenantName}! You've joined as {$roleLabel}. R Bunny will guide you through your first steps.");
     }
 }
