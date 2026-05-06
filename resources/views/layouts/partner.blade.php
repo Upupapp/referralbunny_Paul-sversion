@@ -127,9 +127,10 @@
     </template>
 </div>
 
-{{-- R Bunny Onboarding — first sign-in walkthrough + bot (bottom-left) --}}
+{{-- R Bunny Onboarding Walkthrough (modal, fires on first sign-in) --}}
 <x-brand.onboarding-walkthrough />
-<x-brand.onboarding-bot />
+{{-- R Bunny Unified Assistant — bottom-left --}}
+<x-brand.r-bunny-assistant />
 
 @stack('scripts')
 </body>

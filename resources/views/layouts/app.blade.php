@@ -692,14 +692,20 @@ function toastSystem() {
     <x-brand.r-bunny-ai-dialog />
 @endauth
 
-{{-- R Bunny Onboarding — first sign-in walkthrough + bot (bottom-left) --}}
+{{-- R Bunny Onboarding Walkthrough (modal, fires on first sign-in) --}}
 @auth('tenant')
     <x-brand.onboarding-walkthrough />
-    <x-brand.onboarding-bot />
 @endauth
 @auth('web')
     <x-brand.onboarding-walkthrough />
-    <x-brand.onboarding-bot />
+@endauth
+
+{{-- R Bunny Unified Assistant — bottom-left (onboarding + home + help) --}}
+@auth('tenant')
+    <x-brand.r-bunny-assistant />
+@endauth
+@auth('web')
+    <x-brand.r-bunny-assistant />
 @endauth
 
 @stack('scripts')

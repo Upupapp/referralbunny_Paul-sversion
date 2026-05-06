@@ -238,6 +238,16 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('agreements/{agreementId}/acknowledge',   [AgreementController::class, 'acknowledge']);
     Route::delete('agreements/{agreementId}/acknowledge', [AgreementController::class, 'revokeAcknowledgment']);
 
+    // R Bunny on-site assistant
+    Route::prefix('r-bunny')->group(function () {
+        Route::get('status',             [\App\Http\Controllers\RBunnyController::class, 'status']);
+        Route::post('dismiss',           [\App\Http\Controllers\RBunnyController::class, 'dismiss']);
+        Route::post('snooze',            [\App\Http\Controllers\RBunnyController::class, 'snooze']);
+        Route::post('handoff',           [\App\Http\Controllers\RBunnyController::class, 'handoff']);
+        Route::get('preferences',        [\App\Http\Controllers\RBunnyController::class, 'preferences']);
+        Route::post('preferences',       [\App\Http\Controllers\RBunnyController::class, 'updatePreferences']);
+    });
+
     // Onboarding — works for all authenticated guards (web, tenant, reseller, partner)
     Route::prefix('onboarding')->group(function () {
         Route::get('status',             [\App\Http\Controllers\OnboardingController::class, 'status']);
