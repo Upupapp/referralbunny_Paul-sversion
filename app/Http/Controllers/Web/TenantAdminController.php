@@ -262,14 +262,40 @@ class TenantAdminController extends Controller
                 ->forReseller($tenantId, $reseller->name, 8);
         } catch (\Throwable) {}
 
+        // Agreements + acknowledgment status for this reseller
+        $agreements = collect();
+        try {
+            $agreements = DB::table('reseller_agreement_files as af')
+                ->leftJoin('reseller_agreement_acknowledgments as ack', function ($join) use ($reseller) {
+                    $join->on('af.id', '=', 'ack.agreement_file_id')
+                         ->where('ack.reseller_id', '=', $reseller->id);
+                })
+                ->where('af.tenant_id', $tenantId)
+                ->where('af.is_active', true)
+                ->select('af.id', 'af.label', 'af.description', 'af.is_required',
+                         'af.file_url', 'af.version', 'af.display_order',
+                         'ack.agreed_at', 'ack.agreed_by_name')
+                ->orderBy('af.display_order')
+                ->orderBy('af.created_at')
+                ->get();
+        } catch (\Throwable) {}
+
+        $requiredTotal  = $agreements->where('is_required', true)->count();
+        $signedRequired = $agreements->where('is_required', true)->whereNotNull('agreed_at')->count();
+        $agreementCompliant = $requiredTotal === 0 || $signedRequired >= $requiredTotal;
+
         return view('tenant.referrers.show', array_merge(
             [
                 'tenant'        => $tenant,
                 'reseller'      => $reseller,
                 'performance'   => $performance,
                 'completeness'  => $completeness,
-                'recentDeals'   => $recentDeals,
-                'recentActivity'=> $recentActivity,
+                'recentDeals'        => $recentDeals,
+                'recentActivity'     => $recentActivity,
+                'agreements'         => $agreements,
+                'requiredTotal'      => $requiredTotal,
+                'signedRequired'     => $signedRequired,
+                'agreementCompliant' => $agreementCompliant,
             ],
             $this->configMeta($tenantId)
         ));

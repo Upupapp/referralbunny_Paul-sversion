@@ -18,6 +18,29 @@
 @section('content')
 <div class="space-y-5">
 
+    {{-- ── Agreement Compliance Alert (top of page if non-compliant) ────── --}}
+    @if($requiredTotal > 0 && !$agreementCompliant)
+    <div class="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-orange-50 border border-orange-200">
+        <svg class="w-5 h-5 text-orange-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div>
+            <p class="text-sm font-semibold text-orange-700">Missing Agreements</p>
+            <p class="text-xs text-orange-600 mt-0.5">
+                {{ $reseller->name }} has signed {{ $signedRequired }} of {{ $requiredTotal }} required agreement{{ $requiredTotal !== 1 ? 's' : '' }}.
+                Review and mark agreements below.
+            </p>
+        </div>
+    </div>
+    @elseif($requiredTotal > 0 && $agreementCompliant)
+    <div class="flex items-start gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+        <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-sm font-semibold text-emerald-700">All required agreements signed — Compliant</p>
+    </div>
+    @endif
+
     {{-- ── Header ─────────────────────────────────────────────────────────── --}}
     <div class="card flex flex-col sm:flex-row items-start sm:items-center gap-4">
         {{-- Avatar --}}
@@ -61,6 +84,21 @@
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-600">Pending Setup</span>
                 @elseif($completeness['status'] === 'complete')
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Complete</span>
+                @endif
+
+                {{-- Agreement compliance badge --}}
+                @if($requiredTotal > 0)
+                    @if($agreementCompliant)
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700"
+                              title="All required agreements signed">
+                            Agreements ✓
+                        </span>
+                    @else
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-600"
+                              title="{{ $signedRequired }}/{{ $requiredTotal }} required agreements signed">
+                            {{ $signedRequired }}/{{ $requiredTotal }} Agreements
+                        </span>
+                    @endif
                 @endif
 
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-600">Referrer</span>
@@ -271,6 +309,106 @@
                 </div>
             </div>
             @endif
+
+            {{-- Agreements & Compliance --}}
+            <div class="card space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-semibold text-[#1E1B4B] text-sm">Agreements & Compliance</h2>
+                    @if($requiredTotal > 0)
+                        @if($agreementCompliant)
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                Compliant
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-600">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
+                                {{ $signedRequired }}/{{ $requiredTotal }} Signed
+                            </span>
+                        @endif
+                    @else
+                        <span class="text-xs text-gray-400">No agreements configured</span>
+                    @endif
+                </div>
+
+                @if($agreements->isEmpty())
+                    <p class="text-xs text-gray-400">No agreements have been configured for this tenant yet.</p>
+                @else
+                    <div class="space-y-3">
+                        @foreach($agreements as $ag)
+                        @php $signed = !empty($ag->agreed_at); @endphp
+                        <div class="flex items-start gap-3 p-3 rounded-xl border transition-colors
+                            {{ $signed ? 'border-emerald-100 bg-emerald-50/40' : ($ag->is_required ? 'border-orange-100 bg-orange-50/40' : 'border-gray-100') }}">
+
+                            {{-- Status icon --}}
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5
+                                {{ $signed ? 'bg-emerald-100' : ($ag->is_required ? 'bg-orange-100' : 'bg-gray-100') }}">
+                                @if($signed)
+                                    <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                @else
+                                    <svg class="w-4 h-4 {{ $ag->is_required ? 'text-orange-500' : 'text-gray-400' }}"
+                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                @endif
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                    <p class="text-sm font-semibold text-[#1E1B4B]">{{ $ag->label }}</p>
+                                    @if($ag->is_required)
+                                        <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-red-100 text-red-600">Required</span>
+                                    @else
+                                        <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Optional</span>
+                                    @endif
+                                    @if($ag->version)
+                                        <span class="text-[10px] text-gray-400">v{{ $ag->version }}</span>
+                                    @endif
+                                </div>
+
+                                @if($ag->description)
+                                    <p class="text-xs text-gray-400">{{ $ag->description }}</p>
+                                @endif
+
+                                @if($signed)
+                                    <p class="text-xs text-emerald-600 font-medium mt-1">
+                                        Signed {{ \Carbon\Carbon::parse($ag->agreed_at)->format('M j, Y') }}
+                                        @if($ag->agreed_by_name)
+                                            &nbsp;·&nbsp; by {{ $ag->agreed_by_name }}
+                                        @endif
+                                    </p>
+                                @else
+                                    <p class="text-xs {{ $ag->is_required ? 'text-orange-500 font-medium' : 'text-gray-400' }} mt-1">
+                                        {{ $ag->is_required ? 'Not yet signed — required' : 'Not yet signed (optional)' }}
+                                    </p>
+                                @endif
+
+                                @if($ag->file_url)
+                                    <a href="{{ $ag->file_url }}" target="_blank"
+                                       class="inline-flex items-center gap-1 text-xs text-[#7B61FF] hover:underline mt-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        View Document
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Summary footer --}}
+                    @if($requiredTotal > 0)
+                    <div class="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                        <span>{{ $signedRequired }}/{{ $requiredTotal }} required agreements signed</span>
+                        <a href="{{ route('tenant.referrers', $tenant->id) }}"
+                           class="text-[#7B61FF] hover:underline font-medium">
+                            Manage from Referrers list →
+                        </a>
+                    </div>
+                    @endif
+                @endif
+            </div>
 
         </div>
 
