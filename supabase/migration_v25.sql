@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS partner_threads (
     tenant_id            TEXT        NOT NULL,
     deal_id              TEXT        NOT NULL,
     partner_id           UUID        NOT NULL REFERENCES partner_users(id) ON DELETE CASCADE,
-    reseller_id          TEXT        REFERENCES resellers(id) ON DELETE SET NULL,
+    reseller_id          UUID        REFERENCES resellers(id) ON DELETE SET NULL,
     last_message_at      TIMESTAMPTZ,
     last_message_preview TEXT,
     partner_unread       INT         NOT NULL DEFAULT 0,
