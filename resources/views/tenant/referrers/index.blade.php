@@ -513,48 +513,48 @@
     </div>
 
     {{-- Invite Modal --}}
-    <div x-show="$store.referrersInvite.show"
-         x-cloak
-         style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box"
-         @click="$store.referrersInvite.show = false; resetForm()">
-        <div style="background:#fff;border-radius:1rem;box-shadow:0 25px 60px rgba(0,0,0,0.3);width:100%;max-width:440px;box-sizing:border-box"
-             @click.stop>
-            {{-- Header --}}
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6">
-                <h3 style="margin:0;font-size:.9375rem;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
-                <button @click="$store.referrersInvite.show = false; resetForm()"
-                        style="background:none;border:none;cursor:pointer;padding:.25rem;color:#9ca3af;line-height:0">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            {{-- Body --}}
-            <div style="padding:1.5rem">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-                    <div>
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" x-model="form.name" class="form-input" placeholder="Juan dela Cruz">
-                    </div>
-                    <div>
-                        <label class="form-label">Email *</label>
-                        <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com">
-                    </div>
-                    <div>
-                        <label class="form-label">Phone</label>
-                        <input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX">
-                    </div>
-                    <div>
-                        <label class="form-label">Territory</label>
-                        <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
-                    </div>
+    <template x-if="$store.referrersInvite.show">
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;box-sizing:border-box"
+             @click="$store.referrersInvite.show = false; resetForm()">
+            <div style="background:#fff;border-radius:1rem;box-shadow:0 25px 60px rgba(0,0,0,0.3);width:100%;max-width:440px;box-sizing:border-box"
+                 @click.stop>
+                {{-- Header --}}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6">
+                    <h3 style="margin:0;font-size:.9375rem;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
+                    <button @click="$store.referrersInvite.show = false; resetForm()"
+                            style="background:none;border:none;cursor:pointer;padding:.25rem;color:#9ca3af;line-height:0">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
-                <p x-show="formError" class="text-xs text-red-600" x-text="formError" style="margin-bottom:.75rem"></p>
-                <div style="display:flex;justify-content:flex-end;gap:.75rem">
-                    <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="invite()" :disabled="saving" class="btn-primary" x-text="saving ? 'Inviting…' : 'Send Invitation'"></button>
+                {{-- Body --}}
+                <div style="padding:1.5rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                        <div>
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" x-model="form.name" class="form-input" placeholder="Juan dela Cruz">
+                        </div>
+                        <div>
+                            <label class="form-label">Email *</label>
+                            <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com">
+                        </div>
+                        <div>
+                            <label class="form-label">Phone</label>
+                            <input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX">
+                        </div>
+                        <div>
+                            <label class="form-label">Territory</label>
+                            <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
+                        </div>
+                    </div>
+                    <p x-show="formError" class="text-xs text-red-600" x-text="formError" style="margin-bottom:.75rem"></p>
+                    <div style="display:flex;justify-content:flex-end;gap:.75rem">
+                        <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
+                        <button @click="invite()" :disabled="saving" class="btn-primary" x-text="saving ? 'Inviting…' : 'Send Invitation'"></button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 
 </div>
 
