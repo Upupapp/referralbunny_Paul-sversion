@@ -553,12 +553,13 @@
                         <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
                     </div>
                 </div>
-                <p x-show="formError" x-text="formError" class="text-xs text-red-600"></p>
+                <p x-text="formError" :class="formError ? 'text-xs text-red-600 mb-1' : 'hidden'"></p>
                 <div class="flex justify-end gap-3 pt-1">
                     <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="invite()" :disabled="saving" class="btn-primary">
-                        <span x-show="!saving">Send Invitation</span>
-                        <span x-show="saving">Inviting…</span>
+                    <button @click="invite()" :disabled="saving" class="btn-secondary"
+                            style="background:#FF5733;color:#fff;border-color:#FF5733">
+                        <span :class="saving ? 'hidden' : ''">Send Invitation</span>
+                        <span :class="saving ? '' : 'hidden'">Inviting…</span>
                     </button>
                 </div>
             </div>
