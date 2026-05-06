@@ -147,7 +147,6 @@
                 </button>
             </template>
         </div>
-        </div>
     </div>
 
     {{-- Table --}}
