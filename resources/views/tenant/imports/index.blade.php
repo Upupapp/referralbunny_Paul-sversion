@@ -65,22 +65,48 @@
         </div>
         @endif
 
-        {{-- Import Deals --}}
-        <div class="card hover:shadow-md transition-shadow cursor-pointer group">
+        {{-- Generic Import Deals — shown for all non-LGU-IDS tenants --}}
+        @if(!isset($tenant) || $tenant->id !== 'lgu-ids')
+        <div class="card hover:shadow-md transition-shadow group border-l-4" style="border-left-color: #7B61FF;">
             <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl bg-[#EDE9FE] flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background: #EDE9FE;">
+                    <svg class="w-5 h-5" style="color: #7B61FF;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                     </svg>
                 </div>
-                <h3 class="font-semibold text-[#1E1B4B]">Import Deals</h3>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm leading-tight">Import Deals</h3>
+                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 inline-block" style="background: #EDE9FE; color: #7B61FF;">Your Industry Template</span>
+                </div>
             </div>
-            <p class="text-sm text-gray-400">Upload a CSV or Excel file to bulk import deals into your pipeline.</p>
-            <div class="mt-4 flex items-center text-[#7B61FF] text-sm font-medium group-hover:gap-2 gap-1 transition-all">
-                <span>Get started</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <p class="text-sm text-gray-400 mb-4">Bulk import deals into your pipeline using your industry template.</p>
+            <div class="flex flex-col gap-2">
+                <a href="{{ route('tenant.imports.deals', $tenant->id) }}"
+                   class="btn-primary inline-flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    Start Deal Import
+                </a>
+                <a href="{{ route('tenant.imports.deals.template', $tenant->id) }}"
+                   class="inline-flex items-center justify-center gap-1.5 text-xs font-medium transition-colors" style="color: #7B61FF;"
+                   onmouseover="this.style.color='#5B45DF'" onmouseout="this.style.color='#7B61FF'">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Download Template
+                </a>
+                <a href="{{ route('tenant.imports.deals.settings', $tenant->id) }}"
+                   class="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Import Settings
+                </a>
             </div>
         </div>
+        @endif
 
         {{-- Import Contacts --}}
         <div class="card hover:shadow-md transition-shadow cursor-pointer group">
@@ -210,18 +236,95 @@
         @endif
     </div>
     @else
-    {{-- General import history placeholder for non-LGU-IDS tenants --}}
-    <div class="card flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
+    {{-- Generic Deal Import History for non-LGU-IDS tenants --}}
+    <div class="card">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+                <h3 class="text-[#1E1B4B] font-semibold text-base">Recent Deal Imports</h3>
+                <p class="text-gray-400 text-xs mt-0.5">History of your deal import batches</p>
+            </div>
+            <a href="{{ route('tenant.imports.deals', $tenant->id) }}"
+               class="btn-secondary text-xs shrink-0">
+                View All
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
         </div>
-        <h3 class="text-[#1E1B4B] font-semibold text-base">No import history</h3>
-        <p class="text-gray-400 text-sm mt-1 max-w-xs">Your import jobs will appear here once you start importing data.</p>
-        <a href="{{ route('platform.import') }}" class="btn-primary mt-5">
-            Go to Platform Import Center
-        </a>
+
+        @if(isset($batches) && $batches && count($batches) > 0)
+        <div class="overflow-x-auto -mx-5 sm:mx-0">
+            <table class="w-full min-w-[700px]">
+                <thead>
+                    <tr class="table-head">
+                        <th>Date</th>
+                        <th>File</th>
+                        <th>Rows</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                        <th>Failed</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($batches as $batch)
+                    <tr class="table-row">
+                        <td class="whitespace-nowrap text-gray-500 text-xs">
+                            {{ $batch->created_at->format('M d, Y') }}
+                        </td>
+                        <td class="max-w-[160px]">
+                            <span class="text-sm text-[#1E1B4B] font-medium truncate block" title="{{ $batch->file_name }}">
+                                {{ Str::limit($batch->file_name, 28) }}
+                            </span>
+                        </td>
+                        <td class="tabular-nums">{{ number_format($batch->total_rows) }}</td>
+                        <td class="tabular-nums font-medium" style="color: #7B61FF;">{{ number_format($batch->successful_rows) }}</td>
+                        <td class="tabular-nums text-blue-600 font-medium">{{ number_format($batch->updated_rows) }}</td>
+                        <td class="tabular-nums {{ $batch->failed_rows > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+                            {{ number_format($batch->failed_rows) }}
+                        </td>
+                        <td>
+                            @php
+                                $statusMap = [
+                                    'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
+                                    'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
+                                    'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
+                                    'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
+                                    'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
+                                    'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
+                                ];
+                                $s = $statusMap[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
+                            @endphp
+                            <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
+                        </td>
+                        <td>
+                            @if(in_array($batch->status, ['previewed', 'needs_review']))
+                                <a href="{{ route('tenant.imports.deals.preview', [$tenant->id, $batch->id]) }}"
+                                   class="text-xs font-medium hover:opacity-80 transition-colors" style="color: #7B61FF;">Review</a>
+                            @else
+                                <a href="{{ route('tenant.imports.deals.show', [$tenant->id, $batch->id]) }}"
+                                   class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <div class="flex flex-col items-center justify-center py-10 text-center">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style="background: #EDE9FE;">
+                <svg class="w-6 h-6" style="color: #7B61FF;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+            </div>
+            <p class="text-[#1E1B4B] font-medium text-sm">No import history yet</p>
+            <p class="text-gray-400 text-xs mt-1">Start your first deal import to see history here.</p>
+            <a href="{{ route('tenant.imports.deals', $tenant->id) }}"
+               class="mt-4 btn-primary">
+                Start First Import
+            </a>
+        </div>
+        @endif
     </div>
     @endif
 

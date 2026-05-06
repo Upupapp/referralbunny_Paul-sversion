@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\LguIdsImportController;
+use App\Http\Controllers\Web\TenantDealImportController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\MessageController;
 use App\Http\Controllers\Web\NotificationsController;
@@ -197,6 +198,20 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/imports/lgu-ids/{batchId}/execute',      [LguIdsImportController::class, 'execute'])->name('imports.lgu-ids.execute');
     Route::get('/imports/lgu-ids/{batchId}/report',        [LguIdsImportController::class, 'show'])->name('imports.lgu-ids.show');
     Route::get('/imports/lgu-ids/{batchId}/failed',        [LguIdsImportController::class, 'downloadFailed'])->name('imports.lgu-ids.failed');
+
+    // ── Generic Tenant Deal Import ────────────────────────────────
+    // Blocked for lgu-ids at controller level (abort_if check in resolveTenant).
+    Route::get('/imports/deals',                         [TenantDealImportController::class, 'index'])->name('imports.deals');
+    Route::get('/imports/deals/template',                [TenantDealImportController::class, 'downloadTemplate'])->name('imports.deals.template');
+    Route::post('/imports/deals/upload',                 [TenantDealImportController::class, 'upload'])->name('imports.deals.upload');
+    Route::get('/imports/deals/settings',                [TenantDealImportController::class, 'showSettings'])->name('imports.deals.settings');
+    Route::post('/imports/deals/settings',               [TenantDealImportController::class, 'updateSettings'])->name('imports.deals.settings.update');
+    Route::get('/imports/deals/{batchId}',               [TenantDealImportController::class, 'preview'])->name('imports.deals.preview');
+    Route::post('/imports/deals/{batchId}/rows/{rowId}', [TenantDealImportController::class, 'approveRow'])->name('imports.deals.approve-row');
+    Route::post('/imports/deals/{batchId}/bulk-approve', [TenantDealImportController::class, 'bulkApprove'])->name('imports.deals.bulk-approve');
+    Route::post('/imports/deals/{batchId}/execute',      [TenantDealImportController::class, 'execute'])->name('imports.deals.execute');
+    Route::get('/imports/deals/{batchId}/report',        [TenantDealImportController::class, 'show'])->name('imports.deals.show');
+    Route::get('/imports/deals/{batchId}/failed',        [TenantDealImportController::class, 'downloadFailed'])->name('imports.deals.failed');
 });
 
 // ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────

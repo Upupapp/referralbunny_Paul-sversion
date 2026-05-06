@@ -181,4 +181,52 @@ class LguIdsPricingServiceTest extends TestCase
         $this->assertSame('41%', LguIdsPricingService::lookupDisplayPct(25_000_000));
         $this->assertNull(LguIdsPricingService::lookupDisplayPct(3_000_000));
     }
+
+    // ── LGU IDS isolation / non-globalisation guards ──────────────
+
+    /**
+     * GenericDealImportService must NOT import or reference LguIdsPricingService.
+     * This prevents LGU IDS pricing logic from leaking into generic tenants.
+     */
+    public function testLguIdsPricingServiceIsNotGloballyApplied(): void
+    {
+        $projectRoot = dirname(__DIR__, 3); // tests/Unit/Services -> project root
+        $serviceFile = file_get_contents($projectRoot . '/app/Services/GenericDealImportService.php');
+
+        $this->assertFalse(
+            str_contains($serviceFile, 'LguIdsPricingService'),
+            'GenericDealImportService must not reference LguIdsPricingService — LGU IDS pricing is tenant-specific and must never be applied globally.'
+        );
+    }
+
+    /**
+     * The global import templates config must not contain an 'lgu_ids' key.
+     * LGU IDS uses its own locked service; it must not appear as a generic template.
+     */
+    public function testLguIdsTemplateNotInGenericConfig(): void
+    {
+        $projectRoot = dirname(__DIR__, 3);
+        $templates   = require $projectRoot . '/config/referralbunny_import_templates.php';
+
+        $this->assertArrayNotHasKey(
+            'lgu_ids',
+            $templates,
+            "The 'lgu_ids' template key must not exist in referralbunny_import_templates config — LGU IDS has its own locked import service."
+        );
+    }
+
+    /**
+     * The GenericDealImportService file must not reference 'municipality_or_city'
+     * as a required field. That field is exclusive to LGU IDS.
+     */
+    public function testMunicipalityNotInGenericServiceAliases(): void
+    {
+        $projectRoot = dirname(__DIR__, 3);
+        $serviceFile = file_get_contents($projectRoot . '/app/Services/GenericDealImportService.php');
+
+        $this->assertFalse(
+            str_contains($serviceFile, 'municipality_or_city'),
+            "GenericDealImportService must not reference 'municipality_or_city' as a required field — that field is exclusive to LGU IDS."
+        );
+    }
 }
