@@ -92,19 +92,26 @@
                 </template>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <label x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
+            {{-- Always in DOM (never x-show) so browser restoration is overridden by Alpine init before any visibility change --}}
+            <label x-cloak x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                <select x-model="filterAgreement" @change="applyFilters()" autocomplete="off">
-                    <option value="">All Agreements</option>
+                <select x-ref="agFilter"
+                        x-model="filterAgreement"
+                        @change="filterAgreement = $event.target.value; applyFilters()"
+                        autocomplete="off" name="__ag_no_restore">
+                    <option value="" selected>All Agreements</option>
                     <option value="compliant">Fully Signed</option>
                     <option value="missing">Missing Agreements</option>
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <label x-show="totalRequiredDocs > 0" class="filter-pill" :class="filterDoc !== '' ? 'active' : ''">
+            <label x-cloak x-show="totalRequiredDocs > 0" class="filter-pill" :class="filterDoc !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
-                <select x-model="filterDoc" @change="applyFilters()" autocomplete="off">
-                    <option value="">All Doc Status</option>
+                <select x-ref="docFilter"
+                        x-model="filterDoc"
+                        @change="filterDoc = $event.target.value; applyFilters()"
+                        autocomplete="off" name="__doc_no_restore">
+                    <option value="" selected>All Doc Status</option>
                     <option value="compliant">Docs Complete</option>
                     <option value="missing">Missing Docs</option>
                 </select>
@@ -808,8 +815,9 @@ function referrersModule(tenantId) {
                 this.totalRequiredAgreements = cd.required_agreements || 0;
                 const map = {};
                 (cd.resellers || []).forEach(r => { map[r.reseller_id] = r; });
-                // If browser restored a filter before we had data, reset it now
-                if (this.filterAgreement) this.filterAgreement = '';
+                // Force-reset the select DOM value and data to prevent browser restoration
+                this.filterAgreement = '';
+                if (this.$refs.agFilter) this.$refs.agFilter.value = '';
                 this.resellerCompliance = map;
                 this.applyFilters();
             } catch(e) {}
@@ -824,8 +832,9 @@ function referrersModule(tenantId) {
                 this.totalRequiredDocs = data.required_documents || 0;
                 const map = {};
                 (data.resellers || []).forEach(r => { map[r.reseller_id] = r; });
-                // If browser restored a filter before we had data, reset it now
-                if (this.filterDoc) this.filterDoc = '';
+                // Force-reset the select DOM value and data to prevent browser restoration
+                this.filterDoc = '';
+                if (this.$refs.docFilter) this.$refs.docFilter.value = '';
                 this.resellerDocCompliance = map;
                 this.applyFilters();
             } catch(e) {}
