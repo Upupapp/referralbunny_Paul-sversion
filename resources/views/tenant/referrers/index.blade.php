@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button onclick="window._openReferrerInvite?.()" class="btn-primary">
+    <button onclick="Alpine.store('referrersInvite').show = true" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
         <span class="hidden sm:inline">Invite Referrer</span>
     </button>
@@ -12,8 +12,7 @@
 @section('content')
 <div class="space-y-5"
      x-data="referrersModule('{{ $tenant->id }}')"
-     x-init="init()"
-     @open-invite-referrer.window="showInvite = true">
+     x-init="init()">
 
     {{-- Summary KPIs --}}
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -153,7 +152,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="referrers.length === 0 ? 'No referrers yet. Invite your first referrer.' : 'No referrers match the filters.'"></p>
-                                <button x-show="referrers.length === 0" @click="showInvite = true" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
+                                <button x-show="referrers.length === 0" @click="$store.referrersInvite.show = true" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
                             </td>
                         </tr>
                     </template>
@@ -514,11 +513,11 @@
     </div>
 
     {{-- Invite Modal --}}
-    <div x-show="showInvite" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div x-show="$store.referrersInvite.show" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Invite Referrer</h3>
-                <button @click="showInvite = false; resetForm()" class="text-gray-400 hover:text-gray-600">
+                <button @click="$store.referrersInvite.show = false; resetForm()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -543,7 +542,7 @@
                 </div>
                 <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                 <div class="flex justify-end gap-3">
-                    <button @click="showInvite = false; resetForm()" class="btn-secondary">Cancel</button>
+                    <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
                     <button @click="invite()" :disabled="saving" class="btn-primary" x-text="saving ? 'Inviting…' : 'Send Invitation'"></button>
                 </div>
             </div>
@@ -554,6 +553,8 @@
 
 <script>
 document.addEventListener('alpine:init', () => {
+    Alpine.store('referrersInvite', { show: false });
+
     Alpine.store('anonConfirm', {
         open:      false,
         enabling:  true,
@@ -619,7 +620,7 @@ function referrersModule(tenantId) {
     return {
         referrers: [], filtered: [], loading: true,
         search: '', filterStatus: '', filterAgreement: '', filterDoc: '',
-        showInvite: false, saving: false, formError: '',
+        saving: false, formError: '',
         form: { name: '', email: '', phone: '', territory: '' },
 
         // Agreement data
@@ -641,8 +642,6 @@ function referrersModule(tenantId) {
         docSaving: null,
 
         async init() {
-            // Register global handle so the topbar button can open this modal directly
-            window._openReferrerInvite = () => { this.showInvite = true; };
 
             try {
                 const res = await fetch(`/api/resellers?tenant_id=${tenantId}`);
@@ -960,7 +959,7 @@ function referrersModule(tenantId) {
                 if (reseller.id) {
                     this.referrers.unshift(reseller);
                     this.applyFilters();
-                    this.showInvite = false;
+                    Alpine.store('referrersInvite').show = false;
                     this.resetForm();
                     this.$dispatch('show-toast', { type: 'success', message: 'Referrer invited successfully.' });
                 } else {

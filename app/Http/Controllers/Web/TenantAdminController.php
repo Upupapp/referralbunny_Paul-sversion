@@ -119,17 +119,25 @@ class TenantAdminController extends Controller
             $canSeeBilling = true;
         }
 
-        // Critical actions for dashboard widget
-        $criticalActions = app(CriticalActionService::class)
-            ->dashboardSummary($tenantId, 6, $canSeeBilling);
+        // Critical actions for dashboard widget — wrapped so any DB issue never breaks the dashboard
+        try {
+            $criticalActions = app(CriticalActionService::class)
+                ->dashboardSummary($tenantId, 6, $canSeeBilling);
+        } catch (\Throwable) {
+            $criticalActions = [];
+        }
 
-        // Extra dashboard counts for improved KPI display
-        $dashboardCounts = [
-            'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->where('status', 'expiring')->count(),
-            'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
-            'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
-            'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
-        ];
+        // Extra dashboard counts
+        try {
+            $dashboardCounts = [
+                'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->where('status', 'expiring')->count(),
+                'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
+                'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
+                'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
+            ];
+        } catch (\Throwable) {
+            $dashboardCounts = ['expiring_deals' => 0, 'pending_invites' => 0, 'import_warnings' => 0, 'missing_referrer' => 0];
+        }
 
         $expiryAlert = null;
 

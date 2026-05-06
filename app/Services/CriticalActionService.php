@@ -103,19 +103,28 @@ class CriticalActionService
     {
         $limitPer = $opts['limit_per_source'] ?? 10;
         $since    = $opts['since'] ?? now()->subDays(30);
-        $billing  = $opts['billing'] ?? false;
 
-        return array_merge(
-            $this->expiringDeals($tenantId),
-            $this->expiredDeals($tenantId),
-            $this->missingReferrerDeals($tenantId),
-            $this->recentLeadHistory($tenantId, $limitPer, $since),
-            $this->importEvents($tenantId, $limitPer),
-            $this->pendingInvites($tenantId),
-            $this->recentAcceptedInvites($tenantId, $limitPer, $since),
-            $this->unrepliedMessages($tenantId),
-            $this->recentActivityLogs($tenantId, $limitPer, $since),
-        );
+        $sources = [
+            fn() => $this->expiringDeals($tenantId),
+            fn() => $this->expiredDeals($tenantId),
+            fn() => $this->missingReferrerDeals($tenantId),
+            fn() => $this->recentLeadHistory($tenantId, $limitPer, $since),
+            fn() => $this->importEvents($tenantId, $limitPer),
+            fn() => $this->pendingInvites($tenantId),
+            fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since),
+            fn() => $this->unrepliedMessages($tenantId),
+            fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
+        ];
+
+        $all = [];
+        foreach ($sources as $source) {
+            try {
+                $all = array_merge($all, $source());
+            } catch (\Throwable) {
+                // one failed source never breaks the whole widget
+            }
+        }
+        return $all;
     }
 
     // ── Source queries ─────────────────────────────────────────────
