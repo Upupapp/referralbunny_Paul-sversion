@@ -453,7 +453,7 @@
                 <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                 <div class="flex justify-end gap-3 pt-1">
                     <button @click="showAdd = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="addRecord()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Add Deal'"></button>
+                    <button @click="if(!saving){saving=true;addRecord()}" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Add Deal'"></button>
                 </div>
             </div>
         </div>
