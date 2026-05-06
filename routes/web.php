@@ -184,7 +184,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/deals/{dealId}', [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::get('/contacts',        [TenantAdminController::class, 'contacts'])->name('contacts');
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
-    Route::get('/referrers',       [TenantAdminController::class, 'referrers'])->name('referrers');
+    Route::get('/referrers',               [TenantAdminController::class, 'referrers'])->name('referrers');
+    Route::get('/referrers/{referrerId}',  [TenantAdminController::class, 'referrerDetail'])->name('referrers.show');
     Route::get('/tasks',           [TenantAdminController::class, 'tasks'])->name('tasks');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');

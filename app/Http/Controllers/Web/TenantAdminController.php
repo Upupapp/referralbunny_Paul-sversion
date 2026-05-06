@@ -7,8 +7,10 @@ use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use App\Models\TenantMembership;
+use App\Models\Reseller;
 use App\Services\CriticalActionService;
 use App\Services\PermissionService;
+use App\Services\ReferrerPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -227,6 +229,48 @@ class TenantAdminController extends Controller
 
         return view('tenant.referrers.index', array_merge(
             ['tenant' => $tenant, 'canViewReferrers' => $canViewReferrers, 'referrerSummary' => $referrerSummary],
+            $this->configMeta($tenantId)
+        ));
+    }
+
+    public function referrerDetail($tenantId, string $referrerId)
+    {
+        $tenant   = Tenant::findOrFail($tenantId);
+        $reseller = Reseller::where('id', $referrerId)
+            ->where('tenant_id', $tenantId)
+            ->firstOrFail();
+
+        $perfService = app(ReferrerPerformanceService::class);
+        $performance = $perfService->forReseller($tenantId, $reseller->name);
+        $completeness = $perfService->completenessStatus($reseller);
+
+        // Recent deals (latest 10)
+        $recentDeals = collect();
+        try {
+            $recentDeals = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('reseller_name', $reseller->name)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+        } catch (\Throwable) {}
+
+        // Recent activity from CriticalActionService
+        $recentActivity = [];
+        try {
+            $recentActivity = app(CriticalActionService::class)
+                ->forReseller($tenantId, $reseller->name, 8);
+        } catch (\Throwable) {}
+
+        return view('tenant.referrers.show', array_merge(
+            [
+                'tenant'        => $tenant,
+                'reseller'      => $reseller,
+                'performance'   => $performance,
+                'completeness'  => $completeness,
+                'recentDeals'   => $recentDeals,
+                'recentActivity'=> $recentActivity,
+            ],
             $this->configMeta($tenantId)
         ));
     }

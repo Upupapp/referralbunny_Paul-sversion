@@ -157,9 +157,9 @@
                 <thead>
                     <tr class="table-head">
                         <th>Referrer</th>
-                        <th class="hidden md:table-cell">Territory</th>
+                        <th>Details</th>
                         <th>Deals</th>
-                        <th class="flex items-center gap-1">Closed Value @if($showLocation ?? false)<x-tax-tip />@endif</th>
+                        <th class="hidden sm:table-cell flex items-center gap-1">Closed Value @if($showLocation ?? false)<x-tax-tip />@endif</th>
                         <th class="hidden md:table-cell">Performance</th>
                         <th>Status</th>
                         <th class="hidden lg:table-cell" x-show="totalRequiredAgreements > 0">Agreements</th>
@@ -194,15 +194,17 @@
                         </tr>
                     </template>
                     <template x-for="r in filtered" :key="r.id">
-                        <tr class="table-row">
-                            <td>
+                        <tr class="table-row cursor-pointer group/row"
+                            @click.self="window.location = '{{ url('/tenant/' . $tenant->id . '/referrers') }}/' + r.id"
+                            :title="'View ' + (r.name || 'Referrer') + ' details'">
+                            <td @click="window.location = '{{ url('/tenant/' . $tenant->id . '/referrers') }}/' + r.id">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                                          :class="r.is_anonymous ? 'bg-gray-100 text-gray-400' : 'bg-purple-100 text-purple-700'"
                                          x-text="r.is_anonymous ? '🔒' : (r.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">
-                                            <p class="font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                            <p class="font-medium text-[#1E1B4B] truncate group-hover/row:text-[#7B61FF] transition-colors" x-text="r.name"></p>
                                             <span :class="{
                                                 'badge badge-green':  ['active','nda_signed'].includes(r.status),
                                                 'badge badge-orange': r.status === 'invited',
@@ -220,11 +222,40 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="hidden md:table-cell text-gray-500 text-sm" x-text="r.territory || '—'"></td>
+                            {{-- Details completeness badge --}}
+                            <td>
+                                <template x-if="!r.email">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600"
+                                          title="This Referrer is missing an email address. An invitation cannot be sent until an email is added.">
+                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
+                                        Needs Email
+                                    </span>
+                                </template>
+                                <template x-if="r.email && r.status === 'invited' && !r.password">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-600"
+                                          title="Invitation sent. Waiting for the Referrer to complete account setup.">
+                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Pending Setup
+                                    </span>
+                                </template>
+                                <template x-if="r.email && r.status === 'deactivated'">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-500"
+                                          title="This Referrer has been deactivated. Portal access has been removed.">
+                                        Deactivated
+                                    </span>
+                                </template>
+                                <template x-if="r.email && ['active','nda_signed'].includes(r.status)">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700"
+                                          title="Profile is complete and account is active.">
+                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        Complete
+                                    </span>
+                                </template>
+                            </td>
                             <td class="text-sm tabular-nums">
                                 <span class="font-semibold text-[#1E1B4B]" x-text="r.assigned_leads || 0"></span>
                             </td>
-                            <td class="font-semibold text-[#1E1B4B] tabular-nums" x-text="formatValue(r.closed_value)"></td>
+                            <td class="hidden sm:table-cell font-semibold text-[#1E1B4B] tabular-nums" x-text="formatValue(r.closed_value)"></td>
                             <td class="hidden md:table-cell">
                                 <div class="flex items-center gap-2 min-w-24">
                                     <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -287,21 +318,27 @@
                             <td class="hidden lg:table-cell text-gray-400 text-sm tabular-nums"
                                 x-text="r.joined_date ? new Date(r.joined_date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                             <td>
-                                <div class="flex items-center gap-1.5 justify-end">
-                                    <button x-show="r.status === 'invited'" @click="updateStatus(r.id, 'active')"
+                                <div class="flex items-center gap-1.5 justify-end" @click.stop>
+                                    {{-- View Details --}}
+                                    <a :href="'{{ url('/tenant/' . $tenant->id . '/referrers') }}/' + r.id"
+                                       class="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-[#7B61FF] transition-colors"
+                                       title="View Referrer details">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </a>
+                                    <button x-show="r.status === 'invited'" @click.stop="updateStatus(r.id, 'active')"
                                             class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
                                         Activate
                                     </button>
-                                    <button x-show="r.status === 'active'" @click="updateStatus(r.id, 'nda_signed')"
+                                    <button x-show="r.status === 'active'" @click.stop="updateStatus(r.id, 'nda_signed')"
                                             class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
                                         Mark NDA
                                     </button>
-                                    <button x-show="totalRequiredDocs > 0" @click="openDocuments(r)"
+                                    <button x-show="totalRequiredDocs > 0" @click.stop="openDocuments(r)"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors"
                                             title="Manage documents">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
                                     </button>
-                                    <button x-show="totalRequiredAgreements > 0" @click="openAgreements(r)"
+                                    <button x-show="totalRequiredAgreements > 0" @click.stop="openAgreements(r)"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#7B61FF] transition-colors"
                                             title="Manage agreements">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +346,7 @@
                                         </svg>
                                     </button>
                                     {{-- Anonymity toggle — tenant admin only --}}
-                                    <button @click="toggleAnonymous(r)"
+                                    <button @click.stop="toggleAnonymous(r)"
                                             :title="r.is_anonymous ? 'Remove anonymity' : 'Make anonymous'"
                                             :class="r.is_anonymous ? 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'"
                                             class="p-1.5 rounded-lg transition-colors">
@@ -319,7 +356,7 @@
                                     </button>
                                     {{-- Deactivate — only for non-deactivated referrers --}}
                                     <button x-show="r.status !== 'deactivated'"
-                                            @click="Alpine.store('deactivateConfirm').show(r)"
+                                            @click.stop="Alpine.store('deactivateConfirm').show(r)"
                                             title="Deactivate this Referrer"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
