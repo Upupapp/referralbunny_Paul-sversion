@@ -32,7 +32,7 @@
     >
         {{-- Header --}}
         <div class="bg-gradient-to-r from-[#1E1B4B] to-[#4C3FA0] px-4 py-3 flex items-center gap-3">
-            <img :src="`/images/mascots/r-bunny-${nextTask?.mascot || 'helper'}.webp`"
+            <img :src="`/images/mascots/r-bunny-${nextTask?.mascot || 'helper-question'}.webp`"
                  alt="R Bunny"
                  class="w-8 h-8 object-contain shrink-0"
                  loading="lazy">

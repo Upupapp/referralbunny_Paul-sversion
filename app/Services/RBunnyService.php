@@ -40,7 +40,7 @@ class RBunnyService
             ],
         ],
         'contacts' => [
-            'mascot'  => 'helper',
+            'mascot'  => 'helper-question',
             'title'   => 'Contacts',
             'summary' => 'Manage the people connected to your deals. Link contacts to deals and organizations.',
             'tips'    => [
@@ -50,7 +50,7 @@ class RBunnyService
             ],
         ],
         'organizations' => [
-            'mascot'  => 'helper',
+            'mascot'  => 'helper-question',
             'title'   => 'Organizations',
             'summary' => 'Track companies and entities associated with your deals.',
             'tips'    => [
@@ -69,7 +69,7 @@ class RBunnyService
             ],
         ],
         'imports' => [
-            'mascot'  => 'tech',
+            'mascot'  => 'tech-hologram',
             'title'   => 'Import Center',
             'summary' => 'Upload deals and contacts in bulk using the standard template.',
             'tips'    => [
@@ -99,7 +99,7 @@ class RBunnyService
             ],
         ],
         'users' => [
-            'mascot'  => 'helper',
+            'mascot'  => 'helper-question',
             'title'   => 'Users & Roles',
             'summary' => 'Manage your team members, roles, and access levels for this workspace.',
             'tips'    => [
@@ -118,7 +118,7 @@ class RBunnyService
             ],
         ],
         'settings' => [
-            'mascot'  => 'helper',
+            'mascot'  => 'helper-question',
             'title'   => 'Settings',
             'summary' => 'Configure your workspace name, fields, notifications, and integrations.',
             'tips'    => [
@@ -372,7 +372,7 @@ class RBunnyService
                 $suggestions[] = [
                     'key'      => 'expiring_deals',
                     'priority' => 'high',
-                    'mascot'   => 'warning',
+                    'mascot'   => 'warning-error',
                     'title'    => $expiring === 1 ? '1 deal is expiring soon' : "{$expiring} deals are expiring soon",
                     'body'     => 'These deals need attention before they expire.',
                     'action'   => ['label' => 'Review Expiring Deals', 'url' => "/tenant/{$tenantId}/deals?status=expiring"],
@@ -397,7 +397,7 @@ class RBunnyService
                 $suggestions[] = [
                     'key'      => 'unread_messages',
                     'priority' => 'normal',
-                    'mascot'   => 'helper',
+                    'mascot'   => 'helper-question',
                     'title'    => $unread === 1 ? '1 unread message' : "{$unread} unread messages",
                     'body'     => 'You have messages waiting for a reply.',
                     'action'   => ['label' => 'Open Messages', 'url' => "/tenant/{$tenantId}/messages"],
@@ -441,7 +441,7 @@ class RBunnyService
                     $suggestions[] = [
                         'key'      => 'rs_expiring_deals',
                         'priority' => 'high',
-                        'mascot'   => 'warning',
+                        'mascot'   => 'warning-error',
                         'title'    => $expiring === 1 ? '1 of your deals is expiring soon' : "{$expiring} of your deals are expiring",
                         'body'     => 'Act before the deadline — expired deals may be reassigned.',
                         'action'   => ['label' => 'Review My Deals', 'url' => "/reseller/{$tenantId}/deals"],
@@ -483,7 +483,7 @@ class RBunnyService
                         $suggestions[] = [
                             'key'      => $key,
                             'priority' => 'low',
-                            'mascot'   => $nextTask['mascot'] ?? 'helper',
+                            'mascot'   => $nextTask['mascot'] ?? 'helper-question',
                             'title'    => 'Setup: ' . $nextTask['label'],
                             'body'     => $nextTask['message'] ?? 'Complete this step to finish your setup.',
                             'action'   => $nextTask['action']

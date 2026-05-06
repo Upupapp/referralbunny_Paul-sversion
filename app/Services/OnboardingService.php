@@ -13,20 +13,20 @@ class OnboardingService
     private const WALKTHROUGHS = [
         'super_admin' => [
             ['mascot' => 'analyst',     'title' => 'Welcome to Mission Control',       'body' => 'R Bunny will help you monitor tenants, subscriptions, platform activity, and important alerts from one place.'],
-            ['mascot' => 'helper',      'title' => 'Track every tenant safely',         'body' => 'View tenant activity, billing status, onboarding progress, and platform health without mixing tenant data.'],
+            ['mascot' => 'helper-question',      'title' => 'Track every tenant safely',         'body' => 'View tenant activity, billing status, onboarding progress, and platform health without mixing tenant data.'],
             ['mascot' => 'thinking',    'title' => 'Find what you need fast',           'body' => 'Use platform search and tenant filters to locate records, review issues, and support users with proper access controls.'],
             ['mascot' => 'waving',      'title' => 'Stay ahead of what needs action',  'body' => 'R Bunny can remind you about pending approvals, billing alerts, imports, and system notifications.'],
-            ['mascot' => 'thumbsup',    'title' => 'Ready to manage the platform',     'body' => 'Your dashboard gives you the big picture. R Bunny will stay nearby if anything needs your attention.'],
+            ['mascot' => 'thumbs-up',    'title' => 'Ready to manage the platform',     'body' => 'Your dashboard gives you the big picture. R Bunny will stay nearby if anything needs your attention.'],
         ],
         'owner' => [
-            ['mascot' => 'hero',        'title' => 'Welcome to your referral command center', 'body' => 'R Bunny will help you manage deals, Referrers, Partners, contacts, messages, and reports for your tenant.'],
+            ['mascot' => 'hero-flying',        'title' => 'Welcome to your referral command center', 'body' => 'R Bunny will help you manage deals, Referrers, Partners, contacts, messages, and reports for your tenant.'],
             ['mascot' => 'analyst',     'title' => 'Start with your daily briefing',          'body' => 'See new deals, expiring deals, active Referrers, unread messages, and important tasks from one clean dashboard.'],
             ['mascot' => 'thinking',    'title' => 'Track the right people and opportunities','body' => 'Add deals, import contacts, assign Referrers, and keep every opportunity moving.'],
             ['mascot' => 'waving',      'title' => 'Invite the right people',                 'body' => 'Invite Managers, Staff, Referrers, and Partners while keeping permissions safe and tenant-scoped.'],
             ['mascot' => 'celebration', 'title' => "You're ready to build your referral engine", 'body' => "R Bunny will guide your next actions, remind you what needs attention, and help you complete setup."],
         ],
         'admin' => [
-            ['mascot' => 'hero',        'title' => 'Welcome to your referral command center', 'body' => 'R Bunny will help you manage deals, Referrers, Partners, contacts, messages, and reports for your tenant.'],
+            ['mascot' => 'hero-flying',        'title' => 'Welcome to your referral command center', 'body' => 'R Bunny will help you manage deals, Referrers, Partners, contacts, messages, and reports for your tenant.'],
             ['mascot' => 'analyst',     'title' => 'Start with your daily briefing',          'body' => 'See new deals, expiring deals, active Referrers, unread messages, and important tasks from one clean dashboard.'],
             ['mascot' => 'thinking',    'title' => 'Track the right people and opportunities','body' => 'Add deals, import contacts, assign Referrers, and keep every opportunity moving.'],
             ['mascot' => 'waving',      'title' => 'Invite the right people',                 'body' => 'Invite Managers, Staff, Referrers, and Partners while keeping permissions safe and tenant-scoped.'],
@@ -35,30 +35,30 @@ class OnboardingService
         'manager' => [
             ['mascot' => 'waving',      'title' => 'Welcome to your Manager workspace',   'body' => 'You can help manage daily operations for this tenant based on the permissions assigned to you.'],
             ['mascot' => 'analyst',     'title' => 'Your dashboard shows what needs attention', 'body' => 'Track deals, contacts, messages, reports, and reminders in one place.'],
-            ['mascot' => 'helper',      'title' => 'R Bunny keeps your access clear',     'body' => 'Some sensitive areas like billing or account deletion may be restricted unless the Tenant Admin allows access.'],
+            ['mascot' => 'helper-question',      'title' => 'R Bunny keeps your access clear',     'body' => 'Some sensitive areas like billing or account deletion may be restricted unless the Tenant Admin allows access.'],
             ['mascot' => 'thinking',    'title' => 'Help move deals forward',             'body' => 'Review deal activity, update records, manage contacts, and respond to messages where your role allows.'],
-            ['mascot' => 'thumbsup',    'title' => "You're ready to help manage",         'body' => "R Bunny will suggest your first tasks and guide you if something needs action."],
+            ['mascot' => 'thumbs-up',    'title' => "You're ready to help manage",         'body' => "R Bunny will suggest your first tasks and guide you if something needs action."],
         ],
         'member' => [
             ['mascot' => 'waving',      'title' => 'Welcome to the team',               'body' => 'R Bunny will show you the tools available for your role.'],
-            ['mascot' => 'helper',      'title' => 'Focus on what you\'re allowed to manage', 'body' => 'Your access may include deals, contacts, messages, reports, or specific tasks assigned by your admin.'],
-            ['mascot' => 'thumbsup',    'title' => 'Make your profile easy to recognize','body' => 'Add your name, nickname, and photo so teammates know who they are working with.'],
+            ['mascot' => 'helper-question',      'title' => 'Focus on what you\'re allowed to manage', 'body' => 'Your access may include deals, contacts, messages, reports, or specific tasks assigned by your admin.'],
+            ['mascot' => 'thumbs-up',    'title' => 'Make your profile easy to recognize','body' => 'Add your name, nickname, and photo so teammates know who they are working with.'],
             ['mascot' => 'waving',      'title' => 'Never miss important updates',       'body' => 'Turn on notifications so R Bunny can alert you when something needs your attention.'],
             ['mascot' => 'celebration', 'title' => "You're ready to work",              'body' => "R Bunny will suggest next steps based on your permissions."],
         ],
         'referrer' => [
             ['mascot' => 'rocket',      'title' => 'Welcome to your referral workspace',  'body' => 'R Bunny will help you submit deals, track progress, view commissions, and stay updated.'],
             ['mascot' => 'analyst',     'title' => 'Track every deal you\'re working on', 'body' => 'See your active deals, stages, updates, and deadlines from your dashboard.'],
-            ['mascot' => 'hero',        'title' => 'Start referring opportunities',        'body' => 'Create your first deal or claim an available opportunity based on tenant rules.'],
+            ['mascot' => 'hero-flying',        'title' => 'Start referring opportunities',        'body' => 'Create your first deal or claim an available opportunity based on tenant rules.'],
             ['mascot' => 'waving',      'title' => 'Work with your deal contacts',        'body' => 'View Partners connected to your deals and respond to messages when action is needed.'],
             ['mascot' => 'celebration', 'title' => 'Happy referring!',                    'body' => "R Bunny will guide your first actions and remind you when a deal needs movement."],
         ],
         'partner' => [
             ['mascot' => 'portal',      'title' => 'Welcome to your Partner view',        'body' => "R Bunny will help you view the deals you're associated with and message the Referrers connected to those deals."],
-            ['mascot' => 'helper',      'title' => 'Limited and focused access',          'body' => 'Your account is designed for deal-specific visibility. You can view associated deals and relevant messages only.'],
+            ['mascot' => 'helper-question',      'title' => 'Limited and focused access',          'body' => 'Your account is designed for deal-specific visibility. You can view associated deals and relevant messages only.'],
             ['mascot' => 'thinking',    'title' => 'Check your connected deals',          'body' => "Open your deal list to see details you're allowed to view."],
             ['mascot' => 'waving',      'title' => 'Stay connected',                      'body' => 'You can message Referrers you share an active deal with.'],
-            ['mascot' => 'thumbsup',    'title' => "R Bunny will stay nearby",            'body' => "Once your profile is complete, you're ready. Come back to R Bunny anytime for help."],
+            ['mascot' => 'thumbs-up',    'title' => "R Bunny will stay nearby",            'body' => "Once your profile is complete, you're ready. Come back to R Bunny anytime for help."],
         ],
     ];
 
@@ -127,19 +127,19 @@ class OnboardingService
     // ── R Bunny bot suggestion messages ───────────────────────────
 
     private const SUGGESTIONS = [
-        'walkthrough_done'       => ['mascot' => 'helper',      'msg' => "Nice! You finished the quick tour. Want to complete your setup next?"],
+        'walkthrough_done'       => ['mascot' => 'helper-question',      'msg' => "Nice! You finished the quick tour. Want to complete your setup next?"],
         'profile_complete'       => ['mascot' => 'waving',      'msg' => "Your profile is almost ready. Add a photo or nickname so people can recognize you faster."],
-        'notifications_reviewed' => ['mascot' => 'helper',      'msg' => "Want to stay on top of things? Enable browser notifications so R Bunny can alert you in real time."],
+        'notifications_reviewed' => ['mascot' => 'helper-question',      'msg' => "Want to stay on top of things? Enable browser notifications so R Bunny can alert you in real time."],
         'first_deal'             => ['mascot' => 'rocket',      'msg' => "Ready for your first move? Add your first deal and I'll help you keep it organized."],
-        'first_contact'          => ['mascot' => 'helper',      'msg' => "Contacts make deals easier to track. Want to add your first contact?"],
+        'first_contact'          => ['mascot' => 'helper-question',      'msg' => "Contacts make deals easier to track. Want to add your first contact?"],
         'first_invite'           => ['mascot' => 'waving',      'msg' => "Your referral program works better with people. Want to invite your first Referrer?"],
         'first_user_invite'      => ['mascot' => 'waving',      'msg' => "Ready to grow your team? Invite a Manager to help run daily operations."],
-        'messages_checked'       => ['mascot' => 'helper',      'msg' => "You have messages waiting. Want to check them now?"],
+        'messages_checked'       => ['mascot' => 'helper-question',      'msg' => "You have messages waiting. Want to check them now?"],
         'deals_reviewed'         => ['mascot' => 'analyst',     'msg' => "Take a look at your deal pipeline to see what needs attention."],
         'commission_reviewed'    => ['mascot' => 'analyst',     'msg' => "Your commission page shows your earnings and status. Take a peek!"],
         'deal_viewed'            => ['mascot' => 'portal',      'msg' => "Your deal access is ready. Want to open your first associated deal?"],
         'tenant_reviewed'        => ['mascot' => 'analyst',     'msg' => "Take a look at your tenant list to get a platform overview."],
-        'billing_reviewed'       => ['mascot' => 'helper',      'msg' => "Review the billing dashboard for any alerts or pending items."],
+        'billing_reviewed'       => ['mascot' => 'helper-question',      'msg' => "Review the billing dashboard for any alerts or pending items."],
     ];
 
     // ── Public API ─────────────────────────────────────────────────
