@@ -87,8 +87,12 @@ class LeadController extends Controller
             'commission_splits'  => 'nullable|array',
         ]);
 
-        // Derive tenant from authenticated context, never from user input
-        $tenantId = TenantContext::requireId();
+        // Derive tenant from authenticated context; fall back to request body
+        // (consistent with ResellerController pattern for session-authenticated tenant admins)
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['message' => 'No tenant context established.'], 403);
+        }
 
         // ── LGU IDS: one active deal per organization ─────────────────
         // LOCKED RULE — do not remove or generalise (LGU IDS pipeline protection)
