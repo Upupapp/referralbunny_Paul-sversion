@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ResellerInvitation;
+use App\Models\ActivityLog;
 use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use App\Services\TenantContext;
 use Illuminate\Validation\Rule;
 
 class ResellerController extends Controller
@@ -63,7 +66,7 @@ class ResellerController extends Controller
         $data = $request->validate([
             'tenant_id'         => 'required|string|exists:tenants,id',
             'name'              => 'required|string',
-            'email'             => ['required', 'email', Rule::unique('resellers', 'email')->where('tenant_id', $tenantId)],
+            'email'             => 'required|email',
             'status'            => 'nullable|in:invited,active,nda_signed',
             'phone'             => 'nullable|string',
             'territory'         => 'nullable|string',
@@ -74,7 +77,37 @@ class ResellerController extends Controller
             'is_anonymous'      => 'nullable|boolean',
         ]);
 
-        // Check plan limit before creating
+        $normalizedEmail = strtolower(trim($data['email']));
+
+        // ── Explicit duplicate check (before anything is created) ─────────
+        $existing = Reseller::where('tenant_id', $tenantId)
+            ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
+            ->first();
+
+        if ($existing) {
+            if ($existing->status === 'deactivated') {
+                return response()->json([
+                    'message'     => 'This email belongs to a deactivated Referrer. Reactivate them instead.',
+                    'error_code'  => 'referrer_deactivated',
+                    'reseller_id' => $existing->id,
+                ], 409);
+            }
+            if ($existing->status === 'invited') {
+                return response()->json([
+                    'message'     => 'A pending invitation already exists for this email address. You can resend it from the Referrers list.',
+                    'error_code'  => 'pending_invite_exists',
+                    'reseller_id' => $existing->id,
+                    'can_resend'  => true,
+                ], 409);
+            }
+            return response()->json([
+                'message'     => 'This email is already an active Referrer for this tenant.',
+                'error_code'  => 'referrer_already_active',
+                'reseller_id' => $existing->id,
+            ], 409);
+        }
+
+        // ── Plan limit check ─────────────────────────────────────────────
         $planService = app(\App\Services\TenantPlanService::class);
         $limitCheck  = $planService->canInviteReferrer($tenantId);
         if (!$limitCheck['allowed']) {
@@ -87,27 +120,41 @@ class ResellerController extends Controller
             ], 422);
         }
 
-        // Generate setup token so the reseller can activate their account
-        $setupToken = Str::random(64);
+        // ── Create the reseller record ────────────────────────────────────
+        $setupToken      = Str::random(64);
+        $data['email']   = $normalizedEmail;
         $data['setup_token'] = $setupToken;
         $data['status']      = 'invited';
 
         $reseller   = Reseller::create($data);
-        $tenantName = DB::table('tenants')->where('id', $data['tenant_id'])->value('name') ?? 'Referral Bunny';
+        $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
+        // ── Send invitation email (non-blocking) ──────────────────────────
+        $emailStatus = 'sent';
         try {
             Mail::send(new ResellerInvitation(
                 resellerName:  $data['name'],
-                resellerEmail: $data['email'],
+                resellerEmail: $normalizedEmail,
                 tenantName:    $tenantName,
                 setupUrl:      $setupUrl,
             ));
         } catch (\Throwable $e) {
-            Log::warning("Reseller invite email failed for {$data['email']}: {$e->getMessage()}");
+            $emailStatus = 'failed';
+            Log::warning("Reseller invite email failed for {$normalizedEmail}: {$e->getMessage()}", [
+                'reseller_id' => $reseller->id,
+                'tenant_id'   => $tenantId,
+            ]);
         }
 
-        return response()->json($reseller, 201);
+        $response = $reseller->toArray();
+        $response['email_delivery_status'] = $emailStatus;
+
+        if ($emailStatus === 'failed') {
+            $response['message'] = 'Referrer invitation created, but email delivery failed. You can resend it from the Referrers list.';
+        }
+
+        return response()->json($response, 201);
     }
 
     public function show(Request $request, Reseller $reseller): JsonResponse
@@ -136,8 +183,99 @@ class ResellerController extends Controller
 
     public function destroy(Reseller $reseller): JsonResponse
     {
-        $reseller->delete();
-        return response()->json(['message' => 'Reseller deleted.']);
+        // Hard delete is intentionally blocked — use the deactivate endpoint instead.
+        // This preserves historical deals, commissions, messages, and audit logs.
+        return response()->json([
+            'message'    => 'Direct deletion is not allowed. Use the deactivate endpoint to remove Referrer access.',
+            'error_code' => 'use_deactivate_endpoint',
+        ], 405);
+    }
+
+    /**
+     * Deactivate a Referrer (requires double authentication).
+     * Soft-deactivates: sets status = deactivated, preserves all history.
+     */
+    public function deactivate(Request $request, Reseller $reseller): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'You do not have permission to deactivate Referrers.'], 403);
+        }
+
+        // Resolve tenant from auth context
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
+        }
+
+        if ($reseller->status === 'deactivated') {
+            return response()->json(['error' => 'This Referrer is already deactivated.'], 422);
+        }
+
+        $data = $request->validate([
+            'confirmation' => ['required', 'string', Rule::in(['DEACTIVATE REFERRER'])],
+            'reason'       => 'required|string|min:5|max:500',
+            'password'     => 'required|string',
+        ]);
+
+        // ── Verify caller password (double authentication) ────────────────
+        $actor = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        if (!$actor) {
+            return response()->json(['error' => 'Authentication required.'], 401);
+        }
+
+        if (!Hash::check($data['password'], $actor->password)) {
+            // Log failed double-auth attempt
+            $this->auditDeactivation($tenantId, $reseller, $actor->id ?? 'unknown', 'double_auth_failed', $data['reason']);
+            return response()->json(['error' => 'Double authentication failed. No changes were made.'], 401);
+        }
+
+        // ── Count active deals for critical action metadata ────────────────
+        $activeDealsCount   = DB::table('leads')->where('tenant_id', $tenantId)->where('reseller_name', $reseller->name)->whereIn('status', ['active', 'expiring'])->count();
+        $pendingDealsCount  = DB::table('leads')->where('tenant_id', $tenantId)->where('reseller_name', $reseller->name)->where('status', 'pending')->count();
+        $totalDealsCount    = DB::table('leads')->where('tenant_id', $tenantId)->where('reseller_name', $reseller->name)->count();
+
+        // ── Deactivate ─────────────────────────────────────────────────────
+        DB::table('resellers')->where('id', $reseller->id)->update([
+            'status'     => 'deactivated',
+            'updated_at' => now(),
+        ]);
+
+        // ── Audit log ──────────────────────────────────────────────────────
+        $this->auditDeactivation($tenantId, $reseller, $actor->id ?? 'unknown', 'deactivated', $data['reason'], [
+            'active_deals_count'  => $activeDealsCount,
+            'pending_deals_count' => $pendingDealsCount,
+            'total_deals_count'   => $totalDealsCount,
+            'double_auth_verified'=> true,
+        ]);
+
+        return response()->json([
+            'success'            => true,
+            'message'            => 'Referrer deactivated. Access to this tenant has been removed.',
+            'active_deals_count' => $activeDealsCount,
+            'needs_review'       => $activeDealsCount > 0,
+        ]);
+    }
+
+    private function auditDeactivation(string $tenantId, Reseller $reseller, string $actorId, string $event, string $reason, array $extra = []): void
+    {
+        try {
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => $actorId,
+                'action'    => 'referrer_' . $event,
+                'entity'    => 'reseller',
+                'entity_id' => $reseller->id,
+                'metadata'  => json_encode(array_merge([
+                    'referrer_name'  => $reseller->name,
+                    'referrer_email' => $reseller->email,
+                    'reason'         => $reason,
+                    'timestamp'      => now()->toIso8601String(),
+                ], $extra)),
+            ]);
+        } catch (\Throwable) {
+            // Never crash on audit failure
+        }
     }
 
     public function summary(Request $request): JsonResponse

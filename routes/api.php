@@ -74,9 +74,10 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('resellers',                   [ResellerController::class, 'store'])->middleware('feature.access:resellers,create');
     Route::get('resellers/summary',            [ResellerController::class, 'summary']);
     Route::get('resellers/{reseller}',         [ResellerController::class, 'show']);
-    Route::put('resellers/{reseller}',[ResellerController::class, 'update']);
-    Route::patch('resellers/{reseller}',[ResellerController::class, 'update']);
-    Route::delete('resellers/{reseller}',[ResellerController::class, 'destroy']);
+    Route::put('resellers/{reseller}',         [ResellerController::class, 'update']);
+    Route::patch('resellers/{reseller}',       [ResellerController::class, 'update']);
+    Route::delete('resellers/{reseller}',      [ResellerController::class, 'destroy']);
+    Route::post('resellers/{reseller}/deactivate', [ResellerController::class, 'deactivate']);
 
     // Messages
     Route::get('messages',           [MessageController::class, 'index']);

@@ -173,13 +173,24 @@ class ResellerPortalAuthController extends Controller
         $reseller = $reseller->fresh();
         Auth::guard('reseller')->login($reseller);
 
-        // Fire event → sends welcome email + notifies tenant admins
-        ResellerJoined::dispatch(
-            resellerId:    $reseller->id,
-            resellerName:  $reseller->name,
-            resellerEmail: $reseller->email,
-            tenantId:      $reseller->tenant_id,
-        );
+        // Fire event → sends welcome email + notifies tenant admins.
+        // Wrapped in try-catch so a listener failure never causes a 500 —
+        // the account is already activated and the user is logged in at this point.
+        try {
+            ResellerJoined::dispatch(
+                resellerId:    $reseller->id,
+                resellerName:  $reseller->name,
+                resellerEmail: $reseller->email,
+                tenantId:      $reseller->tenant_id,
+            );
+        } catch (\Throwable $e) {
+            Log::error('ResellerJoined event failed after account setup (non-fatal): ' . $e->getMessage(), [
+                'reseller_id' => $reseller->id,
+                'tenant_id'   => $reseller->tenant_id,
+                'step'        => 'post_setup_event_dispatch',
+            ]);
+            // Do not rethrow — account is active and user is authenticated.
+        }
 
         return redirect()->route('reseller.dashboard', $reseller->tenant_id);
     }

@@ -206,9 +206,10 @@
                                             <span :class="{
                                                 'badge badge-green':  ['active','nda_signed'].includes(r.status),
                                                 'badge badge-orange': r.status === 'invited',
-                                                'badge badge-gray':   !['active','nda_signed','invited'].includes(r.status)
+                                                'badge badge-red':    r.status === 'deactivated',
+                                                'badge badge-gray':   !['active','nda_signed','invited','deactivated'].includes(r.status)
                                             }" class="text-[10px] shrink-0 hidden sm:inline-flex"
-                                            x-text="r.status === 'nda_signed' ? 'NDA Signed' : r.status === 'invited' ? 'Pending' : 'Active'"></span>
+                                            x-text="r.status === 'nda_signed' ? 'NDA Signed' : r.status === 'invited' ? 'Pending' : r.status === 'deactivated' ? 'Deactivated' : 'Active'"></span>
                                             <span x-show="r.is_anonymous"
                                                   class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-gray-100 text-gray-500 shrink-0">
                                                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
@@ -239,7 +240,8 @@
                                     'badge badge-gray':  r.status === 'invited',
                                     'badge badge-green': r.status === 'active',
                                     'badge badge-blue':  r.status === 'nda_signed',
-                                }" x-text="r.status === 'nda_signed' ? 'NDA Signed' : r.status ? r.status.charAt(0).toUpperCase()+r.status.slice(1) : '—'"></span>
+                                    'badge badge-red':   r.status === 'deactivated',
+                                }" x-text="r.status === 'nda_signed' ? 'NDA Signed' : r.status === 'deactivated' ? 'Deactivated' : r.status ? r.status.charAt(0).toUpperCase()+r.status.slice(1) : '—'"></span>
                             </td>
 
                             {{-- Agreements column (only shown when agreements exist) --}}
@@ -313,6 +315,15 @@
                                             class="p-1.5 rounded-lg transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                                        </svg>
+                                    </button>
+                                    {{-- Deactivate — only for non-deactivated referrers --}}
+                                    <button x-show="r.status !== 'deactivated'"
+                                            @click="Alpine.store('deactivateConfirm').show(r)"
+                                            title="Deactivate this Referrer"
+                                            class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                         </svg>
                                     </button>
                                 </div>
@@ -557,11 +568,163 @@
 
     {{-- Invite Modal: pure vanilla JS, zero Alpine dependency --}}
 
+    {{-- Deactivate Referrer Confirmation Modal (double-auth) --}}
+    <div x-data x-show="$store.deactivateConfirm.open" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);"
+         @keydown.escape.window="$store.deactivateConfirm.cancel()">
+
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.stop
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+
+            <div class="h-1.5 w-full bg-red-500"></div>
+
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B] text-base">Deactivate Referrer?</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">This is a sensitive action and requires double authentication.</p>
+                </div>
+                <button @click="$store.deactivateConfirm.cancel()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="px-6 py-5 space-y-4">
+                {{-- Impact summary --}}
+                <div class="bg-red-50 border border-red-100 rounded-xl px-4 py-3 space-y-1">
+                    <p class="text-sm font-semibold text-red-700" x-text="$store.deactivateConfirm.reseller?.name"></p>
+                    <p class="text-xs text-red-500" x-text="$store.deactivateConfirm.reseller?.email"></p>
+                    <p class="text-xs text-gray-500 mt-1.5">Historical deals, messages, commissions, and audit logs will be preserved. Only portal access will be removed.</p>
+                </div>
+
+                {{-- Reason --}}
+                <div>
+                    <label class="form-label">Reason for deactivation <span class="text-red-500">*</span></label>
+                    <textarea x-model="$store.deactivateConfirm.reason"
+                              class="form-input resize-none" rows="2"
+                              placeholder="Why is this Referrer being deactivated?"></textarea>
+                </div>
+
+                {{-- Password --}}
+                <div>
+                    <label class="form-label">Your password <span class="text-red-500">*</span></label>
+                    <input type="password" x-model="$store.deactivateConfirm.password"
+                           class="form-input" placeholder="Enter your current password to confirm">
+                </div>
+
+                {{-- Typed confirmation --}}
+                <div>
+                    <label class="form-label">
+                        Type <span class="font-mono font-bold text-red-600 select-none">DEACTIVATE REFERRER</span> to confirm
+                    </label>
+                    <input type="text" x-model="$store.deactivateConfirm.typeInput"
+                           class="form-input font-mono text-sm" placeholder="DEACTIVATE REFERRER"
+                           autocomplete="off" spellcheck="false">
+                </div>
+
+                {{-- Error --}}
+                <div x-show="$store.deactivateConfirm.error"
+                     class="flex items-start gap-2 bg-red-50 rounded-lg px-3 py-2.5">
+                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <p class="text-sm text-red-600" x-text="$store.deactivateConfirm.error"></p>
+                </div>
+
+                {{-- Actions --}}
+                <div class="flex justify-end gap-3 pt-1">
+                    <button @click="$store.deactivateConfirm.cancel()" class="btn-secondary">Cancel</button>
+                    <button @click="$store.deactivateConfirm.confirm()"
+                            :disabled="!$store.deactivateConfirm.canSubmit"
+                            class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <svg x-show="$store.deactivateConfirm.saving" class="w-4 h-4 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="$store.deactivateConfirm.saving ? 'Deactivating…' : 'Deactivate Referrer'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.store('referrersInvite', { show: false });
+
+    // ── Deactivate Referrer store (double-auth confirmation) ──────────────
+    Alpine.store('deactivateConfirm', {
+        open:          false,
+        reseller:      null,
+        saving:        false,
+        error:         '',
+        password:      '',
+        reason:        '',
+        typeInput:     '',
+        activeDeals:   0,
+        tenantId:      null,
+
+        get confirmWord() { return 'DEACTIVATE REFERRER'; },
+        get canSubmit() {
+            return this.typeInput.trim() === this.confirmWord
+                && this.reason.trim().length >= 5
+                && this.password.trim().length >= 1
+                && !this.saving;
+        },
+
+        show(reseller) {
+            this.reseller    = reseller;
+            this.open        = true;
+            this.saving      = false;
+            this.error       = '';
+            this.password    = '';
+            this.reason      = '';
+            this.typeInput   = '';
+            this.activeDeals = 0;
+            this.tenantId    = reseller.tenant_id || null;
+        },
+
+        cancel() {
+            this.open     = false;
+            this.reseller = null;
+            this.password = '';
+            this.reason   = '';
+            this.typeInput = '';
+            this.error    = '';
+        },
+
+        async confirm() {
+            if (!this.canSubmit) return;
+            if (this.typeInput.trim() !== this.confirmWord) {
+                this.error = 'Type confirmation does not match.'; return;
+            }
+            this.saving = true;
+            this.error  = '';
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/resellers/${this.reseller.id}/deactivate`, {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:        JSON.stringify({ confirmation: 'DEACTIVATE REFERRER', reason: this.reason, password: this.password }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.reseller.status = 'deactivated';
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer deactivated. Access has been removed.' }}));
+                    if (data.needs_review) {
+                        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'warning', message: 'This Referrer had active deals. Review them for reassignment.' }}));
+                    }
+                    this.cancel();
+                } else {
+                    this.error = data.error || 'Deactivation failed. Please try again.';
+                    this.saving = false;
+                }
+            } catch(e) {
+                this.error  = 'Network error. Please try again.';
+                this.saving = false;
+            }
+        },
+    });
 
     Alpine.store('anonConfirm', {
         open:      false,
@@ -1355,10 +1518,22 @@ async function rbInviteSubmit(e) {
         var data = await res.json();
         if (data.id) {
             rbInviteClose();
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer invited successfully.' }}));
+            var toastMsg = 'Referrer invited successfully.';
+            var toastType = 'success';
+            if (data.email_delivery_status === 'failed') {
+                toastMsg = 'Referrer invitation created, but email delivery failed. You can resend it from the list.';
+                toastType = 'warning';
+            }
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: toastType, message: toastMsg }}));
             window.dispatchEvent(new CustomEvent('referrer-invited', { detail: data }));
         } else {
-            var msg = (data.errors && data.errors.email && data.errors.email[0]) || data.message || 'Failed to invite referrer.';
+            var msg;
+            if (res.status === 409) {
+                // Duplicate — give a clear, actionable message
+                msg = data.message || 'This Referrer already exists in this tenant.';
+            } else {
+                msg = (data.errors && data.errors.email && data.errors.email[0]) || data.message || 'Failed to invite referrer.';
+            }
             errEl.textContent = msg;
             errEl.style.display = 'block';
             btn.textContent = 'Send Invitation';
