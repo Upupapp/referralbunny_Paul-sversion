@@ -195,8 +195,38 @@ class TenantAdminController extends Controller
     public function referrers($tenantId)
     {
         $tenant = Tenant::findOrFail($tenantId);
+
+        // Resolve referrer visibility for current user.
+        $canViewReferrers = true;
+        if (Auth::guard('tenant')->check()) {
+            $userId     = Auth::guard('tenant')->id();
+            $membership = TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+
+            if ($membership && $membership->role === 'manager') {
+                $canViewReferrers = app(\App\Services\PermissionService::class)->can($membership, 'view_referrers');
+            }
+        }
+
+        // Status breakdown for initial page load (avoids blank KPI cards on first render)
+        try {
+            $referrerSummary = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->selectRaw("
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status IN ('active','nda_signed') THEN 1 ELSE 0 END) as active,
+                    SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as invited,
+                    SUM(CASE WHEN email IS NULL THEN 1 ELSE 0 END) as no_email
+                ")
+                ->first();
+        } catch (\Throwable) {
+            $referrerSummary = (object) ['total' => 0, 'active' => 0, 'invited' => 0, 'no_email' => 0];
+        }
+
         return view('tenant.referrers.index', array_merge(
-            compact('tenant'),
+            ['tenant' => $tenant, 'canViewReferrers' => $canViewReferrers, 'referrerSummary' => $referrerSummary],
             $this->configMeta($tenantId)
         ));
     }

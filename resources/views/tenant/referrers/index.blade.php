@@ -98,6 +98,12 @@
                     <option value="active">Active</option>
                     <option value="nda_signed">NDA Signed</option>
                 </select>
+                <template x-if="filterStatus === 'invited'">
+                    <span class="ml-1 text-orange-500 font-bold" x-text="`(${referrers.filter(r=>r.status==='invited').length})`"></span>
+                </template>
+                <template x-if="filterStatus === 'active'">
+                    <span class="ml-1 text-emerald-600 font-bold" x-text="`(${referrers.filter(r=>r.status==='active').length})`"></span>
+                </template>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
             <label x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
@@ -628,6 +634,7 @@ function referrersModule(tenantId) {
         search: '', filterStatus: '', filterAgreement: '', filterDoc: '',
         saving: false, formError: '',
         form: { name: '', email: '', phone: '', territory: '' },
+        summary: { total: 0, active: 0, invited: 0, no_email: 0, no_password: 0 },
 
         // Agreement data
         totalRequiredAgreements: 0,
@@ -659,6 +666,12 @@ function referrersModule(tenantId) {
                 const data = await res.json();
                 this.referrers = Array.isArray(data) ? data : (data.data || []);
             } catch(e) { this.referrers = []; }
+
+            // Fetch summary counts (status breakdown from server)
+            try {
+                const sumRes = await fetch(`/api/resellers/summary?tenant_id=${tenantId}`);
+                if (sumRes.ok) { this.summary = await sumRes.json(); }
+            } catch(e) {}
 
             // Load compliance data in parallel
             await Promise.all([
