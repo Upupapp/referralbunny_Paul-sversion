@@ -64,20 +64,6 @@
         </div>
     </div>
 
-    {{-- Referrer breakdown info bar --}}
-    <div x-show="referrers.length > 0" class="card !py-2.5 !px-4">
-        <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-            <svg class="w-3.5 h-3.5 text-[#7B61FF] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span>
-                <strong x-text="referrers.length" class="text-[#1E1B4B]"></strong> total referrers:
-                <span x-text="referrers.filter(r=>r.status==='active'||r.status==='nda_signed').length" class="text-emerald-600 font-medium"></span> active ·
-                <span x-text="referrers.filter(r=>r.status==='invited').length" class="text-orange-500 font-medium"></span> pending ·
-                <span x-text="referrers.filter(r=>!r.email).length" class="text-red-500 font-medium"></span> need details
-            </span>
-            <span class="text-gray-300">|</span>
-            <span class="text-gray-400">Showing all statuses by default. Use filters to narrow down.</span>
-        </div>
-    </div>
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
