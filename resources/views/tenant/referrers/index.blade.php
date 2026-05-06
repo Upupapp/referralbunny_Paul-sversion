@@ -83,7 +83,7 @@
     <div class="card space-y-3">
         <div class="search-group">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search referrers…">
+            <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search referrers…" autocomplete="off" spellcheck="false">
             <button x-show="search.length > 0" @click="search = ''; applyFilters()"
                     class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -655,6 +655,12 @@ function referrersModule(tenantId) {
         docSaving: null,
 
         async init() {
+            // Reset all filters on init — prevents browser from restoring stale state
+            this.search        = '';
+            this.filterStatus  = '';
+            this.filterAgreement = '';
+            this.filterDoc     = '';
+
             // Listen for successful invite from the pure-JS modal
             window.addEventListener('referrer-invited', (e) => {
                 this.referrers.unshift(e.detail);
