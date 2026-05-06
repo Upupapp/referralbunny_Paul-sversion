@@ -68,6 +68,11 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('leads/{lead}/notes',             [LeadController::class, 'addNote']);
     Route::post('leads/{lead}/reassign',          [LeadController::class, 'reassign']);
     Route::post('leads/{lead}/commission-splits', [LeadController::class, 'updateCommissionSplits']);
+    // Deal Comments
+    Route::get('deals/{dealId}/comments',                    [\App\Http\Controllers\DealCommentController::class, 'index']);
+    Route::post('deals/{dealId}/comments',                   [\App\Http\Controllers\DealCommentController::class, 'store']);
+    Route::patch('deals/{dealId}/comments/{commentId}',      [\App\Http\Controllers\DealCommentController::class, 'update']);
+    Route::delete('deals/{dealId}/comments/{commentId}',     [\App\Http\Controllers\DealCommentController::class, 'destroy']);
 
     // Resellers
     Route::get('resellers',                    [ResellerController::class, 'index']);

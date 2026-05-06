@@ -594,9 +594,191 @@
         </div>
     </div>
 
+    {{-- ── Deal Comments ────────────────────────────────────────────────── --}}
+    <div x-show="!loading && lead"
+         x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}')"
+         x-init="loadComments()"
+         class="card space-y-4">
+
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 class="font-semibold text-[#1E1B4B] text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Comments
+                <span class="text-gray-400 font-normal" x-text="'(' + comments.length + ')'"></span>
+            </h3>
+            <div class="flex items-center gap-2">
+                <label class="filter-pill text-xs" x-show="canPostInternal">
+                    <select x-model="newVisibility" class="text-xs">
+                        <option value="shared">Shared with participants</option>
+                        <option value="internal_admin">Internal admin note</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        {{-- Composer --}}
+        <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </div>
+            <div class="flex-1 space-y-2">
+                <textarea x-model="newBody" rows="2"
+                          class="form-input text-sm resize-none"
+                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note — only visible to Tenant Admins and permitted Managers…' : 'Write a comment about this deal…'"></textarea>
+                <div class="flex justify-between items-center">
+                    <p x-show="commentError" class="text-xs text-red-500" x-text="commentError"></p>
+                    <div class="ml-auto">
+                        <button @click="postComment()" :disabled="!newBody.trim() || posting"
+                                class="btn-primary text-xs py-1.5 px-3"
+                                x-text="posting ? 'Posting…' : 'Post Comment'"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Comments list --}}
+        <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            Loading comments…
+        </div>
+
+        <div x-show="!loadingComments && comments.length === 0"
+             class="text-center text-gray-400 text-sm py-6">
+            No comments yet. Start the discussion.
+        </div>
+
+        <div x-show="!loadingComments && comments.length > 0" class="space-y-4">
+            <template x-for="c in comments" :key="c.id">
+                <div class="flex gap-3 group/comment">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
+                         :class="c.author_role === 'referrer' ? 'bg-blue-100 text-blue-700' : c.author_role === 'partner' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'"
+                         x-text="(c.author_name||'?').slice(0,2).toUpperCase()"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="text-sm font-semibold text-[#1E1B4B]" x-text="c.author_name"></span>
+                            <span class="text-[10px] text-gray-400 capitalize" x-text="c.author_role.replace('_',' ')"></span>
+                            <template x-if="c.is_internal">
+                                <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Internal</span>
+                            </template>
+                            <span class="text-[10px] text-gray-300" x-text="c.created_at ? new Date(c.created_at).toLocaleString('en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''"></span>
+                            <span x-show="c.edited_at" class="text-[10px] text-gray-300 italic">edited</span>
+                        </div>
+                        <template x-if="c.is_deleted">
+                            <p class="text-sm text-gray-300 italic">This comment was deleted.</p>
+                        </template>
+                        <template x-if="!c.is_deleted">
+                            <div>
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="c.body"></p>
+                                {{-- Edit/Delete actions --}}
+                                <div class="mt-1 flex items-center gap-2 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                    <button @click="startEdit(c)"
+                                            class="text-[11px] text-gray-400 hover:text-[#7B61FF] transition-colors">Edit</button>
+                                    <button @click="deleteComment(c)"
+                                            class="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Delete</button>
+                                </div>
+                                {{-- Inline edit --}}
+                                <div x-show="editingId === c.id" class="mt-2 space-y-2">
+                                    <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
+                                    <div class="flex gap-2">
+                                        <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5">Save</button>
+                                        <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
 </div>
 
 <script>
+function dealComments(dealId, tenantId) {
+    return {
+        comments: [], loadingComments: true, posting: false,
+        newBody: '', newVisibility: 'shared', commentError: '',
+        editingId: null, editBody: '',
+        canPostInternal: true, // Tenant admin default; API enforces actual permission
+
+        async loadComments() {
+            this.loadingComments = true;
+            try {
+                const res = await fetch(`/api/deals/${dealId}/comments`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                this.comments = Array.isArray(data) ? data : [];
+            } catch(e) { this.comments = []; }
+            this.loadingComments = false;
+        },
+
+        async postComment() {
+            if (!this.newBody.trim()) return;
+            this.posting = true; this.commentError = '';
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/deals/${dealId}/comments`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ body: this.newBody, visibility: this.newVisibility }),
+                });
+                const data = await res.json();
+                if (data.id) {
+                    this.comments.unshift(data);
+                    this.newBody = '';
+                } else {
+                    this.commentError = data.error || 'Failed to post comment.';
+                }
+            } catch(e) { this.commentError = 'Network error.'; }
+            this.posting = false;
+        },
+
+        startEdit(c) {
+            this.editingId = c.id;
+            this.editBody  = c.body;
+        },
+
+        async saveEdit(c) {
+            if (!this.editBody.trim()) return;
+            this.posting = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ body: this.editBody }),
+                });
+                const data = await res.json();
+                if (data.id) {
+                    const idx = this.comments.findIndex(x => x.id === c.id);
+                    if (idx !== -1) this.comments.splice(idx, 1, data);
+                    this.editingId = null;
+                }
+            } catch(e) {}
+            this.posting = false;
+        },
+
+        async deleteComment(c) {
+            if (!confirm('Delete this comment?')) return;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const idx = this.comments.findIndex(x => x.id === c.id);
+                if (idx !== -1) this.comments[idx].is_deleted = true;
+            } catch(e) {}
+        },
+    };
+}
+
 function dealDetail(leadId, tenantId) {
     return {
         lead: null, loading: true,

@@ -627,6 +627,10 @@ class LguIdsImportService
                 $baseCost      = (float) ($computed['normalized_base_cost'] ?? 0);
                 $addedAmount   = (float) ($computed['normalized_added_amount'] ?? 0);
                 $dealValue     = $baseCost + $addedAmount;
+                // LGU IDS: default deal value ₱4,000,000 when blank/zero
+                if ($dealValue == 0) {
+                    $dealValue = 4_000_000.00;
+                }
                 $orgId         = $row->organization_id;
                 $referrerEmail = $norm['referrer_email'] ?? null;
                 $reseller      = $referrerEmail

@@ -60,16 +60,35 @@ class ContactController extends Controller
         $data = $request->validate([
             'first_name'      => 'required|string|max:100',
             'last_name'       => 'nullable|string|max:100',
-            'email'           => 'nullable|email|max:255',
+            'email'           => 'required|email|max:255',   // email is required
             'phone'           => 'nullable|string|max:50',
             'job_title'       => 'nullable|string|max:150',
             'organization_id' => 'nullable|string|exists:organizations,id',
             'status'          => 'nullable|in:active,inactive,prospect',
             'notes'           => 'nullable|string',
+            'intended_role'   => 'nullable|in:general_contact,referrer,partner,tenant_manager,deal_contact,organization_contact,tenant_staff',
         ]);
 
         // Derive tenant from authenticated context, never from user input
         $tenantId = TenantContext::requireId();
+        $email    = strtolower(trim($data['email']));
+
+        // Duplicate check within tenant
+        $existing = DB::table('contacts')
+            ->where('tenant_id', $tenantId)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message'          => 'A contact with this email already exists in this tenant.',
+                'error_code'       => 'duplicate_contact',
+                'existing_contact' => [
+                    'id'   => $existing->id,
+                    'name' => trim(($existing->first_name ?? '') . ' ' . ($existing->last_name ?? '')),
+                ],
+            ], 409);
+        }
 
         $id = (string) Str::uuid();
         DB::table('contacts')->insert([
@@ -77,12 +96,13 @@ class ContactController extends Controller
             'tenant_id'       => $tenantId,
             'first_name'      => $data['first_name'],
             'last_name'       => $data['last_name'] ?? null,
-            'email'           => $data['email'] ?? null,
+            'email'           => $email,
             'phone'           => $data['phone'] ?? null,
             'job_title'       => $data['job_title'] ?? null,
             'organization_id' => $data['organization_id'] ?? null,
             'status'          => $data['status'] ?? 'active',
             'notes'           => $data['notes'] ?? null,
+            'intended_role'   => $data['intended_role'] ?? 'general_contact',
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);

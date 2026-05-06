@@ -126,6 +126,13 @@ class LeadController extends Controller
         $addedAmount = (float) ($data['added_amount'] ?? 0);
         $dealValue   = $baseCost + $addedAmount ?: (float) ($data['deal_value'] ?? 0);
 
+        // ── LGU IDS: default editable deal value ₱4,000,000 ─────────────
+        // ADDITIVE RULE — does not change base_cost/added_amount computation.
+        // Only applied when deal_value is still 0 after the base+added calculation.
+        if ($tenantId === 'lgu-ids' && $dealValue == 0) {
+            $dealValue = 4_000_000.00;
+        }
+
         $lead = Lead::create([
             'tenant_id'         => $tenantId,
             'name'              => $data['name'],

@@ -380,24 +380,31 @@
                         <input type="text" x-model="form.last_name" class="form-input" placeholder="dela Cruz">
                     </div>
                     <div>
-                        <label class="form-label">Email</label>
-                        <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com">
+                        <label class="form-label">Email *</label>
+                        <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com" required>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Required to send invitations.</p>
                     </div>
                     <div>
                         <label class="form-label">Phone</label>
                         <input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX">
                     </div>
                     <div>
-                        <label class="form-label">Job Title</label>
-                        <input type="text" x-model="form.job_title" class="form-input" placeholder="e.g. IT Director, Mayor">
+                        <label class="form-label">Function / Intended Role *</label>
+                        <select x-model="form.intended_role" class="form-input">
+                            <option value="general_contact">General Contact</option>
+                            <option value="referrer">Referrer</option>
+                            <option value="partner">Partner</option>
+                            <option value="tenant_manager">Tenant Manager</option>
+                            <option value="deal_contact">Deal Contact</option>
+                            <option value="organization_contact">Organization Contact</option>
+                        </select>
+                        <p class="text-[11px] text-gray-400 mt-0.5">
+                            Choose a function to bridge this contact into the right flow.
+                        </p>
                     </div>
                     <div>
-                        <label class="form-label">Status</label>
-                        <select x-model="form.status" class="form-input">
-                            <option value="active">Active</option>
-                            <option value="prospect">Prospect</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                        <label class="form-label">Job Title</label>
+                        <input type="text" x-model="form.job_title" class="form-input" placeholder="e.g. IT Director, Mayor">
                     </div>
                 </div>
                 <div>
@@ -433,7 +440,7 @@ function contactsModule(tenantId) {
         search: '', filterStatus: '', filterOrg: '',
         showModal: false, saving: false, formError: '',
         editId: null,
-        form: { first_name: '', last_name: '', email: '', phone: '', job_title: '', organization_id: '', status: 'active', notes: '' },
+        form: { first_name: '', last_name: '', email: '', phone: '', job_title: '', intended_role: 'general_contact', organization_id: '', status: 'active', notes: '' },
 
         // Role assignment
         showRoleModal: false,
@@ -482,7 +489,7 @@ function contactsModule(tenantId) {
 
         openAdd() {
             this.editId = null;
-            this.form = { first_name: '', last_name: '', email: '', phone: '', job_title: '', organization_id: '', status: 'active', notes: '' };
+            this.form = { first_name: '', last_name: '', email: '', phone: '', job_title: '', intended_role: 'general_contact', organization_id: '', status: 'active', notes: '' };
             this.formError = '';
             this.showModal = true;
         },
@@ -505,6 +512,7 @@ function contactsModule(tenantId) {
 
         async saveContact() {
             if (!this.form.first_name.trim()) { this.formError = 'First name is required.'; return; }
+            if (!this.editId && !this.form.email.trim()) { this.formError = 'Email is required to add a contact.'; return; }
             this.saving = true; this.formError = '';
             try {
                 const url    = this.editId ? `/api/contacts/${this.editId}` : '/api/contacts';
@@ -525,9 +533,12 @@ function contactsModule(tenantId) {
                     }
                     this.applyFilters();
                     this.showModal = false;
-                    this.$dispatch('show-toast', { type: 'success', message: this.editId ? 'Contact updated.' : 'Contact added.' });
+                    const successMsg = this.editId ? 'Contact updated.' : 'Contact added successfully.';
+                    this.$dispatch('show-toast', { type: 'success', message: successMsg });
+                } else if (res.status === 409 && data.error_code === 'duplicate_contact') {
+                    this.formError = data.message + (data.existing_contact?.name ? ' Existing: ' + data.existing_contact.name : '');
                 } else {
-                    this.formError = data.message || 'Failed to save contact.';
+                    this.formError = data.message || data.errors?.email?.[0] || 'Failed to save contact.';
                 }
             } catch(e) { this.formError = 'Network error. Please try again.'; }
             finally { this.saving = false; }

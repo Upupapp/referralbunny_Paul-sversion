@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+
+class DealComment extends Model
+{
+    protected $table      = 'deal_comments';
+    public    $incrementing = false;
+    protected $keyType    = 'string';
+
+    protected $fillable = [
+        'tenant_id', 'deal_id', 'author_user_id', 'author_role',
+        'body', 'visibility', 'parent_comment_id', 'edited_at', 'deleted_at',
+    ];
+
+    protected $casts = [
+        'edited_at'  => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(fn($m) => $m->id ??= (string) Str::uuid());
+    }
+
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class, 'deal_id');
+    }
+
+    public function replies(): HasMany
+    {
+        return $this->hasMany(DealComment::class, 'parent_comment_id');
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deleted_at !== null;
+    }
+
+    public function isInternal(): bool
+    {
+        return $this->visibility === 'internal_admin';
+    }
+}
