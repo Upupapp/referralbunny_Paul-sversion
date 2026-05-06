@@ -555,18 +555,47 @@
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.store('anonConfirm', {
-        open: false, enabling: true, name: '', reseller: null, saving: false, _resolve: null,
+        open:      false,
+        enabling:  true,
+        name:      '',
+        reseller:  null,
+        saving:    false,
+        step:      1,        // 1 = review, 2 = type-to-confirm
+        typeInput: '',
+
+        get expectedWord() {
+            if (this.enabling) {
+                // Must type the referrer's first name (case-insensitive)
+                return (this.name || '').split(' ')[0].toUpperCase();
+            }
+            return 'REMOVE';
+        },
+
+        get canConfirm() {
+            return this.typeInput.trim().toUpperCase() === this.expectedWord;
+        },
 
         show(reseller) {
-            this.reseller = reseller;
-            this.enabling = !reseller.is_anonymous;
-            this.name     = reseller.name;
-            this.saving   = false;
-            this.open     = true;
+            this.reseller  = reseller;
+            this.enabling  = !reseller.is_anonymous;
+            this.name      = reseller.name;
+            this.saving    = false;
+            this.step      = 1;
+            this.typeInput = '';
+            this.open      = true;
         },
-        cancel() { this.open = false; this.reseller = null; },
+
+        next() { this.step = 2; this.$nextTick?.(() => document.getElementById('anonTypeInput')?.focus()); },
+
+        cancel() {
+            this.open      = false;
+            this.reseller  = null;
+            this.step      = 1;
+            this.typeInput = '';
+        },
+
         async confirm() {
-            if (!this.reseller) return;
+            if (!this.reseller || !this.canConfirm) return;
             this.saving = true;
             try {
                 await fetch(`/api/resellers/${this.reseller.id}`, {
@@ -576,9 +605,11 @@ document.addEventListener('alpine:init', () => {
                 });
                 this.reseller.is_anonymous = this.enabling;
             } finally {
-                this.saving = false;
-                this.open   = false;
-                this.reseller = null;
+                this.saving    = false;
+                this.open      = false;
+                this.reseller  = null;
+                this.step      = 1;
+                this.typeInput = '';
             }
         },
     });
@@ -940,99 +971,229 @@ function referrersModule(tenantId) {
 }
 </script>
 
-{{-- ── ANONYMITY CONFIRMATION MODAL ───────────────────── --}}
+{{-- ── ANONYMITY CONFIRMATION MODAL (two-step) ─────────── --}}
 <div x-data x-show="$store.anonConfirm.open" x-cloak
-     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);"
      @keydown.escape.window="$store.anonConfirm.cancel()">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
 
-        {{-- Header --}}
-        <div class="flex items-start gap-4 p-6 border-b border-gray-100">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                 :class="$store.anonConfirm.enabling ? 'bg-gray-100' : 'bg-amber-100'">
-                <svg class="w-5 h-5" :class="$store.anonConfirm.enabling ? 'text-gray-500' : 'text-amber-600'"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <template x-if="$store.anonConfirm.enabling">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
-                    </template>
-                    <template x-if="!$store.anonConfirm.enabling">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </template>
-                </svg>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" @click.stop
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+
+        {{-- Coloured accent bar at top --}}
+        <div class="h-1.5 w-full"
+             :class="$store.anonConfirm.enabling ? 'bg-gray-800' : 'bg-amber-400'"></div>
+
+        {{-- Step indicator --}}
+        <div class="flex items-center justify-between px-6 pt-4 pb-0">
+            <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                      :class="$store.anonConfirm.step === 1 ? 'bg-[#7B61FF] text-white' : 'bg-gray-200 text-gray-500'">1</span>
+                <div class="w-8 h-px bg-gray-200"></div>
+                <span class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                      :class="$store.anonConfirm.step === 2 ? 'bg-[#7B61FF] text-white' : 'bg-gray-200 text-gray-500'">2</span>
             </div>
-            <div>
-                <h3 class="font-semibold text-[#1E1B4B]"
-                    x-text="$store.anonConfirm.enabling ? 'Enable Anonymous Mode' : 'Remove Anonymous Mode'"></h3>
-                <p class="text-sm text-gray-500 mt-0.5"
-                   x-text="'For: ' + ($store.anonConfirm.name || 'this referrer')"></p>
-            </div>
+            <span class="text-[10px] text-gray-400 font-medium"
+                  x-text="'Step ' + $store.anonConfirm.step + ' of 2'"></span>
         </div>
 
-        {{-- Body --}}
-        <div class="p-6 space-y-4">
+        {{-- ── STEP 1: Review ─────────────────────────────── --}}
+        <div x-show="$store.anonConfirm.step === 1">
 
-            {{-- Enabling anonymity --}}
-            <template x-if="$store.anonConfirm.enabling">
-                <div class="space-y-3">
-                    <p class="text-sm text-gray-700 leading-relaxed">
-                        When anonymous mode is <strong>enabled</strong>, this referrer's identity will be hidden from other referrers across all shared screens including leaderboards, rankings, and referral lists.
-                    </p>
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-2.5">
-                        <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            <p class="text-xs text-gray-600">Other referrers see <strong>"Anonymous Referrer"</strong> instead of the real name</p>
-                        </div>
-                        <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            <p class="text-xs text-gray-600">Email, phone, and contact details are hidden from other referrers</p>
-                        </div>
-                        <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            <p class="text-xs text-gray-600"><strong>Tenant admins always see full details</strong> — anonymity only applies to other referrers</p>
-                        </div>
-                        <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            <p class="text-xs text-gray-600">Performance scores and rankings remain visible — only identity is hidden</p>
-                        </div>
+            {{-- Header --}}
+            <div class="px-6 pt-4 pb-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                         :class="$store.anonConfirm.enabling ? 'bg-gray-100' : 'bg-amber-100'">
+                        <svg class="w-5 h-5" :class="$store.anonConfirm.enabling ? 'text-gray-700' : 'text-amber-600'"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <template x-if="$store.anonConfirm.enabling">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                            </template>
+                            <template x-if="!$store.anonConfirm.enabling">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </template>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-[#1E1B4B] text-base"
+                            x-text="$store.anonConfirm.enabling ? 'Enable Anonymous Mode' : 'Remove Anonymous Mode'"></h3>
+                        <p class="text-sm text-gray-500"
+                           x-text="'For: ' + $store.anonConfirm.name"></p>
                     </div>
                 </div>
-            </template>
+            </div>
 
-            {{-- Removing anonymity --}}
-            <template x-if="!$store.anonConfirm.enabling">
-                <div class="space-y-3">
-                    <p class="text-sm text-gray-700 leading-relaxed">
-                        When anonymous mode is <strong>removed</strong>, this referrer's real name and details will become visible to other referrers on leaderboards and shared screens.
-                    </p>
-                    <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2.5">
-                        <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            <p class="text-xs text-amber-700">Their real name will appear on leaderboards and referral lists visible to other referrers</p>
+            <div class="px-6 pb-5 space-y-4">
+
+                {{-- Enable block --}}
+                <template x-if="$store.anonConfirm.enabling">
+                    <div class="space-y-3">
+                        <p class="text-sm text-gray-700 leading-relaxed">
+                            Enabling anonymous mode will <strong>immediately hide this referrer's identity</strong> from other referrers across the platform.
+                        </p>
+                        <div class="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden text-xs">
+                            <div class="flex items-start gap-3 px-4 py-3 bg-gray-50">
+                                <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7"/></svg>
+                                <p class="text-gray-600">Name shown as <strong class="text-gray-800">"Anonymous Referrer"</strong> to other referrers and partners</p>
+                            </div>
+                            <div class="flex items-start gap-3 px-4 py-3 bg-gray-50">
+                                <svg class="w-4 h-4 text-gray-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                <p class="text-gray-600">Email, phone, and photo hidden from all unauthorised viewers</p>
+                            </div>
+                            <div class="flex items-start gap-3 px-4 py-3 bg-emerald-50">
+                                <svg class="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                <p class="text-emerald-800"><strong>You always see full details</strong> — this only affects other referrers</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-900 text-white text-xs">
+                            <svg class="w-4 h-4 shrink-0 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <p>You'll need to type this referrer's first name on the next screen to confirm.</p>
                         </div>
                     </div>
+                </template>
+
+                {{-- Remove block --}}
+                <template x-if="!$store.anonConfirm.enabling">
+                    <div class="space-y-3">
+                        <p class="text-sm text-gray-700 leading-relaxed">
+                            Removing anonymous mode will <strong>immediately reveal this referrer's identity</strong> to other referrers on leaderboards, rankings, and shared screens.
+                        </p>
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2.5 text-xs">
+                            <div class="flex items-start gap-2.5">
+                                <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <p class="text-amber-800">Real name, photo, and profile will become visible to all other referrers immediately</p>
+                            </div>
+                            <div class="flex items-start gap-2.5">
+                                <svg class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <p class="text-amber-800">This referrer has chosen to remain anonymous — confirm they want their identity revealed before proceeding</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-600 text-white text-xs">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <p>You'll need to type <strong>REMOVE</strong> on the next screen to confirm.</p>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- Step 1 Actions --}}
+                <div class="flex gap-3 pt-1">
+                    <button @click="$store.anonConfirm.cancel()"
+                            class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="$store.anonConfirm.next()"
+                            :class="$store.anonConfirm.enabling
+                                ? 'bg-gray-800 hover:bg-gray-900 text-white'
+                                : 'bg-amber-500 hover:bg-amber-600 text-white'"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        <span x-text="$store.anonConfirm.enabling ? 'I understand — Continue' : 'I understand — Continue'"></span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
                 </div>
-            </template>
+            </div>
         </div>
 
-        {{-- Actions --}}
-        <div class="flex gap-3 px-6 pb-6">
-            <button @click="$store.anonConfirm.cancel()"
-                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                Cancel
-            </button>
-            <button @click="$store.anonConfirm.confirm()"
-                    :disabled="$store.anonConfirm.saving"
-                    :class="$store.anonConfirm.enabling
-                        ? 'bg-gray-800 hover:bg-gray-900 text-white'
-                        : 'bg-amber-500 hover:bg-amber-600 text-white'"
-                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-                <span x-text="$store.anonConfirm.saving ? 'Saving…'
-                    : $store.anonConfirm.enabling ? 'Yes, enable anonymous mode'
-                    : 'Yes, remove anonymous mode'"></span>
-            </button>
+        {{-- ── STEP 2: Type to confirm ────────────────────── --}}
+        <div x-show="$store.anonConfirm.step === 2">
+
+            <div class="px-6 pt-5 pb-6 space-y-4">
+
+                {{-- What's happening reminder --}}
+                <div class="flex items-center gap-3 p-3.5 rounded-xl border"
+                     :class="$store.anonConfirm.enabling ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                         :class="$store.anonConfirm.enabling ? 'bg-gray-200' : 'bg-amber-200'">
+                        <svg class="w-4 h-4" :class="$store.anonConfirm.enabling ? 'text-gray-700' : 'text-amber-700'"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <template x-if="$store.anonConfirm.enabling">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/>
+                            </template>
+                            <template x-if="!$store.anonConfirm.enabling">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </template>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold"
+                           :class="$store.anonConfirm.enabling ? 'text-gray-800' : 'text-amber-800'"
+                           x-text="$store.anonConfirm.enabling ? 'Enabling anonymity for:' : 'Removing anonymity for:'"></p>
+                        <p class="text-sm font-bold text-[#1E1B4B] truncate" x-text="$store.anonConfirm.name"></p>
+                    </div>
+                </div>
+
+                {{-- Type to confirm --}}
+                <div>
+                    <label class="block text-sm font-semibold text-[#1E1B4B] mb-1">
+                        <template x-if="$store.anonConfirm.enabling">
+                            <span>Type <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-sm" x-text="$store.anonConfirm.expectedWord"></span> to confirm</span>
+                        </template>
+                        <template x-if="!$store.anonConfirm.enabling">
+                            <span>Type <span class="font-mono bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-sm">REMOVE</span> to confirm</span>
+                        </template>
+                    </label>
+                    <p class="text-xs text-gray-400 mb-2"
+                       x-text="$store.anonConfirm.enabling
+                           ? 'Enter the referrer\'s first name exactly as shown above.'
+                           : 'This confirms you want to remove anonymity protection.'"></p>
+                    <input id="anonTypeInput"
+                           x-model="$store.anonConfirm.typeInput"
+                           type="text"
+                           autocomplete="off"
+                           spellcheck="false"
+                           @keydown.enter="$store.anonConfirm.canConfirm && !$store.anonConfirm.saving && $store.anonConfirm.confirm()"
+                           :placeholder="$store.anonConfirm.expectedWord"
+                           :class="$store.anonConfirm.typeInput
+                               ? ($store.anonConfirm.canConfirm ? 'border-emerald-400 ring-2 ring-emerald-100 bg-emerald-50' : 'border-red-300 ring-2 ring-red-100')
+                               : 'border-gray-200'"
+                           class="w-full px-4 py-3 rounded-xl border text-sm font-mono font-semibold tracking-widest uppercase outline-none transition-all">
+                    {{-- Match indicator --}}
+                    <div class="flex items-center gap-1.5 mt-2 min-h-[1.25rem]">
+                        <template x-if="$store.anonConfirm.typeInput && $store.anonConfirm.canConfirm">
+                            <span class="flex items-center gap-1 text-emerald-600 text-xs font-medium">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                Confirmed — you may proceed
+                            </span>
+                        </template>
+                        <template x-if="$store.anonConfirm.typeInput && !$store.anonConfirm.canConfirm">
+                            <span class="flex items-center gap-1 text-red-500 text-xs">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <span x-text="'Doesn\'t match — expected \'' + $store.anonConfirm.expectedWord + '\''"></span>
+                            </span>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Step 2 Actions --}}
+                <div class="flex gap-3 pt-1">
+                    <button @click="$store.anonConfirm.step = 1; $store.anonConfirm.typeInput = ''"
+                            class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button @click="$store.anonConfirm.confirm()"
+                            :disabled="!$store.anonConfirm.canConfirm || $store.anonConfirm.saving"
+                            :class="$store.anonConfirm.enabling
+                                ? 'bg-gray-800 hover:bg-gray-900 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'
+                                : 'bg-amber-500 hover:bg-amber-600 text-white disabled:bg-amber-200 disabled:cursor-not-allowed'"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                        <span x-text="$store.anonConfirm.saving ? 'Saving…'
+                            : $store.anonConfirm.enabling ? 'Enable Anonymous Mode'
+                            : 'Remove Anonymous Mode'"></span>
+                    </button>
+                </div>
+
+                <p class="text-center text-xs text-gray-400">
+                    Changed your mind?
+                    <button @click="$store.anonConfirm.cancel()" class="text-[#7B61FF] hover:underline">Cancel entirely</button>
+                </p>
+            </div>
         </div>
+
     </div>
 </div>
 @endsection
