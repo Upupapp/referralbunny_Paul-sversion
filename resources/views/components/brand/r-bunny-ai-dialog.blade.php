@@ -6,8 +6,8 @@
 <div
     x-data="rBunnyDialog()"
     x-init="init()"
-    class="fixed bottom-5 right-5 z-[140] w-full max-w-[340px]"
-    style="pointer-events:none"
+    class="fixed right-5 z-[140] w-full max-w-[340px]"
+    style="pointer-events:none; bottom:3.5rem"
     role="complementary"
     aria-label="R Bunny AI messaging assistant"
 >

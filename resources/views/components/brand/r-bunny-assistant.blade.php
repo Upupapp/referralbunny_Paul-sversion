@@ -13,7 +13,7 @@
     x-init="init()"
     @onboarding-walkthrough-done.window="onWalkthroughDone()"
     @keydown.escape.window="if(open) open = false"
-    class="fixed bottom-5 left-5 z-[140]"
+    class="fixed bottom-5 right-5 z-[140]"
     style="pointer-events:none"
     role="complementary"
     aria-label="R Bunny assistant"
