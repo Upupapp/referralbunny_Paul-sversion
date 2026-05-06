@@ -534,7 +534,9 @@
             </div>
 
             {{-- Body --}}
-            <div class="p-6 space-y-4">
+            <form id="referrer-invite-form"
+                  onsubmit="event.preventDefault(); window._submitReferrerInvite && window._submitReferrerInvite()"
+                  class="p-6 space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="form-label">Full Name *</label>
@@ -553,13 +555,18 @@
                         <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
                     </div>
                 </div>
-                <p x-text="formError" :class="formError ? 'text-xs text-red-600 mb-1' : 'hidden'"></p>
+                {{-- Error — plain HTML, no Alpine/Tailwind dependency --}}
+                <p id="referrer-invite-error"
+                   style="display:none;color:#dc2626;font-size:12px;margin:0 0 4px"></p>
                 <div class="flex justify-end gap-3 pt-1">
-                    <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="if(!saving) invite()" class="btn-secondary"
-                            style="background:#FF5733;color:#fff;border-color:#FF5733;cursor:pointer">Send Invitation</button>
+                    <button type="button"
+                            onclick="Alpine.store('referrersInvite').show = false; document.getElementById('referrer-invite-form').reset(); document.getElementById('referrer-invite-error').style.display='none'"
+                            class="btn-secondary">Cancel</button>
+                    <button type="submit"
+                            class="btn-secondary"
+                            style="background:#FF5733;color:#fff;border-color:#FF5733">Send Invitation</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -656,6 +663,8 @@ function referrersModule(tenantId) {
         docSaving: null,
 
         async init() {
+            // Global bridge so the invite form's native onsubmit can call invite()
+            window._submitReferrerInvite = () => { if (!this.saving) this.invite(); };
 
             try {
                 const res = await fetch(`/api/resellers?tenant_id=${tenantId}`);
@@ -959,10 +968,17 @@ function referrersModule(tenantId) {
 
         resetForm() { this.form = { name:'', email:'', phone:'', territory:'' }; this.formError = ''; },
 
+        _setInviteError(msg) {
+            this.formError = msg;
+            const el = document.getElementById('referrer-invite-error');
+            if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+        },
+
         async invite() {
-            if (!this.form.name)  { this.formError = 'Name is required.'; return; }
-            if (!this.form.email) { this.formError = 'Email is required.'; return; }
-            this.saving = true; this.formError = '';
+            this._setInviteError('');
+            if (!this.form.name)  { this._setInviteError('Name is required.'); return; }
+            if (!this.form.email) { this._setInviteError('Email is required.'); return; }
+            this.saving = true;
             try {
                 const res = await fetch('/api/resellers', {
                     method: 'POST',
@@ -975,12 +991,17 @@ function referrersModule(tenantId) {
                     this.applyFilters();
                     Alpine.store('referrersInvite').show = false;
                     this.resetForm();
-                    this.$dispatch('show-toast', { type: 'success', message: 'Referrer invited successfully.' });
+                    document.getElementById('referrer-invite-form')?.reset();
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer invited successfully.' }}));
                 } else {
-                    this.formError = reseller.message || 'Failed to invite referrer.';
-                    this.$dispatch('show-toast', { type: 'error', message: reseller.message || 'Failed to invite referrer.' });
+                    const msg = reseller.message || reseller.errors?.email?.[0] || 'Failed to invite referrer.';
+                    this._setInviteError(msg);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: msg }}));
                 }
-            } catch(e) { this.formError = 'Network error. Please try again.'; this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' }); }
+            } catch(e) {
+                this._setInviteError('Network error. Please try again.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' }}));
+            }
             finally { this.saving = false; }
         },
     };
