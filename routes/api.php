@@ -77,6 +77,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     // Resellers
     Route::get('resellers',                    [ResellerController::class, 'index']);
     Route::post('resellers',                   [ResellerController::class, 'store'])->middleware('feature.access:resellers,create');
+    Route::get('resellers/activated-options',  [ResellerController::class, 'activatedOptions']);
     Route::get('resellers/summary',            [ResellerController::class, 'summary']);
     Route::get('resellers/{reseller}',         [ResellerController::class, 'show']);
     Route::put('resellers/{reseller}',         [ResellerController::class, 'update']);

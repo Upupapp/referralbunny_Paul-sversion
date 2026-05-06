@@ -33,7 +33,7 @@
 <div class="space-y-5"
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
-     @open-add-deal.window="showAdd = true">
+     @open-add-deal.window="showAdd = true; loadActivatedReferrers(); resetForm()">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -187,7 +187,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
-                                <button x-show="leads.length === 0" @click="showAdd = true" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                <button x-show="leads.length === 0" @click="showAdd = true; loadActivatedReferrers(); resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
                             </td>
                         </tr>
                     </template>
@@ -347,23 +347,79 @@
                     </select>
                 </div>
 
+                {{-- Referrer selector --}}
                 <div>
-                    <label class="form-label">Referrer Name *</label>
-                    <input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned referrer">
+                    <label class="form-label">Referrer *</label>
+                    <div x-show="!manualReferrer">
+                        <select x-model="form.reseller_name"
+                                class="form-input"
+                                :class="activatedReferrers.length === 0 ? 'opacity-50' : ''">
+                            <option value="">
+                                <span x-show="loadingReferrers">Loading referrers…</span>
+                                <span x-show="!loadingReferrers && activatedReferrers.length === 0">No activated referrers — enter manually</span>
+                                <span x-show="!loadingReferrers && activatedReferrers.length > 0">Select an activated referrer…</span>
+                            </option>
+                            <template x-for="r in activatedReferrers" :key="r.id">
+                                <option :value="r.name" x-text="r.display_name"></option>
+                            </template>
+                        </select>
+                        <div class="flex items-center justify-between mt-1">
+                            <p class="text-[11px] text-gray-400" x-show="!loadingReferrers && activatedReferrers.length === 0">
+                                No activated referrers found.
+                            </p>
+                            <button type="button" @click="manualReferrer = true; form.reseller_name = ''"
+                                    class="text-[11px] text-[#7B61FF] hover:underline mt-0.5">
+                                Enter referrer manually instead
+                            </button>
+                        </div>
+                    </div>
+                    <div x-show="manualReferrer" class="space-y-2">
+                        <input type="text" x-model="form.reseller_name" class="form-input" placeholder="Referrer full name">
+                        <input type="email" x-model="form.reseller_email" class="form-input" placeholder="referrer@email.com (required)">
+                        <p class="text-[11px] text-gray-400">Enter name and email. They will be saved as a tenant contact and can be invited as a Referrer later.</p>
+                        <button type="button" @click="manualReferrer = false; form.reseller_name = ''; form.reseller_email = ''"
+                                class="text-[11px] text-[#7B61FF] hover:underline">
+                            ← Back to referrer list
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Financial inputs --}}
                 <div class="space-y-3 pt-1">
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Financial Breakdown</p>
+
+                    {{-- Deal Value --}}
+                    <div>
+                        <label class="form-label flex items-center gap-1.5">
+                            Deal Value (₱)
+                            @if($showLocation)
+                            <span class="text-[10px] text-purple-500 font-normal">(LGU IDS default: ₱4,000,000)</span>
+                            @endif
+                        </label>
+                        <input type="number" x-model.number="form.deal_value"
+                               @input="syncFromDealValue()"
+                               class="form-input" placeholder="4000000" min="0" step="1000">
+                        <div x-show="form.deal_value > 0 && form.base_cost > 0" class="flex items-center gap-1.5 mt-1">
+                            <span :class="isConsistent() ? 'text-emerald-500' : 'text-red-500'" class="text-[11px] font-medium">
+                                <span x-show="isConsistent()">✓ Consistent</span>
+                                <span x-show="!isConsistent()">⚠ Inconsistent — Deal Value must equal Base Cost + Added Amount</span>
+                            </span>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Base Cost (₱)</label>
-                            <input type="number" x-model.number="form.base_cost" class="form-input" placeholder="0" min="0" step="100">
+                            <input type="number" x-model.number="form.base_cost"
+                                   @input="syncFromCostParts()"
+                                   class="form-input" placeholder="0" min="0" step="100">
                             <p class="text-xs text-gray-400 mt-1">Delivery cost</p>
                         </div>
                         <div>
                             <label class="form-label">Added Amount (₱)</label>
-                            <input type="number" x-model.number="form.added_amount" class="form-input" placeholder="0" min="0" step="100">
+                            <input type="number" x-model.number="form.added_amount"
+                                   @input="syncFromCostParts()"
+                                   class="form-input" placeholder="0" min="0" step="100">
                             <p class="text-xs text-gray-400 mt-1">Markup / margin</p>
                         </div>
                     </div>
@@ -403,6 +459,19 @@
 // Philippine municipalities by province — used for the deal creation form dropdown
 const PH_MUNICIPALITIES = @json(\App\Support\PhilippineMunicipalities::all());
 
+// LGU IDS pricing tiers — mirrors LguIdsPricingService::TIERS (LOCKED, do not modify)
+const LGUIDS_TIERS = {
+    4000000:  { baseCost: 2400000 },
+    5000000:  { baseCost: 3000000 },
+    6000000:  { baseCost: 3600000 },
+    8000000:  { baseCost: 4640000 },
+    10000000: { baseCost: 5800000 },
+    12000000: { baseCost: 6960000 },
+    15000000: { baseCost: 7000000 },
+    17000000: { baseCost: 7000000 },
+    25000000: { baseCost: 10250000 },
+};
+
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
         leads: [], filtered: [], loading: true,
@@ -412,7 +481,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         municipalityOptions: [],
-        form: { name: '', stage: 'introduction', base_cost: 0, added_amount: 0, reseller_name: '', province: '', municipality: '' },
+        // Referrer dropdown
+        activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
+        form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '' },
 
         stages: [
             { key: 'introduction',  label: 'Introduction',  color: '#9CA3AF' },
@@ -565,11 +636,55 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
 
         viewDeal(id) { window.location.href = `/tenant/${tenantId}/deals/${id}`; },
 
+        // ── Referrer dropdown ─────────────────────────────────────────────────
+        async loadActivatedReferrers() {
+            this.loadingReferrers = true;
+            try {
+                const res = await fetch(`/api/resellers/activated-options?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                this.activatedReferrers = Array.isArray(data) ? data : [];
+                // If no active referrers, default to manual entry
+                if (this.activatedReferrers.length === 0) this.manualReferrer = true;
+            } catch(e) { this.activatedReferrers = []; }
+            this.loadingReferrers = false;
+        },
+
+        // ── LGU IDS deal value ↔ cost parts sync ─────────────────────────────
+        syncFromDealValue() {
+            const dv = Number(this.form.deal_value) || 0;
+            if (dv <= 0) return;
+            const tier = LGUIDS_TIERS[Math.round(dv)];
+            if (tier) {
+                this.form.base_cost    = tier.baseCost;
+                this.form.added_amount = dv - tier.baseCost;
+            }
+        },
+
+        syncFromCostParts() {
+            const bc = Number(this.form.base_cost)    || 0;
+            const aa = Number(this.form.added_amount) || 0;
+            if (bc > 0 || aa > 0) this.form.deal_value = bc + aa;
+        },
+
+        isConsistent() {
+            const dv = Number(this.form.deal_value)    || 0;
+            const bc = Number(this.form.base_cost)     || 0;
+            const aa = Number(this.form.added_amount)  || 0;
+            if (dv === 0 || (bc === 0 && aa === 0)) return true;
+            return Math.abs(dv - (bc + aa)) < 1;
+        },
+
         resetForm() {
-            this.form = { name:'', stage:'introduction', base_cost:0, added_amount:0, reseller_name:'', province:'', municipality:'' };
+            this.form = { name:'', stage:'introduction', deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'' };
             this.formError = '';
             this.nameAutoFilled = false;
             this.municipalityOptions = [];
+            this.manualReferrer = this.activatedReferrers.length === 0;
+            // Apply LGU IDS default tier for deal_value=4M
+            if (showLocation) this.syncFromDealValue();
         },
 
         async addRecord() {
@@ -577,14 +692,27 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; return; }
             if (!this.form.name)          { this.formError = 'Deal name is required.'; return; }
             if (!this.form.reseller_name) { this.formError = 'Referrer name is required.'; return; }
+            if (this.manualReferrer && !this.form.reseller_email) { this.formError = 'Referrer email is required when entering manually.'; return; }
+            if (!this.isConsistent()) { this.formError = 'Deal Value must equal Base Cost + Added Amount. Please review the amounts.'; return; }
             this.saving = true; this.formError = '';
             try {
                 const bc = Number(this.form.base_cost)    || 0;
                 const aa = Number(this.form.added_amount) || 0;
+                const dv = Number(this.form.deal_value)   || (bc + aa) || (showLocation ? 4000000 : 0);
+                const payload = {
+                    ...this.form,
+                    base_cost:        bc,
+                    added_amount:     aa,
+                    deal_value:       dv,
+                    tenant_id:        tenantId,
+                    new_reseller_email: this.manualReferrer ? this.form.reseller_email : null,
+                    data: { province: this.form.province, municipality: this.form.municipality },
+                };
                 const res = await fetch('/api/leads', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ ...this.form, base_cost: bc, added_amount: aa, deal_value: bc + aa, tenant_id: tenantId, data: { province: this.form.province, municipality: this.form.municipality } }),
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(payload),
                 });
                 const lead = await res.json();
                 if (lead.id) {

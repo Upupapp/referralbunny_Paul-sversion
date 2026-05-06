@@ -520,7 +520,8 @@ function contactsModule(tenantId) {
                 const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
                 const res    = await fetch(url, {
                     method,
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify(body),
                 });
                 const data = await res.json();

@@ -289,6 +289,41 @@ class ResellerController extends Controller
         }
     }
 
+    /**
+     * GET /api/resellers/activated-options
+     * Returns only activated (active/nda_signed) resellers for deal assignment.
+     */
+    public function activatedOptions(Request $request): JsonResponse
+    {
+        $tenantId = TenantContext::id();
+        if (!$tenantId) {
+            return response()->json([]);
+        }
+
+        $query = Reseller::where('tenant_id', $tenantId)
+            ->whereIn('status', ['active', 'nda_signed'])
+            ->whereNotNull('email')
+            ->orderBy('name');
+
+        if ($request->filled('search')) {
+            $q = '%' . strtolower($request->search) . '%';
+            $query->where(function ($qb) use ($q) {
+                $qb->whereRaw('LOWER(name) LIKE ?', [$q])
+                   ->orWhereRaw('LOWER(email) LIKE ?', [$q]);
+            });
+        }
+
+        $resellers = $query->get()->map(fn($r) => [
+            'id'           => $r->id,
+            'name'         => $r->name,
+            'email'        => $r->email,
+            'status'       => $r->status,
+            'display_name' => $r->name . ' — ' . $r->email,
+        ]);
+
+        return response()->json($resellers);
+    }
+
     public function summary(Request $request): JsonResponse
     {
         $tenantId = $request->query('tenant_id');
