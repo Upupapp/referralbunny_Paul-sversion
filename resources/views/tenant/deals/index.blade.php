@@ -610,10 +610,8 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         leadsInStage(stage) { return this.leads.filter(l => l.stage === stage); },
 
         totalValue() {
-            const t = this.filtered.reduce((s, l) => s + (Number(l.deal_value) || 0), 0);
-            if (t >= 1000000) return (t/1000000).toFixed(1) + 'M';
-            if (t >= 1000)    return Math.round(t/1000) + 'K';
-            return t.toLocaleString();
+            const t = Math.round(this.filtered.reduce((s, l) => s + (Number(l.deal_value) || 0), 0));
+            return t.toLocaleString('en');
         },
 
         stageLabel(s) {
@@ -640,8 +638,6 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
 
         formatValue(v) {
             const n = Math.round(Number(v) || 0);
-            if (n >= 1000000) return '₱' + (n/1000000).toFixed(1) + 'M';
-            if (n >= 1000)    return '₱' + Math.round(n/1000) + 'K';
             return n > 0 ? '₱' + n.toLocaleString('en') : '—';
         },
 
