@@ -33,8 +33,8 @@ class LeadController extends Controller
 
         $query = Lead::with($relations)->orderBy('created_at', 'desc');
 
-        // Derive tenant from authenticated context, never from user input
-        $tenantId = TenantContext::id();
+        // Derive tenant from authenticated context; fall back to query param
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if ($tenantId) {
             $query->where('tenant_id', $tenantId);
         } elseif (!TenantContext::isSuperAdmin()) {

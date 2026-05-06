@@ -102,12 +102,13 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <button x-show="filterStage || filterStatus || filterCommission || filterProvince || search"
-                    @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; search=''; applyFilters()"
+            <template x-if="filterStage || filterStatus || filterCommission || filterProvince || search">
+            <button @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; search=''; applyFilters()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Clear
             </button>
+            </template>
         </div>
     </div>
 
@@ -511,8 +512,12 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 this.filterReseller = decodeURIComponent(preReseller);
             }
             try {
-                const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
-                this.leads = Array.isArray(await res.clone().json()) ? await res.json() : [];
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                this.leads = Array.isArray(data) ? data : (data.data || []);
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
