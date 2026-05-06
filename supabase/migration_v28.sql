@@ -6,7 +6,7 @@ ALTER TABLE contacts
   ALTER COLUMN first_name DROP NOT NULL;
 
 ALTER TABLE contacts
-  ADD COLUMN IF NOT EXISTS owner_user_id       TEXT REFERENCES tenant_users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS owner_user_id       UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS owner_role          VARCHAR(30),
   ADD COLUMN IF NOT EXISTS owner_referrer_id   TEXT REFERENCES resellers(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS linked_user_id      TEXT,
