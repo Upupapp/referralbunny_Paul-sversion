@@ -131,12 +131,13 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <button x-show="filterStatus || filterAgreement || filterDoc || search"
-                    @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
-                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                Clear
-            </button>
+            <template x-if="filterStatus || filterAgreement || filterDoc || search">
+                <button @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
+                        class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Clear
+                </button>
+            </template>
         </div>
         </div>
     </div>
@@ -180,6 +181,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {{-- TEMP DEBUG ROW --}}
+                    <tr style="background:#fef9c3;"><td colspan="9" style="padding:6px 12px;font-size:11px;font-family:monospace;" x-text="'[DEBUG] loading='+loading+' referrers='+referrers.length+' filtered='+filtered.length+' filter:'+filterStatus+'|'+filterAgreement+'|'+filterDoc+'|'+JSON.stringify(search)"></td></tr>
+                    <template x-for="r in filtered" :key="r.id">
+                        <tr style="background:#dcfce7;"><td colspan="9" style="padding:6px 12px;font-size:11px;font-family:monospace;" x-text="'ROW: '+r.name+' ('+r.status+') id='+r.id"></td></tr>
+                    </template>
+                    {{-- END TEMP DEBUG --}}
                     <template x-if="filtered.length === 0 && !loading">
                         <tr>
                             <td colspan="9" class="py-16 text-center">
