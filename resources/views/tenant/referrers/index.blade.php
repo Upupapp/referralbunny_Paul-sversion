@@ -661,26 +661,33 @@ function referrersModule(tenantId) {
                 this.applyFilters();
             });
 
+            const hdrs = { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+
+            // ── Step 1: Load resellers, then show the table immediately ────────
             try {
-                const res = await fetch(`/api/resellers?tenant_id=${tenantId}`);
+                const res  = await fetch(`/api/resellers?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: hdrs });
                 const data = await res.json();
                 this.referrers = Array.isArray(data) ? data : (data.data || []);
             } catch(e) { this.referrers = []; }
 
-            // Fetch summary counts (status breakdown from server)
+            // Show the list right away — don't block on compliance loading
+            this.applyFilters();
+            this.loading = false;
+
+            // ── Step 2: Enrich with summary + compliance in background ─────────
             try {
-                const sumRes = await fetch(`/api/resellers/summary?tenant_id=${tenantId}`);
+                const sumRes = await fetch(`/api/resellers/summary?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: hdrs });
                 if (sumRes.ok) { this.summary = await sumRes.json(); }
             } catch(e) {}
 
-            // Load compliance data in parallel
-            await Promise.all([
-                this.refreshCompliance(),
-                this.refreshDocCompliance(),
-            ]);
-
-            this.applyFilters();
-            this.loading = false;
+            try {
+                await Promise.all([
+                    this.refreshCompliance(),
+                    this.refreshDocCompliance(),
+                ]);
+            } catch(e) {}
+            // applyFilters inside refreshCompliance/refreshDocCompliance re-filters
+            // once compliance data is ready, keeping existing rows visible throughout
         },
 
         applyFilters() {
@@ -798,7 +805,7 @@ function referrersModule(tenantId) {
 
         async refreshCompliance() {
             try {
-                const cr  = await fetch(`/api/agreements/compliance?tenant_id=${tenantId}`);
+                const cr  = await fetch(`/api/agreements/compliance?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const cd  = await cr.json();
                 this.totalRequiredAgreements = cd.required_agreements || 0;
                 const map = {};
@@ -812,7 +819,7 @@ function referrersModule(tenantId) {
 
         async refreshDocCompliance() {
             try {
-                const res = await fetch(`/api/required-documents/compliance?tenant_id=${tenantId}`);
+                const res = await fetch(`/api/required-documents/compliance?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                 const data = await res.json();
                 this.totalRequiredDocs = data.required_documents || 0;
                 const map = {};
