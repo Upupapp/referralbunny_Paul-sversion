@@ -8,7 +8,7 @@ ALTER TABLE contacts
 ALTER TABLE contacts
   ADD COLUMN IF NOT EXISTS owner_user_id       UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS owner_role          VARCHAR(30),
-  ADD COLUMN IF NOT EXISTS owner_referrer_id   TEXT REFERENCES resellers(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS owner_referrer_id   UUID REFERENCES resellers(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS linked_user_id      TEXT,
   ADD COLUMN IF NOT EXISTS full_name           VARCHAR(200),
   ADD COLUMN IF NOT EXISTS nickname            VARCHAR(50),
