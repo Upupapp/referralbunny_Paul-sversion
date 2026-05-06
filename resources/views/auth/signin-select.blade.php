@@ -40,8 +40,9 @@
             transform: translateY(-3px);
             box-shadow: 0 24px 48px rgba(0,0,0,0.3);
         }
-        .signin-card-admin:hover  { border-color: rgba(123,97,255,0.5); box-shadow: 0 24px 48px rgba(123,97,255,0.15); }
-        .signin-card-referrer:hover { border-color: rgba(20,184,166,0.5); box-shadow: 0 24px 48px rgba(20,184,166,0.12); }
+        .signin-card-admin:hover    { border-color: rgba(123,97,255,0.5);  box-shadow: 0 24px 48px rgba(123,97,255,0.15); }
+        .signin-card-referrer:hover { border-color: rgba(20,184,166,0.5);  box-shadow: 0 24px 48px rgba(20,184,166,0.12); }
+        .signin-card-partner:hover  { border-color: rgba(37,99,235,0.5);   box-shadow: 0 24px 48px rgba(37,99,235,0.15); }
 
         .mascot-wrap {
             width: 100px; height: 100px;
@@ -51,6 +52,7 @@
         }
         .mascot-wrap-admin    { background: rgba(123,97,255,0.15); }
         .mascot-wrap-referrer { background: rgba(20,184,166,0.12); }
+        .mascot-wrap-partner  { background: rgba(37,99,235,0.12);  }
 
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(24px); }
@@ -64,7 +66,7 @@
     </style>
 </head>
 <body>
-    <div class="w-full" style="max-width: 520px;">
+    <div class="w-full" style="max-width: 760px;">
 
         {{-- Logo --}}
         <div class="flex flex-col items-center text-center mb-8 a1">
@@ -73,8 +75,8 @@
             <p class="text-white/50 text-sm mt-1">Sign in to your account — choose your role below.</p>
         </div>
 
-        {{-- Two sign-in cards side by side --}}
-        <div class="grid grid-cols-2 gap-3 a2">
+        {{-- Three sign-in cards: stacked on mobile, side by side on sm+ --}}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 a2">
 
             {{-- Workspace Admin --}}
             <a href="{{ route('tenant.login') }}" class="signin-card signin-card-admin">
@@ -115,6 +117,27 @@
                 {{-- Pill label --}}
                 <span style="display:inline-block;padding:.25rem .875rem;border-radius:9999px;background:rgba(20,184,166,0.15);color:#2dd4bf;font-size:.6875rem;font-weight:600;letter-spacing:.04em">
                     Referrer Portal
+                </span>
+            </a>
+
+            {{-- Partner --}}
+            <a href="{{ route('partner.login') }}" class="signin-card signin-card-partner">
+                {{-- R Bunny mascot --}}
+                <div class="mascot-wrap mascot-wrap-partner">
+                    <x-r-bunny variant="rocket" size="sm" :decorative="true"
+                                style="width:90px;height:90px;object-fit:contain" />
+                </div>
+
+                <div>
+                    <p class="text-white font-bold text-base leading-snug">Partner Portal</p>
+                    <p class="text-white/45 text-xs mt-1 leading-relaxed">
+                        View deals you collaborate on as a Partner.
+                    </p>
+                </div>
+
+                {{-- Pill label --}}
+                <span style="display:inline-block;padding:.25rem .875rem;border-radius:9999px;background:rgba(37,99,235,0.2);color:#93c5fd;font-size:.6875rem;font-weight:600;letter-spacing:.04em">
+                    Partner
                 </span>
             </a>
 

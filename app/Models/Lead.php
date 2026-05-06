@@ -56,4 +56,9 @@ class Lead extends Model
     {
         return $this->hasMany(LeadLink::class, 'lead_id');
     }
+
+    public function dealPartners(): HasMany
+    {
+        return $this->hasMany(DealPartner::class, 'deal_id');
+    }
 }

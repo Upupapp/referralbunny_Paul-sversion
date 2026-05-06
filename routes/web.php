@@ -84,6 +84,35 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::post('/notifications/{id}/read',         [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');
     });
 
+// ── Partner Auth ──────────────────────────────────────────────
+use App\Http\Controllers\Web\PartnerAuthController;
+use App\Http\Controllers\Web\PartnerPortalController;
+use App\Http\Controllers\Web\PartnerProfileController;
+
+Route::get('/partner/login',           [PartnerAuthController::class, 'showLogin'])->name('partner.login');
+Route::post('/partner/login',          [PartnerAuthController::class, 'login'])->name('partner.login.post');
+Route::post('/partner/logout',         [PartnerAuthController::class, 'logout'])->name('partner.logout');
+Route::get('/partner/setup',           [PartnerAuthController::class, 'showSetup'])->name('partner.setup');
+Route::post('/partner/setup',          [PartnerAuthController::class, 'setup'])->name('partner.setup.post');
+Route::get('/partner/invite/{token}',  [PartnerAuthController::class, 'showInvite'])->name('partner.invite');
+
+// ── Partner Portal ────────────────────────────────────────────
+Route::middleware(['auth:partner', 'partner.access'])
+    ->prefix('partner')
+    ->name('partner.')
+    ->group(function () {
+        Route::get('/dashboard',                      [PartnerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/deals',                          [PartnerPortalController::class, 'deals'])->name('deals');
+        Route::get('/deals/{dealId}',                 [PartnerPortalController::class, 'dealShow'])->name('deals.show');
+        Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
+        Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
+        Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send');
+        Route::get('/profile',                        [PartnerProfileController::class, 'show'])->name('profile');
+        Route::post('/profile',                       [PartnerProfileController::class, 'update'])->name('profile.update');
+        Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
+        Route::delete('/profile/photo',               [PartnerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+    });
+
 // ── Super Admin Profile ───────────────────────────────────────
 Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
     Route::get('/profile',           [PlatformProfileController::class, 'show'])->name('profile');

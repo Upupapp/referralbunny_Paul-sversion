@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'feature.access'     => \App\Http\Middleware\FeatureAccessMiddleware::class,
             'tenant.access'      => \App\Http\Middleware\EnsureTenantAccess::class,
             'reseller.access'    => \App\Http\Middleware\EnsureResellerAccess::class,
+            'partner.access'     => \App\Http\Middleware\EnsurePartnerAccess::class,
             'password.confirm'   => \Illuminate\Auth\Middleware\RequirePassword::class,
             'tenant.subdomain'   => \App\Http\Middleware\DetectTenantSubdomain::class,
         ]);
