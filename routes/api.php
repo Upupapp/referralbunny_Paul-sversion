@@ -227,6 +227,12 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('deals/{dealId}/contacts',                 [ContactController::class, 'linkToDeal']);
     Route::delete('deals/{dealId}/contacts/{contactId}',   [ContactController::class, 'unlinkFromDeal']);
 
+    // Contact Role Assignments
+    Route::get('contacts/{contactId}/role-assignments',    [\App\Http\Controllers\ContactRoleAssignmentController::class, 'index']);
+    Route::post('contact-role-assignments',                [\App\Http\Controllers\ContactRoleAssignmentController::class, 'store']);
+    Route::delete('contact-role-assignments/{id}',         [\App\Http\Controllers\ContactRoleAssignmentController::class, 'destroy']);
+    Route::post('contact-role-assignments/{id}/resend',    [\App\Http\Controllers\ContactRoleAssignmentController::class, 'resend']);
+
     // Organizations
     Route::get('organizations',                            [OrganizationController::class, 'index']);
     Route::post('organizations',                           [OrganizationController::class, 'store']);

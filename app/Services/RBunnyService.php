@@ -42,11 +42,13 @@ class RBunnyService
         'contacts' => [
             'mascot'  => 'helper-question',
             'title'   => 'Contacts',
-            'summary' => 'Manage the people connected to your deals. Link contacts to deals and organizations.',
+            'summary' => 'Manage the people connected to your deals. Assign roles, link to deals, and invite them to the platform.',
             'tips'    => [
+                'Use "Assign Role" to invite a contact as a Referrer, Manager, or Partner.',
+                'Partner role always requires a deal — Partners only see their associated deal.',
                 'Contacts can be linked to deals and organizations.',
-                'Import multiple contacts at once using the import template.',
                 'Referrer-owned contacts are visible only to the assigned Referrer.',
+                'Invitation status appears on each row — look for Pending or Active badges.',
             ],
         ],
         'organizations' => [

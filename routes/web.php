@@ -51,6 +51,10 @@ use App\Http\Controllers\Web\TenantInvitationController;
 Route::get('/tenant/accept-invite/{token}',  [TenantInvitationController::class, 'show'])->name('tenant.accept-invite.show');
 Route::post('/tenant/accept-invite/{token}', [TenantInvitationController::class, 'accept'])->name('tenant.accept-invite');
 
+// ── Contact Role Invite Acceptance (public — no auth required) ─
+Route::get('/tenant/accept-role-invite/{token}',  [\App\Http\Controllers\Web\ContactRoleInviteWebController::class, 'show'])->name('contact-role-invite.show');
+Route::post('/tenant/accept-role-invite/{token}', [\App\Http\Controllers\Web\ContactRoleInviteWebController::class, 'accept'])->name('contact-role-invite.accept');
+
 // ── Tenant Workspace Selector ─────────────────────────────────
 Route::get('/tenant/select-workspace',  [TenantAuthWebController::class, 'selectWorkspace'])->name('tenant.select-workspace');
 Route::post('/tenant/select-workspace', [TenantAuthWebController::class, 'chooseWorkspace'])->name('tenant.choose-workspace');

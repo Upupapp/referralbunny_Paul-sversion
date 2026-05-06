@@ -128,6 +128,7 @@
                         <th class="hidden sm:table-cell">Organization</th>
                         <th>Deals</th>
                         <th class="hidden sm:table-cell">Status</th>
+                        <th class="hidden lg:table-cell">Role</th>
                         <th class="hidden lg:table-cell">Added</th>
                         <th></th>
                     </tr>
@@ -179,10 +180,31 @@
                                     'badge badge-blue':   c.status === 'prospect',
                                 }" x-text="c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : '—'"></span>
                             </td>
+                            {{-- Role assignment status --}}
+                            <td class="hidden lg:table-cell">
+                                <template x-if="c.role_invite_status === 'accepted' && c.role_invite_role">
+                                    <span class="badge badge-green text-xs" x-text="roleLabel(c.role_invite_role)"></span>
+                                </template>
+                                <template x-if="c.role_invite_status === 'pending'">
+                                    <span class="inline-flex items-center gap-1 badge badge-orange text-xs">
+                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span x-text="'Pending · ' + roleLabel(c.role_invite_role)"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!c.role_invite_status">
+                                    <span class="text-gray-300 text-sm">—</span>
+                                </template>
+                            </td>
                             <td class="hidden lg:table-cell text-gray-400 text-sm tabular-nums"
                                 x-text="c.created_at ? new Date(c.created_at).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                             <td>
                                 <div class="flex items-center gap-1.5 justify-end">
+                                    {{-- Assign Role button --}}
+                                    <button @click="openAssignRole(c)"
+                                            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors whitespace-nowrap"
+                                            title="Assign a role to this contact">
+                                        Assign Role
+                                    </button>
                                     <button @click="openEdit(c)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -197,6 +219,142 @@
                     </template>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    {{-- Assign Role Modal --}}
+    <div x-show="showRoleModal" x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showRoleModal = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                    <h3 class="font-semibold text-[#1E1B4B]">Assign Role to Contact</h3>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="roleContact ? (roleContact.first_name + ' ' + (roleContact.last_name || '')).trim() : ''"></p>
+                </div>
+                <button @click="showRoleModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                {{-- Contact summary --}}
+                <div class="bg-gray-50 rounded-xl p-4 space-y-1.5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                             x-text="roleContact ? initials(roleContact) : '?'"></div>
+                        <div class="min-w-0">
+                            <p class="font-medium text-[#1E1B4B] text-sm" x-text="roleContact ? fullName(roleContact) : ''"></p>
+                            <p class="text-xs text-gray-400" x-text="roleContact?.email || 'No email'"></p>
+                        </div>
+                    </div>
+                    {{-- Existing role badge --}}
+                    <div x-show="roleContact?.role_invite_status" class="pt-1">
+                        <span class="badge badge-orange text-xs"
+                              x-text="roleContact?.role_invite_status === 'accepted' ? 'Active: ' + roleLabel(roleContact.role_invite_role) : 'Pending: ' + roleLabel(roleContact?.role_invite_role)"></span>
+                    </div>
+                    {{-- No email warning --}}
+                    <div x-show="roleContact && !roleContact.email"
+                         class="mt-2 flex items-start gap-2 bg-orange-50 rounded-lg px-3 py-2">
+                        <svg class="w-4 h-4 text-orange-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                        <p class="text-xs text-orange-700">This contact needs an email before I can send an invitation. Edit the contact to add one first.</p>
+                    </div>
+                </div>
+
+                {{-- Role selector --}}
+                <div>
+                    <label class="form-label mb-2">Select Role</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <template x-for="opt in roleOptions" :key="opt.value">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors"
+                                   :class="roleForm.role === opt.value ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-100 hover:border-purple-200'">
+                                <input type="radio" :value="opt.value" x-model="roleForm.role" class="mt-0.5 accent-[#7B61FF]">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-[#1E1B4B]" x-text="opt.label"></p>
+                                    <p class="text-xs text-gray-400 mt-0.5 leading-tight" x-text="opt.description"></p>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Deal selector (required for Partner) --}}
+                <div x-show="roleForm.role === 'partner'">
+                    <label class="form-label">Select Deal <span class="text-red-500">*</span></label>
+                    <select x-model="roleForm.associated_deal_id" class="form-input">
+                        <option value="">Choose a deal…</option>
+                        <template x-for="d in deals" :key="d.id">
+                            <option :value="d.id" x-text="d.name || d.id"></option>
+                        </template>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Partner access is limited to the selected deal only.</p>
+                </div>
+
+                {{-- Permission preview --}}
+                <div x-show="roleForm.role" class="bg-blue-50 rounded-xl px-4 py-3">
+                    <p class="text-xs font-semibold text-blue-700 mb-1.5">What they'll be able to access:</p>
+                    <template x-if="roleForm.role === 'referrer'">
+                        <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>Submit and manage their own referral deals</li>
+                            <li>View commission and performance</li>
+                            <li>Message the tenant team on active deals</li>
+                        </ul>
+                    </template>
+                    <template x-if="roleForm.role === 'tenant_manager'">
+                        <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>Manage deals, contacts, and referrers</li>
+                            <li>View reports and analytics</li>
+                            <li>Import and export data</li>
+                        </ul>
+                    </template>
+                    <template x-if="roleForm.role === 'tenant_staff'">
+                        <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>Operational access based on assigned permissions</li>
+                            <li>View deals and contacts</li>
+                        </ul>
+                    </template>
+                    <template x-if="roleForm.role === 'partner'">
+                        <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                            <li>View the selected deal details only</li>
+                            <li>Message Referrers connected to that deal</li>
+                            <li>No access to other deals or tenant data</li>
+                        </ul>
+                    </template>
+                </div>
+
+                {{-- Tenant Manager confirmation --}}
+                <div x-show="roleForm.role === 'tenant_manager'"
+                     class="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input type="checkbox" x-model="roleForm.managerConfirmed" class="mt-0.5 accent-orange-500">
+                        <span class="text-xs text-orange-700 leading-relaxed">I understand I am inviting this contact to become a Tenant Manager. They may access management tools based on the permissions assigned to their account.</span>
+                    </label>
+                </div>
+
+                {{-- Optional message --}}
+                <div>
+                    <label class="form-label">Personal Message <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea x-model="roleForm.message" class="form-input" rows="2"
+                              placeholder="Add a personal note to the invitation email…"></textarea>
+                </div>
+
+                {{-- Error --}}
+                <div x-show="roleError" class="flex items-start gap-2 bg-red-50 rounded-xl px-4 py-3">
+                    <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <p class="text-sm text-red-600" x-text="roleError"></p>
+                </div>
+
+                {{-- Actions --}}
+                <div class="flex justify-end gap-3 pt-1">
+                    <button @click="showRoleModal = false" class="btn-secondary">Cancel</button>
+                    <button @click="sendRoleInvitation()"
+                            :disabled="roleSaving || !roleForm.role || !roleContact?.email || (roleForm.role === 'partner' && !roleForm.associated_deal_id) || (roleForm.role === 'tenant_manager' && !roleForm.managerConfirmed)"
+                            class="btn-primary">
+                        <svg x-show="roleSaving" class="w-4 h-4 animate-spin mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="roleSaving ? 'Sending…' : 'Send Invitation'"></span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -270,22 +428,37 @@
 <script>
 function contactsModule(tenantId) {
     return {
-        contacts: [], orgs: [], filtered: [],
+        contacts: [], orgs: [], deals: [], filtered: [],
         loading: true,
         search: '', filterStatus: '', filterOrg: '',
         showModal: false, saving: false, formError: '',
         editId: null,
         form: { first_name: '', last_name: '', email: '', phone: '', job_title: '', organization_id: '', status: 'active', notes: '' },
 
+        // Role assignment
+        showRoleModal: false,
+        roleContact: null,
+        roleSaving: false,
+        roleError: '',
+        roleForm: { role: '', associated_deal_id: '', message: '', managerConfirmed: false },
+        roleOptions: [
+            { value: 'referrer',       label: 'Referrer',        description: 'Can submit and manage referral deals.' },
+            { value: 'tenant_manager', label: 'Tenant Manager',   description: 'Can help manage this workspace based on assigned permissions.' },
+            { value: 'tenant_staff',   label: 'Tenant Staff',     description: 'Operational access based on assigned permissions.' },
+            { value: 'partner',        label: 'Partner',          description: 'View-only access to one associated deal and its messages.' },
+        ],
+
         async init() {
             try {
-                const [cr, or] = await Promise.all([
-                    fetch(`/api/contacts?tenant_id=${tenantId}`).then(r => r.json()),
-                    fetch(`/api/organizations?tenant_id=${tenantId}`).then(r => r.json()),
+                const [cr, or, dr] = await Promise.all([
+                    fetch(`/api/contacts?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
+                    fetch(`/api/organizations?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
+                    fetch(`/api/leads?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
                 ]);
-                this.contacts = Array.isArray(cr) ? cr : [];
+                this.contacts = Array.isArray(cr) ? cr : (cr?.data || []);
                 this.orgs     = Array.isArray(or) ? or : [];
-            } catch(e) { this.contacts = []; this.orgs = []; }
+                this.deals    = Array.isArray(dr) ? dr : (dr?.data || []);
+            } catch(e) { this.contacts = []; this.orgs = []; this.deals = []; }
             this.applyFilters();
             this.loading = false;
         },
@@ -372,6 +545,62 @@ function contactsModule(tenantId) {
                 this.$dispatch('show-toast', { type: 'success', message: 'Contact deleted.' });
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Failed to delete contact.' });
+            }
+        },
+
+        // ── Role assignment ───────────────────────────────────────────────
+
+        roleLabel(role) {
+            const map = { referrer: 'Referrer', tenant_manager: 'Manager', tenant_staff: 'Staff', partner: 'Partner' };
+            return map[role] || (role ? role.replace('_', ' ') : '');
+        },
+
+        openAssignRole(contact) {
+            this.roleContact = contact;
+            this.roleForm = { role: '', associated_deal_id: '', message: '', managerConfirmed: false };
+            this.roleError = '';
+            this.showRoleModal = true;
+        },
+
+        async sendRoleInvitation() {
+            this.roleError = '';
+            if (!this.roleForm.role) { this.roleError = 'Please select a role.'; return; }
+            if (!this.roleContact?.email) { this.roleError = 'This contact needs an email address first.'; return; }
+            if (this.roleForm.role === 'partner' && !this.roleForm.associated_deal_id) { this.roleError = 'Please select a deal for the Partner role.'; return; }
+            if (this.roleForm.role === 'tenant_manager' && !this.roleForm.managerConfirmed) { this.roleError = 'Please confirm the Tenant Manager assignment.'; return; }
+
+            this.roleSaving = true;
+            try {
+                const res  = await fetch('/api/contact-role-assignments', {
+                    method:  'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({
+                        contact_id:          this.roleContact.id,
+                        role:                this.roleForm.role,
+                        associated_deal_id:  this.roleForm.associated_deal_id || null,
+                        message:             this.roleForm.message || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update local contact row with pending status
+                    const idx = this.contacts.findIndex(c => c.id === this.roleContact.id);
+                    if (idx !== -1) {
+                        this.contacts[idx].role_invite_status = 'pending';
+                        this.contacts[idx].role_invite_role   = this.roleForm.role;
+                        this.contacts[idx].role_invite_id     = data.invitation?.id;
+                    }
+                    this.applyFilters();
+                    this.showRoleModal = false;
+                    this.$dispatch('show-toast', { type: 'success', message: data.message || 'Invitation sent.' });
+                } else {
+                    this.roleError = data.error || 'Failed to send invitation.';
+                }
+            } catch(e) {
+                this.roleError = 'Network error. Please try again.';
+            } finally {
+                this.roleSaving = false;
             }
         },
     };

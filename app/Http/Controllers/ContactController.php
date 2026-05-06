@@ -26,11 +26,28 @@ class ContactController extends Controller
                 DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc'),
                 'c.id', '=', 'dc.contact_id'
             )
+            ->leftJoin(
+                DB::raw("(
+                    SELECT DISTINCT ON (contact_id)
+                        contact_id,
+                        id              AS role_invite_id,
+                        invited_role    AS role_invite_role,
+                        status          AS role_invite_status,
+                        associated_deal_id AS role_invite_deal_id
+                    FROM contact_role_invitations
+                    ORDER BY contact_id, created_at DESC
+                ) cri"),
+                'c.id', '=', 'cri.contact_id'
+            )
             ->when($tenantId, fn($q) => $q->where('c.tenant_id', $tenantId))
             ->select(
                 'c.*',
                 'o.name as org_name',
-                DB::raw('COALESCE(dc.deal_count, 0) as deal_count')
+                DB::raw('COALESCE(dc.deal_count, 0) as deal_count'),
+                'cri.role_invite_id',
+                'cri.role_invite_role',
+                'cri.role_invite_status',
+                'cri.role_invite_deal_id'
             )
             ->orderBy('c.first_name')
             ->get();
