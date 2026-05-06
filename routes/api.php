@@ -37,7 +37,7 @@ Route::post('/auth/tenant/join-request',           [TenantAuthController::class,
 Route::get('/auth/tenant/lookup-tenant',           [TenantAuthController::class, 'lookupTenant']);
 
 // ── Protected routes ──────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
 
     // Auth — Super Admin
     Route::post('/auth/logout', [AuthController::class, 'logout']);

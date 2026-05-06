@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
 use App\Models\CommissionSplit;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -23,9 +24,15 @@ class LeadController extends Controller
         $query = Lead::with(['commissionSplits', 'notes', 'history', 'attachments', 'links'])
             ->orderBy('created_at', 'desc');
 
-        if ($request->filled('tenant_id')) {
-            $query->where('tenant_id', $request->tenant_id);
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::id();
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        } elseif (!TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
         }
+        // Super admin can optionally filter by tenant_id query param (already resolved in TenantContext)
+
         if ($request->filled('reseller_name')) {
             $query->where('reseller_name', $request->reseller_name);
         }
@@ -36,7 +43,6 @@ class LeadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'tenant_id'          => 'required|string|exists:tenants,id',
             'name'               => 'required|string',
             'stage'              => 'required|string',
             'status'             => 'nullable|in:active,expiring,expired,reassigned,declined',
@@ -52,9 +58,12 @@ class LeadController extends Controller
             'commission_splits'  => 'nullable|array',
         ]);
 
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::requireId();
+
         // ── LGU IDS: one active deal per organization ─────────────────
         // LOCKED RULE — do not remove or generalise (LGU IDS pipeline protection)
-        if (!empty($data['organization_id']) && $data['tenant_id'] === 'lgu-ids') {
+        if (!empty($data['organization_id']) && $tenantId === 'lgu-ids') {
             $existing = DB::table('leads')
                 ->where('tenant_id', 'lgu-ids')
                 ->where('organization_id', $data['organization_id'])
@@ -74,7 +83,7 @@ class LeadController extends Controller
         // ── LGU IDS: set days_left from pipeline stage rules ──────────
         // LOCKED RULE — do not generalise (LGU IDS pipeline protection)
         $daysLeft = $data['days_left'] ?? 21;
-        if ($data['tenant_id'] === 'lgu-ids') {
+        if ($tenantId === 'lgu-ids') {
             $stageRule = DB::table('tenant_pipeline_stage_rules')
                 ->where('tenant_id', 'lgu-ids')
                 ->where('stage', $data['stage'])
@@ -89,7 +98,7 @@ class LeadController extends Controller
         $dealValue   = $baseCost + $addedAmount ?: (float) ($data['deal_value'] ?? 0);
 
         $lead = Lead::create([
-            'tenant_id'         => $data['tenant_id'],
+            'tenant_id'         => $tenantId,
             'name'              => $data['name'],
             'stage'             => $data['stage'],
             'status'            => $data['status'] ?? 'active',
@@ -139,7 +148,7 @@ class LeadController extends Controller
 
         if (!empty($data['new_reseller_email'])) {
             $exists = DB::table('resellers')
-                ->where('tenant_id', $data['tenant_id'])
+                ->where('tenant_id', $tenantId)
                 ->where(function ($q) use ($data) {
                     $q->where('name', $data['reseller_name'])
                       ->orWhere('email', $data['new_reseller_email']);
@@ -150,7 +159,7 @@ class LeadController extends Controller
                 $setupToken = Str::random(64);
                 DB::table('resellers')->insert([
                     'id'                => (string) Str::uuid(),
-                    'tenant_id'         => $data['tenant_id'],
+                    'tenant_id'         => $tenantId,
                     'name'              => $data['reseller_name'],
                     'email'             => strtolower(trim($data['new_reseller_email'])),
                     'status'            => 'invited',
@@ -164,7 +173,7 @@ class LeadController extends Controller
                 ]);
                 $resellerCreated = true;
 
-                $tenantName = DB::table('tenants')->where('id', $data['tenant_id'])->value('name') ?? 'Referral Bunny';
+                $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
                 $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
                 try {
@@ -190,11 +199,14 @@ class LeadController extends Controller
 
     public function show(Lead $lead): JsonResponse
     {
+        $lead->assertBelongsToCurrentTenant();
         return response()->json($lead->load(['commissionSplits', 'notes', 'history', 'attachments', 'links']));
     }
 
     public function update(Request $request, Lead $lead): JsonResponse
     {
+        $lead->assertBelongsToCurrentTenant();
+
         $data = $request->validate([
             'name'              => 'sometimes|string',
             'stage'             => 'sometimes|string',
@@ -245,6 +257,7 @@ class LeadController extends Controller
 
     public function destroy(Lead $lead): JsonResponse
     {
+        $lead->assertBelongsToCurrentTenant();
         $lead->delete();
         return response()->json(['message' => 'Lead deleted.']);
     }

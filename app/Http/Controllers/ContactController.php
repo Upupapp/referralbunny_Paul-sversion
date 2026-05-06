@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +14,19 @@ class ContactController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::id();
+        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
+
         $contacts = DB::table('contacts as c')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
             ->leftJoin(
                 DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc'),
                 'c.id', '=', 'dc.contact_id'
             )
-            ->where('c.tenant_id', $request->tenant_id)
+            ->when($tenantId, fn($q) => $q->where('c.tenant_id', $tenantId))
             ->select(
                 'c.*',
                 'o.name as org_name',
@@ -34,7 +41,6 @@ class ContactController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'tenant_id'       => 'required|string|exists:tenants,id',
             'first_name'      => 'required|string|max:100',
             'last_name'       => 'nullable|string|max:100',
             'email'           => 'nullable|email|max:255',
@@ -45,10 +51,13 @@ class ContactController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::requireId();
+
         $id = (string) Str::uuid();
         DB::table('contacts')->insert([
             'id'              => $id,
-            'tenant_id'       => $data['tenant_id'],
+            'tenant_id'       => $tenantId,
             'first_name'      => $data['first_name'],
             'last_name'       => $data['last_name'] ?? null,
             'email'           => $data['email'] ?? null,
@@ -108,10 +117,12 @@ class ContactController extends Controller
     public function linkToDeal(Request $request, string $dealId): JsonResponse
     {
         $data = $request->validate([
-            'tenant_id'  => 'required|string|exists:tenants,id',
             'contact_id' => 'required|string|exists:contacts,id',
             'role'       => 'nullable|string|max:100',
         ]);
+
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::requireId();
 
         if (DB::table('deal_contacts')->where('deal_id', $dealId)->where('contact_id', $data['contact_id'])->exists()) {
             return response()->json(['error' => 'Contact already linked to this deal'], 422);
@@ -119,7 +130,7 @@ class ContactController extends Controller
 
         DB::table('deal_contacts')->insert([
             'id'         => (string) Str::uuid(),
-            'tenant_id'  => $data['tenant_id'],
+            'tenant_id'  => $tenantId,
             'deal_id'    => $dealId,
             'contact_id' => $data['contact_id'],
             'role'       => $data['role'] ?? null,

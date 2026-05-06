@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Notification;
 use App\Services\NotificationDispatchService;
 use App\Services\NotificationService;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,15 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Notification::orderByDesc('created_at');
-        if ($request->filled('tenant_id')) $query->where('tenant_id', $request->tenant_id);
+
+        // Derive tenant from authenticated context, never from user input
+        $tenantId = TenantContext::id();
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        } elseif (!TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
+
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('category'))  $query->where('category', $request->category);
         if ($request->boolean('unread') || $request->input('is_read') === 'false') $query->unread();
@@ -164,14 +173,16 @@ class NotificationController extends Controller
 
     public function markAllRead(Request $request, NotificationService $service): JsonResponse
     {
-        $service->markAllRead($request->tenant_id ?? null);
+        // Use context-derived tenant; SA may pass explicit tenant_id (already resolved in context)
+        $service->markAllRead(TenantContext::id());
         return response()->json(['message' => 'All marked as read.']);
     }
 
     public function unreadCount(Request $request): JsonResponse
     {
         $q = Notification::unread();
-        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        $tenantId = TenantContext::id();
+        if ($tenantId) $q->where('tenant_id', $tenantId);
         return response()->json(['count' => $q->count()]);
     }
 

@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'partner.access'     => \App\Http\Middleware\EnsurePartnerAccess::class,
             'password.confirm'   => \Illuminate\Auth\Middleware\RequirePassword::class,
             'tenant.subdomain'   => \App\Http\Middleware\DetectTenantSubdomain::class,
+            'api.tenant'         => \App\Http\Middleware\SetApiTenantContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

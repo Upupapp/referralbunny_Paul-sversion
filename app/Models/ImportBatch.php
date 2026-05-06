@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class ImportBatch extends Model
 {
+    use BelongsToTenant;
+
     public $incrementing = false;
     protected $keyType = 'string';
 

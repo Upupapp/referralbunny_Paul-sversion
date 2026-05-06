@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -10,7 +11,14 @@ class MessageController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Message::orderBy('created_at', 'desc')->get());
+        $tenantId = TenantContext::id();
+        $query = Message::orderBy('created_at', 'desc');
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        } elseif (!TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
+        return response()->json($query->get());
     }
 
     public function store(Request $request): JsonResponse
