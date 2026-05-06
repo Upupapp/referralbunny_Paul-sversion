@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\TenantAdminController;
 use App\Http\Controllers\Web\TenantProfileController;
 use App\Http\Controllers\Web\TenantSignupWebController;
 use App\Http\Controllers\Web\TenantAuthWebController;
+use App\Http\Controllers\Web\TenantExportController;
 use App\Http\Controllers\ResellerPortalAuthController;
 use App\Http\Controllers\ResellerPortalController;
 use Illuminate\Support\Facades\Route;
@@ -186,6 +187,11 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');
+
+    // ── Export Approval Center ────────────────────────────────────
+    Route::get('/exports',                           [\App\Http\Controllers\Web\TenantExportController::class, 'index'])->name('exports');
+    Route::get('/exports/{exportId}',                [\App\Http\Controllers\Web\TenantExportController::class, 'show'])->name('exports.show');
+    Route::get('/exports/{exportId}/download',       [\App\Http\Controllers\Web\TenantExportController::class, 'downloadWeb'])->name('exports.download');
 
     // ── User & Role Management ────────────────────────────────────
     Route::get('/users',                               [TenantUserManagementController::class, 'index'])->name('users');

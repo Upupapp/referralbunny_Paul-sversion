@@ -56,6 +56,9 @@ class PermissionService
         'export_tenant_data'      => false,
         'edit_user_permissions'   => false,
         'export_reports'          => false,
+        'request_data_export'     => false,
+        'approve_export_requests' => false,
+        'export_sensitive_data'   => false,
         // Hard locked:
         'delete_tenant_account'    => false,
         'transfer_tenant_ownership'=> false,

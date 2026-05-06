@@ -114,6 +114,7 @@ class CriticalActionService
             fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since),
             fn() => $this->unrepliedMessages($tenantId),
             fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
+            fn() => $this->pendingExportRequests($tenantId),
         ];
 
         $all = [];
@@ -485,6 +486,39 @@ class CriticalActionService
             'action_needed' => false,
             'source'        => 'leads',
         ]))->toArray();
+    }
+
+    private function pendingExportRequests(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('export_requests')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->select('id', 'requester_type', 'requester_id', 'requester_role', 'export_type', 'is_sensitive', 'reason', 'created_at')
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'export_approval_pending',
+                'category'      => 'export',
+                'severity'      => $r->is_sensitive ? 'high' : 'medium',
+                'summary'       => "Export approval needed: {$r->export_type} data",
+                'actor_name'    => ucfirst($r->requester_role),
+                'actor_role'    => ucfirst($r->requester_role),
+                'related_label' => ucwords(str_replace('_', ' ', $r->export_type)) . ' export',
+                'related_type'  => 'export_request',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/exports/{$r->id}",
+                'action_label'  => 'Review Request',
+                'action_needed' => true,
+                'source'        => 'export_requests',
+                'meta'          => ['is_sensitive' => (bool) $r->is_sensitive],
+            ]))->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     // ── DTO factory ────────────────────────────────────────────────

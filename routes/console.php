@@ -43,3 +43,6 @@ Schedule::command('promos:expire')->dailyAt('00:15');
 Schedule::command('billing:process-trials')->dailyAt('07:00');
 Schedule::command('billing:retry-payments')->dailyAt('10:00');
 Schedule::command('billing:update-rates')->dailyAt('00:30');
+
+// ── Export cleanup (expire old export files daily) ────────────
+Schedule::command('exports:cleanup-expired')->dailyAt('02:00');

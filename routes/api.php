@@ -23,6 +23,7 @@ use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\RequiredDocumentController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ExportController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ─────────────────────────────────────────────
@@ -110,10 +111,21 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('metrics/{tenantId}',                     [TenantMetricController::class, 'show']);
     Route::post('metrics/{tenantId}/recalculate',        [TenantMetricController::class, 'recalculate']);
 
-    // Exports
+    // Legacy platform exports (super-admin only, direct download)
     Route::get('export/tenant-health',                   [TenantMetricController::class, 'exportHealth']);
     Route::get('export/notifications',                   [TenantMetricController::class, 'exportNotifications']);
     Route::get('export/leads',                           [TenantMetricController::class, 'exportLeads']);
+
+    // ── Export Approval System ────────────────────────────────────
+    Route::get('exports/settings',                       [ExportController::class, 'settings']);
+    Route::put('exports/settings',                       [ExportController::class, 'updateSettings']);
+    Route::get('exports',                                [ExportController::class, 'index']);
+    Route::post('exports',                               [ExportController::class, 'store']);
+    Route::get('exports/{id}',                           [ExportController::class, 'show']);
+    Route::post('exports/{id}/approve',                  [ExportController::class, 'approve']);
+    Route::post('exports/{id}/reject',                   [ExportController::class, 'reject']);
+    Route::post('exports/{id}/cancel',                   [ExportController::class, 'cancel']);
+    Route::get('exports/{id}/download',                  [ExportController::class, 'download']);
 
     // Billing
     Route::get('billing/dashboard',                      [BillingController::class, 'dashboard']);
