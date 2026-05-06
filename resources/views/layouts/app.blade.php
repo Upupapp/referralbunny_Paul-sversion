@@ -78,17 +78,6 @@
             @yield('nav')
         </nav>
 
-        {{-- R Bunny sidebar widget --}}
-        <div class="px-3 pb-3 shrink-0">
-            <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style="background:rgba(255,255,255,0.08)">
-                <x-r-bunny variant="waving" size="xs" :decorative="true" />
-                <div class="min-w-0">
-                    <p class="text-white text-xs font-semibold leading-none">R Bunny</p>
-                    <p class="text-white/40 text-xs mt-0.5">Your referral assistant</p>
-                </div>
-            </div>
-        </div>
-
         {{-- Bottom profile (guard-aware) --}}
         @php
             if (auth('tenant')->check()) {
