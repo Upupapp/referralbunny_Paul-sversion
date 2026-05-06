@@ -39,6 +39,7 @@ class TenantProfileController extends Controller
         ]);
 
         $user->update($data);
+        Auth::guard('tenant')->setUser($user->fresh());
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -64,6 +65,7 @@ class TenantProfileController extends Controller
         );
 
         $user->update(['profile_photo_path' => $path]);
+        Auth::guard('tenant')->setUser($user->fresh());
 
         return back()->with('success', 'Profile photo updated.');
     }
@@ -76,6 +78,7 @@ class TenantProfileController extends Controller
         if ($user->profile_photo_path) {
             Storage::disk('public')->delete($user->profile_photo_path);
             $user->update(['profile_photo_path' => null]);
+            Auth::guard('tenant')->setUser($user->fresh());
         }
 
         return back()->with('success', 'Profile photo removed.');

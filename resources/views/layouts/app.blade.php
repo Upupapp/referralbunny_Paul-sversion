@@ -81,32 +81,40 @@
         {{-- Bottom profile (guard-aware) --}}
         @php
             if (auth('tenant')->check()) {
-                $profileUser  = auth('tenant')->user();
-                $profileName  = $profileUser->full_name;
-                $profileEmail = $profileUser->email;
-                $membership   = isset($tenant)
+                $profileUser     = auth('tenant')->user();
+                $profileName     = \App\Services\UserDisplayNameService::resolve($profileUser, false, 'tenant_admin');
+                $profileEmail    = $profileUser->email;
+                $profilePhotoUrl = \App\Services\UserDisplayNameService::photoUrl($profileUser);
+                $initials        = \App\Services\UserDisplayNameService::initials($profileUser);
+                $membership      = isset($tenant)
                     ? $profileUser->memberships()->where('tenant_id', $tenant->id)->first()
                     : null;
                 $profileRole  = $membership ? ucfirst($membership->role) : 'Member';
-                $initials     = strtoupper(
-                    substr($profileUser->first_name ?? '?', 0, 1) .
-                    substr($profileUser->last_name  ?? '',  0, 1)
-                );
                 $logoutAction = route('tenant.logout');
             } else {
-                $profileName  = 'Super Admin';
-                $profileEmail = auth('web')->user()?->email ?? '';
+                $saUser          = auth('web')->user();
+                $profileName     = $saUser?->name ?? 'Super Admin';
+                $profileEmail    = $saUser?->email ?? '';
+                $profilePhotoUrl = $saUser?->profile_photo_path
+                    ? asset('storage/' . $saUser->profile_photo_path) : null;
+                $initials        = $saUser
+                    ? strtoupper(substr($saUser->name ?? 'SA', 0, 2))
+                    : 'SA';
                 $profileRole  = 'Platform Admin';
-                $initials     = 'SA';
                 $logoutAction = route('logout');
             }
         @endphp
         <div class="px-4 py-4 border-t border-white/10">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                     style="background: linear-gradient(135deg, #EC4899, #7B61FF)">
-                    {{ $initials }}
-                </div>
+                @if($profilePhotoUrl ?? null)
+                    <img src="{{ $profilePhotoUrl }}" alt="{{ $profileName }}"
+                         class="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-white/20">
+                @else
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                         style="background: linear-gradient(135deg, #EC4899, #7B61FF)">
+                        {{ $initials }}
+                    </div>
+                @endif
                 <div class="flex-1 min-w-0">
                     <p class="text-white text-sm font-medium truncate leading-tight">{{ $profileName }}</p>
                     <p class="text-white/40 text-[10px] truncate mt-0.5">{{ $profileRole }}</p>
@@ -396,23 +404,36 @@
 
                 {{-- Avatar + profile dropdown — guard-aware --}}
                 @php
-                    $isSuperAdmin  = auth('web')->check();
-                    $isTenantAdmin = auth('tenant')->check();
-                    $authUser      = $isSuperAdmin ? auth('web')->user() : ($isTenantAdmin ? auth('tenant')->user() : null);
-                    $displayName   = $isSuperAdmin  ? 'Super Admin'
-                                   : ($isTenantAdmin ? ($authUser?->first_name.' '.$authUser?->last_name) : 'Guest');
-                    $displayEmail  = $authUser?->email ?? '';
-                    $displayInit   = strtoupper(substr($displayName, 0, 2));
-                    $logoutRoute   = $isTenantAdmin ? route('tenant.logout') : route('logout');
+                    $isSuperAdmin    = auth('web')->check();
+                    $isTenantAdmin   = auth('tenant')->check();
+                    $authUser        = $isSuperAdmin ? auth('web')->user() : ($isTenantAdmin ? auth('tenant')->user() : null);
+                    $displayName     = $isSuperAdmin
+                        ? ($authUser?->name ?? 'Super Admin')
+                        : ($isTenantAdmin
+                            ? \App\Services\UserDisplayNameService::resolve($authUser, false, 'tenant_admin')
+                            : 'Guest');
+                    $displayEmail    = $authUser?->email ?? '';
+                    $displayPhotoUrl = $authUser
+                        ? \App\Services\UserDisplayNameService::photoUrl($authUser)
+                        : null;
+                    $displayInit     = $isTenantAdmin && $authUser
+                        ? \App\Services\UserDisplayNameService::initials($authUser)
+                        : strtoupper(substr($displayName, 0, 2));
+                    $logoutRoute     = $isTenantAdmin ? route('tenant.logout') : route('logout');
                 @endphp
 
                 <div x-data="{ open: false }" class="relative ml-1">
                     <button @click="open = !open"
                             class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 transition-colors">
+                        @if($displayPhotoUrl)
+                            <img src="{{ $displayPhotoUrl }}" alt="{{ $displayName }}"
+                                 class="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-gray-200">
+                        @else
                         <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                              style="background:linear-gradient(135deg,#7B61FF,#FF6CAB)">
                             {{ $displayInit }}
                         </div>
+                        @endif
                         <svg class="w-3 h-3 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                         </svg>

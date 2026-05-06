@@ -58,11 +58,9 @@
         {{-- Bottom profile --}}
         @php
             $p           = auth('partner')->user() ?? ($partner ?? null);
-            $firstName   = $p?->first_name ?? '';
-            $lastName    = $p?->last_name ?? '';
-            $displayName = trim($firstName . ' ' . $lastName) ?: 'Partner';
-            $photoUrl    = $p?->profile_photo_path ? asset('storage/' . $p->profile_photo_path) : null;
-            $initials    = strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1)) ?: 'P';
+            $displayName = $p ? \App\Services\UserDisplayNameService::resolve($p, false, 'partner') : 'Partner';
+            $photoUrl    = $p ? \App\Services\UserDisplayNameService::photoUrl($p) : null;
+            $initials    = $p ? \App\Services\UserDisplayNameService::initials($p) : 'P';
         @endphp
         <div class="px-4 py-4 border-t border-white/10">
             <a href="{{ route('partner.profile') }}"

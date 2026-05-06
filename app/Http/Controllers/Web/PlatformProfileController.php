@@ -33,6 +33,7 @@ class PlatformProfileController extends Controller
         ]);
 
         $user->update($data);
+        Auth::guard('web')->setUser($user->fresh());
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -56,6 +57,7 @@ class PlatformProfileController extends Controller
         );
 
         $user->update(['profile_photo_path' => $path]);
+        Auth::guard('web')->setUser($user->fresh());
 
         return back()->with('success', 'Profile photo updated.');
     }
@@ -67,6 +69,7 @@ class PlatformProfileController extends Controller
         if ($user->profile_photo_path) {
             Storage::disk('public')->delete($user->profile_photo_path);
             $user->update(['profile_photo_path' => null]);
+            Auth::guard('web')->setUser($user->fresh());
         }
 
         return back()->with('success', 'Profile photo removed.');

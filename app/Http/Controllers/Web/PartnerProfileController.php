@@ -45,6 +45,7 @@ class PartnerProfileController extends Controller
         ]);
 
         $partner->update($data);
+        Auth::guard('partner')->setUser($partner->fresh());
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -69,6 +70,7 @@ class PartnerProfileController extends Controller
         );
 
         $partner->update(['profile_photo_path' => $path]);
+        Auth::guard('partner')->setUser($partner->fresh());
 
         return back()->with('success', 'Profile photo updated.');
     }
@@ -81,6 +83,7 @@ class PartnerProfileController extends Controller
         if ($partner->profile_photo_path) {
             Storage::disk('public')->delete($partner->profile_photo_path);
             $partner->update(['profile_photo_path' => null]);
+            Auth::guard('partner')->setUser($partner->fresh());
         }
 
         return back()->with('success', 'Profile photo removed.');

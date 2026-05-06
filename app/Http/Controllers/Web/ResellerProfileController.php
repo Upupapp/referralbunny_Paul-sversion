@@ -43,6 +43,7 @@ class ResellerProfileController extends Controller
         ]);
 
         $reseller->update($data);
+        Auth::guard('reseller')->setUser($reseller->fresh());
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -67,6 +68,7 @@ class ResellerProfileController extends Controller
         );
 
         $reseller->update(['profile_photo_path' => $path]);
+        Auth::guard('reseller')->setUser($reseller->fresh());
 
         return back()->with('success', 'Profile photo updated.');
     }
@@ -79,6 +81,7 @@ class ResellerProfileController extends Controller
         if ($reseller->profile_photo_path) {
             Storage::disk('public')->delete($reseller->profile_photo_path);
             $reseller->update(['profile_photo_path' => null]);
+            Auth::guard('reseller')->setUser($reseller->fresh());
         }
 
         return back()->with('success', 'Profile photo removed.');
