@@ -399,11 +399,16 @@
                         <input type="number" x-model.number="form.deal_value"
                                @input="syncFromDealValue()"
                                class="form-input" placeholder="4000000" min="0" step="1000">
-                        <div x-show="form.deal_value > 0 && form.base_cost > 0" class="flex items-center gap-1.5 mt-1">
-                            <span :class="isConsistent() ? 'text-emerald-500' : 'text-red-500'" class="text-[11px] font-medium">
-                                <span x-show="isConsistent()">✓ Consistent</span>
-                                <span x-show="!isConsistent()">⚠ Inconsistent — Deal Value must equal Base Cost + Added Amount</span>
-                            </span>
+                        <div class="mt-1 space-y-0.5">
+                            <div x-show="form.deal_value > 0 && form.base_cost > 0" class="flex items-center gap-1.5">
+                                <span :class="isConsistent() ? 'text-emerald-500' : 'text-red-500'" class="text-[11px] font-medium">
+                                    <span x-show="isConsistent()">✓ Base Cost + Added Amount = Deal Value</span>
+                                    <span x-show="!isConsistent()">⚠ Mismatch — Deal Value ≠ Base Cost + Added Amount</span>
+                                </span>
+                            </div>
+                            <p x-show="isNonStandardTier()" class="text-[11px] text-orange-500">
+                                Non-standard tier — enter Base Cost manually.
+                            </p>
                         </div>
                     </div>
 
@@ -411,16 +416,16 @@
                         <div>
                             <label class="form-label">Base Cost (₱)</label>
                             <input type="number" x-model.number="form.base_cost"
-                                   @input="syncFromCostParts()"
+                                   @input="syncFromBaseCost()"
                                    class="form-input" placeholder="0" min="0" step="100">
-                            <p class="text-xs text-gray-400 mt-1">Delivery cost</p>
+                            <p class="text-xs text-gray-400 mt-1">Auto-fills from Deal Value %. Edit to override.</p>
                         </div>
                         <div>
                             <label class="form-label">Added Amount (₱)</label>
                             <input type="number" x-model.number="form.added_amount"
-                                   @input="syncFromCostParts()"
+                                   @input="syncFromAddedAmount()"
                                    class="form-input" placeholder="0" min="0" step="100">
-                            <p class="text-xs text-gray-400 mt-1">Markup / margin</p>
+                            <p class="text-xs text-gray-400 mt-1">Deal Value − Base Cost. Edit to override.</p>
                         </div>
                     </div>
 
@@ -653,28 +658,60 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         // ── LGU IDS deal value ↔ cost parts sync ─────────────────────────────
+        //
+        // Deal Value is the primary field.
+        // Changing Deal Value → Base Cost auto-fills from tier % → Added Amount = DV − BC
+        // Changing Base Cost manually → Added Amount = Deal Value − Base Cost (DV stays)
+        // Changing Added Amount manually → Base Cost = Deal Value − Added Amount (DV stays)
+        // All values remain editable — these are smart defaults, not locked rules.
+
         syncFromDealValue() {
             const dv = Number(this.form.deal_value) || 0;
             if (dv <= 0) return;
             const tier = LGUIDS_TIERS[Math.round(dv)];
             if (tier) {
+                // Standard tier — auto-fill base cost from locked percentage
                 this.form.base_cost    = tier.baseCost;
-                this.form.added_amount = dv - tier.baseCost;
+                this.form.added_amount = Math.round(dv - tier.baseCost);
+            } else {
+                // Non-standard amount — keep existing base cost if set, else leave blank for manual entry
+                const bc = Number(this.form.base_cost) || 0;
+                if (bc > 0) {
+                    this.form.added_amount = Math.round(dv - bc);
+                }
+                // If no base cost set yet, user must enter it manually
             }
         },
 
-        syncFromCostParts() {
-            const bc = Number(this.form.base_cost)    || 0;
-            const aa = Number(this.form.added_amount) || 0;
-            if (bc > 0 || aa > 0) this.form.deal_value = bc + aa;
+        syncFromBaseCost() {
+            // User manually adjusted Base Cost — recalculate Added Amount to keep total = Deal Value
+            const dv = Number(this.form.deal_value)  || 0;
+            const bc = Number(this.form.base_cost)   || 0;
+            if (dv > 0) {
+                this.form.added_amount = Math.round(dv - bc);
+            }
+        },
+
+        syncFromAddedAmount() {
+            // User manually adjusted Added Amount — recalculate Base Cost to keep total = Deal Value
+            const dv = Number(this.form.deal_value)    || 0;
+            const aa = Number(this.form.added_amount)  || 0;
+            if (dv > 0) {
+                this.form.base_cost = Math.round(dv - aa);
+            }
         },
 
         isConsistent() {
-            const dv = Number(this.form.deal_value)    || 0;
-            const bc = Number(this.form.base_cost)     || 0;
-            const aa = Number(this.form.added_amount)  || 0;
+            const dv = Number(this.form.deal_value)   || 0;
+            const bc = Number(this.form.base_cost)    || 0;
+            const aa = Number(this.form.added_amount) || 0;
             if (dv === 0 || (bc === 0 && aa === 0)) return true;
             return Math.abs(dv - (bc + aa)) < 1;
+        },
+
+        isNonStandardTier() {
+            const dv = Number(this.form.deal_value) || 0;
+            return dv > 0 && !LGUIDS_TIERS[Math.round(dv)];
         },
 
         resetForm() {
