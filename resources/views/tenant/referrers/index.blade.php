@@ -808,6 +808,8 @@ function referrersModule(tenantId) {
                 this.totalRequiredAgreements = cd.required_agreements || 0;
                 const map = {};
                 (cd.resellers || []).forEach(r => { map[r.reseller_id] = r; });
+                // If browser restored a filter before we had data, reset it now
+                if (this.filterAgreement) this.filterAgreement = '';
                 this.resellerCompliance = map;
                 this.applyFilters();
             } catch(e) {}
@@ -822,6 +824,8 @@ function referrersModule(tenantId) {
                 this.totalRequiredDocs = data.required_documents || 0;
                 const map = {};
                 (data.resellers || []).forEach(r => { map[r.reseller_id] = r; });
+                // If browser restored a filter before we had data, reset it now
+                if (this.filterDoc) this.filterDoc = '';
                 this.resellerDocCompliance = map;
                 this.applyFilters();
             } catch(e) {}
