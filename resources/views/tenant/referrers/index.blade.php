@@ -558,8 +558,7 @@
                     <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
                     <button @click="invite()" :disabled="saving" class="btn-secondary"
                             style="background:#FF5733;color:#fff;border-color:#FF5733">
-                        <span :class="saving ? 'hidden' : ''">Send Invitation</span>
-                        <span :class="saving ? '' : 'hidden'">Inviting…</span>
+                        <span x-text="saving ? 'Inviting…' : 'Send Invitation'">Send Invitation</span>
                     </button>
                 </div>
             </div>
