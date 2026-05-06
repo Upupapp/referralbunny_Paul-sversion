@@ -16,6 +16,16 @@ class Reseller extends Authenticatable
     protected $keyType    = 'string';
     public    $timestamps = true; // updated_at added in migration_v24
 
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(function (self $model) {
+            if (empty($model->id)) {
+                $model->id = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
     protected $fillable = [
         'tenant_id', 'name', 'email', 'status',
         'assigned_leads', 'closed_value', 'performance_score',
