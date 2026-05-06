@@ -235,10 +235,21 @@ class ResellerController extends Controller
         $totalDealsCount    = DB::table('leads')->where('tenant_id', $tenantId)->where('reseller_name', $reseller->name)->count();
 
         // ── Deactivate ─────────────────────────────────────────────────────
-        DB::table('resellers')->where('id', $reseller->id)->update([
-            'status'     => 'deactivated',
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('resellers')->where('id', $reseller->id)->update([
+                'status'     => 'deactivated',
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Reseller deactivation DB update failed', [
+                'reseller_id' => $reseller->id,
+                'tenant_id'   => $tenantId,
+                'error'       => $e->getMessage(),
+            ]);
+            return response()->json([
+                'error' => 'Deactivation failed: ' . $e->getMessage(),
+            ], 500);
+        }
 
         // ── Audit log ──────────────────────────────────────────────────────
         $this->auditDeactivation($tenantId, $reseller, $actor->id ?? 'unknown', 'deactivated', $data['reason'], [

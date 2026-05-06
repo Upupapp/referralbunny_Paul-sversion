@@ -716,7 +716,7 @@ document.addEventListener('alpine:init', () => {
                     }
                     this.cancel();
                 } else {
-                    this.error = data.error || 'Deactivation failed. Please try again.';
+                    this.error = data.error || data.message || 'Deactivation failed. Please try again.';
                     this.saving = false;
                 }
             } catch(e) {
