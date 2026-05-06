@@ -549,7 +549,9 @@
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError" style="margin-bottom:.75rem"></p>
                     <div style="display:flex;justify-content:flex-end;gap:.75rem">
                         <button @click="$store.referrersInvite.show = false; resetForm()" class="btn-secondary">Cancel</button>
-                        <button @click="invite()" :disabled="saving" class="btn-primary" x-text="saving ? 'Inviting…' : 'Send Invitation'"></button>
+                        <button @click="invite()" :disabled="saving" class="btn-primary">
+                            <span x-text="saving ? 'Inviting…' : 'Send Invitation'">Send Invitation</span>
+                        </button>
                     </div>
                 </div>
             </div>
