@@ -296,16 +296,31 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">Province *</label>
-                        <select x-model="form.province" @change="deriveName()" class="form-input">
+                        <select x-model="form.province"
+                                @change="form.municipality = ''; municipalityOptions = PH_MUNICIPALITIES[form.province] || []; deriveName()"
+                                class="form-input">
                             <option value="">Select province…</option>
-                            @foreach(['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Metro Manila','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay'] as $prov)
+                            @foreach(\App\Support\PhilippineMunicipalities::all() as $prov => $cities)
                             <option value="{{ $prov }}">{{ $prov }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div>
                         <label class="form-label">Municipality / City *</label>
-                        <input type="text" x-model="form.municipality" @input="deriveName()" class="form-input" placeholder="e.g. Mandaue City">
+                        <select x-model="form.municipality"
+                                @change="deriveName()"
+                                :disabled="!form.province || municipalityOptions.length === 0"
+                                class="form-input"
+                                :class="!form.province ? 'opacity-50 cursor-not-allowed' : ''">
+                            <option value="">
+                                <span x-show="!form.province">Select province first…</span>
+                                <span x-show="form.province">Select municipality / city…</span>
+                            </option>
+                            <template x-for="city in municipalityOptions" :key="city">
+                                <option :value="city" x-text="city"></option>
+                            </template>
+                        </select>
+                        <p x-show="!form.province" class="text-[11px] text-gray-400 mt-0.5">Select a province first.</p>
                     </div>
                 </div>
                 @endif
@@ -385,6 +400,9 @@
 </div>
 
 <script>
+// Philippine municipalities by province — used for the deal creation form dropdown
+const PH_MUNICIPALITIES = @json(\App\Support\PhilippineMunicipalities::all());
+
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
         leads: [], filtered: [], loading: true,
@@ -393,6 +411,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
+        municipalityOptions: [],
         form: { name: '', stage: 'introduction', base_cost: 0, added_amount: 0, reseller_name: '', province: '', municipality: '' },
 
         stages: [
@@ -497,10 +516,10 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         deriveName() {
-            if (this.nameAutoFilled || !this.form.name) {
-                const parts = [this.form.municipality, this.form.province].filter(Boolean);
-                if (parts.length > 0) {
-                    this.form.name = parts.join(', ');
+            // Only auto-fill the deal name when BOTH province and municipality are selected
+            if (this.form.province && this.form.municipality) {
+                if (this.nameAutoFilled || !this.form.name) {
+                    this.form.name = this.form.municipality + ', ' + this.form.province;
                     this.nameAutoFilled = true;
                 }
             }
@@ -550,6 +569,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             this.form = { name:'', stage:'introduction', base_cost:0, added_amount:0, reseller_name:'', province:'', municipality:'' };
             this.formError = '';
             this.nameAutoFilled = false;
+            this.municipalityOptions = [];
         },
 
         async addRecord() {
