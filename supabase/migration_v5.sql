@@ -5,7 +5,7 @@
 
 -- ── Update plans with correct limits + features ───────────────
 update plans set
-  plan_limits_json = '{"max_users":1,"max_resellers":5,"max_leads_per_month":100,"max_messages_per_month":0,"max_storage_mb":500,"grace_period_days":7}',
+  plan_limits_json = '{"max_users":3,"max_resellers":5,"max_leads_per_month":100,"max_messages_per_month":0,"max_storage_mb":500,"grace_period_days":7}',
   plan_features_json = '{"messaging":false,"advanced_analytics":false,"template_customization":false,"api_access":false,"sms":false}'
 where name = 'Free';
 
