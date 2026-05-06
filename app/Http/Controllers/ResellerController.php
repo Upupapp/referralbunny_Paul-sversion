@@ -74,6 +74,19 @@ class ResellerController extends Controller
             'is_anonymous'      => 'nullable|boolean',
         ]);
 
+        // Check plan limit before creating
+        $planService = app(\App\Services\TenantPlanService::class);
+        $limitCheck  = $planService->canInviteReferrer($tenantId);
+        if (!$limitCheck['allowed']) {
+            return response()->json([
+                'message'        => $limitCheck['reason'],
+                'error_code'     => 'plan_limit_exceeded',
+                'current'        => $limitCheck['current'],
+                'max'            => $limitCheck['max'],
+                'upgrade_prompt' => true,
+            ], 422);
+        }
+
         // Generate setup token so the reseller can activate their account
         $setupToken = Str::random(64);
         $data['setup_token'] = $setupToken;
@@ -125,5 +138,23 @@ class ResellerController extends Controller
     {
         $reseller->delete();
         return response()->json(['message' => 'Reseller deleted.']);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $tenantId = $request->query('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'tenant_id required'], 400);
+        }
+
+        $counts = [
+            'total'       => Reseller::where('tenant_id', $tenantId)->count(),
+            'active'      => Reseller::where('tenant_id', $tenantId)->whereIn('status', ['active', 'nda_signed'])->count(),
+            'invited'     => Reseller::where('tenant_id', $tenantId)->where('status', 'invited')->count(),
+            'no_email'    => Reseller::where('tenant_id', $tenantId)->whereNull('email')->count(),
+            'no_password' => Reseller::where('tenant_id', $tenantId)->whereNull('password')->count(),
+        ];
+
+        return response()->json($counts);
     }
 }

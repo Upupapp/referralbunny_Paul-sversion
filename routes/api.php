@@ -70,9 +70,10 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('leads/{lead}/commission-splits', [LeadController::class, 'updateCommissionSplits']);
 
     // Resellers
-    Route::get('resellers',           [ResellerController::class, 'index']);
-    Route::post('resellers',          [ResellerController::class, 'store'])->middleware('feature.access:resellers,create');
-    Route::get('resellers/{reseller}',[ResellerController::class, 'show']);
+    Route::get('resellers',                    [ResellerController::class, 'index']);
+    Route::post('resellers',                   [ResellerController::class, 'store'])->middleware('feature.access:resellers,create');
+    Route::get('resellers/summary',            [ResellerController::class, 'summary']);
+    Route::get('resellers/{reseller}',         [ResellerController::class, 'show']);
     Route::put('resellers/{reseller}',[ResellerController::class, 'update']);
     Route::patch('resellers/{reseller}',[ResellerController::class, 'update']);
     Route::delete('resellers/{reseller}',[ResellerController::class, 'destroy']);
@@ -148,6 +149,11 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('billing/tenants/{tenantId}/extend-access',  [BillingController::class, 'extendAccess']);
     Route::post('billing/subscriptions/{subscription}/activate', [BillingController::class, 'activateSubscription']);
     Route::post('billing/subscriptions/{subscription}/cancel',   [BillingController::class, 'cancelSubscription']);
+    // Super Admin: change tenant plan (requires double-auth in controller)
+    Route::post('billing/tenants/{tenantId}/change-plan',    [BillingController::class, 'changeTenantPlan']);
+    Route::get('billing/tenants/{tenantId}/plan-usage',      [BillingController::class, 'tenantPlanUsage']);
+    // Reseller summary
+    Route::get('resellers/summary',                          [ResellerController::class, 'summary']);
     Route::get('export/billing',                         [TenantMetricController::class, 'exportLeads']);
 
     // Pricing & Plans

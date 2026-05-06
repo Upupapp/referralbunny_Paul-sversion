@@ -46,3 +46,6 @@ Schedule::command('billing:update-rates')->dailyAt('00:30');
 
 // ── Export cleanup (expire old export files daily) ────────────
 Schedule::command('exports:cleanup-expired')->dailyAt('02:00');
+
+// ── Subscription expiry check ─────────────────────────────────
+Schedule::command('subscriptions:check-expiry')->dailyAt('08:30');

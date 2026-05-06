@@ -15,6 +15,8 @@ use App\Services\InvoiceService;
 use App\Services\PayMongoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class BillingController extends Controller
 {
@@ -255,6 +257,132 @@ class BillingController extends Controller
         $q = BillingAuditLog::orderByDesc('created_at');
         if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
         return response()->json($q->limit(200)->get());
+    }
+
+    // ── Super Admin: Change Tenant Plan (requires double-auth) ───────────────
+    public function changeTenantPlan(Request $request, string $tenantId): JsonResponse
+    {
+        $data = $request->validate([
+            'plan_id'           => 'required|string|exists:plans,id',
+            'billing_status'    => 'nullable|in:standard,comped,internal,manual,sponsored',
+            'billing_cycle'     => 'nullable|in:monthly,yearly',
+            'subscription_end'  => 'nullable|date',
+            'payment_required'  => 'nullable|boolean',
+            'auto_renew'        => 'nullable|boolean',
+            'note'              => 'required|string|max:1000',
+            'password'          => 'required|string',
+            'typed_confirm'     => 'nullable|string',
+        ]);
+
+        // ── Double Authentication: password confirmation ───────────────────
+        $admin = Auth::guard('web')->user() ?? Auth::guard('tenant')->user();
+        if (!$admin) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        if (!\Illuminate\Support\Facades\Hash::check($data['password'], $admin->password)) {
+            BillingAuditLog::log('super_admin_plan_change_auth_failed', [
+                'tenant_id'    => $tenantId,
+                'performed_by' => $admin->id ?? 'unknown',
+                'reason'       => 'Wrong password during plan change double-auth.',
+            ]);
+            return response()->json([
+                'message'    => 'Password confirmation failed. Plan was not changed.',
+                'error_code' => 'double_auth_failed',
+            ], 403);
+        }
+
+        // ── Typed confirmation for Max plan upgrades ───────────────────────
+        $newPlan = \App\Models\Plan::findOrFail($data['plan_id']);
+        if (in_array(strtolower($newPlan->plan_key ?? $newPlan->name), ['max', 'enterprise'])) {
+            if (($data['typed_confirm'] ?? '') !== 'UPGRADE TO MAX') {
+                return response()->json([
+                    'message'    => 'For Max plan upgrades, type exactly: UPGRADE TO MAX',
+                    'error_code' => 'typed_confirm_required',
+                ], 422);
+            }
+        }
+
+        $tenant = \App\Models\Tenant::findOrFail($tenantId);
+        $sub    = Subscription::where('tenant_id', $tenantId)->latest()->first();
+        $oldPlan= $sub?->plan_id;
+
+        if ($sub) {
+            $sub->plan_id           = $data['plan_id'];
+            $sub->status            = 'active';
+            $sub->billing_status    = $data['billing_status'] ?? 'standard';
+            $sub->billing_cycle     = $data['billing_cycle'] ?? $sub->billing_cycle ?? 'monthly';
+            $sub->payment_required  = $data['payment_required'] ?? true;
+            $sub->auto_renew        = $data['auto_renew'] ?? true;
+            $sub->manual_note       = $data['note'];
+            $sub->assigned_by       = (string) ($admin->id ?? 'super_admin');
+            $sub->canceled_at       = null;
+            if (!empty($data['subscription_end'])) {
+                $sub->subscription_end_date = $data['subscription_end'];
+                $sub->next_billing_date     = $data['subscription_end'];
+            }
+            $sub->save();
+        } else {
+            $endDate = $data['subscription_end'] ?? now()->addYear()->toDateString();
+            $sub = Subscription::create([
+                'tenant_id'           => $tenantId,
+                'plan_id'             => $data['plan_id'],
+                'status'              => 'active',
+                'billing_status'      => $data['billing_status'] ?? 'standard',
+                'billing_cycle'       => $data['billing_cycle'] ?? 'monthly',
+                'start_date'          => today(),
+                'next_billing_date'   => $endDate,
+                'subscription_end_date' => $endDate,
+                'payment_required'    => $data['payment_required'] ?? true,
+                'auto_renew'          => $data['auto_renew'] ?? true,
+                'manual_note'         => $data['note'],
+                'assigned_by'         => (string) ($admin->id ?? 'super_admin'),
+            ]);
+        }
+
+        // Audit
+        BillingAuditLog::log('tenant_plan_changed_by_super_admin', [
+            'tenant_id'    => $tenantId,
+            'performed_by' => $admin->id ?? 'super_admin',
+            'reason'       => $data['note'],
+            'before'       => ['plan_id' => $oldPlan],
+            'after'        => [
+                'plan_id'        => $data['plan_id'],
+                'plan_name'      => $newPlan->name,
+                'billing_status' => $data['billing_status'] ?? 'standard',
+                'billing_cycle'  => $data['billing_cycle'] ?? 'monthly',
+            ],
+        ]);
+
+        // Notify tenant admin
+        Notification::create([
+            'id'            => (string) \Illuminate\Support\Str::uuid(),
+            'tenant_id'     => $tenantId,
+            'category'      => 'billing',
+            'type'          => 'subscription_plan_changed',
+            'priority'      => 'high',
+            'message'       => "Your ReferralBunny.ai plan has been updated to {$newPlan->name}.",
+            'channel'       => 'in_app',
+            'is_read'       => false,
+            'is_dismissed'  => false,
+            'metadata_json' => ['plan_name' => $newPlan->name, 'billing_status' => $data['billing_status'] ?? 'standard'],
+            'sent_at'       => now(),
+        ]);
+
+        // Clear plan cache
+        \Illuminate\Support\Facades\Cache::forget("tenant_plan_{$tenantId}");
+
+        return response()->json([
+            'message'      => "Plan updated to {$newPlan->name} successfully.",
+            'subscription' => $sub->fresh('plan'),
+        ]);
+    }
+
+    // ── Super Admin: Get tenant plan usage summary ────────────────────────
+    public function tenantPlanUsage(string $tenantId): JsonResponse
+    {
+        $planService = app(\App\Services\TenantPlanService::class);
+        return response()->json($planService->getUsageSummary($tenantId));
     }
 
     // ── Exchange Rates ────────────────────────────────────────

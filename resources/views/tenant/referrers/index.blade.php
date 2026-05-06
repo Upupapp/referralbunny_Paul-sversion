@@ -15,7 +15,7 @@
      x-init="init()">
 
     {{-- Summary KPIs --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Referrers</span>
@@ -29,6 +29,13 @@
                 <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="referrers.filter(r => r.status === 'active' || r.status === 'nda_signed').length"></p>
             </div>
             <div class="kpi-icon bg-emerald-100 ml-3 shrink-0"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        </div>
+        <div class="kpi-card">
+            <div class="flex-1 min-w-0">
+                <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Pending Invites</span>
+                <p class="text-2xl font-bold text-orange-500 mt-1.5" x-text="referrers.filter(r => r.status === 'invited').length"></p>
+            </div>
+            <div class="kpi-icon bg-orange-100 ml-3 shrink-0"><svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
         </div>
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
@@ -54,6 +61,21 @@
                 <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="'&#8369;' + totalClosed()"></p>
             </div>
             <div class="kpi-icon bg-blue-100 ml-3 shrink-0"><svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        </div>
+    </div>
+
+    {{-- Referrer breakdown info bar --}}
+    <div x-show="referrers.length > 0" class="card !py-2.5 !px-4">
+        <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+            <svg class="w-3.5 h-3.5 text-[#7B61FF] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>
+                <strong x-text="referrers.length" class="text-[#1E1B4B]"></strong> total referrers:
+                <span x-text="referrers.filter(r=>r.status==='active'||r.status==='nda_signed').length" class="text-emerald-600 font-medium"></span> active ·
+                <span x-text="referrers.filter(r=>r.status==='invited').length" class="text-orange-500 font-medium"></span> pending ·
+                <span x-text="referrers.filter(r=>!r.email).length" class="text-red-500 font-medium"></span> need details
+            </span>
+            <span class="text-gray-300">|</span>
+            <span class="text-gray-400">Showing all statuses by default. Use filters to narrow down.</span>
         </div>
     </div>
 
@@ -151,8 +173,21 @@
                                 <div class="flex justify-center text-gray-300 mb-3">
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
                                 </div>
-                                <p class="text-gray-400 text-sm" x-text="referrers.length === 0 ? 'No referrers yet. Invite your first referrer.' : 'No referrers match the filters.'"></p>
-                                <button x-show="referrers.length === 0" onclick="rbInviteOpen()" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
+                                <template x-if="referrers.length === 0">
+                                    <div>
+                                        <p class="text-gray-400 text-sm">No referrers yet. Invite your first referrer.</p>
+                                        <button onclick="rbInviteOpen()" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
+                                    </div>
+                                </template>
+                                <template x-if="referrers.length > 0">
+                                    <div>
+                                        <p class="text-gray-400 text-sm">No referrers match the current filters.</p>
+                                        <button @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
+                                                class="mt-2 text-sm text-[#7B61FF] hover:underline font-medium">
+                                            Clear filters to see all <span x-text="referrers.length"></span> referrers
+                                        </button>
+                                    </div>
+                                </template>
                             </td>
                         </tr>
                     </template>
@@ -166,6 +201,12 @@
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">
                                             <p class="font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                            <span :class="{
+                                                'badge badge-green':  ['active','nda_signed'].includes(r.status),
+                                                'badge badge-orange': r.status === 'invited',
+                                                'badge badge-gray':   !['active','nda_signed','invited'].includes(r.status)
+                                            }" class="text-[10px] shrink-0 hidden sm:inline-flex"
+                                            x-text="r.status === 'nda_signed' ? 'NDA Signed' : r.status === 'invited' ? 'Pending' : 'Active'"></span>
                                             <span x-show="r.is_anonymous"
                                                   class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-gray-100 text-gray-500 shrink-0">
                                                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
