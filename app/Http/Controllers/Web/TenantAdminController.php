@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use App\Models\TenantMembership;
+use App\Services\CriticalActionService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -104,10 +105,37 @@ class TenantAdminController extends Controller
                 ->value('name');
         }
 
+        // Permission check for billing metrics in critical actions
+        $canSeeBilling = false;
+        if (auth('tenant')->check()) {
+            $actingMembership = TenantMembership::where('tenant_user_id', auth('tenant')->id())
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+            if ($actingMembership) {
+                $canSeeBilling = app(PermissionService::class)->can($actingMembership, 'manage_billing_and_subscription');
+            }
+        } elseif (auth('web')->check()) {
+            $canSeeBilling = true;
+        }
+
+        // Critical actions for dashboard widget
+        $criticalActions = app(CriticalActionService::class)
+            ->dashboardSummary($tenantId, 6, $canSeeBilling);
+
+        // Extra dashboard counts for improved KPI display
+        $dashboardCounts = [
+            'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->where('status', 'expiring')->count(),
+            'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
+            'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
+            'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
+        ];
+
         $expiryAlert = null;
 
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing', 'currentResellerName'),
+            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing',
+                    'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling'),
             $this->configMeta($tenantId)
         ));
     }

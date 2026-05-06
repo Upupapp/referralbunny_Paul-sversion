@@ -55,6 +55,41 @@
     </div>
     @endif
 
+    {{-- Recent Deal Activity --}}
+    @if(isset($recentActivity) && count($recentActivity) > 0)
+    @php
+        $actSeverityDot = ['urgent'=>'#EF4444','high'=>'#F97316','medium'=>'#F59E0B','low'=>'#3B82F6','info'=>'#9CA3AF'];
+    @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold" style="color:#1E1B4B">Recent Deal Activity</p>
+                <span title="Recent actions and alerts on your deals, including stage changes, expiry warnings, and commission updates."
+                      class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[9px] font-bold flex items-center justify-center cursor-help"
+                      aria-label="About this section">i</span>
+            </div>
+            <a href="{{ route('reseller.deals', $tenant->id) }}"
+               class="text-xs font-semibold" style="color:#0D9488">View deals →</a>
+        </div>
+        <div class="divide-y divide-gray-50">
+            @foreach($recentActivity as $act)
+            <div class="flex items-start gap-3 px-4 py-3">
+                <span class="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                      style="background:{{ $actSeverityDot[$act['severity']] ?? '#9CA3AF' }}"
+                      aria-label="Severity: {{ $act['severity'] }}"></span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold truncate" style="color:#1E1B4B">{{ $act['summary'] }}</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">{{ $act['occurred_ago'] }}</p>
+                </div>
+                @if($act['action_needed'])
+                    <span class="text-[9px] font-bold text-amber-600 uppercase shrink-0 mt-1">Action needed</span>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     {{-- Recent Deals --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">

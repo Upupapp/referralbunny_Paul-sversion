@@ -82,6 +82,156 @@ document.addEventListener('alpine:init', () => {
         @endforeach
     </div>
 
+    {{-- ── CRITICAL ACTIONS + QUICK COUNTS ───────────────── --}}
+    @php
+        $severityConfig = [
+            'urgent' => ['bg' => '#FEF2F2', 'border' => '#FECACA', 'dot' => '#EF4444', 'text' => '#DC2626', 'label' => 'Urgent'],
+            'high'   => ['bg' => '#FFF7ED', 'border' => '#FED7AA', 'dot' => '#F97316', 'text' => '#EA580C', 'label' => 'High'],
+            'medium' => ['bg' => '#FFFBEB', 'border' => '#FDE68A', 'dot' => '#F59E0B', 'text' => '#D97706', 'label' => 'Medium'],
+            'low'    => ['bg' => '#EFF6FF', 'border' => '#BFDBFE', 'dot' => '#3B82F6', 'text' => '#2563EB', 'label' => 'Low'],
+            'info'   => ['bg' => '#F9FAFB', 'border' => '#E5E7EB', 'dot' => '#9CA3AF', 'text' => '#6B7280', 'label' => 'Info'],
+        ];
+    @endphp
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {{-- Critical Actions widget — spans 2 of 3 columns --}}
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-[#EDE9FE] flex items-center justify-center shrink-0">
+                        <svg class="w-3.5 h-3.5 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-sm font-semibold text-[#1E1B4B]">Recent Critical Actions</h3>
+                    <span title="Important activity and warnings from Admins, Managers, Referrers, and system events in this workspace."
+                          class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[9px] font-bold flex items-center justify-center cursor-help hover:bg-gray-200 transition-colors shrink-0"
+                          aria-label="About critical actions">i</span>
+                </div>
+                <a href="{{ route('tenant.critical-actions', $tenant->id) }}"
+                   class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors">
+                    View All →
+                </a>
+            </div>
+
+            @if(count($criticalActions) === 0)
+                <div class="flex flex-col items-center justify-center py-10 text-center px-4">
+                    <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-10 h-10 object-contain mb-2 opacity-50">
+                    <p class="text-xs font-medium text-gray-500">Nothing critical right now</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">R Bunny says your workspace is calm.</p>
+                </div>
+            @else
+                <div class="divide-y divide-gray-50">
+                    @foreach($criticalActions as $action)
+                        @php $sev = $severityConfig[$action['severity']] ?? $severityConfig['info']; @endphp
+                        <div class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors">
+                            {{-- Severity dot --}}
+                            <div class="flex items-center mt-1.5 shrink-0">
+                                <span class="w-2 h-2 rounded-full" style="background:{{ $sev['dot'] }}"
+                                      title="{{ $sev['label'] }}" aria-label="Severity: {{ $sev['label'] }}"></span>
+                            </div>
+                            {{-- Content --}}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="text-xs font-semibold text-[#1E1B4B] leading-snug">{{ $action['summary'] }}</p>
+                                    <span class="text-[9px] text-gray-400 shrink-0 mt-0.5 whitespace-nowrap">{{ $action['occurred_ago'] }}</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span class="text-[10px] text-gray-500">{{ $action['actor_name'] }}</span>
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium"
+                                          style="background:{{ $sev['bg'] }};color:{{ $sev['text'] }};border:1px solid {{ $sev['border'] }}">
+                                        {{ $sev['label'] }}
+                                    </span>
+                                    @if($action['action_needed'])
+                                        <span class="text-[9px] font-bold text-amber-600 uppercase tracking-wide">⚠ Action needed</span>
+                                    @endif
+                                </div>
+                            </div>
+                            {{-- Open link --}}
+                            @if($action['action_url'])
+                                <a href="{{ $action['action_url'] }}"
+                                   class="text-[10px] font-semibold text-[#7B61FF] hover:text-purple-800 shrink-0 mt-1 transition-colors"
+                                   aria-label="Open {{ $action['summary'] }}">
+                                    Open
+                                </a>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                <div class="px-4 py-2.5 bg-gray-50/50 border-t border-gray-50">
+                    <a href="{{ route('tenant.critical-actions', $tenant->id) }}"
+                       class="text-[10px] font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors">
+                        View all critical actions →
+                    </a>
+                </div>
+            @endif
+        </div>
+
+        {{-- Quick counts sidebar --}}
+        <div class="space-y-3">
+            @php
+            $quickCounts = [
+                [
+                    'label'  => 'Deals Expiring Soon',
+                    'value'  => $dashboardCounts['expiring_deals'],
+                    'color'  => '#F97316',
+                    'bg'     => '#FFF7ED',
+                    'url'    => route('tenant.deals', $tenant->id) . '?status=expiring',
+                    'tip'    => 'Deals currently in expiring status. Click to review.',
+                    'icon'   => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                ],
+                [
+                    'label'  => 'Pending Invitations',
+                    'value'  => $dashboardCounts['pending_invites'],
+                    'color'  => '#7B61FF',
+                    'bg'     => '#EDE9FE',
+                    'url'    => route('tenant.users', $tenant->id),
+                    'tip'    => 'Team invitations waiting to be accepted.',
+                    'icon'   => 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
+                ],
+                [
+                    'label'  => 'Import Warnings',
+                    'value'  => $dashboardCounts['import_warnings'],
+                    'color'  => '#EF4444',
+                    'bg'     => '#FEF2F2',
+                    'url'    => route('tenant.imports', $tenant->id),
+                    'tip'    => 'Imports completed with warnings in the last 14 days that may need review.',
+                    'icon'   => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
+                ],
+                [
+                    'label'  => 'Missing Referrer',
+                    'value'  => $dashboardCounts['missing_referrer'],
+                    'color'  => '#9CA3AF',
+                    'bg'     => '#F3F4F6',
+                    'url'    => route('tenant.deals', $tenant->id),
+                    'tip'    => 'Active deals with no Referrer assigned. Commission cannot be finalised until a Referrer is linked.',
+                    'icon'   => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+                ],
+            ];
+            @endphp
+            @foreach($quickCounts as $qc)
+            <a href="{{ $qc['url'] }}"
+               class="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background:{{ $qc['bg'] }};color:{{ $qc['color'] }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $qc['icon'] }}"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[11px] font-medium text-gray-500 truncate">{{ $qc['label'] }}</p>
+                    <p class="text-xl font-bold leading-none mt-0.5" style="color:{{ $qc['value'] > 0 ? $qc['color'] : '#1E1B4B' }}">
+                        {{ $qc['value'] }}
+                    </p>
+                </div>
+                <span title="{{ $qc['tip'] }}"
+                      class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[9px] font-bold flex items-center justify-center cursor-help hover:bg-gray-200 transition-colors shrink-0"
+                      aria-label="{{ $qc['tip'] }}">i</span>
+            </a>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ── CHARTS ROW ───────────────────────────────────────── --}}
     <div style="display:grid;grid-template-columns:4fr 3fr 5fr;gap:1rem">
 

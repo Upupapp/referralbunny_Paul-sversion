@@ -174,6 +174,7 @@ Route::middleware(['auth:tenant,reseller,web'])
 use App\Http\Controllers\Web\TenantUserManagementController;
 Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/critical-actions', [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}', [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::get('/contacts',        [TenantAdminController::class, 'contacts'])->name('contacts');

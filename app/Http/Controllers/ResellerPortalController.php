@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Reseller;
 use App\Models\Tenant;
+use App\Services\CriticalActionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,9 +44,11 @@ class ResellerPortalController extends Controller
                 : 0,
         ];
 
-        $recentLeads = $leads->take(6);
+        $recentLeads    = $leads->take(6);
+        $recentActivity = app(CriticalActionService::class)
+            ->forReseller($tenantId, $reseller->name, 6);
 
-        return view('reseller.dashboard', compact('reseller', 'tenant', 'stats', 'recentLeads'));
+        return view('reseller.dashboard', compact('reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity'));
     }
 
     public function deals($tenantId)
