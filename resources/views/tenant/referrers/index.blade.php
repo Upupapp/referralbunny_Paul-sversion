@@ -1266,9 +1266,10 @@ async function rbInviteSubmit(e) {
     try {
         var csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
         var res  = await fetch('/api/resellers', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-            body:    JSON.stringify({ name: name, email: email, phone: phone, territory: territory, tenant_id: tenantId, status: 'invited' })
+            method:      'POST',
+            credentials: 'same-origin',
+            headers:     { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+            body:        JSON.stringify({ name: name, email: email, phone: phone, territory: territory, tenant_id: tenantId, status: 'invited' })
         });
         var data = await res.json();
         if (data.id) {
