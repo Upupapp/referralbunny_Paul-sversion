@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\AuthWebController;
+use App\Http\Controllers\Web\LguIdsImportController;
 use App\Http\Controllers\Web\PlatformController;
 use App\Http\Controllers\Web\MessageController;
 use App\Http\Controllers\Web\NotificationsController;
@@ -185,6 +186,17 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/notifications/{notificationId}/read',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/{notificationId}/archive', [NotificationsController::class, 'archive'])->name('notifications.archive');
     Route::post('/notifications/mark-all-read',            [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');
+
+    // ── LGU IDS Deal Import ───────────────────────────────────────
+    Route::get('/imports/lgu-ids',                         [LguIdsImportController::class, 'index'])->name('imports.lgu-ids');
+    Route::get('/imports/lgu-ids/template',                [LguIdsImportController::class, 'downloadTemplate'])->name('imports.lgu-ids.template');
+    Route::post('/imports/lgu-ids/upload',                 [LguIdsImportController::class, 'upload'])->name('imports.lgu-ids.upload');
+    Route::get('/imports/lgu-ids/{batchId}',               [LguIdsImportController::class, 'preview'])->name('imports.lgu-ids.preview');
+    Route::post('/imports/lgu-ids/{batchId}/rows/{rowId}', [LguIdsImportController::class, 'approveRow'])->name('imports.lgu-ids.approve-row');
+    Route::post('/imports/lgu-ids/{batchId}/bulk-approve', [LguIdsImportController::class, 'bulkApprove'])->name('imports.lgu-ids.bulk-approve');
+    Route::post('/imports/lgu-ids/{batchId}/execute',      [LguIdsImportController::class, 'execute'])->name('imports.lgu-ids.execute');
+    Route::get('/imports/lgu-ids/{batchId}/report',        [LguIdsImportController::class, 'show'])->name('imports.lgu-ids.show');
+    Route::get('/imports/lgu-ids/{batchId}/failed',        [LguIdsImportController::class, 'downloadFailed'])->name('imports.lgu-ids.failed');
 });
 
 // ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────

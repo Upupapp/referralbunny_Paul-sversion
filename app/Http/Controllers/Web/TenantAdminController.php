@@ -168,8 +168,16 @@ class TenantAdminController extends Controller
 
     public function imports($tenantId)
     {
-        $tenant = Tenant::findOrFail($tenantId);
-        return view('tenant.imports.index', compact('tenant'));
+        $tenant  = Tenant::findOrFail($tenantId);
+        $batches = null;
+        $pendingInvites = 0;
+        if ($tenantId === 'lgu-ids') {
+            $batches = \App\Models\ImportBatch::where('tenant_id', $tenantId)
+                ->orderByDesc('created_at')->limit(5)->get();
+            $pendingInvites = \App\Models\PendingReferrerInvite::where('tenant_id', $tenantId)
+                ->where('status', 'pending_invite')->count();
+        }
+        return view('tenant.imports.index', compact('tenant', 'batches', 'pendingInvites'));
     }
 
     public function users($tenantId)

@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 @section('title', 'Imports & Exports')
 
 @section('nav')
@@ -26,7 +26,46 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    {{-- Import tool cards --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+
+        {{-- LGU IDS Deal Import — only shown for lgu-ids tenant --}}
+        @if(isset($tenant) && $tenant->id === 'lgu-ids')
+        <div class="card hover:shadow-md transition-shadow group border-l-4" style="border-left-color: #10B981;">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background: #D1FAE5;">
+                    <svg class="w-5 h-5" style="color: #10B981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm leading-tight">LGU IDS Deal Import</h3>
+                    <span class="badge badge-green text-[10px] mt-0.5">LGU IDS Only</span>
+                </div>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">Import municipality deals with automatic pricing validation, Referrer linking, and duplicate detection.</p>
+            <div class="flex flex-col gap-2">
+                <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
+                   class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
+                   style="background: #10B981;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    Start LGU IDS Import
+                </a>
+                <a href="{{ route('tenant.imports.lgu-ids.template', $tenant->id) }}"
+                   class="inline-flex items-center justify-center gap-1.5 text-xs font-medium transition-colors" style="color: #10B981;"
+                   onmouseover="this.style.color='#059669'" onmouseout="this.style.color='#10B981'">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Download Template
+                </a>
+            </div>
+        </div>
+        @endif
+
+        {{-- Import Deals --}}
         <div class="card hover:shadow-md transition-shadow cursor-pointer group">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 rounded-xl bg-[#EDE9FE] flex items-center justify-center shrink-0">
@@ -43,6 +82,7 @@
             </div>
         </div>
 
+        {{-- Import Contacts --}}
         <div class="card hover:shadow-md transition-shadow cursor-pointer group">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
@@ -59,6 +99,7 @@
             </div>
         </div>
 
+        {{-- Import Referrers --}}
         <div class="card hover:shadow-md transition-shadow cursor-pointer group">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
@@ -76,6 +117,100 @@
         </div>
     </div>
 
+    {{-- Recent LGU IDS Imports — only shown for lgu-ids tenant --}}
+    @if(isset($tenant) && $tenant->id === 'lgu-ids')
+    <div class="card">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+                <h3 class="text-[#1E1B4B] font-semibold text-base">Recent LGU IDS Imports</h3>
+                <p class="text-gray-400 text-xs mt-0.5">History of your municipality deal import batches</p>
+            </div>
+            <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
+               class="btn-secondary text-xs shrink-0">
+                View All
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+
+        @if(isset($batches) && $batches && count($batches) > 0)
+        <div class="overflow-x-auto -mx-5 sm:mx-0">
+            <table class="w-full min-w-[700px]">
+                <thead>
+                    <tr class="table-head">
+                        <th>Date</th>
+                        <th>File</th>
+                        <th>Rows</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                        <th>Failed</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($batches as $batch)
+                    <tr class="table-row">
+                        <td class="whitespace-nowrap text-gray-500 text-xs">
+                            {{ $batch->created_at->format('M d, Y') }}
+                        </td>
+                        <td class="max-w-[160px]">
+                            <span class="text-sm text-[#1E1B4B] font-medium truncate block" title="{{ $batch->file_name }}">
+                                {{ Str::limit($batch->file_name, 28) }}
+                            </span>
+                        </td>
+                        <td class="tabular-nums">{{ number_format($batch->total_rows) }}</td>
+                        <td class="tabular-nums text-emerald-600 font-medium">{{ number_format($batch->successful_rows) }}</td>
+                        <td class="tabular-nums text-blue-600 font-medium">{{ number_format($batch->updated_rows) }}</td>
+                        <td class="tabular-nums {{ $batch->failed_rows > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
+                            {{ number_format($batch->failed_rows) }}
+                        </td>
+                        <td>
+                            @php
+                                $statusMap = [
+                                    'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
+                                    'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
+                                    'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
+                                    'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
+                                    'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
+                                    'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
+                                ];
+                                $s = $statusMap[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
+                            @endphp
+                            <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
+                        </td>
+                        <td>
+                            @if(in_array($batch->status, ['previewed', 'needs_review']))
+                                <a href="{{ route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id]) }}"
+                                   class="text-xs font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">Review</a>
+                            @else
+                                <a href="{{ route('tenant.imports.lgu-ids.show', [$tenant->id, $batch->id]) }}"
+                                   class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <div class="flex flex-col items-center justify-center py-10 text-center">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style="background: #D1FAE5;">
+                <svg class="w-6 h-6" style="color: #10B981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
+                </svg>
+            </div>
+            <p class="text-[#1E1B4B] font-medium text-sm">No import history yet</p>
+            <p class="text-gray-400 text-xs mt-1">Start your first LGU IDS import to see history here.</p>
+            <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
+               class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
+               style="background: #10B981;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
+                Start First Import
+            </a>
+        </div>
+        @endif
+    </div>
+    @else
+    {{-- General import history placeholder for non-LGU-IDS tenants --}}
     <div class="card flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +223,7 @@
             Go to Platform Import Center
         </a>
     </div>
+    @endif
 
 </div>
 @endsection
-
