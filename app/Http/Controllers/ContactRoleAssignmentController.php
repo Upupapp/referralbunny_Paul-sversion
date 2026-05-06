@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Mail\ContactRoleInvitationMail;
 use App\Models\ActivityLog;
 use App\Models\ContactRoleInvitation;
+use App\Models\DealPartner;
 use App\Models\Lead;
 use App\Models\Notification;
+use App\Models\Partner;
 use App\Models\Reseller;
 use App\Models\Tenant;
 use App\Services\TenantContext;
@@ -189,6 +191,47 @@ class ContactRoleAssignmentController extends Controller
             'permissions_json'    => $data['permissions_preset'] ? ['preset' => $data['permissions_preset']] : null,
         ]);
 
+        // ── 8b. For partner role: ensure partner_users + deal_partners rows exist ──
+        if ($data['role'] === 'partner') {
+            $partner = Partner::where('tenant_id', $tenantId)
+                ->where('email', strtolower($contact->email))
+                ->first();
+
+            if (!$partner) {
+                $partner = Partner::create([
+                    'id'              => (string) Str::uuid(),
+                    'tenant_id'       => $tenantId,
+                    'email'           => strtolower($contact->email),
+                    'setup_token'     => $token,
+                    'status'          => 'invited',
+                    'first_name'      => $contact->first_name ?? null,
+                    'last_name'       => $contact->last_name ?? null,
+                    'invited_by_type' => $actorRole === 'referrer' ? 'App\\Models\\Reseller' : 'App\\Models\\TenantUser',
+                    'invited_by_id'   => $actorUserId,
+                ]);
+            } else {
+                // Refresh setup token so the new email link works
+                $partner->update(['setup_token' => $token]);
+            }
+
+            $dealPartnerExists = DealPartner::where('deal_id', $data['associated_deal_id'])
+                ->where('partner_user_id', $partner->id)
+                ->exists();
+
+            if (!$dealPartnerExists) {
+                DealPartner::create([
+                    'id'              => (string) Str::uuid(),
+                    'tenant_id'       => $tenantId,
+                    'deal_id'         => $data['associated_deal_id'],
+                    'partner_user_id' => $partner->id,
+                    'added_by_id'     => $actorUserId,
+                    'added_by_type'   => $actorRole === 'referrer' ? 'App\\Models\\Reseller' : 'App\\Models\\TenantUser',
+                    'status'          => 'invited',
+                    'invited_at'      => now(),
+                ]);
+            }
+        }
+
         // ── 9. Send invitation email ───────────────────────────────────────
         $tenant      = Tenant::find($tenantId);
         $contactName = trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')) ?: $contact->email;
@@ -314,8 +357,11 @@ class ContactRoleAssignmentController extends Controller
         }
 
         // For referrer and partner, acceptance is handled by their own auth controllers
-        if (in_array($invitation->invited_role, ['referrer', 'partner'])) {
+        if ($invitation->invited_role === 'referrer') {
             return response()->json(['redirect' => url('/reseller/setup?token=' . $token)]);
+        }
+        if ($invitation->invited_role === 'partner') {
+            return response()->json(['redirect' => url('/partner/setup?token=' . $token)]);
         }
 
         // For tenant_manager and tenant_staff, delegate to existing TenantInvitation flow
