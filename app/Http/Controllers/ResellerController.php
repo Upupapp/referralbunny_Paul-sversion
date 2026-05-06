@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ResellerController extends Controller
 {
@@ -57,10 +58,12 @@ class ResellerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $tenantId = $request->input('tenant_id');
+
         $data = $request->validate([
             'tenant_id'         => 'required|string|exists:tenants,id',
             'name'              => 'required|string',
-            'email'             => 'required|email',
+            'email'             => ['required', 'email', Rule::unique('resellers', 'email')->where('tenant_id', $tenantId)],
             'status'            => 'nullable|in:invited,active,nda_signed',
             'phone'             => 'nullable|string',
             'territory'         => 'nullable|string',

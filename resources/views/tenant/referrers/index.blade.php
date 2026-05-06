@@ -513,8 +513,8 @@
     </div>
 
     {{-- Invite Modal --}}
-    <div x-show="$store.referrersInvite.show" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+    <div x-show="$store.referrersInvite.show" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" @click="$store.referrersInvite.show = false; resetForm()">
+        <div class="bg-white rounded-2xl shadow-xl w-full" style="max-width:440px;overflow:hidden" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Invite Referrer</h3>
                 <button @click="$store.referrersInvite.show = false; resetForm()" class="text-gray-400 hover:text-gray-600">

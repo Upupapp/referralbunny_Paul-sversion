@@ -23,10 +23,10 @@
 <div class="highlight-box highlight-teal">
     <div class="highlight-title" style="color:#0D9488">What you get access to</div>
     <div class="highlight-text">
-        ✓ Browse and claim available municipalities<br>
-        ✓ Track your deals through the pipeline<br>
-        ✓ Monitor your commission status<br>
-        ✓ Get notified when action is needed
+        ✓ Submit and track deals through the pipeline<br>
+        ✓ Monitor your commission and earnings status<br>
+        ✓ Get notified when action is needed<br>
+        ✓ Access your referrer dashboard anytime
     </div>
 </div>
 

@@ -123,12 +123,12 @@
             <div style="position:relative;z-index:1">
                 <x-r-bunny variant="portal" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
                 <x-rb-logo variant="white" size="xs" :priority="true" :decorative="true" style="display:block;margin:0 auto 1rem;opacity:.9" />
-                <h2 style="margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#fff;line-height:1.4">Every municipality<br>needs a champion.</h2>
-                <p style="margin:0 auto;font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.6;max-width:200px">Claim your first deal and start building your referral pipeline.</p>
+                <h2 style="margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#fff;line-height:1.4">Your referral journey<br>starts here.</h2>
+                <p style="margin:0 auto;font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.6;max-width:200px">Submit deals, track your pipeline, and earn commissions — all in one place.</p>
 
                 {{-- Steps on right panel --}}
                 <div style="margin-top:2rem;display:flex;flex-direction:column;gap:.75rem;text-align:left">
-                    @foreach(['Receive invitation email' => true, 'Set up your account' => false, 'Claim your first deal' => false] as $step => $done)
+                    @foreach(['Receive invitation email' => true, 'Set up your account' => false, 'Access your dashboard' => false] as $step => $done)
                     <div style="display:flex;align-items:center;gap:.75rem">
                         <div style="width:20px;height:20px;border-radius:50%;background:{{ $done ? '#14B8A6' : 'rgba(255,255,255,0.15)' }};display:flex;align-items:center;justify-content:center;flex-shrink:0">
                             @if($done)
