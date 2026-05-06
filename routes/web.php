@@ -244,6 +244,15 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/imports/deals/{batchId}/report',        [TenantDealImportController::class, 'show'])->name('imports.deals.show');
     Route::get('/imports/deals/{batchId}/failed',        [TenantDealImportController::class, 'downloadFailed'])->name('imports.deals.failed');
 
+    // ── Dynamic Column Handling ───────────────────────────────────
+    Route::post('/imports/deals/{batchId}/column-actions',       [TenantDealImportController::class, 'saveColumnActions'])->name('imports.deals.column-actions');
+    Route::post('/imports/deals/{batchId}/initiate-adoption',    [TenantDealImportController::class, 'initiateTemplateAdoption'])->name('imports.deals.initiate-adoption');
+    Route::post('/imports/deals/{batchId}/verify-adoption',      [TenantDealImportController::class, 'verifyAndSaveTemplate'])->name('imports.deals.verify-adoption');
+    // Same for contacts
+    Route::post('/imports/contacts/{batchId}/column-actions',    [ContactsImportController::class, 'saveColumnActions'])->name('imports.contacts.column-actions');
+    Route::post('/imports/contacts/{batchId}/initiate-adoption', [ContactsImportController::class, 'initiateTemplateAdoption'])->name('imports.contacts.initiate-adoption');
+    Route::post('/imports/contacts/{batchId}/verify-adoption',   [ContactsImportController::class, 'verifyAndSaveTemplate'])->name('imports.contacts.verify-adoption');
+
     // ── Contacts Import ───────────────────────────────────────────
     Route::get('/imports/contacts',                           [ContactsImportController::class, 'index'])->name('imports.contacts');
     Route::get('/imports/contacts/template',                  [ContactsImportController::class, 'downloadTemplate'])->name('imports.contacts.template');

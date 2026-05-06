@@ -190,11 +190,22 @@ class ContactsImportController extends Controller
         $grouped = $rows->groupBy('validation_status');
         $summary = $rows->groupBy('validation_status')->map->count();
 
+        // Build the list of known/canonical field names for the unmapped-column mapper.
+        $settings = \App\Models\TenantImportSettings::forTenant($tenantId);
+        $template = config('referralbunny_import_templates')[$settings->industry_template_key ?? 'default']
+            ?? config('referralbunny_import_templates.default')
+            ?? [];
+        $knownFields = array_values(array_unique(array_merge(
+            $template['required_fields'] ?? [],
+            $template['optional_fields'] ?? [],
+            array_values($template['aliases'] ?? []),
+        )));
+
         $view = $isAdmin
             ? 'tenant.imports.contacts.preview'
             : 'reseller.contacts.imports.preview';
 
-        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'isAdmin'));
+        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'isAdmin', 'knownFields'));
     }
 
     // ── Approve single row (JSON) ─────────────────────────────────

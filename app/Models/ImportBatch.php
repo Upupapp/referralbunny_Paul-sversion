@@ -22,12 +22,15 @@ class ImportBatch extends Model
         'pricing_issue_rows', 'blocked_rows', 'summary_json', 'started_at', 'completed_at',
         'possible_duplicate_rows', 'same_email_different_referrer_rows',
         'unknown_deal_rows', 'unknown_organization_rows',
+        'unmapped_columns_json', 'column_actions_json', 'template_adoption_status',
     ];
 
     protected $casts = [
-        'summary_json' => 'array',
-        'started_at'   => 'datetime',
-        'completed_at' => 'datetime',
+        'summary_json'          => 'array',
+        'unmapped_columns_json' => 'array',
+        'column_actions_json'   => 'array',
+        'started_at'            => 'datetime',
+        'completed_at'          => 'datetime',
     ];
 
     protected static function boot(): void

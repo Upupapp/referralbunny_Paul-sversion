@@ -5,6 +5,14 @@
     @include('tenant._nav')
 @endsection
 
+@php
+$isLguIds    = $tenant->id === 'lgu-ids';
+$unmapped    = $batch->unmapped_columns_json ?? [];
+$hasUnmapped = !empty($unmapped);
+$initiateUrl = route('tenant.imports.contacts.initiate-adoption', [$tenant->id, $batch->id]);
+$verifyUrl   = route('tenant.imports.contacts.verify-adoption',   [$tenant->id, $batch->id]);
+@endphp
+
 @section('content')
 <div x-data="contactImportPreview()" x-init="init()" class="space-y-5">
 
@@ -179,6 +187,183 @@
         </div>
     </div>
     @endif
+
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    {{-- ── Unmapped Columns Section ────────────────────────────── --}}
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    @if($hasUnmapped)
+    <div x-data="unmappedColumns(@json($unmapped), @json($knownFields ?? []))"
+         class="card border-2"
+         style="border-color: #C4B5FD;">
+
+        {{-- Header --}}
+        <div class="flex flex-col sm:flex-row sm:items-start gap-3 mb-4">
+            {{-- R Bunny Helper mascot icon --}}
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background: #EDE9FE;">
+                <svg class="w-6 h-6" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="16" cy="20" rx="8" ry="8" fill="#7B61FF" opacity="0.15"/>
+                    <ellipse cx="16" cy="19" rx="6" ry="6" fill="#7B61FF"/>
+                    <ellipse cx="11" cy="11" rx="2.5" ry="5" fill="#7B61FF"/>
+                    <ellipse cx="21" cy="11" rx="2.5" ry="5" fill="#7B61FF"/>
+                    <ellipse cx="11" cy="11" rx="1.2" ry="3.5" fill="#C4B5FD"/>
+                    <ellipse cx="21" cy="11" rx="1.2" ry="3.5" fill="#C4B5FD"/>
+                    <circle cx="13.5" cy="18.5" r="1" fill="white"/>
+                    <circle cx="18.5" cy="18.5" r="1" fill="white"/>
+                    <text x="14" y="24" font-size="7" fill="white" font-weight="bold" font-family="sans-serif">?</text>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                    <h3 class="text-[#1E1B4B] font-bold text-base">Unmapped Columns Found</h3>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold"
+                          style="background: #EDE9FE; color: #7B61FF;">
+                        {{ count($unmapped) }} {{ Str::plural('column', count($unmapped)) }}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500">
+                    The following columns from your file are not part of the current import template. Tell us what to do with each one.
+                </p>
+            </div>
+        </div>
+
+        {{-- Saved / Error banners --}}
+        <div x-show="saved" x-cloak
+             class="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-sm font-medium"
+             style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Column actions saved successfully.
+        </div>
+        <div x-show="error" x-cloak
+             class="flex items-center gap-2 px-4 py-3 rounded-xl mb-4 text-sm font-medium"
+             style="background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span x-text="error"></span>
+        </div>
+
+        {{-- Bulk Actions Bar --}}
+        <div class="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide mr-1">Bulk:</span>
+            <button @click="setAllAction('ignore')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 text-gray-600 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Ignore all unmapped
+            </button>
+            <button @click="setAllAction('create')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-purple-50 transition-colors"
+                    style="border-color: #C4B5FD; color: #7B61FF;">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Import all as custom fields
+            </button>
+            <button @click="setAllAction('metadata')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-200 hover:bg-blue-50 text-blue-600 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                Save all as metadata
+            </button>
+        </div>
+
+        {{-- Column Rows --}}
+        <div class="space-y-3">
+            <template x-for="(col, idx) in columns" :key="col.snake_key">
+                <div class="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+                    <div class="flex flex-col lg:flex-row lg:items-start gap-3">
+
+                        {{-- Column info --}}
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="font-semibold text-[#1E1B4B] text-sm" x-text="col.header"></span>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide"
+                                      :class="{
+                                          'bg-blue-100 text-blue-700': col.detected_type === 'text',
+                                          'bg-green-100 text-green-700': col.detected_type === 'number',
+                                          'bg-purple-100 text-purple-700': col.detected_type === 'email',
+                                          'bg-orange-100 text-orange-700': col.detected_type === 'date',
+                                          'bg-gray-100 text-gray-600': !['text','number','email','date'].includes(col.detected_type),
+                                      }"
+                                      x-text="col.detected_type"></span>
+                            </div>
+                            {{-- Sample values --}}
+                            <div class="flex flex-wrap gap-1" x-show="col.sample_vals && col.sample_vals.length > 0">
+                                <span class="text-[11px] text-gray-400 font-medium mr-1">Samples:</span>
+                                <template x-for="(val, vi) in col.sample_vals.slice(0,3)" :key="vi">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-white border border-gray-200 text-gray-600"
+                                          x-text="val"></span>
+                                </template>
+                            </div>
+                            <div x-show="!col.sample_vals || col.sample_vals.length === 0"
+                                 class="text-[11px] text-gray-400 italic">No sample values</div>
+                        </div>
+
+                        {{-- Action selector --}}
+                        <div class="flex flex-col gap-2 shrink-0 w-full lg:w-64">
+                            <select x-model="col.action"
+                                    class="form-input py-1.5 text-sm w-full">
+                                <option value="ignore">Ignore this column</option>
+                                <option value="create">Import as new custom field</option>
+                                <option value="map">Map to existing field</option>
+                                <option value="metadata">Store in notes / metadata</option>
+                            </select>
+
+                            {{-- Secondary: map to existing field --}}
+                            <div x-show="col.action === 'map'" x-cloak>
+                                <select x-model="col.map_to"
+                                        class="form-input py-1.5 text-sm w-full">
+                                    <option value="">— select field —</option>
+                                    <template x-for="field in existingFields" :key="field">
+                                        <option :value="field" x-text="field"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            {{-- Secondary: create as custom field --}}
+                            <div x-show="col.action === 'create'" x-cloak class="space-y-2">
+                                <input type="text"
+                                       x-model="col.label"
+                                       placeholder="Field label"
+                                       class="form-input py-1.5 text-sm w-full">
+                                <select x-model="col.data_type"
+                                        class="form-input py-1.5 text-sm w-full">
+                                    <option value="text">Text</option>
+                                    <option value="number">Number</option>
+                                    <option value="email">Email</option>
+                                    <option value="date">Date</option>
+                                    <option value="boolean">Boolean (Yes/No)</option>
+                                    <option value="url">URL</option>
+                                    <option value="phone">Phone</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {{-- Save Button --}}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400">
+                Actions will be applied when you confirm the import.
+            </p>
+            <button @click="saveActions()"
+                    :disabled="saving || saved"
+                    :class="saving || saved ? 'opacity-60 cursor-not-allowed' : ''"
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-colors"
+                    style="background: #7B61FF;" onmouseover="if(!this.disabled) this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
+                <svg x-show="!saving" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                </svg>
+                <svg x-show="saving" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                <span x-text="saving ? 'Saving…' : saved ? 'Saved' : 'Save Column Actions'"></span>
+            </button>
+        </div>
+    </div>
+    @endif
+    {{-- ── End Unmapped Columns ─────────────────────────────── --}}
 
     {{-- ── Row Table ─────────────────────────────────────────── --}}
     <div class="card p-0 overflow-hidden">
@@ -470,10 +655,302 @@
         </div>
     </div>
 
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    {{-- ── Save as Tenant Standard Template Section ───────────── --}}
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    @if($isAdmin)
+
+    @if($isLguIds)
+    {{-- LGU IDS: locked template notice --}}
+    <div class="flex items-start gap-3 p-4 rounded-2xl border"
+         style="background: #EFF6FF; border-color: #BFDBFE;">
+        <svg class="w-5 h-5 shrink-0 mt-0.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+        <p class="text-sm text-blue-800">
+            <span class="font-semibold">LGU IDS uses a locked import template.</span>
+            This uploaded file cannot replace or modify the standard LGU IDS template.
+        </p>
+    </div>
+
+    @else
+    {{-- Other tenants: template adoption card --}}
+    <div x-data="templateAdoption()"
+         class="card border border-gray-100">
+        <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+            {{-- R Bunny Portal mascot icon --}}
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background: #EDE9FE;">
+                <svg class="w-6 h-6" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="16" cy="20" rx="8" ry="8" fill="#7B61FF" opacity="0.15"/>
+                    <ellipse cx="16" cy="19" rx="6" ry="6" fill="#7B61FF"/>
+                    <ellipse cx="11" cy="11" rx="2.5" ry="5" fill="#7B61FF"/>
+                    <ellipse cx="21" cy="11" rx="2.5" ry="5" fill="#7B61FF"/>
+                    <ellipse cx="11" cy="11" rx="1.2" ry="3.5" fill="#C4B5FD"/>
+                    <ellipse cx="21" cy="11" rx="1.2" ry="3.5" fill="#C4B5FD"/>
+                    <circle cx="13.5" cy="18.5" r="1" fill="white"/>
+                    <circle cx="18.5" cy="18.5" r="1" fill="white"/>
+                    <polygon points="16,13 16.5,14.5 18,14.5 17,15.3 17.4,17 16,16.1 14.6,17 15,15.3 14,14.5 15.5,14.5" fill="white" opacity="0.8"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-[#1E1B4B] font-bold text-base mb-1">Save as Tenant Standard Template?</h3>
+                <p class="text-sm text-gray-500 mb-4">
+                    Do you want to use this file format as the standard import template for this tenant?
+                    Future imports will use this column structure.
+                </p>
+
+                {{-- Success state --}}
+                <div x-show="adoptSuccess" x-cloak
+                     class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium mb-4"
+                     style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Tenant import template saved successfully.
+                </div>
+
+                <div x-show="!adoptSuccess" class="flex flex-wrap gap-2">
+                    <button type="button"
+                            class="btn-secondary text-sm">
+                        No, use for this import only
+                    </button>
+                    <button type="button"
+                            @click="showAdoptModal = true"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
+                            style="background: #7B61FF;" onmouseover="this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                        </svg>
+                        Yes, save as standard template
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Double-Auth Modal ──────────────────────────────── --}}
+        <div x-show="showAdoptModal"
+             x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style="background: rgba(0,0,0,0.5);">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+                 @click.outside="showAdoptModal = false">
+
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between p-5 border-b border-gray-100">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #EDE9FE;">
+                            <svg class="w-4 h-4" style="color: #7B61FF;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-[#1E1B4B] font-bold text-base">Confirm Template Update</h2>
+                    </div>
+                    <button @click="showAdoptModal = false"
+                            class="text-gray-400 hover:text-gray-600 transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div class="p-5 space-y-4">
+                    <p class="text-sm text-gray-600">
+                        You are about to make this uploaded file format the standard import template for
+                        <span class="font-semibold text-[#1E1B4B]">{{ $tenant->name ?? $tenant->id }}</span>.
+                        This may affect future imports for your team.
+                    </p>
+
+                    {{-- Error --}}
+                    <div x-show="authError" x-cloak
+                         class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm"
+                         style="background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;">
+                        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span x-text="authError"></span>
+                    </div>
+
+                    {{-- Step 1: Confirmation phrase --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">
+                            Type <span class="font-mono px-1 py-0.5 rounded text-[#7B61FF]" style="background: #EDE9FE;">USE THIS TEMPLATE</span> to continue
+                        </label>
+                        <input type="text"
+                               x-model="confirmPhrase"
+                               placeholder="USE THIS TEMPLATE"
+                               class="form-input w-full text-sm"
+                               :class="confirmPhrase && confirmPhrase !== 'USE THIS TEMPLATE' ? 'border-red-300 focus:ring-red-300' : ''">
+                        <p x-show="confirmPhrase && confirmPhrase !== 'USE THIS TEMPLATE'" x-cloak
+                           class="text-xs text-red-500 mt-1">Phrase does not match.</p>
+                    </div>
+
+                    {{-- Step 2: Password --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Current Password</label>
+                        <input type="password"
+                               x-model="authPassword"
+                               placeholder="Enter your password"
+                               class="form-input w-full text-sm">
+                    </div>
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="flex items-center justify-end gap-2 p-5 border-t border-gray-100">
+                    <button type="button"
+                            @click="showAdoptModal = false; confirmPhrase = ''; authPassword = ''; authError = null;"
+                            class="btn-secondary text-sm">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            @click="initiateAndVerify()"
+                            :disabled="confirmPhrase !== 'USE THIS TEMPLATE' || !authPassword || adoptSaving"
+                            :class="confirmPhrase !== 'USE THIS TEMPLATE' || !authPassword || adoptSaving ? 'opacity-50 cursor-not-allowed' : ''"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
+                            style="background: #7B61FF;" onmouseover="if(!this.disabled) this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
+                        <svg x-show="!adoptSaving" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <svg x-show="adoptSaving" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        <span x-text="adoptSaving ? 'Saving…' : 'Confirm & Save Template'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {{-- ── End Double-Auth Modal ──────────────────────────── --}}
+
+    </div>
+    @endif
+
+    @endif
+    {{-- ── End Template Adoption Section ──────────────────────── --}}
+
 </div>
 
 @push('scripts')
 <script>
+const contactSaveUrl     = '{{ route('tenant.imports.contacts.column-actions', [$tenant->id, $batch->id]) }}';
+const contactInitiateUrl = '{{ $initiateUrl }}';
+const contactVerifyUrl   = '{{ $verifyUrl }}';
+
+// ── Unmapped Columns Alpine component ────────────────────────
+function unmappedColumns(unmappedData, existingFields) {
+    return {
+        columns: unmappedData.map(col => ({
+            header:        col.header,
+            snake_key:     col.snake_key,
+            sample_vals:   col.sample_vals ?? [],
+            detected_type: col.data_type ?? 'text',
+            action:        'ignore',
+            map_to:        '',
+            label:         col.header,
+            data_type:     col.data_type ?? 'text',
+        })),
+        saving:        false,
+        saved:         false,
+        error:         null,
+        existingFields: existingFields,
+
+        setAllAction(action) {
+            this.columns.forEach(c => c.action = action);
+        },
+
+        async saveActions() {
+            this.saving = true;
+            this.error  = null;
+            try {
+                const csrf = document.querySelector('meta[name=csrf-token]').content;
+                const r = await fetch(contactSaveUrl, {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'X-CSRF-TOKEN':  csrf,
+                        'Accept':        'application/json',
+                    },
+                    body: JSON.stringify({
+                        actions: this.columns.map(c => ({
+                            header:    c.header,
+                            action:    c.action,
+                            map_to:    c.map_to,
+                            label:     c.label,
+                            data_type: c.data_type,
+                        })),
+                    }),
+                });
+                if (!r.ok) throw new Error('Failed to save column actions');
+                this.saved = true;
+                this.$dispatch('show-toast', { type: 'success', message: 'Column actions saved.' });
+            } catch (e) {
+                this.error = e.message;
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+}
+
+// ── Template Adoption Alpine component ───────────────────────
+function templateAdoption() {
+    return {
+        showAdoptModal: false,
+        confirmPhrase:  '',
+        authPassword:   '',
+        authError:      null,
+        adoptSaving:    false,
+        adoptSuccess:   false,
+
+        async initiateAndVerify() {
+            if (this.confirmPhrase !== 'USE THIS TEMPLATE' || !this.authPassword) return;
+            this.adoptSaving = true;
+            this.authError   = null;
+            try {
+                const csrf = document.querySelector('meta[name=csrf-token]').content;
+
+                // Step 1: initiate
+                const r1 = await fetch(contactInitiateUrl, {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'X-CSRF-TOKEN':  csrf,
+                        'Accept':        'application/json',
+                    },
+                    body: JSON.stringify({}),
+                });
+                const d1 = await r1.json();
+                if (!r1.ok) throw new Error(d1.message ?? 'Failed to initiate template adoption.');
+
+                // Step 2: verify + save
+                const r2 = await fetch(contactVerifyUrl, {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'X-CSRF-TOKEN':  csrf,
+                        'Accept':        'application/json',
+                    },
+                    body: JSON.stringify({
+                        confirmation_phrase: this.confirmPhrase,
+                        password:            this.authPassword,
+                    }),
+                });
+                const d2 = await r2.json();
+                if (!d2.success) throw new Error(d2.message ?? 'Authentication failed. The template was not saved.');
+
+                this.showAdoptModal = false;
+                this.adoptSuccess   = true;
+                this.$dispatch('show-toast', { type: 'success', message: 'Tenant import template saved successfully.' });
+            } catch (e) {
+                this.authError = e.message;
+            } finally {
+                this.adoptSaving = false;
+            }
+        },
+    };
+}
+
+// ── Main contact import preview component ────────────────────
 function contactImportPreview() {
     return {
         activeTab: 'all',

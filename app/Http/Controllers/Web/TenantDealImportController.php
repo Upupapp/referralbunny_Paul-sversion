@@ -8,11 +8,16 @@ use App\Models\ImportBatchRow;
 use App\Models\PendingReferrerInvite;
 use App\Models\Reseller;
 use App\Models\Tenant;
+use App\Models\TenantCustomField;
 use App\Models\TenantImportSettings;
+use App\Services\ColumnDetectionService;
 use App\Services\GenericDealImportService;
+use App\Services\TemplateAdoptionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -23,7 +28,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TenantDealImportController extends Controller
 {
-    public function __construct(private GenericDealImportService $service) {}
+    public function __construct(
+        private GenericDealImportService $service,
+        private ColumnDetectionService   $columnDetection,
+        private TemplateAdoptionService  $templateAdoption,
+    ) {}
 
     // ── Guards / helpers ──────────────────────────────────────────
 
@@ -152,8 +161,19 @@ class TenantDealImportController extends Controller
         $grouped = $rows->groupBy('validation_status');
         $summary = $rows->groupBy('validation_status')->map->count();
 
+        // Build the list of known/canonical field names for the unmapped-column mapper.
+        $settings = \App\Models\TenantImportSettings::forTenant($tenantId);
+        $template = config('referralbunny_import_templates')[$settings->industry_template_key ?? 'default']
+            ?? config('referralbunny_import_templates.default')
+            ?? [];
+        $knownFields = array_values(array_unique(array_merge(
+            $template['required_fields'] ?? [],
+            $template['optional_fields'] ?? [],
+            array_values($template['aliases'] ?? []),
+        )));
+
         return view('tenant.imports.deals.preview', compact(
-            'tenant', 'batch', 'rows', 'grouped', 'summary'
+            'tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields'
         ));
     }
 
@@ -337,5 +357,158 @@ class TenantDealImportController extends Controller
         return redirect()
             ->route('tenant.imports.deals.settings', $tenantId)
             ->with('success', 'Import settings saved successfully.');
+    }
+
+    // ── Dynamic Column Handling ───────────────────────────────────
+
+    /**
+     * Save per-column actions (ignore / map / create / metadata) chosen by the admin
+     * after the unmapped-column detection step.
+     *
+     * For 'create' actions a TenantCustomField record is created immediately.
+     */
+    public function saveColumnActions(string $tenantId, string $batchId, Request $request): JsonResponse
+    {
+        $this->guardCheck();
+        $this->resolveTenant($tenantId);
+
+        $validated = $request->validate([
+            'actions'             => 'required|array',
+            'actions.*.header'    => 'required|string',
+            'actions.*.action'    => 'required|in:ignore,map,create,metadata',
+            'actions.*.map_to'    => 'nullable|string',
+            'actions.*.data_type' => 'nullable|string',
+            'actions.*.label'     => 'nullable|string',
+        ]);
+
+        $batch = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+
+        $createdFields = [];
+
+        foreach ($validated['actions'] as $action) {
+            if ($action['action'] === 'create') {
+                $label    = $action['label'] ?? $action['header'];
+                $fieldKey = $this->columnDetection->generateFieldKey($label, $tenantId, 'deals');
+                $dataType = $action['data_type'] ?? 'text';
+
+                $field = TenantCustomField::firstOrCreate(
+                    ['tenant_id' => $tenantId, 'destination_type' => 'deals', 'field_key' => $fieldKey],
+                    [
+                        'field_label'       => $label,
+                        'data_type'         => $dataType,
+                        'is_required'       => false,
+                        'is_importable'     => true,
+                        'is_exportable'     => true,
+                        'is_visible'        => true,
+                        'created_by_user_id'=> $this->authId(),
+                    ]
+                );
+
+                $createdFields[] = [
+                    'header'    => $action['header'],
+                    'field_key' => $field->field_key,
+                    'label'     => $field->field_label,
+                    'data_type' => $field->data_type,
+                ];
+            }
+        }
+
+        $batch->update(['column_actions_json' => $validated['actions']]);
+
+        return response()->json([
+            'success'        => true,
+            'created_fields' => $createdFields,
+            'total_actions'  => count($validated['actions']),
+        ]);
+    }
+
+    /**
+     * Initiate the template adoption flow for a previewed batch.
+     * Returns the confirmation phrase and flags that a password will be required.
+     */
+    public function initiateTemplateAdoption(string $tenantId, string $batchId, Request $request): JsonResponse
+    {
+        $this->guardCheck();
+        abort_if($tenantId === 'lgu-ids', 403, 'LGU IDS uses a locked import template that cannot be modified.');
+        $this->resolveTenant($tenantId);
+
+        // Determine acting user role
+        $role = $this->authRole();
+        if (!$this->templateAdoption->canAdopt($role)) {
+            return response()->json([
+                'can_adopt' => false,
+                'message'   => 'Your role does not have permission to save import templates.',
+            ], 403);
+        }
+
+        $batch = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch->update(['template_adoption_status' => 'pending']);
+
+        return response()->json([
+            'can_adopt'              => true,
+            'requires_confirmation'  => 'USE THIS TEMPLATE',
+            'requires_password'      => true,
+        ]);
+    }
+
+    /**
+     * Verify double-auth (confirmation phrase + password) and save the template version.
+     * On success, the batch adoption status is set to 'saved'.
+     */
+    public function verifyAndSaveTemplate(string $tenantId, string $batchId, Request $request): JsonResponse
+    {
+        $this->guardCheck();
+        abort_if($tenantId === 'lgu-ids', 403, 'LGU IDS uses a locked import template that cannot be modified.');
+        $this->resolveTenant($tenantId);
+
+        $request->validate([
+            'confirmation_phrase' => 'required|string',
+            'password'            => 'required|string',
+            'template_name'       => 'nullable|string|max:200',
+        ]);
+
+        if ($request->input('confirmation_phrase') !== 'USE THIS TEMPLATE') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Confirmation phrase did not match. The template was not saved.',
+            ], 422);
+        }
+
+        $user = Auth::guard('tenant')->user();
+
+        if (!$user || !Hash::check($request->input('password'), $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication failed. The template was not saved.',
+            ], 403);
+        }
+
+        $batch        = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $template     = $this->service->getTemplate($tenantId);
+        $templateName = $request->input('template_name') ?? ('Deals Template — ' . now()->format('Y-m-d'));
+
+        $savedTemplate = $this->templateAdoption->createVersion(
+            tenantId:       $tenantId,
+            destType:       'deals',
+            batch:          $batch,
+            fields:         array_merge(
+                $template['required_fields'] ?? [],
+                $template['optional_fields'] ?? []
+            ),
+            requiredFields: $template['required_fields'] ?? [],
+            aliases:        $template['aliases'] ?? [],
+            sampleHeaders:  $batch->unmapped_columns_json ?? [],
+            templateName:   $templateName,
+            createdBy:      $user,
+            approvedBy:     $user,
+        );
+
+        $batch->update(['template_adoption_status' => 'saved']);
+
+        return response()->json([
+            'success'     => true,
+            'template_id' => $savedTemplate->id,
+            'version'     => $savedTemplate->version_number,
+        ]);
     }
 }

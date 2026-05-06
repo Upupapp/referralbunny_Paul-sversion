@@ -9,6 +9,7 @@ use App\Models\LeadHistory;
 use App\Models\PendingReferrerInvite;
 use App\Models\Reseller;
 use App\Models\TenantImportSettings;
+use App\Services\TemplateAdoptionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -75,6 +76,27 @@ class GenericDealImportService
             }
         }
         return $mapping;
+    }
+
+    /**
+     * Map raw CSV/XLSX headers to canonical field names and also return unmapped headers.
+     * Returns [ 'mapped' => [...], 'unmapped' => [...] ]
+     */
+    public function detectColumnsWithUnmapped(array $headers, array $aliases): array
+    {
+        $mapped   = [];
+        $unmapped = [];
+        foreach ($headers as $header) {
+            $key = strtolower(trim($header));
+            if (isset($aliases[$key])) {
+                $mapped[$header] = $aliases[$key];
+            } elseif (in_array($key, array_values($aliases), true)) {
+                $mapped[$header] = $key;
+            } else {
+                $unmapped[] = $header;
+            }
+        }
+        return ['mapped' => $mapped, 'unmapped' => $unmapped];
     }
 
     /**
@@ -447,18 +469,34 @@ class GenericDealImportService
         string $importedById,
         string $importedByRole
     ): ImportBatch {
-        $settings       = $this->getSettings($tenantId);
-        $template       = $this->getTemplate($tenantId);
-        $requiredFields = $settings->required_fields
-            ?? $template['required_fields']
-            ?? ['deal_name', 'deal_amount', 'referrer_email', 'organization_name'];
-        $aliases        = $template['aliases'] ?? [];
+        $settings = $this->getSettings($tenantId);
+        $template = $this->getTemplate($tenantId);
+
+        // Check for a saved tenant template first; fall back to config template
+        $tenantTemplate = app(TemplateAdoptionService::class)->getDefault($tenantId, 'deals');
+        if ($tenantTemplate) {
+            $aliases        = $tenantTemplate->aliases_json ?? $template['aliases'] ?? [];
+            $requiredFields = $tenantTemplate->required_fields_json
+                ?? $settings->required_fields
+                ?? $template['required_fields']
+                ?? ['deal_name', 'deal_amount', 'referrer_email', 'organization_name'];
+        } else {
+            $aliases        = $template['aliases'] ?? [];
+            $requiredFields = $settings->required_fields
+                ?? $template['required_fields']
+                ?? ['deal_name', 'deal_amount', 'referrer_email', 'organization_name'];
+        }
 
         $path    = $file->store("imports/generic/{$tenantId}", 'local');
         $parsed  = $this->parseFile($file);
         $headers = $parsed['headers'];
         $rawRows = $parsed['rows'];
-        $colMap  = $this->detectColumns($headers, $aliases);
+
+        // Detect mapped and unmapped columns together
+        $columnResult = $this->detectColumnsWithUnmapped($headers, $aliases);
+        $colMap       = $columnResult['mapped'];
+        $unmappedList = $columnResult['unmapped'];
+
         $missing = $this->getMissingRequired($colMap, $requiredFields);
 
         if (!empty($missing)) {
@@ -469,14 +507,16 @@ class GenericDealImportService
         }
 
         $batch = ImportBatch::create([
-            'tenant_id'        => $tenantId,
-            'import_type'      => 'generic_deals',
-            'file_name'        => $file->getClientOriginalName(),
-            'file_path'        => $path,
-            'imported_by_id'   => $importedById,
-            'imported_by_role' => $importedByRole,
-            'status'           => 'previewing',
-            'total_rows'       => count($rawRows),
+            'tenant_id'              => $tenantId,
+            'import_type'            => 'generic_deals',
+            'file_name'              => $file->getClientOriginalName(),
+            'file_path'              => $path,
+            'imported_by_id'         => $importedById,
+            'imported_by_role'       => $importedByRole,
+            'status'                 => 'previewing',
+            'total_rows'             => count($rawRows),
+            'unmapped_columns_json'  => $unmappedList,
+            'template_adoption_status' => 'none',
         ]);
 
         $importDate     = now()->toDateString();
