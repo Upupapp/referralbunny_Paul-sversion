@@ -43,25 +43,42 @@
         </div>
 
         {{-- Category + Priority filters --}}
-        <div class="flex flex-wrap gap-2 mt-3">
-            <select x-model="filterCategory" @change="page = 1; load()" class="form-input text-xs py-1.5 px-3 w-auto">
-                <option value="">All categories</option>
-                <option value="deal_pipeline">Deals</option>
-                <option value="commission">Commission</option>
-                <option value="reseller_referrer">Resellers</option>
-                <option value="import_export">Imports</option>
-                <option value="billing_subscription">Billing</option>
-                <option value="auth_security">Security</option>
-                <option value="system">System</option>
-                <option value="dashboard_briefing">Briefing</option>
-            </select>
-            <select x-model="filterPriority" @change="page = 1; load()" class="form-input text-xs py-1.5 px-3 w-auto">
-                <option value="">All priorities</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
-            </select>
+        <div class="filter-bar mt-3">
+            <label class="filter-pill" :class="filterCategory !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                <select x-model="filterCategory" @change="page = 1; load()">
+                    <option value="">All Categories</option>
+                    <option value="deal_pipeline">Deals</option>
+                    <option value="commission">Commission</option>
+                    <option value="reseller_referrer">Referrers</option>
+                    <option value="import_export">Imports</option>
+                    <option value="billing_subscription">Billing</option>
+                    <option value="auth_security">Security</option>
+                    <option value="system">System</option>
+                    <option value="dashboard_briefing">Briefing</option>
+                    <option value="team">Team</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            <label class="filter-pill" :class="filterPriority !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <select x-model="filterPriority" @change="page = 1; load()">
+                    <option value="">All Priorities</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="normal">Normal</option>
+                    <option value="low">Low</option>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+
+            <button x-show="filterCategory || filterPriority"
+                    @click="filterCategory=''; filterPriority=''; page=1; load()"
+                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                Clear
+            </button>
         </div>
     </div>
 
