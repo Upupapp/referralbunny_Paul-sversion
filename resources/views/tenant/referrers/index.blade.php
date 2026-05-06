@@ -78,7 +78,10 @@
         <div class="filter-bar">
             <label class="filter-pill" :class="filterStatus !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <select x-model="filterStatus" @change="applyFilters()" autocomplete="off">
+                <select x-ref="statusFilter"
+                        x-effect="$el.value = filterStatus"
+                        @change="filterStatus = $event.target.value; applyFilters()"
+                        autocomplete="off">
                     <option value="">All Status</option>
                     <option value="invited">Invited</option>
                     <option value="active">Active</option>
@@ -96,7 +99,7 @@
             <label x-cloak x-show="totalRequiredAgreements > 0" class="filter-pill" :class="filterAgreement !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 <select x-ref="agFilter"
-                        x-model="filterAgreement"
+                        x-effect="$el.value = filterAgreement"
                         @change="filterAgreement = $event.target.value; applyFilters()"
                         autocomplete="off" name="__ag_no_restore">
                     <option value="" selected>All Agreements</option>
@@ -108,7 +111,7 @@
             <label x-cloak x-show="totalRequiredDocs > 0" class="filter-pill" :class="filterDoc !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
                 <select x-ref="docFilter"
-                        x-model="filterDoc"
+                        x-effect="$el.value = filterDoc"
                         @change="filterDoc = $event.target.value; applyFilters()"
                         autocomplete="off" name="__doc_no_restore">
                     <option value="" selected>All Doc Status</option>
@@ -690,6 +693,12 @@ function referrersModule(tenantId) {
         },
 
         applyFilters() {
+            // Fast-path: nothing is filtering — show everything
+            if (!this.search && !this.filterStatus && !this.filterAgreement && !this.filterDoc) {
+                this.filtered = this.referrers.slice();
+                return;
+            }
+
             const q = this.search.toLowerCase();
             // Only apply compliance/doc filters when data has actually loaded
             const agLoaded = Object.keys(this.resellerCompliance).length > 0;
