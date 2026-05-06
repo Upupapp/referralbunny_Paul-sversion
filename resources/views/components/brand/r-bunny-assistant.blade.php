@@ -28,8 +28,8 @@
         x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
         x-transition:leave-end="opacity-0 translate-y-2 scale-95"
-        class="bg-white rounded-2xl shadow-2xl border border-gray-100 w-[310px] sm:w-[330px] mb-2 flex flex-col overflow-hidden"
-        style="pointer-events:all; max-height: calc(100vh - 8rem)"
+        class="bg-white rounded-2xl shadow-2xl border border-gray-100 mb-2 flex flex-col overflow-hidden"
+        style="pointer-events:all; width:320px; max-height:calc(100vh - 8rem)"
         role="dialog"
         aria-label="R Bunny assistant panel"
     >

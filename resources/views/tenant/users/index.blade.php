@@ -321,14 +321,18 @@
 {{-- Invite Modal --}}
 @if($isAdmin)
 <div id="invite-modal"
-     class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-     style="background: rgba(0,0,0,.5)" x-data
+     class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,.5)"
+     x-data
      @keydown.escape.window="document.getElementById('invite-modal').classList.add('hidden')">
-    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto flex flex-col"
+
+    {{-- Card — always centered, always constrained to 440px --}}
+    <div class="bg-white rounded-2xl shadow-2xl w-full overflow-hidden"
+         style="max-width:440px; max-height:90vh; overflow-y:auto"
          @click.stop>
 
         {{-- Header --}}
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 sticky top-0 bg-white rounded-t-2xl sm:rounded-t-2xl">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
             <div class="flex items-center gap-2.5">
                 <div class="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
                     <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,17 +343,17 @@
             </div>
             <button onclick="document.getElementById('invite-modal').classList.add('hidden')"
                     class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                    aria-label="Close invite modal">
+                    aria-label="Close">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
 
-        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4 flex-1">
+        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4">
             @csrf
 
-            {{-- Inline error (visible when modal auto-opens after a failed submit) --}}
+            {{-- Inline error --}}
             @if($errors->any())
                 <div class="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-3.5 py-3">
                     <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,11 +365,9 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5" for="inv-email">Email address</label>
-                <input id="inv-email" name="email" type="email" required
+                <input id="inv-email" name="email" type="email" required autocomplete="email"
                        class="w-full border {{ $errors->has('email') ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50' }} rounded-xl px-3.5 py-2.5 text-sm text-gray-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
-                       placeholder="colleague@company.com"
-                       value="{{ old('email') }}"
-                       autocomplete="email">
+                       placeholder="colleague@company.com" value="{{ old('email') }}">
             </div>
 
             <div>
@@ -380,23 +382,11 @@
                     <option value="member"  {{ old('role') === 'member'  ? 'selected' : '' }}>Member — Standard team access</option>
                     <option value="viewer"  {{ old('role') === 'viewer'  ? 'selected' : '' }}>Viewer — Read-only access</option>
                 </select>
-                <p class="text-[11px] text-gray-400 mt-1">
-                    You can only invite roles below your own level.
-                </p>
+                <p class="text-[11px] text-gray-400 mt-1.5">You can only invite roles below your own level.</p>
             </div>
 
-            {{-- Role descriptions --}}
-            @if(in_array($actingRole, ['owner', 'admin']))
-            <div class="bg-[#F8F7FF] rounded-xl p-3 space-y-1.5 border border-violet-100">
-                <p class="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-2">Role Summary</p>
-                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Admin</span> — Full access. No billing or ownership transfer.</p>
-                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Manager</span> — Daily ops. Billing access optional.</p>
-                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Member</span> — Standard team access. View + own tasks.</p>
-                <p class="text-[11px] text-gray-600"><span class="font-semibold text-[#1E1B4B]">Viewer</span> — Read-only. No changes allowed.</p>
-            </div>
-            @endif
-
-            <div class="flex gap-2.5 pt-1 pb-2">
+            {{-- Action buttons — always visible --}}
+            <div class="flex gap-2.5 pt-2">
                 <button type="button"
                         onclick="document.getElementById('invite-modal').classList.add('hidden')"
                         class="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">

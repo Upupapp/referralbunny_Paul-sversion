@@ -36,7 +36,7 @@
         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
         x-transition:leave-end="opacity-0 scale-95 translate-y-4"
         x-cloak
-        class="fixed inset-0 z-[170] flex items-end sm:items-center justify-center p-4 sm:p-6"
+        class="fixed inset-0 z-[170] flex items-center justify-center p-4"
         style="pointer-events:all"
         role="dialog"
         aria-modal="true"
