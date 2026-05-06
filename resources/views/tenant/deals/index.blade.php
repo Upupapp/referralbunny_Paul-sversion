@@ -3,6 +3,26 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
+    {{-- Import Deals — LGU IDS uses locked import flow; other tenants use generic flow --}}
+    @if($tenant->id === 'lgu-ids')
+        <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
+           class="btn-secondary"
+           title="Uses the locked LGU IDS deal import template and computation rules.">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span class="hidden sm:inline">Import Deals</span>
+        </a>
+    @else
+        <a href="{{ route('tenant.imports.deals', $tenant->id) }}"
+           class="btn-secondary"
+           title="Upload a standard file to create or update deals.">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span class="hidden sm:inline">Import Deals</span>
+        </a>
+    @endif
     <button x-data @click="$dispatch('open-add-deal')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>
