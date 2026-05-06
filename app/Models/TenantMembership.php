@@ -15,6 +15,8 @@ class TenantMembership extends Model
         'id', 'tenant_id', 'tenant_user_id', 'role', 'status',
         'joined_by_invitation', 'password_review_completed',
         'setup_completed', 'last_accessed_at', 'joined_at',
+        'permissions_json', 'can_manage_billing', 'can_delete_tenant',
+        'can_transfer_ownership', 'is_custom_permissions', 'invited_by_user_id',
     ];
 
     protected $casts = [
@@ -24,6 +26,11 @@ class TenantMembership extends Model
         'setup_completed'           => 'boolean',
         'last_accessed_at'          => 'datetime',
         'joined_at'                 => 'datetime',
+        'permissions_json'          => 'array',
+        'can_manage_billing'        => 'boolean',
+        'can_delete_tenant'         => 'boolean',
+        'can_transfer_ownership'    => 'boolean',
+        'is_custom_permissions'     => 'boolean',
     ];
 
     protected static function boot(): void

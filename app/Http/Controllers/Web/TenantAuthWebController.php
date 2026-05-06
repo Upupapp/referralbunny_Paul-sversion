@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Http\Request;
@@ -56,10 +57,72 @@ class TenantAuthWebController extends Controller
         return redirect()->route('tenant.login');
     }
 
+    /**
+     * Show workspace selector — shown when a user belongs to multiple tenants.
+     */
+    public function selectWorkspace(Request $request)
+    {
+        if (! Auth::guard('tenant')->check()) {
+            return redirect()->route('tenant.login');
+        }
+
+        $user = Auth::guard('tenant')->user();
+
+        $memberships = TenantMembership::where('tenant_user_id', $user->id)
+            ->where('status', 'active')
+            ->with('tenant')
+            ->orderByRaw("CASE role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'manager' THEN 3 WHEN 'member' THEN 4 ELSE 5 END")
+            ->get();
+
+        if ($memberships->isEmpty()) {
+            return redirect()->route('tenant.login')
+                ->withErrors(['email' => 'No active tenant workspace found for your account.']);
+        }
+
+        if ($memberships->count() === 1) {
+            return redirect()->route('tenant.dashboard', $memberships->first()->tenant_id);
+        }
+
+        return view('auth.tenant-select-workspace', compact('memberships', 'user'));
+    }
+
+    /**
+     * Process workspace selection and redirect into the chosen tenant.
+     */
+    public function chooseWorkspace(Request $request)
+    {
+        if (! Auth::guard('tenant')->check()) {
+            return redirect()->route('tenant.login');
+        }
+
+        $request->validate(['tenant_id' => ['required', 'string']]);
+
+        $user = Auth::guard('tenant')->user();
+        $tenantId = $request->input('tenant_id');
+
+        $membership = TenantMembership::where('tenant_user_id', $user->id)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $membership) {
+            return back()->withErrors(['tenant_id' => 'You do not have access to that workspace.']);
+        }
+
+        // First-time invited user password review
+        if ($membership->joined_by_invitation && ! $membership->password_review_completed) {
+            session(['tenant_membership_id' => $membership->id]);
+            return redirect()->route('tenant.first-signin-password');
+        }
+
+        return redirect()->route('tenant.dashboard', $tenantId);
+    }
+
     private function redirectAfterLogin(TenantUser $user)
     {
         $memberships = TenantMembership::where('tenant_user_id', $user->id)
             ->where('status', 'active')
+            ->with('tenant')
             ->get();
 
         if ($memberships->isEmpty()) {
@@ -84,7 +147,8 @@ class TenantAuthWebController extends Controller
             return redirect()->route('tenant.dashboard', $m->tenant_id);
         }
 
-        // Multiple tenants — show selector
-        return redirect()->route('tenant.select');
+        // Multiple tenants — show workspace selector
+        session(['pending_tenant_select' => $memberships->pluck('tenant_id')->toArray()]);
+        return redirect()->route('tenant.select-workspace');
     }
 }

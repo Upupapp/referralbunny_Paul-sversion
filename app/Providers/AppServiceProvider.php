@@ -10,6 +10,7 @@ use App\Listeners\HandleCommissionStatusChanged;
 use App\Listeners\HandleDealCreated;
 use App\Listeners\HandleDealExpired;
 use App\Listeners\HandleResellerJoined;
+use App\Services\PermissionService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -17,7 +18,10 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton(PermissionService::class);
+    }
 
     public function boot(): void
     {

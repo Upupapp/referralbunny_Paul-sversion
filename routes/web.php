@@ -45,6 +45,15 @@ Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->na
 Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post');
 Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
 
+// ── Tenant Invite Acceptance (public — no auth required) ──────
+use App\Http\Controllers\Web\TenantInvitationController;
+Route::get('/tenant/accept-invite/{token}',  [TenantInvitationController::class, 'show'])->name('tenant.accept-invite.show');
+Route::post('/tenant/accept-invite/{token}', [TenantInvitationController::class, 'accept'])->name('tenant.accept-invite');
+
+// ── Tenant Workspace Selector ─────────────────────────────────
+Route::get('/tenant/select-workspace',  [TenantAuthWebController::class, 'selectWorkspace'])->name('tenant.select-workspace');
+Route::post('/tenant/select-workspace', [TenantAuthWebController::class, 'chooseWorkspace'])->name('tenant.choose-workspace');
+
 // ── Build a Referral Program (Tenant Signup) ─────────────────
 Route::get('/tenant/create',  [TenantSignupWebController::class, 'showBuild'])->name('tenant.create');
 Route::post('/tenant/create', [TenantSignupWebController::class, 'build'])->name('tenant.create.post');
@@ -162,6 +171,7 @@ Route::middleware(['auth:tenant,reseller,web'])
     });
 
 // ── Tenant app ────────────────────────────────────────────────
+use App\Http\Controllers\Web\TenantUserManagementController;
 Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
@@ -173,9 +183,18 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
-    Route::get('/users',           [TenantAdminController::class, 'users'])->name('users');
     Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');
+
+    // ── User & Role Management ────────────────────────────────────
+    Route::get('/users',                               [TenantUserManagementController::class, 'index'])->name('users');
+    Route::post('/users/invite',                       [TenantUserManagementController::class, 'invite'])->name('users.invite');
+    Route::post('/users/{userId}/permissions',         [TenantUserManagementController::class, 'updatePermissions'])->name('users.permissions');
+    Route::post('/users/{userId}/billing-toggle',      [TenantUserManagementController::class, 'toggleBilling'])->name('users.billing-toggle');
+    Route::post('/users/{userId}/deactivate',          [TenantUserManagementController::class, 'deactivateUser'])->name('users.deactivate');
+    Route::delete('/users/{userId}',                   [TenantUserManagementController::class, 'removeUser'])->name('users.remove');
+    Route::post('/invitations/{inviteId}/resend',      [TenantUserManagementController::class, 'resendInvite'])->name('invitations.resend');
+    Route::delete('/invitations/{inviteId}',           [TenantUserManagementController::class, 'revokeInvite'])->name('invitations.revoke');
 
     Route::get('/leads', function($tenantId) {
         $tenant = \App\Models\Tenant::findOrFail($tenantId);
