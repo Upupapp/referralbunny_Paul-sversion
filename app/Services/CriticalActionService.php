@@ -83,11 +83,20 @@ class CriticalActionService
      */
     public function forReseller(string $tenantId, string $resellerName, int $limit = 8): array
     {
-        $items = array_merge(
-            $this->resellerExpiringDeals($tenantId, $resellerName),
-            $this->resellerLeadHistory($tenantId, $resellerName),
-            $this->resellerCommissionUpdates($tenantId, $resellerName),
-        );
+        $sources = [
+            fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
+            fn() => $this->resellerLeadHistory($tenantId, $resellerName),
+            fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
+        ];
+
+        $items = [];
+        foreach ($sources as $source) {
+            try {
+                $items = array_merge($items, $source());
+            } catch (\Throwable) {
+                // one failed source never breaks the reseller dashboard
+            }
+        }
 
         usort($items, fn($a, $b) =>
             (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)

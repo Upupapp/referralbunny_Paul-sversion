@@ -27,11 +27,16 @@ class ResellerPortalController extends Controller
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
 
-        $leads = DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->where('reseller_name', $reseller->name)
-            ->orderByDesc('created_at')
-            ->get();
+        // Load all reseller-accessible leads safely
+        try {
+            $leads = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('reseller_name', $reseller->name)
+                ->orderByDesc('created_at')
+                ->get();
+        } catch (\Throwable) {
+            $leads = collect();
+        }
 
         $stats = [
             'total'      => $leads->count(),
@@ -44,11 +49,40 @@ class ResellerPortalController extends Controller
                 : 0,
         ];
 
-        $recentLeads    = $leads->take(6);
-        $recentActivity = app(CriticalActionService::class)
-            ->forReseller($tenantId, $reseller->name, 6);
+        $recentLeads = $leads->take(6);
 
-        return view('reseller.dashboard', compact('reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity'));
+        // Commission summary — safe fallback if commission_status column missing
+        try {
+            $commissionStats = [
+                'pending' => $leads->where('commission_status', 'pending')->sum('deal_value'),
+                'locked'  => $leads->where('commission_status', 'locked')->sum('deal_value'),
+                'paid'    => $leads->where('commission_status', 'paid')->sum('deal_value'),
+            ];
+        } catch (\Throwable) {
+            $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+        }
+
+        // Unread messages count
+        try {
+            $thread      = \App\Models\MessageThread::where('tenant_id', $tenantId)
+                ->where('reseller_id', $reseller->id)->first();
+            $unreadCount = $thread ? (int) $thread->reseller_unread : 0;
+        } catch (\Throwable) {
+            $unreadCount = 0;
+        }
+
+        // Recent activity — wrapped so any DB issue never crashes the dashboard
+        try {
+            $recentActivity = app(CriticalActionService::class)
+                ->forReseller($tenantId, $reseller->name, 6);
+        } catch (\Throwable) {
+            $recentActivity = [];
+        }
+
+        return view('reseller.dashboard', compact(
+            'reseller', 'tenant', 'stats', 'recentLeads',
+            'recentActivity', 'commissionStats', 'unreadCount'
+        ));
     }
 
     public function deals($tenantId)
