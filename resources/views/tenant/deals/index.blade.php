@@ -351,7 +351,8 @@
                 <div>
                     <label class="form-label">Referrer *</label>
                     <div x-show="!manualReferrer">
-                        <select x-model="form.reseller_name"
+                        <select x-model="selectedReferrerId"
+                                @change="onReferrerSelect($event.target.value)"
                                 class="form-input"
                                 :class="activatedReferrers.length === 0 ? 'opacity-50' : ''">
                             <option value="">
@@ -487,7 +488,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         municipalityOptions: [],
         // Referrer dropdown
-        activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
+        activatedReferrers: [], loadingReferrers: false, manualReferrer: false, selectedReferrerId: '',
         form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '' },
 
         stages: [
@@ -642,6 +643,12 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         viewDeal(id) { window.location.href = `/tenant/${tenantId}/deals/${id}`; },
 
         // ── Referrer dropdown ─────────────────────────────────────────────────
+        onReferrerSelect(id) {
+            if (!id) { this.form.reseller_name = ''; return; }
+            const r = this.activatedReferrers.find(x => x.id === id);
+            if (r) this.form.reseller_name = r.name;
+        },
+
         async loadActivatedReferrers() {
             this.loadingReferrers = true;
             try {
@@ -720,6 +727,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             this.nameAutoFilled = false;
             this.municipalityOptions = [];
             this.manualReferrer = this.activatedReferrers.length === 0;
+            this.selectedReferrerId = '';
             // Apply LGU IDS default tier for deal_value=4M
             if (showLocation) this.syncFromDealValue();
         },

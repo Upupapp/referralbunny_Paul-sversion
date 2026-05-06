@@ -172,15 +172,23 @@ class LeadController extends Controller
         ]);
 
         // Fire event → triggers deal created emails (reseller + tenant admin)
-        DealCreatedEvent::dispatch(
-            leadId:        $lead->id,
-            leadName:      $lead->name,
-            tenantId:      $lead->tenant_id,
-            resellerName:  $lead->reseller_name,
-            stage:         $lead->stage,
-            dealValue:     (float) ($lead->deal_value ?? 0),
-            daysLeft:      $lead->days_left ?? 21,
-        );
+        // Wrapped in try-catch — listener failure must not cause a 500 on deal creation
+        try {
+            DealCreatedEvent::dispatch(
+                leadId:        $lead->id,
+                leadName:      $lead->name,
+                tenantId:      $lead->tenant_id,
+                resellerName:  $lead->reseller_name,
+                stage:         $lead->stage,
+                dealValue:     (float) ($lead->deal_value ?? 0),
+                daysLeft:      $lead->days_left ?? 21,
+            );
+        } catch (\Throwable $e) {
+            Log::error('DealCreatedEvent dispatch failed (non-fatal): ' . $e->getMessage(), [
+                'lead_id'   => $lead->id,
+                'tenant_id' => $lead->tenant_id,
+            ]);
+        }
 
         // Auto-create reseller + send invite if a new email was provided
         $resellerCreated = false;
@@ -210,6 +218,7 @@ class LeadController extends Controller
                     'is_anonymous'      => false,
                     'joined_date'       => now()->toDateString(),
                     'created_at'        => now(),
+                    'updated_at'        => now(),
                 ]);
                 $resellerCreated = true;
 

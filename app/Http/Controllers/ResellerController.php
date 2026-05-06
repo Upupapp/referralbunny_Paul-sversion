@@ -295,7 +295,7 @@ class ResellerController extends Controller
      */
     public function activatedOptions(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if (!$tenantId) {
             return response()->json([]);
         }
@@ -320,6 +320,26 @@ class ResellerController extends Controller
             'status'       => $r->status,
             'display_name' => $r->name . ' — ' . $r->email,
         ]);
+
+        // Also include active tenant users (admins/managers) as assignable referrers
+        // so Tenant Admins can assign themselves or other team members to deals
+        try {
+            $tenantUsers = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->select('u.id', 'u.first_name', 'u.last_name', 'u.email', 'tm.role')
+                ->get()
+                ->map(fn($u) => [
+                    'id'           => 'user:' . $u->id,
+                    'name'         => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
+                    'email'        => $u->email,
+                    'status'       => 'admin',
+                    'display_name' => (trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email) . ' — ' . $u->email . ' (' . $u->role . ')',
+                ]);
+            $resellers = $resellers->concat($tenantUsers)->sortBy('name')->values();
+        } catch (\Throwable) {}
 
         return response()->json($resellers);
     }
