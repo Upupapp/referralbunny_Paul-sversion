@@ -65,6 +65,17 @@
     </div>
 
 
+    {{-- TEMP DEBUG: remove after fix --}}
+    <div style="background:#fef08a;border:1px solid #ca8a04;padding:8px 12px;border-radius:8px;font-size:11px;font-family:monospace;">
+        search="<span x-text="JSON.stringify(search)"></span>"
+        &nbsp;|&nbsp; status="<span x-text="JSON.stringify(filterStatus)"></span>"
+        &nbsp;|&nbsp; agreement="<span x-text="JSON.stringify(filterAgreement)"></span>"
+        &nbsp;|&nbsp; doc="<span x-text="JSON.stringify(filterDoc)"></span>"
+        &nbsp;|&nbsp; referrers=<span x-text="referrers.length"></span>
+        &nbsp;|&nbsp; filtered=<span x-text="filtered.length"></span>
+        &nbsp;|&nbsp; totalRequiredDocs=<span x-text="totalRequiredDocs"></span>
+    </div>
+
     {{-- Filter bar --}}
     <div class="card space-y-3">
         <div class="search-group">
