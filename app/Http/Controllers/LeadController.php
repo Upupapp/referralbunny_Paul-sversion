@@ -71,6 +71,18 @@ class LeadController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        try {
+        return $this->doStore($request);
+        } catch (\Throwable $e) {
+            \Log::error('LeadController::store failed: ' . $e->getMessage(), [
+                'file' => $e->getFile(), 'line' => $e->getLine(),
+            ]);
+            return response()->json(['message' => $e->getMessage(), 'error_detail' => $e->getFile().':'.$e->getLine()], 500);
+        }
+    }
+
+    private function doStore(Request $request): JsonResponse
+    {
         $data = $request->validate([
             'name'               => 'required|string',
             'stage'              => 'required|string',
@@ -244,7 +256,7 @@ class LeadController extends Controller
             $lead->load(['commissionSplits', 'notes', 'history'])->toArray(),
             ['reseller_created' => $resellerCreated, 'invite_sent' => $inviteSent]
         ), 201);
-    }
+    } // end doStore
 
     public function show(Lead $lead): JsonResponse
     {
