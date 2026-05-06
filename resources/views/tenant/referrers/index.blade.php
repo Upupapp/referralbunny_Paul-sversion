@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button onclick="Alpine.store('referrersInvite').show = true" class="btn-primary">
+    <button onclick="rbInviteOpen()" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
         <span class="hidden sm:inline">Invite Referrer</span>
     </button>
@@ -152,7 +152,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="referrers.length === 0 ? 'No referrers yet. Invite your first referrer.' : 'No referrers match the filters.'"></p>
-                                <button x-show="referrers.length === 0" @click="$store.referrersInvite.show = true" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
+                                <button x-show="referrers.length === 0" onclick="rbInviteOpen()" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
                             </td>
                         </tr>
                     </template>
@@ -512,63 +512,7 @@
         </div>
     </div>
 
-    {{-- Invite Modal — mirrors anonConfirm pattern (x-data + Tailwind flex classes already in CSS) --}}
-    <div x-show="$store.referrersInvite.show"
-         x-cloak
-         class="fixed inset-0 flex items-center justify-center p-4"
-         style="z-index:9000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px)"
-         @click="$store.referrersInvite.show = false; resetForm()">
-
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.stop
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100">
-
-            {{-- Header --}}
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-[#1E1B4B]">Invite Referrer</h3>
-                <button @click="$store.referrersInvite.show = false; resetForm()"
-                        class="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-
-            {{-- Body --}}
-            <form id="referrer-invite-form"
-                  onsubmit="event.preventDefault(); window._submitReferrerInvite && window._submitReferrerInvite()"
-                  class="p-6 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label">Full Name *</label>
-                        <input type="text" x-model="form.name" class="form-input" placeholder="Juan dela Cruz">
-                    </div>
-                    <div>
-                        <label class="form-label">Email *</label>
-                        <input type="email" x-model="form.email" class="form-input" placeholder="juan@email.com">
-                    </div>
-                    <div>
-                        <label class="form-label">Phone</label>
-                        <input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX">
-                    </div>
-                    <div>
-                        <label class="form-label">Territory</label>
-                        <input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila">
-                    </div>
-                </div>
-                {{-- Error — plain HTML, no Alpine/Tailwind dependency --}}
-                <p id="referrer-invite-error"
-                   style="display:none;color:#dc2626;font-size:12px;margin:0 0 4px"></p>
-                <div class="flex justify-end gap-3 pt-1">
-                    <button type="button"
-                            onclick="Alpine.store('referrersInvite').show = false; document.getElementById('referrer-invite-form').reset(); document.getElementById('referrer-invite-error').style.display='none'"
-                            class="btn-secondary">Cancel</button>
-                    <button type="submit"
-                            class="btn-secondary"
-                            style="background:#FF5733;color:#fff;border-color:#FF5733">Send Invitation</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    {{-- Invite Modal: pure vanilla JS, zero Alpine dependency --}}
 
 </div>
 
@@ -663,8 +607,11 @@ function referrersModule(tenantId) {
         docSaving: null,
 
         async init() {
-            // Global bridge so the invite form's native onsubmit can call invite()
-            window._submitReferrerInvite = () => { if (!this.saving) this.invite(); };
+            // Listen for successful invite from the pure-JS modal
+            window.addEventListener('referrer-invited', (e) => {
+                this.referrers.unshift(e.detail);
+                this.applyFilters();
+            });
 
             try {
                 const res = await fetch(`/api/resellers?tenant_id=${tenantId}`);
@@ -1233,4 +1180,115 @@ function referrersModule(tenantId) {
 
     </div>
 </div>
+
+{{-- ── Pure-JS Invite Referrer Modal ─────────────────────────────────────── --}}
+<div id="rb-invite-overlay"
+     style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:1rem"
+     onclick="if(event.target===this)rbInviteClose()">
+    <div style="background:#fff;border-radius:1rem;width:100%;max-width:440px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)"
+         onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f3f4f6">
+            <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
+            <button onclick="rbInviteClose()" style="background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;line-height:0">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="rb-invite-form" onsubmit="rbInviteSubmit(event)" style="padding:24px">
+            <input type="hidden" id="rb-invite-tenant" value="{{ $tenant->id ?? '' }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Full Name *</label>
+                    <input type="text" id="rb-inv-name" class="form-input" placeholder="Juan dela Cruz">
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Email *</label>
+                    <input type="email" id="rb-inv-email" class="form-input" placeholder="juan@email.com">
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Phone</label>
+                    <input type="text" id="rb-inv-phone" class="form-input" placeholder="+63 9XX XXX XXXX">
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">Territory</label>
+                    <input type="text" id="rb-inv-territory" class="form-input" placeholder="e.g. Metro Manila">
+                </div>
+            </div>
+            <p id="rb-invite-error" style="display:none;color:#dc2626;font-size:12px;margin:0 0 12px 0"></p>
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+                <button type="button" onclick="rbInviteClose()"
+                        style="padding:8px 18px;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">
+                    Cancel
+                </button>
+                <button type="submit" id="rb-invite-btn"
+                        style="padding:8px 18px;background:#FF5733;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+                    Send Invitation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function rbInviteOpen() {
+    document.getElementById('rb-invite-form').reset();
+    document.getElementById('rb-invite-error').style.display = 'none';
+    document.getElementById('rb-invite-btn').textContent = 'Send Invitation';
+    document.getElementById('rb-invite-btn').disabled = false;
+    var o = document.getElementById('rb-invite-overlay');
+    o.style.display = 'flex';
+    setTimeout(function(){ document.getElementById('rb-inv-name').focus(); }, 50);
+}
+
+function rbInviteClose() {
+    document.getElementById('rb-invite-overlay').style.display = 'none';
+    document.getElementById('rb-invite-form').reset();
+    document.getElementById('rb-invite-error').style.display = 'none';
+}
+
+async function rbInviteSubmit(e) {
+    e.preventDefault();
+    var name      = document.getElementById('rb-inv-name').value.trim();
+    var email     = document.getElementById('rb-inv-email').value.trim();
+    var phone     = document.getElementById('rb-inv-phone').value.trim();
+    var territory = document.getElementById('rb-inv-territory').value.trim();
+    var tenantId  = document.getElementById('rb-invite-tenant').value;
+    var errEl     = document.getElementById('rb-invite-error');
+    var btn       = document.getElementById('rb-invite-btn');
+
+    errEl.style.display = 'none';
+    if (!name)  { errEl.textContent = 'Full name is required.';  errEl.style.display = 'block'; return; }
+    if (!email) { errEl.textContent = 'Email address is required.'; errEl.style.display = 'block'; return; }
+
+    btn.textContent = 'Inviting…';
+    btn.disabled = true;
+
+    try {
+        var csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        var res  = await fetch('/api/resellers', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body:    JSON.stringify({ name: name, email: email, phone: phone, territory: territory, tenant_id: tenantId, status: 'invited' })
+        });
+        var data = await res.json();
+        if (data.id) {
+            rbInviteClose();
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Referrer invited successfully.' }}));
+            window.dispatchEvent(new CustomEvent('referrer-invited', { detail: data }));
+        } else {
+            var msg = (data.errors && data.errors.email && data.errors.email[0]) || data.message || 'Failed to invite referrer.';
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
+            btn.textContent = 'Send Invitation';
+            btn.disabled = false;
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.textContent = 'Send Invitation';
+        btn.disabled = false;
+    }
+}
+</script>
+@endpush
 @endsection
