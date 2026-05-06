@@ -829,7 +829,6 @@ function dealDetail(leadId, tenantId) {
         fmt(v) {
             const n = Math.round(Number(v) || 0);
             if (n === 0) return '—';
-            if (n >= 1000000) return '₱' + (n/1000000).toFixed(1) + 'M';
             return '₱' + n.toLocaleString('en');
         },
 
