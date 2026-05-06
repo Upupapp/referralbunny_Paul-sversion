@@ -15,6 +15,16 @@ class Lead extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(function (self $model) {
+            if (empty($model->id)) {
+                $model->id = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
     protected $fillable = [
         'tenant_id', 'name', 'stage', 'status', 'days_left',
         'reseller_name', 'commission_status',
