@@ -26,7 +26,7 @@
         </div>
         <div class="filter-bar">
             <label class="filter-pill" :class="filterStatus ? 'active' : ''">
-                <select x-model="filterStatus" @change="applyFilters()">
+                <select x-effect="$el.value = filterStatus" @change="filterStatus = $event.target.value; applyFilters()">
                     <option value="">All Status</option>
                     <option value="active">Active</option>
                     <option value="expiring">Expiring</option>
@@ -35,7 +35,7 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
             <label class="filter-pill" :class="filterStage ? 'active' : ''">
-                <select x-model="filterStage" @change="applyFilters()">
+                <select x-effect="$el.value = filterStage" @change="filterStage = $event.target.value; applyFilters()">
                     <option value="">All Stages</option>
                     <option value="introduction">Introduction</option>
                     <option value="presentation">Presentation</option>
@@ -45,12 +45,13 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <button x-show="filterStatus || filterStage || search"
-                    @click="filterStatus=''; filterStage=''; search=''; applyFilters()"
-                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                Clear
-            </button>
+            <template x-if="filterStatus || filterStage || search">
+                <button @click="filterStatus=''; filterStage=''; search=''; applyFilters()"
+                        class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Clear
+                </button>
+            </template>
         </div>
     </div>
 
@@ -313,7 +314,10 @@ function resellerDeals(tenantId, resellerName) {
             const preStatus = urlParams.get('status');
             if (['expiring','expired','active'].includes(preStatus)) this.filterStatus = preStatus;
             try {
-                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1`);
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
                 const data = await res.json();
                 this.leads = Array.isArray(data) ? data : [];
             } catch(e) { this.leads = []; }
@@ -343,7 +347,10 @@ function resellerDeals(tenantId, resellerName) {
             if (!this.claimProvince) { this.availableOrgs = []; return; }
             this.loadingOrgs = true;
             try {
-                const res  = await fetch(`/api/organizations/available?tenant_id=${tenantId}&province=${encodeURIComponent(this.claimProvince)}`);
+                const res  = await fetch(`/api/organizations/available?tenant_id=${tenantId}&province=${encodeURIComponent(this.claimProvince)}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
                 this.availableOrgs = await res.json();
             } catch(e) { this.availableOrgs = []; }
             this.loadingOrgs = false;
@@ -362,8 +369,9 @@ function resellerDeals(tenantId, resellerName) {
             this.saving = true;
             try {
                 const res  = await fetch('/api/leads', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({
                         tenant_id:       tenantId,
                         reseller_name:   resellerName,

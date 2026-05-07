@@ -21,7 +21,7 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" x-model="search" @input.debounce="filter()" placeholder="Search leads…">
             </div>
-            <select x-model="filterStage" @change="filter()" class="form-input sm:w-40">
+            <select x-effect="$el.value = filterStage" @change="filterStage = $event.target.value; filter()" class="form-input sm:w-40">
                 <option value="">All Stages</option>
                 <option value="introduction">Introduction</option>
                 <option value="presentation">Presentation</option>
@@ -29,7 +29,7 @@
                 <option value="signed">Signed</option>
                 <option value="paid">Paid</option>
             </select>
-            <select x-model="filterStatus" @change="filter()" class="form-input sm:w-36">
+            <select x-effect="$el.value = filterStatus" @change="filterStatus = $event.target.value; filter()" class="form-input sm:w-36">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
                 <option value="expiring">Expiring</option>
@@ -118,8 +118,9 @@
                     <div><label class="form-label">Deal Value (₱)</label><input type="number" x-model="form.deal_value" class="form-input" placeholder="0" min="0"></div>
                 </div>
                 <div><label class="form-label">Reseller Name *</label><input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned reseller"></div>
+                <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
                 <div class="flex justify-end gap-3">
-                    <button @click="showAdd = false" class="btn-secondary">Cancel</button>
+                    <button @click="showAdd = false; formError = ''" class="btn-secondary">Cancel</button>
                     <button @click="addLead()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Add Lead'"></button>
                 </div>
             </div>
@@ -131,13 +132,18 @@
 function leadsPage(tenantId, showLocation) {
     return {
         leads: [], filtered: [], loading: true, showAdd: false, saving: false,
-        search: '', filterStage: '', filterStatus: '',
+        search: '', filterStage: '', filterStatus: '', formError: '',
         nameAutoFilled: false,
         form: { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' },
 
         async init() {
-            const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
-            this.leads = await res.json();
+            try {
+                const res = await fetch(`/api/leads?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.leads = await res.json();
+            } catch(e) { this.leads = []; }
             this.filtered = this.leads;
             this.loading = false;
         },
@@ -159,21 +165,33 @@ function leadsPage(tenantId, showLocation) {
         },
 
         async addLead() {
-            if (showLocation && !this.form.province)     { alert('Province is required.'); return; }
-            if (showLocation && !this.form.municipality) { alert('Municipality / City is required.'); return; }
-            if (!this.form.name || !this.form.reseller_name) return;
+            this.formError = '';
+            if (showLocation && !this.form.province)     { this.formError = 'Province is required.'; return; }
+            if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; return; }
+            if (!this.form.name)         { this.formError = 'Lead name is required.'; return; }
+            if (!this.form.reseller_name){ this.formError = 'Reseller name is required.'; return; }
             this.saving = true;
             try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const { province, municipality, ...rest } = this.form;
-                await fetch('/api/leads', {
-                    method: 'POST',
-                    headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ ...rest, tenant_id: tenantId, data: { province, municipality } }),
+                const res = await fetch('/api/leads', {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:        JSON.stringify({ ...rest, tenant_id: tenantId, data: { province, municipality } }),
                 });
-                this.showAdd = false;
-                this.form = { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' };
-                this.nameAutoFilled = false;
-                await this.init();
+                const data = await res.json();
+                if (res.ok) {
+                    this.showAdd = false;
+                    this.form = { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' };
+                    this.nameAutoFilled = false;
+                    this.formError = '';
+                    await this.init();
+                } else {
+                    this.formError = data.message || 'Failed to save lead. Please try again.';
+                }
+            } catch(e) {
+                this.formError = 'Network error. Please try again.';
             } finally { this.saving = false; }
         },
     }

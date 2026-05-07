@@ -76,7 +76,7 @@
             {{-- Island Group (Luzon / Visayas / Mindanao) --}}
             <label class="filter-pill" :class="filterIsland ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
-                <select x-model="filterIsland" @change="filterRegion=''; filterProvince=''; resetAndFetch()">
+                <select x-effect="$el.value = filterIsland" @change="filterIsland = $event.target.value; filterRegion=''; filterProvince=''; resetAndFetch()">
                     <option value="">All Islands</option>
                     <option value="Luzon">Luzon</option>
                     <option value="Visayas">Visayas</option>
@@ -88,7 +88,7 @@
             {{-- Region (cascades from island group) --}}
             <label class="filter-pill" :class="filterRegion ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-                <select x-model="filterRegion" @change="filterProvince=''; resetAndFetch()">
+                <select x-effect="$el.value = filterRegion" @change="filterRegion = $event.target.value; filterProvince=''; resetAndFetch()">
                     <option value="">All Regions</option>
                     <template x-for="r in filteredRegionList" :key="r">
                         <option :value="r" x-text="r.split(' – ')[0]"></option>
@@ -101,7 +101,7 @@
             <label class="filter-pill" :class="filterProvince ? 'active' : ''"
                    x-show="filterRegion || filterProvince">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-                <select x-model="filterProvince" @change="resetAndFetch()">
+                <select x-effect="$el.value = filterProvince" @change="filterProvince = $event.target.value; resetAndFetch()">
                     <option value="">All Provinces</option>
                     <template x-for="p in provinceOptions" :key="p">
                         <option :value="p" x-text="p"></option>
@@ -113,7 +113,7 @@
             {{-- LGU Type --}}
             <label class="filter-pill" :class="filterType ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                <select x-model="filterType" @change="resetAndFetch()">
+                <select x-effect="$el.value = filterType" @change="filterType = $event.target.value; resetAndFetch()">
                     <option value="">Cities &amp; Municipalities</option>
                     <option value="City">Cities only</option>
                     <option value="Municipality">Municipalities only</option>
@@ -124,7 +124,7 @@
             {{-- Deal Status --}}
             <label class="filter-pill" :class="filterHasDeal !== '' ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                <select x-model="filterHasDeal" @change="resetAndFetch()">
+                <select x-effect="$el.value = filterHasDeal" @change="filterHasDeal = $event.target.value; resetAndFetch()">
                     <option value="">All Deal Status</option>
                     <option value="1">With Active Deals</option>
                     <option value="0">No Deals Yet</option>
@@ -392,7 +392,10 @@
                     if (this.filterProvince)      p.set('province',     this.filterProvince);
                     if (this.filterType)          p.set('lgu_type',     this.filterType);
                     if (this.filterHasDeal !== '') p.set('has_deal',    this.filterHasDeal);
-                    const res  = await fetch(`/api/organizations?${p}`);
+                    const res  = await fetch(`/api/organizations?${p}`, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    });
                     const json = await res.json();
                     this.orgs  = (json.data || []).map(o => {
                         let _d = {};
@@ -469,8 +472,9 @@
                     const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
                     const res    = await fetch(url, {
                         method,
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                        body: JSON.stringify(body),
+                        credentials: 'same-origin',
+                        headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
+                        body:        JSON.stringify(body),
                     });
                     const data = await res.json();
                     if (data.id) {
@@ -488,8 +492,9 @@
                 if (!confirm('Delete this organization? Contacts linked to it will become unaffiliated.')) return;
                 try {
                     await fetch(`/api/organizations/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        method:      'DELETE',
+                        credentials: 'same-origin',
+                        headers:     { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
                     });
                     this.$dispatch('show-toast', { type: 'success', message: 'Organization deleted.' });
                     await this.fetch();
