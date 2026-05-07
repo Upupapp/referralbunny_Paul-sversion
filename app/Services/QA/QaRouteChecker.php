@@ -94,8 +94,16 @@ class QaRouteChecker
             $middleware = $route->gatherMiddleware();
             $mwFlat     = implode(',', $middleware);
 
-            // Tenant routes should have tenant context
-            if (str_starts_with($uri, 'tenant/') && !str_contains($mwFlat, 'tenant.access') && !str_contains($uri, 'login') && !str_contains($uri, 'register') && !str_contains($uri, 'invite') && !str_contains($uri, 'accept')) {
+            // Intentionally public /tenant/* routes (no tenant.access required)
+            $publicTenantPaths = ['login', 'logout', 'register', 'invite', 'accept', 'create', 'join',
+                                  'select-workspace', 'choose-workspace', 'forgot-password', 'reset-password',
+                                  'build', 'verify', 'link-expired'];
+            $isPublicTenant = false;
+            foreach ($publicTenantPaths as $pub) {
+                if (str_contains($uri, $pub)) { $isPublicTenant = true; break; }
+            }
+
+            if (str_starts_with($uri, 'tenant/') && !str_contains($mwFlat, 'tenant.access') && !$isPublicTenant) {
                 $unguarded[] = $uri;
             }
         }

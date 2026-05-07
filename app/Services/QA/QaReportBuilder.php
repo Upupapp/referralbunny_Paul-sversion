@@ -159,8 +159,8 @@ class QaReportBuilder
             };
 
             $label = ucfirst($status);
-            $md[]  = "## {$icon} {$label} ({$count})" . str_replace('{$count}', count($items), '');
-            $md[]  = "## {$icon} {$label} (" . count($items) . ")";
+            $count = count($items);
+            $md[]  = "## {$icon} {$label} ({$count})";
             $md[]  = "";
             $md[]  = "| Module | Check | Message |";
             $md[]  = "|--------|-------|---------|";
