@@ -49,6 +49,18 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "qa": [
+            "@php artisan referralbunny:qa-audit"
+        ],
+        "qa-full": [
+            "@php artisan referralbunny:qa-audit --full --report"
+        ],
+        "qa-lgu": [
+            "@php artisan referralbunny:qa-audit --tenant=lgu-ids --lgu-ids --data --queues --report"
+        ],
+        "qa-emails": [
+            "@php artisan referralbunny:qa-audit --emails"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
