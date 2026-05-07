@@ -61,7 +61,7 @@ class DiagnoseReferrerInviteDedupCommand extends Command
             ->where('tenant_id', $tenantId)
             ->select(DB::raw('LOWER(email) as normalized_email'), DB::raw('COUNT(*) as cnt'))
             ->groupBy(DB::raw('LOWER(email)'))
-            ->having('cnt', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
 
         if ($duplicateEmails->isEmpty()) {
