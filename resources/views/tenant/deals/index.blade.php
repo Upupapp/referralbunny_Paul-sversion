@@ -362,7 +362,7 @@
                                 <span x-show="!loadingReferrers && activatedReferrers.length > 0">Select an activated referrer…</span>
                             </option>
                             <template x-for="r in activatedReferrers" :key="r.id">
-                                <option :value="r.name" x-text="r.display_name"></option>
+                                <option :value="r.id" x-text="r.display_name"></option>
                             </template>
                         </select>
                         <div class="flex items-center justify-between mt-1">

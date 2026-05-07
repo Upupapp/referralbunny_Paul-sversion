@@ -813,9 +813,10 @@ document.addEventListener('alpine:init', () => {
             this.saving = true;
             try {
                 await fetch(`/api/resellers/${this.reseller.id}`, {
-                    method:  'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body:    JSON.stringify({ is_anonymous: this.enabling }),
+                    method:       'PATCH',
+                    credentials:  'same-origin',
+                    headers:      { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body:         JSON.stringify({ is_anonymous: this.enabling }),
                 });
                 this.reseller.is_anonymous = this.enabling;
             } finally {
@@ -1197,9 +1198,10 @@ function referrersModule(tenantId) {
         async updateStatus(id, status) {
             try {
                 await fetch(`/api/resellers/${id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ status }),
+                    method:      'PATCH',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body:        JSON.stringify({ status }),
                 });
                 const r = this.referrers.find(r => r.id === id);
                 if (r) { r.status = status; this.applyFilters(); }
@@ -1221,9 +1223,10 @@ function referrersModule(tenantId) {
             this.saving = true;
             try {
                 const res = await fetch('/api/resellers', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ ...this.form, tenant_id: tenantId, status: 'invited' }),
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body:        JSON.stringify({ ...this.form, tenant_id: tenantId, status: 'invited' }),
                 });
                 const reseller = await res.json();
                 if (reseller.id) {
