@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Mail\ResellerInvitation;
 use App\Models\ActivityLog;
 use App\Models\Reseller;
+use App\Services\DealReferrerAssignmentService;
+use App\Services\ReferrerInvitationDeduplicationService;
+use App\Services\TenantRoleService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -291,7 +294,11 @@ class ResellerController extends Controller
 
     /**
      * GET /api/resellers/activated-options
-     * Returns only activated (active/nda_signed) resellers for deal assignment.
+     *
+     * Returns activated Referrers for deal assignment dropdown.
+     * Includes Admin/Manager users who ALSO hold Referrer role (linked reseller record).
+     * Excludes Admins/Managers who do NOT have Referrer role.
+     * Tenant-scoped. Never crosses tenant boundaries.
      */
     public function activatedOptions(Request $request): JsonResponse
     {
@@ -300,48 +307,96 @@ class ResellerController extends Controller
             return response()->json([]);
         }
 
-        $query = Reseller::where('tenant_id', $tenantId)
-            ->whereIn('status', ['active', 'nda_signed'])
-            ->whereNotNull('email')
-            ->orderBy('name');
+        $search    = $request->filled('search') ? $request->query('search') : null;
+        $referrers = app(DealReferrerAssignmentService::class)
+            ->getActivatedReferrersForTenant($tenantId, $search);
 
-        if ($request->filled('search')) {
-            $q = '%' . strtolower($request->search) . '%';
-            $query->where(function ($qb) use ($q) {
-                $qb->whereRaw('LOWER(name) LIKE ?', [$q])
-                   ->orWhereRaw('LOWER(email) LIKE ?', [$q]);
-            });
+        return response()->json($referrers->values());
+    }
+
+    /**
+     * GET /api/resellers/check-email
+     *
+     * Classify a referrer email before assignment:
+     * active_referrer | pending_referrer | active_admin_manager | new_referrer | invalid_email
+     *
+     * Used by deal creation form to show the correct prompt when a manual
+     * email matches an existing Admin/Manager without Referrer role.
+     */
+    public function checkEmail(Request $request): JsonResponse
+    {
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $email    = $request->query('email', '');
+
+        if (!$tenantId || !$email) {
+            return response()->json(['status' => 'invalid_email', 'existing_roles' => []]);
         }
 
-        $resellers = $query->get()->map(fn($r) => [
-            'id'           => $r->id,
-            'name'         => $r->name,
-            'email'        => $r->email,
-            'status'       => $r->status,
-            'display_name' => $r->name . ' — ' . $r->email,
+        $result = app(DealReferrerAssignmentService::class)
+            ->classifyReferrerEmail($tenantId, $email);
+
+        return response()->json($result);
+    }
+
+    /**
+     * POST /api/resellers/add-referrer-role/{tenantUserId}
+     *
+     * Add Referrer role to an existing Tenant Admin or Tenant Manager.
+     * Creates a Reseller record linked to their TenantUser account.
+     * Status is set to 'active' immediately (no account setup invite needed).
+     * Sends role-added in-app notification instead of setup email.
+     * Does NOT remove their existing Admin/Manager role.
+     */
+    public function addReferrerRole(Request $request, string $tenantUserId): JsonResponse
+    {
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context.'], 403);
+        }
+
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only Tenant Admins can add Referrer role.'], 403);
+        }
+
+        $data = $request->validate([
+            'deal_id' => 'nullable|string',
         ]);
 
-        // Also include active tenant users (admins/managers) as assignable referrers
-        // so Tenant Admins can assign themselves or other team members to deals
-        try {
-            $tenantUsers = DB::table('tenant_memberships as tm')
-                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
-                ->where('tm.tenant_id', $tenantId)
-                ->where('tm.status', 'active')
-                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-                ->select('u.id', 'u.first_name', 'u.last_name', 'u.email', 'tm.role')
-                ->get()
-                ->map(fn($u) => [
-                    'id'           => 'user:' . $u->id,
-                    'name'         => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
-                    'email'        => $u->email,
-                    'status'       => 'admin',
-                    'display_name' => (trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email) . ' — ' . $u->email . ' (' . $u->role . ')',
-                ]);
-            $resellers = $resellers->concat($tenantUsers)->sortBy('name')->values();
-        } catch (\Throwable) {}
+        [$actorId] = $this->resolveActor();
 
-        return response()->json($resellers);
+        try {
+            $result = app(TenantRoleService::class)->addReferrerRoleToTenantUser(
+                tenantId:     $tenantId,
+                tenantUserId: $tenantUserId,
+                actorId:      $actorId,
+                actorRole:    'admin',
+                dealId:       $data['deal_id'] ?? null,
+            );
+
+            return response()->json([
+                'success'         => true,
+                'reseller'        => $result['reseller'],
+                'created'         => $result['created'],
+                'already_referrer'=> $result['already_referrer'],
+                'message'         => $result['already_referrer']
+                    ? 'This user already has Referrer role in this tenant.'
+                    : 'Referrer role added successfully. No account setup email sent — user already has access.',
+            ], $result['created'] ? 201 : 200);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 404);
+        } catch (\Throwable $e) {
+            Log::error('addReferrerRole failed: ' . $e->getMessage(), [
+                'tenant_user_id' => $tenantUserId,
+                'tenant_id'      => $tenantId,
+            ]);
+            return response()->json(['error' => 'Could not add Referrer role.'], 500);
+        }
+    }
+
+    private function resolveActor(): array
+    {
+        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        return [$user?->id ?? 'unknown'];
     }
 
     public function summary(Request $request): JsonResponse

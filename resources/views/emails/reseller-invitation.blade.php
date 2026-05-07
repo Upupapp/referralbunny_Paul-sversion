@@ -10,13 +10,33 @@
 
 <p class="text">
     You've been invited to join <strong>{{ $tenantName }}</strong>'s referral program on ReferralBunny.ai.
-    As a referrer, you'll be able to submit deals, track your pipeline, and earn commissions.
+    As a Referrer, you'll be able to submit deals, track your pipeline, and earn commissions.
 </p>
 
-@if($dealName)
+@php $totalDeals = $dealCount ?? 0; $names = $dealNames ?? []; $singleName = $dealName ?? null; @endphp
+
+@if($totalDeals > 1)
+{{-- Summarized multi-deal invitation --}}
+<div class="highlight-box highlight-purple">
+    <div class="highlight-title" style="color:#7B61FF">{{ $totalDeals }} Deal(s) Already Assigned to You</div>
+    <div class="highlight-text">
+        After activating your account, you can view all assigned deals in your Referrer dashboard.
+        @if(count($names) > 0)
+        <br><br>
+        @foreach($names as $i => $name)
+        <strong>{{ $name }}</strong>@if(!$loop->last)<br>@endif
+        @endforeach
+        @if($totalDeals > count($names))
+        <br>…and {{ $totalDeals - count($names) }} more
+        @endif
+        @endif
+    </div>
+</div>
+@elseif($singleName)
+{{-- Single deal assignment --}}
 <div class="highlight-box highlight-purple">
     <div class="highlight-title" style="color:#7B61FF">Deal Already Assigned to You</div>
-    <div class="highlight-text"><strong>{{ $dealName }}</strong> is waiting for you in your dashboard.</div>
+    <div class="highlight-text"><strong>{{ $singleName }}</strong> is waiting for you in your dashboard.</div>
 </div>
 @endif
 

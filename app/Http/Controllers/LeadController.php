@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
 use App\Models\CommissionSplit;
+use App\Services\ReferrerInvitationDeduplicationService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -202,61 +203,58 @@ class LeadController extends Controller
             ]);
         }
 
-        // Auto-create reseller + send invite if a new email was provided
+        // Handle Referrer assignment/invitation with full deduplication
         $resellerCreated = false;
         $inviteSent      = false;
+        $inviteAction    = null;
 
         if (!empty($data['new_reseller_email'])) {
-            $exists = DB::table('resellers')
-                ->where('tenant_id', $tenantId)
-                ->where(function ($q) use ($data) {
-                    $q->where('name', $data['reseller_name'])
-                      ->orWhere('email', $data['new_reseller_email']);
-                })
-                ->exists();
+            $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
 
-            if (!$exists) {
-                $setupToken = Str::random(64);
-                DB::table('resellers')->insert([
-                    'id'                => (string) Str::uuid(),
-                    'tenant_id'         => $tenantId,
-                    'name'              => $data['reseller_name'],
-                    'email'             => strtolower(trim($data['new_reseller_email'])),
-                    'status'            => 'invited',
-                    'setup_token'       => $setupToken,
-                    'assigned_leads'    => 1,
-                    'closed_value'      => 0,
-                    'performance_score' => 0,
-                    'is_anonymous'      => false,
-                    'joined_date'       => now()->toDateString(),
-                    'created_at'        => now(),
-                    'updated_at'        => now(),
-                ]);
-                $resellerCreated = true;
+            [$actorId, $actorRole] = $this->resolveActor();
 
-                $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
-                $setupUrl   = url('/reseller/setup?token=' . $setupToken);
+            $result = app(ReferrerInvitationDeduplicationService::class)->handleReferrerAssignment(
+                tenantId:   $tenantId,
+                email:      strtolower(trim($data['new_reseller_email'])),
+                name:       $data['reseller_name'],
+                dealId:     $lead->id,
+                source:     'deal_creation',
+                tenantName: $tenantName,
+                actorId:    $actorId,
+                actorRole:  $actorRole,
+            );
 
-                try {
-                    Mail::send(new ResellerInvitation(
-                        resellerName:  $data['reseller_name'],
-                        resellerEmail: strtolower(trim($data['new_reseller_email'])),
-                        tenantName:    $tenantName,
-                        setupUrl:      $setupUrl,
-                        dealName:      $data['name'],
-                    ));
-                    $inviteSent = true;
-                } catch (\Throwable $e) {
-                    Log::warning("Reseller invite email failed for {$data['new_reseller_email']}: {$e->getMessage()}");
-                }
-            }
+            $resellerCreated = ($result['action'] === 'created');
+            $inviteSent      = $result['email_sent'];
+            $inviteAction    = $result['action'];
         }
 
         return response()->json(array_merge(
             $lead->load(['commissionSplits', 'notes', 'history'])->toArray(),
-            ['reseller_created' => $resellerCreated, 'invite_sent' => $inviteSent]
+            [
+                'reseller_created' => $resellerCreated,
+                'invite_sent'      => $inviteSent,
+                'invite_action'    => $inviteAction,
+            ]
         ), 201);
     } // end doStore
+
+    private function resolveActor(): array
+    {
+        if (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
+            $u = \Illuminate\Support\Facades\Auth::guard('tenant')->user();
+            return [$u->id ?? 'unknown', 'manager'];
+        }
+        if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+            $u = \Illuminate\Support\Facades\Auth::guard('web')->user();
+            return [$u->id ?? 'unknown', 'owner'];
+        }
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+            $u = \Illuminate\Support\Facades\Auth::guard('reseller')->user();
+            return [$u->id ?? 'unknown', 'referrer'];
+        }
+        return ['system', 'system'];
+    }
 
     public function show(Lead $lead): JsonResponse
     {

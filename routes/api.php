@@ -78,7 +78,9 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('resellers',                    [ResellerController::class, 'index']);
     Route::post('resellers',                   [ResellerController::class, 'store'])->middleware('feature.access:resellers,create');
     Route::get('resellers/activated-options',  [ResellerController::class, 'activatedOptions']);
+    Route::get('resellers/check-email',        [ResellerController::class, 'checkEmail']);
     Route::get('resellers/summary',            [ResellerController::class, 'summary']);
+    Route::post('resellers/add-referrer-role/{tenantUserId}', [ResellerController::class, 'addReferrerRole']);
     Route::get('resellers/{reseller}',         [ResellerController::class, 'show']);
     Route::put('resellers/{reseller}',         [ResellerController::class, 'update']);
     Route::patch('resellers/{reseller}',       [ResellerController::class, 'update']);

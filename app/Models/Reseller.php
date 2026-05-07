@@ -33,17 +33,27 @@ class Reseller extends Authenticatable
         'password', 'setup_token', 'remember_token',
         'nickname', 'job_title', 'department', 'organization',
         'location', 'timezone', 'language', 'bio', 'profile_photo_path',
+        // Multi-role support (v40)
+        'linked_tenant_user_id',
+        // Invitation summary fields (v40)
+        'invite_deal_ids',
+        'invite_deal_count',
+        'invite_sent_at',
     ];
 
     protected $hidden = ['password', 'remember_token', 'setup_token'];
 
     protected $casts = [
-        'joined_date'       => 'date',
-        'closed_value'      => 'decimal:2',
-        'assigned_leads'    => 'integer',
-        'performance_score' => 'integer',
-        'is_anonymous'      => 'boolean',
-        'password'          => 'hashed',
+        'joined_date'           => 'date',
+        'closed_value'          => 'decimal:2',
+        'assigned_leads'        => 'integer',
+        'performance_score'     => 'integer',
+        'is_anonymous'          => 'boolean',
+        'password'              => 'hashed',
+        // Multi-role / invitation summary (v40)
+        'invite_deal_ids'       => 'array',
+        'invite_deal_count'     => 'integer',
+        'invite_sent_at'        => 'datetime',
     ];
 
     public function toAnonymousArray(): array
