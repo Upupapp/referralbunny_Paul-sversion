@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS deal_partner_splits (
     tenant_id            TEXT        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     deal_id              TEXT        NOT NULL,   -- references leads(id)
     partner_user_id      UUID        REFERENCES partner_users(id) ON DELETE SET NULL,
-    partner_contact_id   TEXT        REFERENCES contacts(id) ON DELETE SET NULL,
+    partner_contact_id   UUID        REFERENCES contacts(id) ON DELETE SET NULL,
     partner_invitation_id TEXT,                  -- references contact_role_invitations(id)
     partner_name         TEXT        NOT NULL,
     partner_email        TEXT        NOT NULL,   -- normalized (lowercase, trimmed)
