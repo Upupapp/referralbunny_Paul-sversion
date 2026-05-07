@@ -57,7 +57,7 @@ class HandleDealExpired
         // Notify active Partners associated with this deal
         $activePartners = DB::table('deal_partner_splits')
             ->where('tenant_id', $event->tenantId)
-            ->where('deal_id', $event->leadId)
+            ->whereRaw('deal_id = ?', [$event->leadId])
             ->where('status', 'active')
             ->whereNotNull('partner_user_id')
             ->whereNull('deleted_at')

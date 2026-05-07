@@ -118,8 +118,8 @@ class NotifyExpiringLeads extends Command
 
         $partnerDeals = DB::table('deal_partner_splits as dps')
             ->join('leads as l', function($j) {
-                $j->on('l.id', '=', 'dps.deal_id')
-                  ->whereColumn('l.tenant_id', 'dps.tenant_id');
+                $j->on(DB::raw('l.id::text'), '=', 'dps.deal_id')
+                  ->on('l.tenant_id', '=', 'dps.tenant_id');
             })
             ->where('l.status', 'expiring')
             ->where('dps.status', 'active')
