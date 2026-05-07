@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PartnerPasswordReset;
 use App\Models\DealPartner;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class PartnerAuthController extends Controller
 {
@@ -118,5 +122,76 @@ class PartnerAuthController extends Controller
         }
 
         return view('auth.partner-setup', compact('partner', 'token'));
+    }
+
+    public function showForgotPassword()
+    {
+        return view('auth.partner-forgot-password');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $partner = Partner::where('email', strtolower(trim($request->email)))->first();
+
+        // Always return success to prevent email enumeration
+        if ($partner && $partner->status === 'active') {
+            $token    = Str::random(64);
+            $resetUrl = url('/partner/reset-password?token=' . $token);
+
+            $partner->update(['setup_token' => $token]);
+
+            try {
+                Mail::send(new PartnerPasswordReset(
+                    partnerName:  $partner->full_name ?: $partner->email,
+                    partnerEmail: $partner->email,
+                    tenantName:   $partner->tenant?->name ?? 'ReferralBunny',
+                    resetUrl:     $resetUrl,
+                ));
+            } catch (\Throwable $e) {
+                Log::warning("Partner password reset email failed: {$e->getMessage()}");
+            }
+        }
+
+        return back()->with('success', 'If an account exists with that email, a reset link has been sent.');
+    }
+
+    public function showResetPassword(Request $request)
+    {
+        $token = $request->query('token');
+        if (!$token) {
+            return redirect()->route('partner.login');
+        }
+
+        $partner = Partner::where('setup_token', $token)->first();
+        if (!$partner) {
+            return redirect()->route('partner.login')
+                ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
+        }
+
+        return view('auth.partner-reset-password', compact('token'));
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token'                 => 'required|string',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $partner = Partner::where('setup_token', $data['token'])->first();
+        if (!$partner) {
+            return back()->withErrors(['token' => 'Invalid or expired reset link.']);
+        }
+
+        $partner->update([
+            'password'    => Hash::make($data['password']),
+            'setup_token' => null,
+        ]);
+
+        return redirect()->route('partner.login')
+            ->with('success', 'Password updated. You can now sign in with your new password.');
     }
 }

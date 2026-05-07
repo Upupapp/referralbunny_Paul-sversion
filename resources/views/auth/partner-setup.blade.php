@@ -112,7 +112,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary">Activate My Account →</button>
+                <button type="submit" class="btn-primary" @click="sub=true" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'" x-data="{ sub: false }">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
                     Already set up? <a href="{{ route('partner.login') }}" style="color:#2563EB;text-decoration:none">Sign in</a>

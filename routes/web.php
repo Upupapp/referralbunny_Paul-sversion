@@ -117,12 +117,16 @@ use App\Http\Controllers\Web\PartnerAuthController;
 use App\Http\Controllers\Web\PartnerPortalController;
 use App\Http\Controllers\Web\PartnerProfileController;
 
-Route::get('/partner/login',           [PartnerAuthController::class, 'showLogin'])->name('partner.login');
-Route::post('/partner/login',          [PartnerAuthController::class, 'login'])->name('partner.login.post');
-Route::post('/partner/logout',         [PartnerAuthController::class, 'logout'])->name('partner.logout');
-Route::get('/partner/setup',           [PartnerAuthController::class, 'showSetup'])->name('partner.setup');
-Route::post('/partner/setup',          [PartnerAuthController::class, 'setup'])->name('partner.setup.post');
-Route::get('/partner/invite/{token}',  [PartnerAuthController::class, 'showInvite'])->name('partner.invite');
+Route::get('/partner/login',            [PartnerAuthController::class, 'showLogin'])->name('partner.login');
+Route::post('/partner/login',           [PartnerAuthController::class, 'login'])->name('partner.login.post');
+Route::post('/partner/logout',          [PartnerAuthController::class, 'logout'])->name('partner.logout');
+Route::get('/partner/setup',            [PartnerAuthController::class, 'showSetup'])->name('partner.setup');
+Route::post('/partner/setup',           [PartnerAuthController::class, 'setup'])->name('partner.setup.post');
+Route::get('/partner/invite/{token}',   [PartnerAuthController::class, 'showInvite'])->name('partner.invite');
+Route::get('/partner/forgot-password',  [PartnerAuthController::class, 'showForgotPassword'])->name('partner.forgot-password');
+Route::post('/partner/forgot-password', [PartnerAuthController::class, 'forgotPassword'])->name('partner.forgot-password.post');
+Route::get('/partner/reset-password',   [PartnerAuthController::class, 'showResetPassword'])->name('partner.reset-password');
+Route::post('/partner/reset-password',  [PartnerAuthController::class, 'resetPassword'])->name('partner.reset-password.post');
 
 // ── Partner Portal ────────────────────────────────────────────
 Route::middleware(['auth:partner', 'partner.access'])

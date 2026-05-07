@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accept Invitation — ReferralBunny.ai</title>
-    <link rel="stylesheet" href="{{ asset('build/assets/app.css') }}">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F3F4F6; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,.08); max-width: 480px; width: 100%; overflow: hidden; }
@@ -78,13 +78,13 @@
                        value="{{ old('name', trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? ''))) }}"
                        required placeholder="Your full name">
 
-                <label>Password</label>
-                <input type="password" name="password" required placeholder="Create a secure password (min 8 chars)">
+                <label>Password <span style="font-size:11px;color:#9CA3AF;font-weight:400">— min. 8 characters</span></label>
+                <input type="password" name="password" required minlength="8" placeholder="Create a secure password (min 8 chars)">
 
                 <label>Confirm Password</label>
                 <input type="password" name="password_confirmation" required placeholder="Repeat your password">
 
-                <button type="submit" class="btn-primary">Accept Invitation &amp; Set Up Account</button>
+                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Setting up...' : 'Accept Invitation &amp; Set Up Account'">Accept Invitation &amp; Set Up Account</button>
             </form>
 
             <p style="font-size:12px;color:#9CA3AF;text-align:center;margin-top:16px;">

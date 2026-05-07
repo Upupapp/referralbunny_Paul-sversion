@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password — ReferralBunny.ai Referrer Portal</title>
+    <title>Forgot Password — ReferralBunny.ai Partner Portal</title>
     <link rel="icon" type="image/webp" href="/images/logos/referralbunny-favicon.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { box-sizing: border-box; }
-        body { margin:0; padding:0; min-height:100vh; font-family:'Inter',sans-serif; background:linear-gradient(145deg,#052E2A 0%,#0F6B5F 55%,#042320 100%); display:flex; align-items:center; justify-content:center; }
+        body { margin:0; padding:0; min-height:100vh; font-family:'Inter',sans-serif; background:linear-gradient(145deg,#0D1B2A 0%,#1A2F50 55%,#0A1628 100%); display:flex; align-items:center; justify-content:center; }
         .card { width:100%; max-width:440px; background:#fff; border-radius:24px; padding:3rem; box-shadow:0 32px 80px rgba(0,0,0,.45); margin:1.5rem; }
         .field-label { display:block; font-size:.8125rem; font-weight:500; color:#374151; margin-bottom:.375rem; }
         .field-input { width:100%; border:1px solid #e5e7eb; background:#f9fafb; border-radius:12px; padding:.75rem 1rem; font-size:.875rem; color:#111827; outline:none; transition:border-color .15s,box-shadow .15s; font-family:'Inter',sans-serif; }
-        .field-input:focus { border-color:#2DD4BF; box-shadow:0 0 0 3px rgba(13,148,136,.15); background:#fff; }
-        .btn-primary { width:100%; background:#0D9488; color:#fff; border:none; border-radius:12px; padding:.8125rem 1rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:background .15s; font-family:'Inter',sans-serif; margin-top:.5rem; }
-        .btn-primary:hover { background:#0F766E; }
+        .field-input:focus { border-color:#3B82F6; box-shadow:0 0 0 3px rgba(37,99,235,.15); background:#fff; }
+        .btn-primary { width:100%; background:#2563EB; color:#fff; border:none; border-radius:12px; padding:.8125rem 1rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:background .15s; font-family:'Inter',sans-serif; margin-top:.5rem; }
+        .btn-primary:hover { background:#1D4ED8; }
+        .btn-primary:disabled { opacity:.65; cursor:not-allowed; }
     </style>
 </head>
 <body>
@@ -42,7 +43,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('reseller.forgot-password.post') }}">
+    <form method="POST" action="{{ route('partner.forgot-password.post') }}">
         @csrf
         <div style="margin-bottom:1.25rem">
             <label class="field-label">Email address</label>
@@ -52,7 +53,7 @@
     </form>
 
     <p style="text-align:center;margin-top:1.25rem;font-size:.8125rem;color:#6b7280">
-        <a href="{{ route('reseller.login') }}" style="color:#0D9488;text-decoration:none">← Back to Sign In</a>
+        <a href="{{ route('partner.login') }}" style="color:#2563EB;text-decoration:none">← Back to Sign In</a>
     </p>
 </div>
 </body>

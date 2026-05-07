@@ -103,7 +103,7 @@
                         </p>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Sign In</button>
+                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
             </form>
 
             <p class="help-text form-wrap">
