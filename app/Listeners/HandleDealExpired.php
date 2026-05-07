@@ -53,5 +53,29 @@ class HandleDealExpired
                 dedupeSuffix: "{$event->leadId}:expired",
             );
         }
+
+        // Notify active Partners associated with this deal
+        $activePartners = DB::table('deal_partner_splits')
+            ->where('tenant_id', $event->tenantId)
+            ->where('deal_id', $event->leadId)
+            ->where('status', 'active')
+            ->whereNotNull('partner_user_id')
+            ->whereNull('deleted_at')
+            ->select('partner_user_id', 'partner_name')
+            ->get();
+
+        foreach ($activePartners as $partnerRow) {
+            $dispatcher->dispatchToPartner(
+                partnerId:    (string) $partnerRow->partner_user_id,
+                tenantId:     $event->tenantId,
+                category:     'deal_pipeline',
+                priority:     'high',
+                title:        "Associated deal expired: {$event->leadName}",
+                body:         "A deal you are associated with has expired: \"{$event->leadName}\".",
+                actionUrl:    url("/partner/dashboard"),
+                actionLabel:  'View Dashboard',
+                dedupeSuffix: "{$event->leadId}:expired:partner",
+            );
+        }
     }
 }

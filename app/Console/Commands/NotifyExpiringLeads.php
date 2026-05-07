@@ -113,7 +113,68 @@ class NotifyExpiringLeads extends Command
             }
         }
 
-        $this->info("Tenant notifications: {$tenantCount} | Reseller notifications: {$resellerCount}");
+        // ── Partner notifications (one digest per active Partner) ────────
+        $partnerCount = 0;
+
+        $partnerDeals = DB::table('deal_partner_splits as dps')
+            ->join('leads as l', function($j) {
+                $j->on('l.id', '=', 'dps.deal_id')
+                  ->whereColumn('l.tenant_id', 'dps.tenant_id');
+            })
+            ->where('l.status', 'expiring')
+            ->where('dps.status', 'active')
+            ->whereNotNull('dps.partner_user_id')
+            ->whereNull('dps.deleted_at')
+            ->select('dps.tenant_id', 'dps.partner_user_id', 'dps.partner_name', 'l.name as deal_name', 'l.days_left')
+            ->orderBy('dps.tenant_id')
+            ->orderBy('l.days_left')
+            ->get()
+            ->groupBy(fn($r) => $r->tenant_id . ':' . $r->partner_user_id);
+
+        foreach ($partnerDeals as $groupKey => $rows) {
+            $first    = $rows->first();
+            $tenantId = $first->tenant_id;
+            $partnerId= $first->partner_user_id;
+            $pCount   = $rows->count();
+
+            $alreadySentPartner = DB::table('notifications')
+                ->where('tenant_id', $tenantId)
+                ->whereRaw("notifiable_type = 'partner'")
+                ->whereRaw("notifiable_id = ?", [$partnerId])
+                ->whereRaw("metadata_json->>'type' = 'partner_expiring_daily'")
+                ->whereRaw("metadata_json->>'date' = ?", [$today])
+                ->exists();
+
+            if (!$alreadySentPartner) {
+                DB::table('notifications')->insert([
+                    'id'            => (string) \Illuminate\Support\Str::uuid(),
+                    'tenant_id'     => $tenantId,
+                    'notifiable_type'=> 'partner',
+                    'notifiable_id' => $partnerId,
+                    'category'      => 'deal_pipeline',
+                    'type'          => 'warning',
+                    'priority'      => $pCount >= 3 ? 'high' : 'normal',
+                    'title'         => "Deal" . ($pCount > 1 ? 's' : '') . " expiring soon",
+                    'message'       => "You have {$pCount} deal" . ($pCount > 1 ? 's' : '') . " expiring soon that you are associated with. Take action before they expire.",
+                    'action_url'    => "/partner/dashboard",
+                    'channel'       => 'in_app',
+                    'frequency_type'=> 'daily',
+                    'metadata_json' => json_encode([
+                        'type'       => 'partner_expiring_daily',
+                        'partner_id' => $partnerId,
+                        'count'      => $pCount,
+                        'date'       => $today,
+                    ]),
+                    'is_read'       => false,
+                    'is_dismissed'  => false,
+                    'sent_at'       => now(),
+                    'created_at'    => now(),
+                ]);
+                $partnerCount++;
+            }
+        }
+
+        $this->info("Tenant notifications: {$tenantCount} | Reseller notifications: {$resellerCount} | Partner notifications: {$partnerCount}");
 
         return self::SUCCESS;
     }

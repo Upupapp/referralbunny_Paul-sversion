@@ -381,6 +381,145 @@
                         </div>
                     </div>
                 </div>
+            {{-- Partners & Split Share --}}
+            <div class="card space-y-3"
+                 x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}')"
+                 x-init="load()">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Partners &amp; Split Share</h3>
+                    <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Add Partner
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400">Split Share must be assigned to a Partner. You can add a Partner even if they have not accepted the invitation yet.</p>
+
+                {{-- Loading --}}
+                <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-2">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Loading…
+                </div>
+
+                {{-- Split rows --}}
+                <div x-show="!loading" class="space-y-2">
+                    <template x-if="splits.length === 0 && !showAdd">
+                        <p class="text-xs text-gray-400 py-1">No Partner Split Shares added yet.</p>
+                    </template>
+                    <template x-for="s in splits" :key="s.id">
+                        <div class="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
+                            <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0"
+                                 x-text="(s.partner_name||'?').slice(0,2).toUpperCase()"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="s.partner_name"></p>
+                                <p class="text-xs text-gray-400 truncate" x-text="s.partner_email"></p>
+                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                      :class="{
+                                          'bg-green-100 text-green-700': s.status === 'active',
+                                          'bg-yellow-100 text-yellow-700': s.status === 'pending_invite',
+                                          'bg-gray-100 text-gray-500': s.status === 'provisional' || s.status === 'invite_failed',
+                                      }"
+                                      x-text="s.status_label"></span>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-sm font-bold text-[#1E1B4B]" x-text="s.display_share"></p>
+                                <button @click="removeSplit(s.id)" class="text-[10px] text-red-400 hover:text-red-600 mt-0.5">Remove</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Total --}}
+                    <div x-show="splits.filter(s => s.split_share_type === 'percentage').length > 0"
+                         class="flex justify-between text-xs py-1 border-t border-gray-100 mt-1">
+                        <span class="text-gray-400">Total Partner %</span>
+                        <span :class="totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'" x-text="totalPct + '%'"></span>
+                    </div>
+                </div>
+
+                {{-- Add form --}}
+                <div x-show="showAdd" class="space-y-2.5 pt-2 border-t border-gray-100">
+                    <p class="text-xs font-medium text-[#1E1B4B]">Add Partner Split</p>
+                    <input type="text" x-model="form.partner_name" class="form-input text-xs" placeholder="Partner full name *">
+                    <input type="email" x-model="form.partner_email" class="form-input text-xs" placeholder="partner@email.com *">
+                    <div class="flex gap-2">
+                        <input type="number" x-model.number="form.split_share_value" class="form-input text-xs w-20 shrink-0" placeholder="%" min="0" max="100">
+                        <select x-model="form.split_share_type" class="form-input text-xs flex-1">
+                            <option value="percentage">Percentage (%)</option>
+                            <option value="fixed_amount">Fixed Amount (₱)</option>
+                        </select>
+                    </div>
+                    <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
+                    <div class="flex gap-2">
+                        <button @click="showAdd = false; formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
+                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Add Split'"></button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Extension Request (LGU IDS) --}}
+            <div class="card space-y-3"
+                 x-data="extensionRequestSection('{{ $dealId }}', '{{ $tenant->id }}')"
+                 x-init="load()">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Extension Request</h3>
+                    <button x-show="!showForm && canRequest" @click="showForm = true"
+                            class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                        Request Extension
+                    </button>
+                </div>
+
+                <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-1">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Loading…
+                </div>
+
+                <div x-show="!loading" class="space-y-2">
+                    {{-- Existing requests list --}}
+                    <template x-if="requests.length === 0 && !showForm">
+                        <p class="text-xs text-gray-400">No extension requests for this deal.</p>
+                    </template>
+                    <template x-for="r in requests" :key="r.id">
+                        <div class="rounded-xl p-3 text-xs space-y-1"
+                             :class="{
+                                 'bg-yellow-50 border border-yellow-200': r.status === 'pending_review',
+                                 'bg-green-50 border border-green-200':  r.status === 'approved',
+                                 'bg-red-50 border border-red-200':      r.status === 'rejected',
+                                 'bg-gray-50 border border-gray-200':    !['pending_review','approved','rejected'].includes(r.status),
+                             }">
+                            <div class="flex items-center justify-between">
+                                <span class="font-semibold" x-text="r.status_label ?? r.status"></span>
+                                <span class="text-gray-400" x-text="r.requested_days + ' days requested'"></span>
+                            </div>
+                            <p class="text-gray-600" x-text="r.reason"></p>
+                            <p x-show="r.admin_note" class="text-gray-500 italic" x-text="'Admin note: ' + r.admin_note"></p>
+                            <p x-show="r.approved_days" class="text-green-700 font-medium" x-text="r.approved_days + ' days approved'"></p>
+                        </div>
+                    </template>
+
+                    {{-- Request form --}}
+                    <div x-show="showForm" class="space-y-2.5 pt-2 border-t border-gray-100">
+                        <p class="text-xs font-medium text-[#1E1B4B]">Request Extension of Assignment</p>
+                        <select x-model.number="form.requested_days" class="form-input text-xs">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="21">21 days</option>
+                            <option value="30">30 days</option>
+                        </select>
+                        <textarea x-model="form.reason" class="form-input text-xs" rows="3"
+                                  placeholder="Reason for extension request (required, min 10 characters)…"></textarea>
+                        <label class="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
+                            <input type="checkbox" x-model="form.acknowledged" class="mt-0.5">
+                            <span>I understand this request requires Tenant Admin approval.</span>
+                        </label>
+                        <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
+                        <div class="flex gap-2">
+                            <button @click="showForm = false; formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
+                            <button @click="submitRequest()" :disabled="saving || !form.acknowledged"
+                                    class="btn-primary text-xs flex-1" x-text="saving ? 'Submitting…' : 'Submit Request'"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Contacts on this Deal --}}
             <div class="card space-y-3">
                 <div class="flex items-center justify-between">
@@ -1061,6 +1200,129 @@ function dealDetail(leadId, tenantId) {
             } finally { this.saving = false; }
         },
     }
+}
+
+// ── Partner Split Section ─────────────────────────────────────────────────
+function partnerSplitSection(dealId, tenantId) {
+    return {
+        splits: [], loading: true, showAdd: false, saving: false, formError: '',
+        totalPct: 0,
+        form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
+
+        async load() {
+            this.loading = true;
+            try {
+                const res  = await fetch(`/api/leads/${dealId}/partner-splits?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                this.splits   = data.splits   || [];
+                this.totalPct = data.total_percentage || 0;
+            } catch(e) { this.splits = []; }
+            this.loading = false;
+        },
+
+        async addSplit() {
+            this.formError = '';
+            if (!this.form.partner_name.trim()) { this.formError = 'Partner name is required.'; return; }
+            if (!this.form.partner_email.trim()) { this.formError = 'Partner email is required.'; return; }
+            if (this.form.split_share_value < 0)  { this.formError = 'Split share must be 0 or more.'; return; }
+            this.saving = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${dealId}/partner-splits`, {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:        JSON.stringify({ ...this.form, tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showAdd  = false;
+                    this.form     = { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' };
+                    this.formError= '';
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: 'Partner split added.' });
+                } else {
+                    this.formError = data.error || 'Failed to add partner split.';
+                }
+            } catch(e) { this.formError = 'Network error. Please try again.'; }
+            finally { this.saving = false; }
+        },
+
+        async removeSplit(splitId) {
+            if (!confirm('Remove this partner split?')) return;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                await fetch(`/api/leads/${dealId}/partner-splits/${splitId}`, {
+                    method:      'DELETE',
+                    credentials: 'same-origin',
+                    headers:     { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                await this.load();
+                this.$dispatch('show-toast', { type: 'success', message: 'Partner split removed.' });
+            } catch(e) {}
+        },
+    };
+}
+
+// ── Extension Request Section ─────────────────────────────────────────────
+function extensionRequestSection(dealId, tenantId) {
+    return {
+        requests: [], loading: true, showForm: false, saving: false, formError: '',
+        canRequest: false,
+        form: { requested_days: 14, reason: '', acknowledged: false },
+
+        async load() {
+            this.loading = true;
+            try {
+                const res  = await fetch(`/api/leads/${dealId}/extension-requests?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    this.requests = await res.json();
+                }
+                // Can request if no pending request exists
+                this.canRequest = !this.requests.some(r => r.status === 'pending_review');
+            } catch(e) { this.requests = []; }
+            this.loading = false;
+        },
+
+        async submitRequest() {
+            this.formError = '';
+            if (!this.form.reason || this.form.reason.trim().length < 10) {
+                this.formError = 'Please provide a reason (minimum 10 characters).';
+                return;
+            }
+            if (!this.form.acknowledged) {
+                this.formError = 'Please acknowledge that this request requires admin approval.';
+                return;
+            }
+            this.saving = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${dealId}/extension-requests`, {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:        JSON.stringify({ ...this.form, tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.showForm  = false;
+                    this.formError = '';
+                    this.form      = { requested_days: 14, reason: '', acknowledged: false };
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: data.message || 'Extension request submitted.' });
+                } else {
+                    this.formError = data.error || 'Failed to submit request.';
+                }
+            } catch(e) { this.formError = 'Network error. Please try again.'; }
+            finally { this.saving = false; }
+        },
+    };
 }
 </script>
 @endsection

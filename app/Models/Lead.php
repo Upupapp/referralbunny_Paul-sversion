@@ -74,4 +74,14 @@ class Lead extends Model
     {
         return $this->hasMany(DealPartner::class, 'deal_id');
     }
+
+    public function partnerSplits(): HasMany
+    {
+        return $this->hasMany(DealPartnerSplit::class, 'deal_id')->whereNull('deleted_at');
+    }
+
+    public function extensionRequests(): HasMany
+    {
+        return $this->hasMany(DealAssignmentExtensionRequest::class, 'deal_id');
+    }
 }

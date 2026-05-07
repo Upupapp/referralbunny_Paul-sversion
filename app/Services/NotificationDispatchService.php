@@ -130,6 +130,37 @@ class NotificationDispatchService
     }
 
     /**
+     * Dispatch to a specific Partner (partner_users table).
+     */
+    public function dispatchToPartner(
+        string  $partnerId,
+        string  $tenantId,
+        string  $category,
+        string  $priority,
+        string  $title,
+        string  $body,
+        ?string $actionUrl    = null,
+        ?string $actionLabel  = null,
+        ?string $dedupeSuffix = null,
+        array   $metadata     = [],
+    ): void {
+        $key = $dedupeSuffix ? "{$category}:{$partnerId}:{$dedupeSuffix}" : null;
+        $this->dispatch(
+            category:         $category,
+            priority:         $priority,
+            title:            $title,
+            body:             $body,
+            notifiableType:   'partner',
+            notifiableId:     $partnerId,
+            tenantId:         $tenantId,
+            actionUrl:        $actionUrl,
+            actionLabel:      $actionLabel,
+            deduplicationKey: $key,
+            metadata:         $metadata,
+        );
+    }
+
+    /**
      * Dispatch to all super admins (users table).
      */
     public function dispatchToSuperAdmins(
