@@ -5,7 +5,7 @@
 -- 4. invite_sent_at — timestamp of last automatic invite email (for 24h throttle)
 
 ALTER TABLE resellers
-  ADD COLUMN IF NOT EXISTS linked_tenant_user_id TEXT REFERENCES tenant_users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS linked_tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS invite_deal_ids        JSONB        NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS invite_deal_count      INTEGER      NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS invite_sent_at         TIMESTAMPTZ;
