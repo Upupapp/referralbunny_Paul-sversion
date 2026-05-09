@@ -30,35 +30,49 @@ class NotifyExpiringLeads extends Command
         foreach ($byTenant as $tenantId => $leads) {
             $count = $leads->count();
 
-            // ── Tenant admin notification ────────────────────────────
-            $alreadySent = DB::table('notifications')
-                ->where('tenant_id', $tenantId)
-                ->whereRaw("metadata_json->>'type' = 'tenant_expiring_daily'")
-                ->whereRaw("metadata_json->>'date' = ?", [$today])
-                ->exists();
+            // Resolve admin recipients once per tenant
+            $adminIds = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->pluck('u.id')
+                ->toArray();
 
-            if (!$alreadySent) {
-                DB::table('notifications')->insert([
-                    'id'            => (string) Str::uuid(),
-                    'tenant_id'     => $tenantId,
-                    'category'      => 'system',
-                    'type'          => 'warning',
-                    'priority'      => $count >= 5 ? 'critical' : 'high',
-                    'message'       => "{$count} deal" . ($count > 1 ? 's are' : ' is') . " expiring soon — review and take action before they expire.",
-                    'action_url'    => "/tenant/{$tenantId}/deals?status=expiring",
-                    'channel'       => 'in_app',
-                    'frequency_type'=> 'daily',
-                    'metadata_json' => json_encode([
-                        'type'  => 'tenant_expiring_daily',
-                        'count' => $count,
-                        'date'  => $today,
-                    ]),
-                    'is_read'       => false,
-                    'is_dismissed'  => false,
-                    'sent_at'       => now(),
-                    'created_at'    => now(),
-                ]);
-                $tenantCount++;
+            // ── Tenant admin notification (one per admin, daily dedup per user) ──
+            foreach ($adminIds as $adminId) {
+                $alreadySent = DB::table('notifications')
+                    ->where('tenant_id', $tenantId)
+                    ->where('notifiable_id', $adminId)
+                    ->whereRaw("metadata_json->>'type' = 'tenant_expiring_daily'")
+                    ->whereRaw("metadata_json->>'date' = ?", [$today])
+                    ->exists();
+
+                if (!$alreadySent) {
+                    DB::table('notifications')->insert([
+                        'id'             => (string) Str::uuid(),
+                        'tenant_id'      => $tenantId,
+                        'notifiable_type'=> 'App\\Models\\TenantUser',
+                        'notifiable_id'  => $adminId,
+                        'category'       => 'system',
+                        'type'           => 'warning',
+                        'priority'       => $count >= 5 ? 'critical' : 'high',
+                        'message'        => "{$count} deal" . ($count > 1 ? 's are' : ' is') . " expiring soon — review and take action before they expire.",
+                        'action_url'     => "/tenant/{$tenantId}/deals?status=expiring",
+                        'channel'        => 'in_app',
+                        'frequency_type' => 'daily',
+                        'metadata_json'  => json_encode([
+                            'type'  => 'tenant_expiring_daily',
+                            'count' => $count,
+                            'date'  => $today,
+                        ]),
+                        'is_read'        => false,
+                        'is_dismissed'   => false,
+                        'sent_at'        => now(),
+                        'created_at'     => now(),
+                    ]);
+                    $tenantCount++;
+                }
             }
 
             // ── Reseller notifications (one per reseller) ────────────
@@ -83,30 +97,33 @@ class NotifyExpiringLeads extends Command
                     ->whereRaw("metadata_json->>'date' = ?", [$today])
                     ->exists();
 
-                if (!$alreadySentReseller) {
+                // Skip if no reseller record found — cannot identify recipient
+                if ($reseller?->id && !$alreadySentReseller) {
                     $encodedName = urlencode($resellerName);
                     DB::table('notifications')->insert([
-                        'id'            => (string) Str::uuid(),
-                        'tenant_id'     => $tenantId,
-                        'category'      => 'system',
-                        'type'          => 'warning',
-                        'priority'      => 'high',
-                        'message'       => "You have {$rCount} deal" . ($rCount > 1 ? 's' : '') . " expiring soon. Take action to keep them active.",
-                        'action_url'    => "/tenant/{$tenantId}/deals?status=expiring&reseller_name={$encodedName}",
-                        'channel'       => 'in_app',
-                        'frequency_type'=> 'daily',
-                        'metadata_json' => json_encode([
+                        'id'             => (string) Str::uuid(),
+                        'tenant_id'      => $tenantId,
+                        'notifiable_type'=> 'App\\Models\\Reseller',
+                        'notifiable_id'  => $reseller->id,
+                        'category'       => 'system',
+                        'type'           => 'warning',
+                        'priority'       => 'high',
+                        'message'        => "You have {$rCount} deal" . ($rCount > 1 ? 's' : '') . " expiring soon. Take action to keep them active.",
+                        'action_url'     => "/tenant/{$tenantId}/deals?status=expiring&reseller_name={$encodedName}",
+                        'channel'        => 'in_app',
+                        'frequency_type' => 'daily',
+                        'metadata_json'  => json_encode([
                             'type'          => 'reseller_expiring_daily',
                             'reseller_name' => $resellerName,
-                            'reseller_id'   => $reseller?->id,
-                            'reseller_email'=> $reseller?->email,
+                            'reseller_id'   => $reseller->id,
+                            'reseller_email'=> $reseller->email,
                             'count'         => $rCount,
                             'date'          => $today,
                         ]),
-                        'is_read'       => false,
-                        'is_dismissed'  => false,
-                        'sent_at'       => now(),
-                        'created_at'    => now(),
+                        'is_read'        => false,
+                        'is_dismissed'   => false,
+                        'sent_at'        => now(),
+                        'created_at'     => now(),
                     ]);
                     $resellerCount++;
                 }
