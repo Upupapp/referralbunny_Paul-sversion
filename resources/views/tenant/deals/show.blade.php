@@ -128,7 +128,7 @@
                                 <p class="text-xs text-gray-400">Actual cost to deliver</p>
                             </div>
                         </div>
-                        <span class="text-base font-semibold text-[#1E1B4B] tabular-nums" x-text="fmt(lead?.base_cost || 0)"></span>
+                        <span class="text-base font-bold text-gray-800 tabular-nums" x-text="fmt(lead?.base_cost || 0)"></span>
                     </div>
                     <div class="flex items-center justify-between py-3 border-b border-dashed border-gray-200">
                         <div class="flex items-center gap-3">
