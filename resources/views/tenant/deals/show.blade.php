@@ -490,12 +490,37 @@
                  x-init="load()">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Extend Assignment</h3>
-                    <span x-show="requests.some(r => r.status === 'pending_review')"
-                          class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                        Needs Review
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span x-show="requests.some(r => r.status === 'pending_review')"
+                              class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                            Needs Review
+                        </span>
+                        <button x-show="!showExtendForm" @click="showExtendForm = true"
+                                class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                            + Extend
+                        </button>
+                    </div>
                 </div>
-                <p class="text-[11px] text-gray-400">Referrers can request more time on a deal. Review and approve or deny requests here.</p>
+
+                {{-- Admin direct extend form --}}
+                <div x-show="showExtendForm" class="space-y-2.5 p-3 bg-[#F0EFFA] rounded-xl">
+                    <p class="text-xs font-medium text-[#1E1B4B]">Extend Assignment</p>
+                    <select x-model.number="extendForm.days" class="form-input text-xs">
+                        <option value="7">+7 days</option>
+                        <option value="14">+14 days</option>
+                        <option value="21">+21 days</option>
+                        <option value="30">+30 days</option>
+                    </select>
+                    <textarea x-model="extendForm.reason" class="form-input text-xs" rows="2"
+                              placeholder="Reason for extension (optional)…"></textarea>
+                    <p x-show="extendError" class="text-xs text-red-600" x-text="extendError"></p>
+                    <div class="flex gap-2">
+                        <button @click="showExtendForm = false; extendError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
+                        <button @click="adminExtend()" :disabled="saving"
+                                class="btn-primary text-xs flex-1"
+                                x-text="saving ? 'Extending…' : 'Confirm Extension'"></button>
+                    </div>
+                </div>
 
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-1">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -1384,6 +1409,8 @@ function partnerSplitSection(dealId, tenantId) {
 function extensionRequestSection(dealId, tenantId) {
     return {
         requests: [], loading: true, saving: false, actionError: null,
+        showExtendForm: false, extendError: '',
+        extendForm: { days: 14, reason: '' },
 
         async load() {
             this.loading = true;
@@ -1395,6 +1422,49 @@ function extensionRequestSection(dealId, tenantId) {
                 if (res.ok) this.requests = await res.json();
             } catch(e) { this.requests = []; }
             this.loading = false;
+        },
+
+        async adminExtend() {
+            this.extendError = '';
+            this.saving = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                // Create the request
+                const createRes = await fetch(`/api/leads/${dealId}/extension-requests`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({
+                        requested_days: this.extendForm.days,
+                        reason: this.extendForm.reason || 'Extended by admin.',
+                        acknowledged: true,
+                        tenant_id: tenantId,
+                    }),
+                });
+                const created = await createRes.json();
+                if (!createRes.ok) {
+                    this.extendError = created.error || 'Failed to create extension.';
+                    return;
+                }
+                // Auto-approve it immediately
+                const approveRes = await fetch(`/api/extension-requests/${created.id}/approve`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ approved_days: this.extendForm.days, tenant_id: tenantId }),
+                });
+                if (approveRes.ok) {
+                    this.showExtendForm = false;
+                    this.extendForm = { days: 14, reason: '' };
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: `Assignment extended by ${this.extendForm.days || created.requested_days} days.` });
+                } else {
+                    this.extendError = 'Extension created but auto-approval failed. Approve it manually below.';
+                    await this.load();
+                }
+            } catch(e) {
+                this.extendError = 'Network error. Please try again.';
+            } finally { this.saving = false; }
         },
 
         async approveRequest(id, approvedDays) {
