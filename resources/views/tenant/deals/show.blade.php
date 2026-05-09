@@ -484,17 +484,18 @@
                 </div>
             </div>
 
-            {{-- Extension Request (LGU IDS) --}}
+            {{-- Extend Assignment (admin/manager review view) --}}
             <div class="card space-y-3"
                  x-data="extensionRequestSection('{{ $dealId }}', '{{ $tenant->id }}')"
                  x-init="load()">
                 <div class="flex items-center justify-between">
-                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Extension Request</h3>
-                    <button x-show="!showForm && canRequest" @click="showForm = true"
-                            class="text-xs text-purple-600 hover:text-purple-700 font-medium">
-                        Request Extension
-                    </button>
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Extend Assignment</h3>
+                    <span x-show="requests.some(r => r.status === 'pending_review')"
+                          class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                        Needs Review
+                    </span>
                 </div>
+                <p class="text-[11px] text-gray-400">Referrers can request more time on a deal. Review and approve or deny requests here.</p>
 
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-1">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -502,50 +503,43 @@
                 </div>
 
                 <div x-show="!loading" class="space-y-2">
-                    {{-- Existing requests list --}}
-                    <template x-if="requests.length === 0 && !showForm">
+                    <template x-if="requests.length === 0">
                         <p class="text-xs text-gray-400">No extension requests for this deal.</p>
                     </template>
                     <template x-for="r in requests" :key="r.id">
-                        <div class="rounded-xl p-3 text-xs space-y-1"
+                        <div class="rounded-xl p-3 text-xs space-y-2"
                              :class="{
-                                 'bg-yellow-50 border border-yellow-200': r.status === 'pending_review',
+                                 'bg-amber-50 border border-amber-200': r.status === 'pending_review',
                                  'bg-green-50 border border-green-200':  r.status === 'approved',
                                  'bg-red-50 border border-red-200':      r.status === 'rejected',
                                  'bg-gray-50 border border-gray-200':    !['pending_review','approved','rejected'].includes(r.status),
                              }">
                             <div class="flex items-center justify-between">
-                                <span class="font-semibold" x-text="r.status_label ?? r.status"></span>
-                                <span class="text-gray-400" x-text="r.requested_days + ' days requested'"></span>
+                                <span class="font-semibold capitalize" x-text="r.status_label ?? r.status.replace('_',' ')"></span>
+                                <span class="text-gray-500 font-medium" x-text="r.requested_days + ' days requested'"></span>
                             </div>
-                            <p class="text-gray-600" x-text="r.reason"></p>
-                            <p x-show="r.admin_note" class="text-gray-500 italic" x-text="'Admin note: ' + r.admin_note"></p>
-                            <p x-show="r.approved_days" class="text-green-700 font-medium" x-text="r.approved_days + ' days approved'"></p>
+                            <p class="text-gray-600 leading-relaxed" x-text="r.reason"></p>
+                            <p x-show="r.admin_note" class="text-gray-500 italic" x-text="'Note: ' + r.admin_note"></p>
+                            <p x-show="r.approved_days" class="text-green-700 font-semibold" x-text="r.approved_days + ' days approved'"></p>
+
+                            {{-- Approve / Deny buttons for pending requests --}}
+                            <div x-show="r.status === 'pending_review'" class="flex gap-2 pt-1">
+                                <button @click="approveRequest(r.id, r.requested_days)"
+                                        :disabled="saving"
+                                        class="btn-primary text-xs flex-1">
+                                    <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    Approve
+                                </button>
+                                <button @click="rejectRequest(r.id)"
+                                        :disabled="saving"
+                                        class="btn-secondary text-xs flex-1 !text-red-600 !border-red-200 hover:!bg-red-50">
+                                    <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Deny
+                                </button>
+                            </div>
+                            <p x-show="actionError === r.id" class="text-xs text-red-600" x-text="'Failed to update request.'"></p>
                         </div>
                     </template>
-
-                    {{-- Request form --}}
-                    <div x-show="showForm" class="space-y-2.5 pt-2 border-t border-gray-100">
-                        <p class="text-xs font-medium text-[#1E1B4B]">Request Extension of Assignment</p>
-                        <select x-model.number="form.requested_days" class="form-input text-xs">
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                            <option value="21">21 days</option>
-                            <option value="30">30 days</option>
-                        </select>
-                        <textarea x-model="form.reason" class="form-input text-xs" rows="3"
-                                  placeholder="Reason for extension request (required, min 10 characters)…"></textarea>
-                        <label class="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
-                            <input type="checkbox" x-model="form.acknowledged" class="mt-0.5">
-                            <span>I understand this request requires Tenant Admin approval.</span>
-                        </label>
-                        <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
-                        <div class="flex gap-2">
-                            <button @click="showForm = false; formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
-                            <button @click="submitRequest()" :disabled="saving || !form.acknowledged"
-                                    class="btn-primary text-xs flex-1" x-text="saving ? 'Submitting…' : 'Submit Request'"></button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -1389,57 +1383,65 @@ function partnerSplitSection(dealId, tenantId) {
 // ── Extension Request Section ─────────────────────────────────────────────
 function extensionRequestSection(dealId, tenantId) {
     return {
-        requests: [], loading: true, showForm: false, saving: false, formError: '',
-        canRequest: false,
-        form: { requested_days: 14, reason: '', acknowledged: false },
+        requests: [], loading: true, saving: false, actionError: null,
 
         async load() {
             this.loading = true;
             try {
-                const res  = await fetch(`/api/leads/${dealId}/extension-requests?tenant_id=${tenantId}`, {
+                const res = await fetch(`/api/leads/${dealId}/extension-requests?tenant_id=${tenantId}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                if (res.ok) {
-                    this.requests = await res.json();
-                }
-                // Can request if no pending request exists
-                this.canRequest = !this.requests.some(r => r.status === 'pending_review');
+                if (res.ok) this.requests = await res.json();
             } catch(e) { this.requests = []; }
             this.loading = false;
         },
 
-        async submitRequest() {
-            this.formError = '';
-            if (!this.form.reason || this.form.reason.trim().length < 10) {
-                this.formError = 'Please provide a reason (minimum 10 characters).';
-                return;
-            }
-            if (!this.form.acknowledged) {
-                this.formError = 'Please acknowledge that this request requires admin approval.';
-                return;
-            }
-            this.saving = true;
+        async approveRequest(id, approvedDays) {
+            this.saving = true; this.actionError = null;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const res  = await fetch(`/api/leads/${dealId}/extension-requests`, {
-                    method:      'POST',
+                const res  = await fetch(`/api/extension-requests/${id}/approve`, {
+                    method: 'POST',
                     credentials: 'same-origin',
-                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body:        JSON.stringify({ ...this.form, tenant_id: tenantId }),
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ approved_days: approvedDays, tenant_id: tenantId }),
                 });
-                const data = await res.json();
                 if (res.ok) {
-                    this.showForm  = false;
-                    this.formError = '';
-                    this.form      = { requested_days: 14, reason: '', acknowledged: false };
                     await this.load();
-                    this.$dispatch('show-toast', { type: 'success', message: data.message || 'Extension request submitted.' });
+                    this.$dispatch('show-toast', { type: 'success', message: 'Extension approved.' });
                 } else {
-                    this.formError = data.error || 'Failed to submit request.';
+                    this.actionError = id;
+                    this.$dispatch('show-toast', { type: 'error', message: 'Failed to approve.' });
                 }
-            } catch(e) { this.formError = 'Network error. Please try again.'; }
-            finally { this.saving = false; }
+            } catch(e) {
+                this.actionError = id;
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error.' });
+            } finally { this.saving = false; }
+        },
+
+        async rejectRequest(id) {
+            if (!confirm('Deny this extension request?')) return;
+            this.saving = true; this.actionError = null;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/extension-requests/${id}/reject`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ tenant_id: tenantId }),
+                });
+                if (res.ok) {
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: 'Extension denied.' });
+                } else {
+                    this.actionError = id;
+                    this.$dispatch('show-toast', { type: 'error', message: 'Failed to deny.' });
+                }
+            } catch(e) {
+                this.actionError = id;
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error.' });
+            } finally { this.saving = false; }
         },
     };
 }
