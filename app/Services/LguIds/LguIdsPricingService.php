@@ -4,35 +4,47 @@ namespace App\Services\LguIds;
 
 class LguIdsPricingService
 {
-    // LOCKED TABLE — do not modify values. Source: LGU IDS protected business rules.
-    // deal_amount => [base_cost, display_pct_string]
-    public const TIERS = [
-         4_000_000 => [2_400_000, '60%'],
-         5_000_000 => [3_000_000, '60%'],
-         6_000_000 => [3_600_000, '60%'],
-         8_000_000 => [4_640_000, '58%'],
-        10_000_000 => [5_800_000, '58%'],
-        12_000_000 => [6_960_000, '58%'],
-        15_000_000 => [7_000_000, '48%'],
-        17_000_000 => [7_000_000, '41%'],
-        25_000_000 => [10_250_000, '41%'],
+    /**
+     * Range-based base cost tiers (updated per LGU IDS business rules).
+     * Base Cost = deal_amount × pct / 100 for the matching range.
+     *
+     * Deal Amount Range          % of Base Cost
+     * ₱0 – ₱6,000,000            60%
+     * ₱6,000,001 – ₱12,000,000   58%
+     * ₱12,000,001 – ₱15,000,000  48%
+     * ₱15,000,001 and above       41%
+     */
+    public const RANGES = [
+        ['max' =>  6_000_000, 'pct' => 60, 'label' => '60%'],
+        ['max' => 12_000_000, 'pct' => 58, 'label' => '58%'],
+        ['max' => 15_000_000, 'pct' => 48, 'label' => '48%'],
+        ['max' => PHP_INT_MAX, 'pct' => 41, 'label' => '41%'],
     ];
 
-    public static function lookupBaseCost(int|float $dealAmount): ?int
+    public static function lookupBaseCost(int|float $dealAmount): int
     {
-        $key = (int) $dealAmount;
-        return isset(self::TIERS[$key]) ? self::TIERS[$key][0] : null;
+        foreach (self::RANGES as $range) {
+            if ($dealAmount <= $range['max']) {
+                return (int) round($dealAmount * $range['pct'] / 100);
+            }
+        }
+        return (int) round($dealAmount * 0.41);
     }
 
-    public static function lookupDisplayPct(int|float $dealAmount): ?string
+    public static function lookupDisplayPct(int|float $dealAmount): string
     {
-        $key = (int) $dealAmount;
-        return isset(self::TIERS[$key]) ? self::TIERS[$key][1] : null;
+        foreach (self::RANGES as $range) {
+            if ($dealAmount <= $range['max']) {
+                return $range['label'];
+            }
+        }
+        return '41%';
     }
 
+    /** All positive amounts are valid in the range-based system. */
     public static function isStandardTier(int|float $dealAmount): bool
     {
-        return isset(self::TIERS[(int) $dealAmount]);
+        return $dealAmount > 0;
     }
 
     /**
@@ -43,7 +55,6 @@ class LguIdsPricingService
     {
         if ($raw === null || $raw === '') return null;
         $str = (string) $raw;
-        // Remove PHP peso sign, commas, spaces, non-numeric except . and -
         $str = preg_replace('/[₱\s,]/', '', $str);
         $str = preg_replace('/[^0-9.\-]/', '', $str);
         if ($str === '' || !is_numeric($str)) return null;
@@ -52,6 +63,9 @@ class LguIdsPricingService
 
     /**
      * Compute all pricing fields for a row given user-supplied values.
+     * Base cost is now always derived from the range-based percentage.
+     * Manual base_cost overrides are accepted but flagged if they deviate.
+     *
      * Returns array: [
      *   'deal_amount', 'base_cost', 'added_amount', 'display_pct',
      *   'tier_matched', 'pricing_status', 'pricing_issue', 'computed_from'
@@ -63,21 +77,20 @@ class LguIdsPricingService
         ?float $rawAddedAmount
     ): array {
         $has_da = $rawDealAmount !== null;
-        $has_bc = $rawBaseCost !== null;
+        $has_bc = $rawBaseCost  !== null;
         $has_aa = $rawAddedAmount !== null;
 
-        $issues      = [];
-        $status      = 'ok';
+        $issues       = [];
+        $status       = 'ok';
         $computedFrom = 'none';
 
-        // ── Case 4: only base_cost + added_amount
+        // ── Derive deal_amount from base_cost + added_amount if not supplied
         if (!$has_da && $has_bc && $has_aa) {
             $rawDealAmount = $rawBaseCost + $rawAddedAmount;
             $has_da        = true;
             $computedFrom  = 'base_cost_added_amount';
         }
 
-        // ── No amount at all
         if (!$has_da) {
             return [
                 'deal_amount'    => null,
@@ -91,45 +104,28 @@ class LguIdsPricingService
             ];
         }
 
-        $dealAmount   = $rawDealAmount;
-        $tierBaseCost = self::lookupBaseCost($dealAmount);
-        $displayPct   = self::lookupDisplayPct($dealAmount);
-        $tierMatched  = $tierBaseCost !== null;
+        $dealAmount    = $rawDealAmount;
+        $rangeBaseCost = self::lookupBaseCost($dealAmount);
+        $displayPct    = self::lookupDisplayPct($dealAmount);
 
-        if (!$tierMatched) {
-            $status = 'non_standard';
-            if (!$has_bc) {
-                return [
-                    'deal_amount'    => $dealAmount,
-                    'base_cost'      => null,
-                    'added_amount'   => null,
-                    'display_pct'    => null,
-                    'tier_matched'   => false,
-                    'pricing_status' => 'needs_pricing_review',
-                    'pricing_issue'  => "Deal amount ₱" . number_format($dealAmount) . " is not a standard LGU IDS tier. Base cost must be provided manually.",
-                    'computed_from'  => $computedFrom ?: 'deal_amount',
-                ];
-            }
-        }
+        // Use supplied base_cost if provided; otherwise auto-compute from range
+        $finalBaseCost = $has_bc ? $rawBaseCost : $rangeBaseCost;
 
-        // Determine final base_cost
-        $finalBaseCost = $has_bc ? $rawBaseCost : ($tierBaseCost ?? null);
-
-        // Validate user-supplied base_cost against tier
-        if ($has_bc && $tierMatched && (int) $rawBaseCost !== $tierBaseCost) {
-            $issues[] = "Supplied base cost ₱" . number_format($rawBaseCost) . " does not match standard tier ₱" . number_format($tierBaseCost) . ".";
+        // Flag deviation from range calculation (allowed, but noted)
+        if ($has_bc && abs($rawBaseCost - $rangeBaseCost) > 1) {
+            $issues[] = "Supplied base cost ₱" . number_format($rawBaseCost) . " differs from range-computed ₱" . number_format($rangeBaseCost) . " (" . $displayPct . " of deal amount).";
             $status   = 'amount_mismatch';
         }
 
         $computedAddedAmount = $finalBaseCost !== null ? ($dealAmount - $finalBaseCost) : null;
 
-        // Validate user-supplied added_amount
+        // Flag supplied added_amount deviation
         if ($has_aa && $computedAddedAmount !== null && abs($rawAddedAmount - $computedAddedAmount) > 0.01) {
             $issues[] = "Supplied added amount ₱" . number_format($rawAddedAmount) . " does not match computed ₱" . number_format($computedAddedAmount) . ".";
             $status   = 'amount_mismatch';
         }
 
-        // Validate case 5: all three supplied
+        // Validate all three supplied sum
         if ($has_da && $has_bc && $has_aa) {
             $sum = $rawBaseCost + $rawAddedAmount;
             if (abs($sum - $dealAmount) > 0.01) {
@@ -137,30 +133,29 @@ class LguIdsPricingService
                 $status       = 'amount_mismatch';
             }
             $computedFrom = 'full_values';
-        } elseif ($has_da && $has_bc && !$has_aa) {
+        } elseif ($has_da && $has_bc) {
             $computedFrom = $computedFrom ?: 'deal_amount_base_cost';
-        } elseif ($has_da && !$has_bc && $has_aa) {
+        } elseif ($has_da && $has_aa) {
             $computedFrom = $computedFrom ?: 'deal_amount_added_amount';
-        } elseif ($has_da && !$has_bc && !$has_aa) {
+        } else {
             $computedFrom = $computedFrom ?: 'deal_amount';
         }
 
-        // Display percent for non-standard
-        if (!$tierMatched && $finalBaseCost !== null && $dealAmount > 0) {
-            $displayPct = round(($finalBaseCost / $dealAmount) * 100, 1) . '% (computed)';
+        // If manual base_cost differs, show actual percentage
+        if ($has_bc && $dealAmount > 0 && abs($rawBaseCost - $rangeBaseCost) > 1) {
+            $displayPct = round(($rawBaseCost / $dealAmount) * 100, 1) . '% (manual)';
         }
 
         $finalAddedAmount = $has_aa ? $rawAddedAmount : $computedAddedAmount;
 
-        if ($status === 'ok' && $tierMatched) $status = 'standard_tier';
-        elseif ($status === 'ok')             $status = 'non_standard';
+        if ($status === 'ok') $status = 'range_based';
 
         return [
             'deal_amount'    => $dealAmount,
             'base_cost'      => $finalBaseCost,
             'added_amount'   => $finalAddedAmount,
             'display_pct'    => $displayPct,
-            'tier_matched'   => $tierMatched,
+            'tier_matched'   => true,
             'pricing_status' => $status,
             'pricing_issue'  => empty($issues) ? null : implode(' ', $issues),
             'computed_from'  => $computedFrom,

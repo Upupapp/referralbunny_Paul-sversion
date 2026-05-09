@@ -553,18 +553,14 @@
 // Philippine municipalities by province — used for the deal creation form dropdown
 const PH_MUNICIPALITIES = @json(\App\Support\PhilippineMunicipalities::all());
 
-// LGU IDS pricing tiers — mirrors LguIdsPricingService::TIERS (LOCKED, do not modify)
-const LGUIDS_TIERS = {
-    4000000:  { baseCost: 2400000 },
-    5000000:  { baseCost: 3000000 },
-    6000000:  { baseCost: 3600000 },
-    8000000:  { baseCost: 4640000 },
-    10000000: { baseCost: 5800000 },
-    12000000: { baseCost: 6960000 },
-    15000000: { baseCost: 7000000 },
-    17000000: { baseCost: 7000000 },
-    25000000: { baseCost: 10250000 },
-};
+// LGU IDS pricing — range-based % of deal amount (mirrors LguIdsPricingService::RANGES)
+// ₱0–₱6M → 60% | ₱6M+–₱12M → 58% | ₱12M+–₱15M → 48% | ₱15M+ → 41%
+function lguBaseCost(dv) {
+    if (dv <= 6_000_000)  return Math.round(dv * 0.60);
+    if (dv <= 12_000_000) return Math.round(dv * 0.58);
+    if (dv <= 15_000_000) return Math.round(dv * 0.48);
+    return Math.round(dv * 0.41);
+}
 
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
@@ -796,19 +792,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         syncFromDealValue() {
             const dv = Number(this.form.deal_value) || 0;
             if (dv <= 0) return;
-            const tier = LGUIDS_TIERS[Math.round(dv)];
-            if (tier) {
-                // Standard tier — auto-fill base cost from locked percentage
-                this.form.base_cost    = tier.baseCost;
-                this.form.added_amount = Math.round(dv - tier.baseCost);
-            } else {
-                // Non-standard amount — keep existing base cost if set, else leave blank for manual entry
-                const bc = Number(this.form.base_cost) || 0;
-                if (bc > 0) {
-                    this.form.added_amount = Math.round(dv - bc);
-                }
-                // If no base cost set yet, user must enter it manually
-            }
+            const bc = lguBaseCost(dv);
+            this.form.base_cost    = bc;
+            this.form.added_amount = Math.round(dv - bc);
         },
 
         syncFromBaseCost() {
@@ -838,8 +824,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         isNonStandardTier() {
-            const dv = Number(this.form.deal_value) || 0;
-            return dv > 0 && !LGUIDS_TIERS[Math.round(dv)];
+            return false; // All amounts are valid in the range-based system
         },
 
         resetForm() {
