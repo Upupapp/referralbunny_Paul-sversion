@@ -35,13 +35,7 @@
     <div x-show="!loading && lead" class="space-y-5">
 
         {{-- â”€â”€ Header â”€â”€ --}}
-        <div class=”card border-l-4 transition-colors”
-             :class=”{
-                 'border-emerald-400': lead?.status === 'active',
-                 'border-amber-400':   lead?.status === 'expiring',
-                 'border-red-500':     lead?.status === 'expired',
-                 'border-gray-200':    !['active','expiring','expired'].includes(lead?.status||''),
-             }”>
+        <div class=”card border-l-4 transition-colors” :class=”headerStatusBorderClass()”>
             <div class=”flex flex-col sm:flex-row sm:items-start gap-4”>
                 <div class=”w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-xl shrink-0”
                      style=”background:#EDE9FE” x-text=”(lead?.name||'?').slice(0,2).toUpperCase()”></div>
@@ -76,11 +70,7 @@
                     {{-- Days left urgency badge --}}
                     <div x-show=”lead?.days_left != null”
                          class=”inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold”
-                         :class=”{
-                             'bg-red-100 text-red-700':    lead?.days_left <= 3,
-                             'bg-amber-100 text-amber-700': lead?.days_left > 3 && lead?.days_left <= 7,
-                             'bg-gray-100 text-gray-600':   lead?.days_left > 7,
-                         }”>
+                         :class=”daysLeftBadgeClass()”>
                         <svg class=”w-3 h-3 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z”/></svg>
                         <span x-text=”lead?.days_left + ' days left'”></span>
                     </div>
@@ -347,11 +337,7 @@
                                 <span class="text-sm">Days Left</span>
                             </div>
                             <span class="text-sm font-semibold tabular-nums"
-                                  :class="{
-                                      'text-red-600':   lead?.days_left != null && lead.days_left <= 3,
-                                      'text-amber-600': lead?.days_left != null && lead.days_left > 3 && lead.days_left <= 7,
-                                      'text-gray-700':  lead?.days_left == null || lead.days_left > 7,
-                                  }"
+                                  :class="daysLeftTextClass()"
                                   x-text="lead?.days_left != null ? lead.days_left + ' days' : '—'"></span>
                         </div>
                         <div class="flex items-center justify-between py-2.5">
@@ -1185,6 +1171,29 @@ function dealDetail(leadId, tenantId) {
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
+        },
+
+        // ── Days-left helpers (avoid < > in :class attributes — breaks HTML parsing) ──
+        headerStatusBorderClass() {
+            const s = this.lead?.status;
+            if (s === 'active')   return 'border-emerald-400';
+            if (s === 'expiring') return 'border-amber-400';
+            if (s === 'expired')  return 'border-red-500';
+            return 'border-gray-200';
+        },
+        daysLeftBadgeClass() {
+            const d = this.lead?.days_left;
+            if (d == null)  return 'bg-gray-100 text-gray-600';
+            if (d <= 3)     return 'bg-red-100 text-red-700';
+            if (d <= 7)     return 'bg-amber-100 text-amber-700';
+            return 'bg-gray-100 text-gray-600';
+        },
+        daysLeftTextClass() {
+            const d = this.lead?.days_left;
+            if (d == null) return 'text-gray-700';
+            if (d <= 3)    return 'text-red-600';
+            if (d <= 7)    return 'text-amber-600';
+            return 'text-gray-700';
         },
 
         // â”€â”€ Stage helpers â”€â”€
