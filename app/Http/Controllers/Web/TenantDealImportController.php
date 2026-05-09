@@ -291,9 +291,10 @@ class TenantDealImportController extends Controller
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
-            ->get();
-        $grouped = $rows->groupBy('validation_status');
-        $summary = $rows->groupBy('validation_status')->map->count();
+            ->paginate(50);
+        $allRows = ImportBatchRow::where('import_batch_id', $batchId)->get(['validation_status', 'row_action']);
+        $grouped = $allRows->groupBy('validation_status');
+        $summary = $allRows->groupBy('validation_status')->map->count();
 
         return view('tenant.imports.deals.show', compact(
             'tenant', 'batch', 'rows', 'grouped', 'summary'
@@ -325,11 +326,18 @@ class TenantDealImportController extends Controller
     public function showSettings(string $tenantId)
     {
         $this->guardCheck();
-        $tenant   = $this->resolveTenant($tenantId);
-        $settings = $this->service->getSettings($tenantId);
+        $tenant    = $this->resolveTenant($tenantId);
+        $settings  = $this->service->getSettings($tenantId);
         $templates = config('referralbunny_import_templates', []);
 
-        return view('tenant.imports.deals.settings', compact('tenant', 'settings', 'templates'));
+        // Build label map expected by the view: ['default' => 'Default', 'lgu_ids' => 'Lgu Ids', ...]
+        $templateKeys = collect($templates)
+            ->mapWithKeys(fn ($v, $k) => [
+                $k => $v['label'] ?? ucwords(str_replace('_', ' ', $k)),
+            ])
+            ->toArray();
+
+        return view('tenant.imports.deals.settings', compact('tenant', 'settings', 'templates', 'templateKeys'));
     }
 
     public function updateSettings(string $tenantId, Request $request): RedirectResponse

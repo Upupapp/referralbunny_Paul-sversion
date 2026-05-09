@@ -179,9 +179,9 @@
                 <h4 class="text-sm font-semibold text-[#1E1B4B]">Pipeline Total</h4>
             </div>
             <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums">
-                {{ number_format($summary['total_deal_amount'] ?? 0, 2) }}
+                {{ number_format($batch->successful_rows ?? 0) }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">Total deal value from created deals</p>
+            <p class="text-xs text-gray-400 mt-1">Deals successfully created or updated</p>
         </div>
 
         {{-- Unknown Referrers --}}
@@ -199,7 +199,7 @@
             </p>
             <p class="text-xs text-gray-400 mt-1">Referrer emails not found in system.</p>
             @if(($batch->unknown_referrer_rows ?? 0) > 0)
-            <a href="{{ route('tenant.resellers', $tenant->id) }}"
+            <a href="{{ route('tenant.referrers', $tenant->id) }}"
                class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-800 transition-colors">
                 Invite them now
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -236,8 +236,9 @@
                     @forelse($rows as $row)
                     @php
                         $statusKey = $row->status ?? 'ready';
-                        $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
-                        $errors    = is_array($row->errors) ? $row->errors : (json_decode($row->errors, true) ?? []);
+                        $computed     = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
+                        $errorMessage = $row->error_message ?? null;
+                        $errors       = $errorMessage ? [$errorMessage] : [];
                         $rowBorder = match($statusKey) {
                             'completed','created' => 'border-l-2 border-l-[#7B61FF]',
                             'updated'             => 'border-l-2 border-l-blue-400',
@@ -280,13 +281,13 @@
                             <span class="badge {{ $sb[0] }}">{{ $sb[1] }}</span>
                         </td>
                         <td class="text-xs text-gray-500">
-                            {{ $row->action_taken ? ucfirst(str_replace('_', ' ', $row->action_taken)) : '—' }}
+                            {{ $row->row_action ? ucfirst(str_replace('_', ' ', $row->row_action)) : '—' }}
                         </td>
                         <td>
-                            @if($row->deal_id)
-                                <a href="{{ route('tenant.deals.show', [$tenant->id, $row->deal_id]) }}"
+                            @if($row->created_deal_id)
+                                <a href="{{ route('tenant.deals.show', [$tenant->id, $row->created_deal_id]) }}"
                                    class="text-xs font-medium hover:opacity-80 transition-colors" style="color: #7B61FF;">
-                                    #{{ $row->deal_id }}
+                                    View →
                                 </a>
                             @else
                                 <span class="text-gray-300 text-xs">—</span>

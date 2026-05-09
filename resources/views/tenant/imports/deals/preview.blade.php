@@ -872,12 +872,13 @@ function dealImportPreview() {
         selectedRows: [],
         bulkAction: '',
         rowActions: {},
-        unresolvedDuplicates: {{ $grouped['duplicate']->count() }},
+        // All duplicates are pre-defaulted to 'skip' in init() so start at 0 (resolved).
+        // updateUnresolved() recalculates after each explicit user action.
+        unresolvedDuplicates: 0,
 
         init() {
-            // Default all duplicates to 'skip'
             @foreach($grouped['duplicate'] as $row)
-            this.rowActions[{{ $row->id }}] = 'skip';
+            this.rowActions['{{ $row->id }}'] = 'skip';
             @endforeach
         },
 
@@ -913,7 +914,6 @@ function dealImportPreview() {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrf,
                         'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
                     },
                     body: JSON.stringify({ action }),
                 });
