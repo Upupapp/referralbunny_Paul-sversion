@@ -885,7 +885,7 @@
                         </template>
                         <template x-if="!c.is_deleted">
                             <div>
-                                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="c.body"></p>
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-text="c.body"></p>
                                 {{-- Edit/Delete actions --}}
                                 <div class="mt-1 flex items-center gap-2 opacity-0 group-hover/comment:opacity-100 transition-opacity">
                                     <button @click="startEdit(c)"
@@ -1019,10 +1019,10 @@ function dealDetail(leadId, tenantId) {
         ],
 
         async init() {
-            const [leadRes] = await Promise.all([
-                fetch(`/api/leads/${leadId}`),
-            ]);
-            this.lead = await leadRes.json();
+            try {
+                const res = await fetch(`/api/leads/${leadId}`);
+                if (res.ok) this.lead = await res.json();
+            } catch(e) { /* silent — lead stays null, loading clears */ }
             this.loading = false;
             this.fetchContacts();
         },
@@ -1448,10 +1448,11 @@ function extensionRequestSection(dealId, tenantId) {
                     body: JSON.stringify({ approved_days: this.extendForm.days, tenant_id: tenantId }),
                 });
                 if (approveRes.ok) {
+                    const extendedDays = this.extendForm.days || created.requested_days;
                     this.showExtendForm = false;
                     this.extendForm = { days: 14, reason: '' };
                     await this.load();
-                    this.$dispatch('show-toast', { type: 'success', message: `Assignment extended by ${this.extendForm.days || created.requested_days} days.` });
+                    this.$dispatch('show-toast', { type: 'success', message: `Assignment extended by ${extendedDays} days.` });
                 } else {
                     this.extendError = 'Extension created but auto-approval failed. Approve it manually below.';
                     await this.load();

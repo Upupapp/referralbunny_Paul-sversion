@@ -42,7 +42,7 @@
 </head>
 <body class="bg-[#F0EFFA] font-sans antialiased">
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex min-h-screen">
 
     {{-- Mobile backdrop --}}
     <div x-show="sidebarOpen"
@@ -58,7 +58,7 @@
 
     {{-- Sidebar --}}
     <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-           class="sidebar fixed inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-200 lg:relative lg:translate-x-0">
+           class="sidebar fixed inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
 
         {{-- Logo --}}
         <a href="@isset($tenant){{ route('tenant.dashboard', $tenant->id) }}@else{{ route('platform.dashboard') }}@endisset"
@@ -135,7 +135,7 @@
     </aside>
 
     {{-- Main --}}
-    <div class="flex-1 flex flex-col overflow-hidden min-w-0">
+    <div class="flex-1 flex flex-col min-w-0">
 
         {{-- Global search overlay --}}
         <div x-data="globalSearch()" x-init="initSearch()"
@@ -290,7 +290,7 @@
         </div>
 
         {{-- Top bar --}}
-        <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 z-10">
+        <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-20">
 
             {{-- Mobile: sidebar toggle --}}
             <button @click="sidebarOpen = true"
@@ -524,7 +524,7 @@
         @endif
 
         {{-- Content --}}
-        <main class="flex-1 overflow-auto p-4 lg:p-6">
+        <main class="flex-1 p-4 lg:p-6">
             @yield('content')
         </main>
     </div>
