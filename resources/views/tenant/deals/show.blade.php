@@ -15,6 +15,11 @@
 
 @section('content')
 <script>var __dealSsrLead = @json($ssrLead ?? null);</script>
+<style>
+/* Financial breakdown layout — guaranteed, no Tailwind compile dependency */
+.fin-row{display:flex!important;justify-content:space-between;align-items:center}
+.fin-grid-3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
+</style>
 <div class="space-y-5"
      x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', __dealSsrLead)"
      x-init="init()"
@@ -116,65 +121,60 @@
                 </button>
             </div>
 
-            {{-- â”€â”€ View mode â”€â”€ --}}
+            {{-- â”€â”€ View mode (PHP-rendered — no Alpine x-text dependency) â”€â”€ --}}
+            @php
+                $bc = (float)($ssrLead['base_cost']    ?? 0);
+                $aa = (float)($ssrLead['added_amount'] ?? 0);
+                $dv = (float)($ssrLead['deal_value']   ?? 0);
+                $cv = ($bc + $aa) ?: $dv;
+                $co = $aa * 0.30;
+                $cp = $aa * 0.70;
+            @endphp
             <div :class=”editFinance ? 'hidden' : ''” class=”space-y-4”>
-                @php
-                    $bc = (float)($ssrLead['base_cost']    ?? 0);
-                    $aa = (float)($ssrLead['added_amount'] ?? 0);
-                    $dv = (float)($ssrLead['deal_value']   ?? 0);
-                    $cv = ($bc + $aa) ?: $dv;
-                @endphp
 
                 {{-- Formula rows --}}
-                <div class=”space-y-0”>
-                    <div style=”display:flex;justify-content:space-between;align-items:center” class=”py-2.5 border-b border-gray-100”>
+                <div>
+                    <div class=”fin-row py-2.5 border-b border-gray-100”>
                         <p class=”text-sm text-gray-500”>₱ Base Cost</p>
-                        <p class=”text-sm font-semibold text-gray-700 tabular-nums”
-                           x-text=”'₱' + Math.round(lead?.base_cost||0).toLocaleString()”>₱{{ number_format((int)$bc) }}</p>
+                        <p id=”fin-bc” class=”text-sm font-semibold text-gray-700 tabular-nums”>₱{{ number_format((int)$bc) }}</p>
                     </div>
-                    <div style=”display:flex;justify-content:space-between;align-items:center” class=”py-2.5 border-b border-dashed border-gray-200”>
+                    <div class=”fin-row py-2.5 border-b border-dashed border-gray-200”>
                         <p class=”text-sm text-gray-500”>+ Added Amount <span class=”text-xs text-gray-400”>(margin)</span></p>
-                        <p class=”text-sm font-semibold text-blue-600 tabular-nums”
-                           x-text=”'₱' + Math.round(lead?.added_amount||0).toLocaleString()”>₱{{ number_format((int)$aa) }}</p>
+                        <p id=”fin-aa” class=”text-sm font-semibold text-blue-600 tabular-nums”>₱{{ number_format((int)$aa) }}</p>
                     </div>
-                    <div style=”display:flex;justify-content:space-between;align-items:center;background:#F0EFFA” class=”py-2.5 rounded-xl px-3 mt-1”>
+                    <div class=”fin-row py-2.5 rounded-xl px-3 mt-1” style=”background:#F0EFFA”>
                         <p class=”text-sm font-semibold” style=”color:#1E1B4B”>= Contract Value</p>
-                        <p class=”text-sm font-bold tabular-nums” style=”color:#1E1B4B”
-                           x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”>₱{{ number_format((int)$cv) }}</p>
+                        <p id=”fin-cv” class=”text-sm font-bold tabular-nums” style=”color:#1E1B4B”>₱{{ number_format((int)$cv) }}</p>
                     </div>
                 </div>
 
                 {{-- 3-column summary --}}
-                <div style=”display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem” class=”p-3 rounded-xl bg-gray-50 border border-gray-100”>
+                <div class=”fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100”>
                     <div class=”text-center”>
                         <p class=”text-xs text-gray-400 uppercase tracking-wide”>Contract Value</p>
-                        <p class=”text-sm font-bold tabular-nums mt-0.5” style=”color:#1E1B4B”
-                           x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”>₱{{ number_format((int)$cv) }}</p>
+                        <p id=”fin-cv2” class=”text-sm font-bold tabular-nums mt-0.5” style=”color:#1E1B4B”>₱{{ number_format((int)$cv) }}</p>
                         <p class=”text-xs text-gray-400”>base + margin</p>
                     </div>
                     <div class=”text-center” style=”border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb”>
                         <p class=”text-xs text-blue-500 uppercase tracking-wide”>Company Share</p>
-                        <p class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5”
-                           x-text=”'₱' + Math.round((lead?.added_amount||0)*0.30).toLocaleString()”>₱{{ number_format((int)($aa * 0.30)) }}</p>
+                        <p id=”fin-co” class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5”>₱{{ number_format((int)$co) }}</p>
                         <p class=”text-xs text-blue-400”>30% margin</p>
                     </div>
                     <div class=”text-center”>
                         <p class=”text-xs text-emerald-500 uppercase tracking-wide”>Commission Pool</p>
-                        <p class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5”
-                           x-text=”'₱' + Math.round((lead?.added_amount||0)*0.70).toLocaleString()”>₱{{ number_format((int)($aa * 0.70)) }}</p>
+                        <p id=”fin-cp” class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5”>₱{{ number_format((int)$cp) }}</p>
                         <p class=”text-xs text-emerald-400”>70% margin</p>
                     </div>
                 </div>
 
-                {{-- Commission distribution --}}
-                <div x-show=”(lead?.commission_splits||[]).length”>
+                {{-- Commission distribution (Alpine-driven — only shows when splits exist) --}}
+                @if(!empty($ssrLead['commission_splits']))
+                <div>
                     <div class=”flex items-center justify-between mb-2”>
                         <p class=”text-xs font-semibold text-gray-500 uppercase tracking-wider”>Commission Distribution</p>
-                        <span :class=”{
-                            'badge badge-gray':   lead?.commission_status === 'pending',
-                            'badge badge-orange': lead?.commission_status === 'locked',
-                            'badge badge-green':  lead?.commission_status === 'paid',
-                        }” x-text=”lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'”></span>
+                        <span class=”badge badge-gray”
+                              x-text=”lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'”>
+                            {{ ucfirst($ssrLead['commission_status'] ?? 'pending') }}</span>
                     </div>
                     <div class=”space-y-1.5”>
                         <template x-for=”split in (lead?.commission_splits||[])” :key=”split.id”>
@@ -196,12 +196,14 @@
                         </template>
                     </div>
                 </div>
+                @endif
 
                 {{-- No financial data notice --}}
-                <div x-show=”!lead?.added_amount || Number(lead?.added_amount) === 0”
-                     class=”p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800”>
+                @if(!$aa)
+                <div class=”p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800”>
                     No financial data set yet. Click <strong>Edit</strong> to enter Base Cost and Added Amount.
                 </div>
+                @endif
 
             </div>
 
@@ -1075,6 +1077,16 @@ function dealDetail(leadId, tenantId, ssrLead) {
                 const updated = await res.json();
                 if (updated.id) {
                     this.lead = { ...this.lead, ...updated };
+                    // Update the PHP-rendered financial display elements directly
+                    const _bc = Math.round(Number(updated.base_cost    || 0));
+                    const _aa = Math.round(Number(updated.added_amount || 0));
+                    const _cv = (_bc + _aa) || Math.round(Number(updated.deal_value || 0));
+                    const _p  = n => '₱' + n.toLocaleString('en');
+                    [['fin-bc',_bc],['fin-aa',_aa],['fin-cv',_cv],['fin-cv2',_cv],
+                     ['fin-co',Math.round(_aa*.3)],['fin-cp',Math.round(_aa*.7)]].forEach(([id,v]) => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = _p(v);
+                    });
                     this.editFinance = false;
                     this.$dispatch('show-toast', { type: 'success', message: 'Financial data saved.' });
                 } else {
