@@ -731,7 +731,7 @@
     </div>
 
     {{-- Link Contact Modal --}}
-    <div x-show=”showLinkContact” x-cloak
+    <div x-show=”showLinkContact” x-cloak style=”display:none”
          class=”fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4”
          @keydown.escape.window=”showLinkContact = false”>
         <div class=”bg-white rounded-2xl shadow-xl w-full max-w-md” @click.stop>
@@ -750,7 +750,7 @@
                     </svg>
                     <input type=”text” x-model=”linkSearch”
                            @input.debounce.200ms=”if(!allTenantContacts.length) fetchAllContacts()”
-                           placeholder=”Click 🔍 or type to search contacts…” autofocus>
+                           placeholder=”Click 🔍 or type to search contacts…”>
                 </div>
                 <div class=”max-h-72 overflow-y-auto space-y-1”>
                     <template x-if=”allTenantContacts.length === 0”>
@@ -785,7 +785,7 @@
     </div>
 
     {{-- ── Move Stage Modal ── --}}
-    <div x-show=”showMoveStage” x-cloak
+    <div x-show=”showMoveStage” x-cloak style=”display:none”
          class=”fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4”
          @keydown.escape.window=”showMoveStage = false; moveStageNote = ''”>
         <div class=”bg-white rounded-2xl shadow-xl w-full max-w-sm” @click.stop>
@@ -831,7 +831,7 @@
     </div>
 
     {{-- â”€â”€ Reassign Modal â”€â”€ --}}
-    <div x-show="showReassign" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div x-show="showReassign" x-cloak style="display:none" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B]">Reassign Record</h3>
