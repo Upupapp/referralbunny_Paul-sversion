@@ -118,53 +118,38 @@
             {{-- â”€â”€ View mode â”€â”€ --}}
             <div x-show=”!editFinance” class=”space-y-4”>
 
-                {{-- Formula line items --}}
+                {{-- Formula rows — same structure as add deal modal --}}
                 <div class=”space-y-0”>
-                    <div class=”flex items-center justify-between py-3 border-b border-gray-100”>
-                        <div class=”flex items-center gap-2.5”>
-                            <span class=”w-5 h-5 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0”>₱</span>
-                            <span class=”text-sm text-gray-600”>Base Cost</span>
-                        </div>
-                        <span class=”text-sm font-semibold text-gray-700 tabular-nums” x-text=”fmt(lead?.base_cost || 0)”></span>
+                    <div class=”flex justify-between py-2.5 border-b border-gray-100”>
+                        <p class=”text-sm text-gray-500”>₱ Base Cost</p>
+                        <p class=”text-sm font-semibold text-gray-700 tabular-nums” x-text=”'₱' + Math.round(lead?.base_cost||0).toLocaleString()”></p>
                     </div>
-                    <div class=”flex items-center justify-between py-3 border-b border-dashed border-gray-200”>
-                        <div class=”flex items-center gap-2.5”>
-                            <span class=”w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-500 shrink-0”>+</span>
-                            <span class=”text-sm text-gray-600”>Added Amount <span class=”text-xs text-gray-400”>(margin)</span></span>
-                        </div>
-                        <span class=”text-sm font-semibold text-blue-600 tabular-nums” x-text=”fmt(lead?.added_amount || 0)”></span>
+                    <div class=”flex justify-between py-2.5 border-b border-dashed border-gray-200”>
+                        <p class=”text-sm text-gray-500”>+ Added Amount <span class=”text-xs text-gray-400”>(margin)</span></p>
+                        <p class=”text-sm font-semibold text-blue-600 tabular-nums” x-text=”'₱' + Math.round(lead?.added_amount||0).toLocaleString()”></p>
                     </div>
-                    <div class=”flex items-center justify-between py-3 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
-                        <div class=”flex items-center gap-2.5”>
-                            <span class=”w-5 h-5 rounded bg-purple-200 flex items-center justify-center text-xs font-bold text-purple-700 shrink-0”>=</span>
-                            <span class=”text-sm font-semibold text-[#1E1B4B]”>Contract Value</span>
-                        </div>
-                        <span class=”text-base font-bold text-[#1E1B4B] tabular-nums” x-text=”fmt(contractValue())”></span>
+                    <div class=”flex justify-between py-2.5 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
+                        <p class=”text-sm font-semibold text-[#1E1B4B]”>= Contract Value</p>
+                        <p class=”text-sm font-bold text-[#1E1B4B] tabular-nums” x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”></p>
                     </div>
                 </div>
 
-                {{-- 3-column summary (always rendered so x-text bindings stay active) --}}
+                {{-- 3-column summary — exact same structure as add deal modal live preview --}}
                 <div class=”grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100”>
                     <div class=”text-center”>
-                        <div class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Contract Value</div>
-                        <div class=”text-sm font-bold text-[#1E1B4B] tabular-nums” x-text=”fmt(contractValue())”></div>
-                        <div class=”text-xs text-gray-400 mt-0.5”>base + margin</div>
+                        <p class=”text-xs text-gray-400 uppercase tracking-wide”>Contract Value</p>
+                        <p class=”text-sm font-bold text-[#1E1B4B] tabular-nums mt-0.5” x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”></p>
+                        <p class=”text-xs text-gray-400”>base + margin</p>
                     </div>
                     <div class=”text-center border-x border-gray-200”>
-                        <div class=”text-xs text-blue-500 uppercase tracking-wide mb-0.5 flex items-center justify-center gap-1”>
-                            <span>Company Share</span>
-                            @if($showLocation ?? false)<x-tax-tip />@endif
-                        </div>
-                        <div class=”text-sm font-bold text-blue-700 tabular-nums” x-text=”fmt(companyShare())”></div>
-                        <div class=”text-xs text-blue-400 mt-0.5”>30% of margin</div>
+                        <p class=”text-xs text-blue-500 uppercase tracking-wide”>Company Share</p>
+                        <p class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5” x-text=”'₱' + Math.round((lead?.added_amount||0)*0.30).toLocaleString()”></p>
+                        <p class=”text-xs text-blue-400”>30% margin</p>
                     </div>
                     <div class=”text-center”>
-                        <div class=”text-xs text-emerald-500 uppercase tracking-wide mb-0.5 flex items-center justify-center gap-1”>
-                            <span>Commission Pool</span>
-                            @if($showLocation ?? false)<x-tax-tip />@endif
-                        </div>
-                        <div class=”text-sm font-bold text-emerald-700 tabular-nums” x-text=”fmt(commPool())”></div>
-                        <div class=”text-xs text-emerald-400 mt-0.5”>70% of margin</div>
+                        <p class=”text-xs text-emerald-500 uppercase tracking-wide”>Commission Pool</p>
+                        <p class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5” x-text=”'₱' + Math.round((lead?.added_amount||0)*0.70).toLocaleString()”></p>
+                        <p class=”text-xs text-emerald-400”>70% margin</p>
                     </div>
                 </div>
 
