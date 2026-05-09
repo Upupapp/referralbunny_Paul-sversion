@@ -33,7 +33,7 @@
 <div class="space-y-5"
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
-     @open-add-deal.window="showAdd = true; resetForm(); searchReferrers()">
+     @open-add-deal.window="showAdd = true; resetForm(); searchReferrers().then(() => { referrerOpen = true; })">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -188,7 +188,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
-                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm(); searchReferrers()" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm(); searchReferrers().then(() => { referrerOpen = true; })" class="btn-primary mt-3 text-sm">Add First Deal</button>
                             </td>
                         </tr>
                     </template>
