@@ -8,55 +8,72 @@ use Illuminate\Support\Facades\DB;
 class RbCheckNotificationsCommand extends Command
 {
     protected $signature = 'rb:notifications:check
-                            {--fix : Delete orphaned notifications (NULL notifiable_id, non-system type)}';
+                            {--fix : Fix orphaned notifications and migrate wrong notifiable_type values}';
 
-    protected $description = 'List notifications with NULL notifiable_id. Use --fix to delete orphaned records.';
+    protected $description = 'Diagnose notification integrity. Use --fix to repair orphaned records and type mismatches.';
 
     public function handle(): int
     {
-        $rows = DB::table('notifications')
+        $issues = 0;
+
+        // ── 1. NULL notifiable_id ────────────────────────────────────────
+        $nullRows = DB::table('notifications')
             ->whereNull('notifiable_id')
             ->orderBy('created_at')
             ->get(['id', 'type', 'tenant_id', 'created_at']);
 
-        $total     = $rows->count();
-        $system    = $rows->where('type', 'system')->count();
-        $orphaned  = $total - $system;
+        $total   = $nullRows->count();
+        $system  = $nullRows->where('type', 'system')->count();
+        $orphaned = $total - $system;
+        $this->info("NULL notifiable_id: {$total} ({$system} system, {$orphaned} orphaned)");
+        $issues += $orphaned;
 
-        $this->info("Notifications with NULL notifiable_id: {$total} total ({$system} system, {$orphaned} non-system)");
-
-        if ($total === 0) {
-            $this->line('No records found — notification recipients look healthy.');
-            return self::SUCCESS;
-        }
-
-        $this->newLine();
-        $headers = ['ID', 'Type', 'Tenant ID', 'Created At'];
-        $this->table($headers, $rows->map(fn($r) => [
-            substr($r->id, 0, 8) . '…',
-            $r->type,
-            $r->tenant_id ?? '—',
-            $r->created_at,
-        ])->toArray());
-
-        // Group by type so we can see which code path is creating them
-        $this->newLine();
-        $this->line('Breakdown by type:');
-        $rows->groupBy('type')->each(function ($group, $type) {
-            $this->line("  {$type}: {$group->count()}");
-        });
-
-        if ($this->option('fix')) {
+        if ($this->option('fix') && $orphaned > 0) {
             $deleted = DB::table('notifications')
                 ->whereNull('notifiable_id')
                 ->where('type', '!=', 'system')
                 ->delete();
+            $this->info("  ✓ Deleted {$deleted} orphaned records.");
+        }
 
-            $this->newLine();
-            $this->info("Deleted {$deleted} orphaned non-system notification(s).");
+        // ── 2. Wrong notifiable_type (legacy App\Models\* strings) ───────
+        $wrongTenant = DB::table('notifications')
+            ->where('notifiable_type', 'App\\Models\\TenantUser')
+            ->count();
+        $wrongReseller = DB::table('notifications')
+            ->where('notifiable_type', 'App\\Models\\Reseller')
+            ->count();
+
+        if ($wrongTenant > 0) {
+            $this->warn("Wrong notifiable_type 'App\\Models\\TenantUser': {$wrongTenant} rows (should be 'tenant_admin')");
+            $issues += $wrongTenant;
+            if ($this->option('fix')) {
+                DB::table('notifications')
+                    ->where('notifiable_type', 'App\\Models\\TenantUser')
+                    ->update(['notifiable_type' => 'tenant_admin']);
+                $this->info("  ✓ Migrated {$wrongTenant} rows to 'tenant_admin'.");
+            }
+        }
+
+        if ($wrongReseller > 0) {
+            $this->warn("Wrong notifiable_type 'App\\Models\\Reseller': {$wrongReseller} rows (should be 'reseller')");
+            $issues += $wrongReseller;
+            if ($this->option('fix')) {
+                DB::table('notifications')
+                    ->where('notifiable_type', 'App\\Models\\Reseller')
+                    ->update(['notifiable_type' => 'reseller']);
+                $this->info("  ✓ Migrated {$wrongReseller} rows to 'reseller'.");
+            }
+        }
+
+        // ── Summary ───────────────────────────────────────────────────────
+        $this->newLine();
+        if ($issues === 0) {
+            $this->info('All notification records look healthy.');
+        } elseif (!$this->option('fix')) {
+            $this->comment("Run with --fix to repair {$issues} issue(s).");
         } else {
-            $this->newLine();
-            $this->comment('Run with --fix to delete the non-system orphaned records.');
+            $this->info('All issues repaired.');
         }
 
         return self::SUCCESS;

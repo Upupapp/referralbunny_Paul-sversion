@@ -53,10 +53,21 @@ class CheckPipelineStageLimits extends Command
                 foreach ($warningLeads as $lead) {
                     // Create one in-app notification per active admin/manager for this tenant
                     foreach ($adminIds as $adminId) {
+                        // Dedup: skip if already sent today for this lead+stage+admin
+                        $alreadySent = DB::table('notifications')
+                            ->where('tenant_id', $tenantId)
+                            ->where('notifiable_type', 'tenant_admin')
+                            ->where('notifiable_id', $adminId)
+                            ->whereRaw("metadata_json->>'type' = 'pipeline_stage_warning'")
+                            ->whereRaw("metadata_json->>'lead_id' = ?", [$lead->id])
+                            ->whereDate('created_at', now()->toDateString())
+                            ->exists();
+                        if ($alreadySent) continue;
+
                         DB::table('notifications')->insert([
                             'id'             => (string) Str::uuid(),
                             'tenant_id'      => $tenantId,
-                            'notifiable_type'=> 'App\\Models\\TenantUser',
+                            'notifiable_type'=> 'tenant_admin',
                             'notifiable_id'  => $adminId,
                             'category'       => 'system',
                             'type'           => 'warning',

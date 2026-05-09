@@ -52,7 +52,7 @@ class NotifyExpiringLeads extends Command
                     DB::table('notifications')->insert([
                         'id'             => (string) Str::uuid(),
                         'tenant_id'      => $tenantId,
-                        'notifiable_type'=> 'App\\Models\\TenantUser',
+                        'notifiable_type'=> 'tenant_admin',
                         'notifiable_id'  => $adminId,
                         'category'       => 'system',
                         'type'           => 'warning',
@@ -103,7 +103,7 @@ class NotifyExpiringLeads extends Command
                     DB::table('notifications')->insert([
                         'id'             => (string) Str::uuid(),
                         'tenant_id'      => $tenantId,
-                        'notifiable_type'=> 'App\\Models\\Reseller',
+                        'notifiable_type'=> 'reseller',
                         'notifiable_id'  => $reseller->id,
                         'category'       => 'system',
                         'type'           => 'warning',
