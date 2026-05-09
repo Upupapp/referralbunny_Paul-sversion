@@ -322,17 +322,22 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
 // ── PayMongo Webhook (no auth — verified by signature) ────────
 Route::post('webhooks/paymongo', [WebhookController::class, 'paymongo']);
 
-// ── Temporary open routes for development (remove in production) ──
-Route::get('/tenants',            [TenantController::class, 'index']);
-Route::get('/tenants/{tenant}',   [TenantController::class, 'show']);
-Route::get('/leads',              [LeadController::class, 'index']);
-Route::post('/leads',             [LeadController::class, 'store']);
-Route::get('/leads/{lead}',       [LeadController::class, 'show']);
-Route::put('/leads/{lead}',       [LeadController::class, 'update']);
-Route::patch('/leads/{lead}',     [LeadController::class, 'update']);
-Route::delete('/leads/{lead}',    [LeadController::class, 'destroy']);
-Route::get('/resellers',          [ResellerController::class, 'index']);
-Route::get('/messages',           [MessageController::class, 'index']);
-Route::get('/organizations',           [OrganizationController::class, 'index']);
-Route::get('/organizations/available', [OrganizationController::class, 'available']);
-Route::get('/contacts',           [ContactController::class, 'index']);
+// ── Development-only open routes (NOT available in production) ────
+// These are gated to local/testing environments to avoid exposing unauthenticated
+// endpoints in production. Remove this block entirely once proper seeding/testing
+// workflows are in place.
+if (app()->environment('local', 'testing')) {
+    Route::get('/tenants',            [TenantController::class, 'index']);
+    Route::get('/tenants/{tenant}',   [TenantController::class, 'show']);
+    Route::get('/leads',              [LeadController::class, 'index']);
+    Route::post('/leads',             [LeadController::class, 'store']);
+    Route::get('/leads/{lead}',       [LeadController::class, 'show']);
+    Route::put('/leads/{lead}',       [LeadController::class, 'update']);
+    Route::patch('/leads/{lead}',     [LeadController::class, 'update']);
+    Route::delete('/leads/{lead}',    [LeadController::class, 'destroy']);
+    Route::get('/resellers',          [ResellerController::class, 'index']);
+    Route::get('/messages',           [MessageController::class, 'index']);
+    Route::get('/organizations',           [OrganizationController::class, 'index']);
+    Route::get('/organizations/available', [OrganizationController::class, 'available']);
+    Route::get('/contacts',           [ContactController::class, 'index']);
+}

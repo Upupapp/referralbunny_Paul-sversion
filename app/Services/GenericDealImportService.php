@@ -689,6 +689,7 @@ class GenericDealImportService
             $computed = $row->computed_data;
 
             try {
+                DB::beginTransaction();
                 $dealAmount    = (float) ($computed['normalized_deal_amount'] ?? 0);
                 $orgId         = $row->organization_id;
                 $referrerEmail = $norm['referrer_email'] ?? null;
@@ -781,7 +782,9 @@ class GenericDealImportService
                     $row->update(['created_deal_id' => $newLead->id]);
                     $created++;
                 }
+                DB::commit();
             } catch (\Throwable $e) {
+                DB::rollBack();
                 $row->update(['error_message' => $e->getMessage()]);
                 $errors[] = "Row {$row->row_number}: {$e->getMessage()}";
                 $failed++;

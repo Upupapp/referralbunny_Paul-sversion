@@ -570,6 +570,7 @@ function notifPanel() {
         async load() {
             try {
                 const res  = await fetch('/api/notifications/mine?unread=true&limit=6', {
+                    credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();

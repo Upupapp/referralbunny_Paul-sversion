@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Resellers')
+@section('title', 'Referrers')
 @section('nav')
     @include('tenant._nav')
 @endsection
@@ -7,7 +7,7 @@
 @section('topbar-actions')
     <button x-data @click="$dispatch('open-add-reseller')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        <span class="hidden sm:inline">Invite Reseller</span>
+        <span class="hidden sm:inline">Invite Referrer</span>
     </button>
 @endsection
 
@@ -19,7 +19,7 @@
         <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div class="search-group flex-1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce="filter()" placeholder="Search resellers…">
+                <input type="text" x-model="search" @input.debounce="filter()" placeholder="Search referrers…">
             </div>
             <select x-model="filterStatus" @change="filter()" class="form-input sm:w-40">
                 <option value="">All Status</option>
@@ -33,10 +33,10 @@
     <div class="card p-0 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
-                <thead><tr class="table-head"><th>Reseller</th><th>Territory</th><th>Leads</th><th>Closed Value</th><th>Score</th><th>Status</th></tr></thead>
+                <thead><tr class="table-head"><th>Referrer</th><th>Territory</th><th>Leads</th><th>Closed Value</th><th>Score</th><th>Status</th></tr></thead>
                 <tbody>
                     <template x-if="loading"><tr><td colspan="6" class="py-10 text-center text-gray-400">Loading...</td></tr></template>
-                    <template x-if="!loading && filtered.length === 0"><tr><td colspan="6" class="py-10 text-center text-gray-400">No resellers found</td></tr></template>
+                    <template x-if="!loading && filtered.length === 0"><tr><td colspan="6" class="py-10 text-center text-gray-400">No referrers found</td></tr></template>
                     <template x-for="r in filtered" :key="r.id">
                         <tr class="table-row">
                             <td>

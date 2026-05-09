@@ -103,8 +103,8 @@
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 mb-1.5">
-                    <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Resellers</span>
-                    <x-info-tip text="Resellers registered for this tenant. They introduce leads and earn commission on closed deals." position="left" />
+                    <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Referrers</span>
+                    <x-info-tip text="Referrers registered for this tenant. They introduce leads and earn commission on closed deals." position="left" />
                 </div>
                 <p class="text-2xl font-bold text-[#1E1B4B]" x-text="resellers.length"></p>
             </div>
@@ -139,11 +139,11 @@
             <p class="text-gray-400 text-sm text-center py-6" x-show="funnel.length === 0">No pipeline data</p>
         </div>
 
-        {{-- Top Resellers --}}
+        {{-- Top Referrers --}}
         <div class="card">
             <div class="flex items-center gap-1 mb-4">
-                <h3 class="font-semibold text-[#1E1B4B]">Top Resellers</h3>
-                <x-info-tip text="Resellers ranked by closed deal value. Shows their assigned lead count and total revenue generated." />
+                <h3 class="font-semibold text-[#1E1B4B]">Top Referrers</h3>
+                <x-info-tip text="Referrers ranked by closed deal value. Shows their assigned lead count and total revenue generated." />
             </div>
             <div class="space-y-3">
                 <template x-for="(r, i) in resellers.slice(0,5)" :key="r.id">
