@@ -57,7 +57,7 @@
                 {{-- Details --}}
                 <div class="card space-y-3">
                     <h3 class="font-semibold text-[#1E1B4B]">Lead Details</h3>
-                    <div class="flex justify-between text-sm"><span class="text-gray-400">Reseller</span><span class="font-medium" x-text="lead.reseller_name || '—'"></span></div>
+                    <div class="flex justify-between text-sm"><span class="text-gray-400">Referrer</span><span class="font-medium" x-text="lead.reseller_name || '—'"></span></div>
                     <div class="flex justify-between text-sm" x-show="lead.data?.province"><span class="text-gray-400">Province</span><span class="font-medium" x-text="lead.data?.province"></span></div>
                     <div class="flex justify-between text-sm" x-show="lead.data?.municipality"><span class="text-gray-400">Municipality</span><span class="font-medium" x-text="lead.data?.municipality"></span></div>
                     <div class="flex justify-between text-sm"><span class="text-gray-400">Commission</span><span :class="{'badge':true,'badge-green':lead.commission_status==='paid','badge-orange':lead.commission_status==='locked','badge-blue':lead.commission_status==='pending'}" x-text="lead.commission_status || '—'"></span></div>
@@ -133,7 +133,7 @@
                 <button @click="showReassign = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="form-label">New Reseller Name</label><input type="text" x-model="reassignName" class="form-input" placeholder="Reseller name"></div>
+                <div><label class="form-label">New Referrer Name</label><input type="text" x-model="reassignName" class="form-input" placeholder="Referrer name"></div>
                 <div class="flex justify-end gap-3">
                     <button @click="showReassign = false" class="btn-secondary">Cancel</button>
                     <button @click="reassign()" :disabled="saving" class="btn-primary" x-text="saving ? 'Reassigning...' : 'Reassign'"></button>
@@ -169,11 +169,19 @@ function leadDetail(leadId, tenantId) {
         async moveStage() {
             this.moving = true;
             try {
-                const res = await fetch(`/api/leads/${leadId}/stage`, {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${leadId}/stage`, {
                     method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                 });
-                this.lead = await res.json();
+                const data = await res.json();
+                if (data.id) this.lead = data;
             } finally { this.moving = false; }
         },
 
@@ -198,14 +206,24 @@ function leadDetail(leadId, tenantId) {
             if (!this.reassignName) return;
             this.saving = true;
             try {
-                const res = await fetch(`/api/leads/${leadId}/reassign`, {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${leadId}/reassign`, {
                     method: 'POST',
-                    headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ reseller_name: this.reassignName }),
                 });
-                this.lead = await res.json();
-                this.showReassign = false;
-                this.reassignName = '';
+                const data = await res.json();
+                if (data.id) {
+                    this.lead = data;
+                    this.showReassign = false;
+                    this.reassignName = '';
+                }
             } finally { this.saving = false; }
         },
     }

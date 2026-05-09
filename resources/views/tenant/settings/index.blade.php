@@ -113,7 +113,7 @@
                 <div class="flex items-start justify-between mb-1">
                     <div>
                         <h3 class="font-semibold text-[#1E1B4B]">Agreement Files</h3>
-                        <p class="text-xs text-gray-400 mt-0.5">Resellers must acknowledge required agreements before they can refer deals.</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Referrers must acknowledge required agreements before they can refer deals.</p>
                     </div>
                     <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +143,7 @@
                             </div>
                         </div>
                         <p class="text-sm font-medium text-gray-600">No agreement files yet</p>
-                        <p class="text-xs text-gray-400 mt-1">Add an NDA or Non-Compete to require reseller sign-off.</p>
+                        <p class="text-xs text-gray-400 mt-1">Add an NDA or Non-Compete to require referrer sign-off.</p>
                         <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Agreement</button>
                     </div>
 
@@ -217,7 +217,7 @@
                                 <label class="form-label">Agreement Label *</label>
                                 <input type="text" x-model="form.label" class="form-input"
                                        placeholder="e.g. Non-Disclosure Agreement (NDA)">
-                                <p class="text-xs text-gray-400 mt-1">Shown to resellers when they are asked to sign.</p>
+                                <p class="text-xs text-gray-400 mt-1">Shown to referrers when they are asked to sign.</p>
                             </div>
                             <div>
                                 <label class="form-label">Description</label>
@@ -244,8 +244,8 @@
                             {{-- Required toggle --}}
                             <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
                                 <div>
-                                    <p class="text-sm font-medium text-[#1E1B4B]">Required for resellers</p>
-                                    <p class="text-xs text-gray-400 mt-0.5">Resellers cannot refer deals without signing this.</p>
+                                    <p class="text-sm font-medium text-[#1E1B4B]">Required for referrers</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Referrers cannot refer deals without signing this.</p>
                                 </div>
                                 <button type="button" @click="form.is_required = !form.is_required"
                                         :class="form.is_required ? 'bg-purple-600' : 'bg-gray-300'"
@@ -273,7 +273,7 @@
                 <div class="flex items-start justify-between mb-1">
                     <div>
                         <h3 class="font-semibold text-[#1E1B4B]">Required Documents</h3>
-                        <p class="text-xs text-gray-400 mt-0.5">Documents resellers must submit before they can refer deals. Admin reviews and approves each submission.</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Documents referrers must submit before they can refer deals. Admin reviews and approves each submission.</p>
                     </div>
                     <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,7 +301,7 @@
                             </div>
                         </div>
                         <p class="text-sm font-medium text-gray-600">No required documents yet</p>
-                        <p class="text-xs text-gray-400 mt-1">Add a Valid ID or other document to require from resellers.</p>
+                        <p class="text-xs text-gray-400 mt-1">Add a Valid ID or other document to require from referrers.</p>
                         <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Document</button>
                     </div>
 
@@ -371,7 +371,7 @@
                             </div>
                             <div>
                                 <label class="form-label">Description</label>
-                                <textarea x-model="form.description" class="form-input" rows="2" placeholder="Instructions shown to resellers when submitting"></textarea>
+                                <textarea x-model="form.description" class="form-input" rows="2" placeholder="Instructions shown to referrers when submitting"></textarea>
                             </div>
                             <div>
                                 <label class="form-label">Accepted Formats</label>
@@ -379,8 +379,8 @@
                             </div>
                             <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50">
                                 <div>
-                                    <p class="text-sm font-medium text-[#1E1B4B]">Required for resellers</p>
-                                    <p class="text-xs text-gray-400 mt-0.5">Resellers cannot refer deals without this document being approved.</p>
+                                    <p class="text-sm font-medium text-[#1E1B4B]">Required for referrers</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Referrers cannot refer deals without this document being approved.</p>
                                 </div>
                                 <button type="button" @click="form.is_required = !form.is_required"
                                         :class="form.is_required ? 'bg-[#7B61FF]' : 'bg-gray-300'"

@@ -108,7 +108,7 @@
                 </div>
 
                 <div>
-                    <p class="text-white font-bold text-base leading-snug">Referrer / Reseller</p>
+                    <p class="text-white font-bold text-base leading-snug">Referrer</p>
                     <p class="text-white/45 text-xs mt-1 leading-relaxed">
                         Submit deals, track your pipeline, and earn commissions.
                     </p>
