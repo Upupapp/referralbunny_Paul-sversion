@@ -71,22 +71,28 @@ class DealReferrerAssignmentService
             ->get();
 
         // ── 3. Tenant Owners / Admins / Managers (without Reseller record) ─
-        $tenantUserQuery = DB::table('tenant_memberships as tm')
-            ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
-            ->where('tm.tenant_id', $tenantId)
-            ->where('tm.status', 'active')
-            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->whereNotNull('u.email')
-            ->select('u.id as tenant_user_id', 'u.name', 'u.email', 'tm.role as tenant_role');
+        // Wrapped in try-catch: schema differences across environments are handled gracefully.
+        $tenantUsers = collect();
+        try {
+            $tenantUserQuery = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->whereNotNull('u.email')
+                ->select('u.id as tenant_user_id', 'u.name', 'u.email', 'tm.role as tenant_role');
 
-        if ($q) {
-            $tenantUserQuery->where(function ($qb) use ($q) {
-                $qb->whereRaw('LOWER(u.name) LIKE ?', [$q])
-                   ->orWhereRaw('LOWER(u.email) LIKE ?', [$q]);
-            });
+            if ($q) {
+                $tenantUserQuery->where(function ($qb) use ($q) {
+                    $qb->whereRaw('LOWER(u.name) LIKE ?', [$q])
+                       ->orWhereRaw('LOWER(u.email) LIKE ?', [$q]);
+                });
+            }
+
+            $tenantUsers = $tenantUserQuery->orderBy('u.name')->get();
+        } catch (\Throwable) {
+            // Schema unavailable in this environment — admin/manager enrichment skipped
         }
-
-        $tenantUsers = $tenantUserQuery->orderBy('u.name')->get();
 
         // ── Pre-fetch membership roles for all linked Reseller records ────
         $linkedUserIds = $activeResellers->pluck('linked_tenant_user_id')
@@ -95,13 +101,17 @@ class DealReferrerAssignmentService
 
         $membershipRoles = collect();
         if ($linkedUserIds->isNotEmpty()) {
-            $membershipRoles = DB::table('tenant_memberships')
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->whereIn('tenant_user_id', $linkedUserIds)
-                ->select('tenant_user_id', 'role')
-                ->get()
-                ->keyBy('tenant_user_id');
+            try {
+                $membershipRoles = DB::table('tenant_memberships')
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->whereIn('tenant_user_id', $linkedUserIds)
+                    ->select('tenant_user_id', 'role')
+                    ->get()
+                    ->keyBy('tenant_user_id');
+            } catch (\Throwable) {
+                // Schema unavailable — role badge enrichment skipped
+            }
         }
 
         // ── Build email coverage map to avoid duplicates ──────────────────
