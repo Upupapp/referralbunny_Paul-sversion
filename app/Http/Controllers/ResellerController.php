@@ -401,7 +401,7 @@ class ResellerController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        $tenantId = $request->query('tenant_id');
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if (!$tenantId) {
             return response()->json(['error' => 'tenant_id required'], 400);
         }

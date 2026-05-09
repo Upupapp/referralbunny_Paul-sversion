@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class AgreementController extends Controller
     public function index(Request $request): JsonResponse
     {
         $agreements = DB::table('reseller_agreement_files')
-            ->where('tenant_id', $request->tenant_id)
+            ->where('tenant_id', TenantContext::id() ?? $request->tenant_id)
             ->orderBy('display_order')
             ->orderBy('created_at')
             ->get();
@@ -95,7 +96,7 @@ class AgreementController extends Controller
                 $join->on('af.id', '=', 'ack.agreement_file_id')
                      ->where('ack.reseller_id', '=', $resellerId);
             })
-            ->where('af.tenant_id', $request->tenant_id)
+            ->where('af.tenant_id', TenantContext::id() ?? $request->tenant_id)
             ->where('af.is_active', true)
             ->select('af.*', 'ack.agreed_at', 'ack.agreed_by_name')
             ->orderBy('af.display_order')
@@ -110,7 +111,7 @@ class AgreementController extends Controller
      */
     public function compliance(Request $request): JsonResponse
     {
-        $tenantId = $request->tenant_id;
+        $tenantId = TenantContext::id() ?? $request->tenant_id;
 
         $requiredCount = DB::table('reseller_agreement_files')
             ->where('tenant_id', $tenantId)

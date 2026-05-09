@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ class OrganizationController extends Controller
     {
         $perPage  = min(50, max(10, (int) $request->get('per_page', 25)));
         $page     = max(1, (int) $request->get('page', 1));
-        $tenantId = $request->tenant_id;
+        $tenantId = TenantContext::id() ?? TenantContext::resolveFromAuth($request->tenant_id);
 
         $base = DB::table('organizations as o')
             ->where('o.tenant_id', $tenantId);
@@ -99,7 +100,7 @@ class OrganizationController extends Controller
 
     public function available(Request $request): JsonResponse
     {
-        $tenantId = $request->tenant_id;
+        $tenantId = TenantContext::id() ?? TenantContext::resolveFromAuth($request->tenant_id);
         $province = $request->province;
 
         // Org IDs that already have a non-expired, non-declined active deal

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class RequiredDocumentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $docs = DB::table('reseller_required_documents')
-            ->where('tenant_id', $request->tenant_id)
+            ->where('tenant_id', TenantContext::id() ?? $request->tenant_id)
             ->orderBy('display_order')
             ->orderBy('created_at')
             ->get();
@@ -85,7 +86,7 @@ class RequiredDocumentController extends Controller
      */
     public function compliance(Request $request): JsonResponse
     {
-        $tenantId = $request->tenant_id;
+        $tenantId = TenantContext::id() ?? $request->tenant_id;
 
         $requiredCount = DB::table('reseller_required_documents')
             ->where('tenant_id', $tenantId)
@@ -134,7 +135,7 @@ class RequiredDocumentController extends Controller
                 $join->on('rd.id', '=', 'ds.required_document_id')
                      ->where('ds.reseller_id', '=', $resellerId);
             })
-            ->where('rd.tenant_id', $request->tenant_id)
+            ->where('rd.tenant_id', TenantContext::id() ?? $request->tenant_id)
             ->where('rd.is_active', true)
             ->select(
                 'rd.*',
