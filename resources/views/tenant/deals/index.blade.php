@@ -286,11 +286,59 @@
     <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
-                <h3 class="font-semibold text-[#1E1B4B]">New Deal</h3>
-                <button @click="showAdd = false; resetForm()" class="text-gray-400 hover:text-gray-600">
+                <h3 class="font-semibold text-[#1E1B4B]" x-text="showSuccessState ? 'Deal Created' : 'New Deal'"></h3>
+                <button @click="showAdd = false; showSuccessState = false; createdDeal = null; resetForm()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            {{-- ── Success State ── --}}
+            <div x-show="showSuccessState" class="p-8 text-center space-y-5">
+                <div class="flex justify-center">
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:#D1FAE5">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-1">Deal Created Successfully</p>
+                    <h3 class="text-lg font-bold text-[#1E1B4B]" x-text="createdDeal?.name || 'New Deal'"></h3>
+                    <p class="text-sm text-gray-400 mt-1">
+                        <span x-text="createdDeal?.data?.municipality && createdDeal?.data?.province ? createdDeal.data.municipality + ', ' + createdDeal.data.province : ''"></span>
+                    </p>
+                </div>
+                <div class="grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50">
+                    <div class="text-center">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Stage</p>
+                        <p class="text-sm font-semibold text-[#1E1B4B] capitalize mt-0.5" x-text="(createdDeal?.stage || 'introduction').replace('_',' ')"></p>
+                    </div>
+                    <div class="text-center border-x border-gray-200">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Referrer</p>
+                        <p class="text-sm font-semibold text-[#1E1B4B] truncate mt-0.5" x-text="createdDeal?.reseller_name || '—'"></p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Value</p>
+                        <p class="text-sm font-semibold text-[#1E1B4B] mt-0.5" x-text="createdDeal?.deal_value ? '₱' + Number(createdDeal.deal_value).toLocaleString() : '—'"></p>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+                    <a :href="'/tenant/{{ $tenant->id }}/deals/' + createdDeal?.id"
+                       class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-colors"
+                       style="background:#7B61FF;" onmouseover="this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
+                        View Deal
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                    <button @click="showSuccessState = false; createdDeal = null; resetForm()"
+                            class="btn-secondary text-sm">
+                        Create Another Deal
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400">Closes automatically in 5 seconds…</p>
+            </div>
+
+            {{-- ── Form (hidden while success state shows) ── --}}
+            <div x-show="!showSuccessState">
             <div class="p-6 space-y-4">
                 @if($showLocation)
                 {{-- Province + Municipality — LGU IDS specific (driven by tenant field config) --}}
@@ -547,9 +595,11 @@
                 <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                 <div class="flex justify-end gap-3 pt-1">
                     <button @click="showAdd = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="if(!saving){saving=true;addRecord()}" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Add Deal'"></button>
+                    <button @click="if(!saving){saving=true;addRecord()}" :disabled="saving" class="btn-primary" x-text="saving ? 'Creating deal…' : 'Create Deal'"></button>
                 </div>
             </div>
+
+            </div>{{-- end x-show="!showSuccessState" --}}
         </div>
     </div>
 
@@ -577,6 +627,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
+        showSuccessState: false, createdDeal: null,
         municipalityOptions: [],
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
@@ -882,9 +933,17 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 if (lead.id) {
                     this.leads.unshift(lead);
                     this.applyFilters();
-                    this.showAdd = false;
-                    this.resetForm();
-                    this.$dispatch('show-toast', { type: 'success', message: 'Deal added successfully.' });
+                    // Show in-modal success state instead of silently closing
+                    this.createdDeal = lead;
+                    this.showSuccessState = true;
+                    this.saving = false;
+                    // Auto-close after 5 seconds
+                    setTimeout(() => {
+                        this.showAdd = false;
+                        this.showSuccessState = false;
+                        this.createdDeal = null;
+                        this.resetForm();
+                    }, 5000);
                 } else {
                     this.formError = lead.message || 'Failed to create deal.';
                     this.$dispatch('show-toast', { type: 'error', message: lead.message || 'Failed to create deal.' });
