@@ -208,7 +208,7 @@
             </div>
 
             {{-- â”€â”€ Edit mode â”€â”€ --}}
-            <div x-show="editFinance" class="space-y-5">
+            <div x-show="editFinance" style="display:none" class="space-y-5">
                 <p class="text-xs text-gray-500">Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -360,7 +360,7 @@
                 </div>
 
                 {{-- Add form --}}
-                <div x-show="showAdd" class="space-y-2.5 pt-2 border-t border-gray-100">
+                <div x-show="showAdd" style="display:none" class="space-y-2.5 pt-2 border-t border-gray-100">
                     <p class="text-xs font-medium text-[#1E1B4B]">Add Partner Split</p>
 
                     {{-- Contact combobox --}}
@@ -488,7 +488,7 @@
                 </div>
 
                 {{-- Admin direct extend form --}}
-                <div x-show="showExtendForm" class="space-y-2.5 p-3 bg-[#F0EFFA] rounded-xl">
+                <div x-show="showExtendForm" style="display:none" class="space-y-2.5 p-3 bg-[#F0EFFA] rounded-xl">
                     <p class="text-xs font-medium text-[#1E1B4B]">Extend Assignment</p>
                     <select x-model.number="extendForm.days" class="form-input text-xs">
                         <option value="7">+7 days</option>
@@ -606,7 +606,7 @@
                         <h3 class="font-semibold text-[#1E1B4B] text-sm">Notes</h3>
                         <button @click="showNoteForm = !showNoteForm" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add Note</button>
                     </div>
-                    <div x-show="showNoteForm" class="space-y-2 p-3 bg-[#F0EFFA] rounded-xl">
+                    <div x-show="showNoteForm" style="display:none" class="space-y-2 p-3 bg-[#F0EFFA] rounded-xl">
                         <textarea x-model="noteText" rows="3" class="form-input text-sm" placeholder="Add a note…"></textarea>
                         <div class="flex justify-end gap-2">
                             <button @click="showNoteForm = false; noteText=''; noteAuthor=''" class="btn-secondary text-xs">Cancel</button>
