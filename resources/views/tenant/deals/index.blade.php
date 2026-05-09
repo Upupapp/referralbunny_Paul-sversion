@@ -334,7 +334,6 @@
                         Create Another Deal
                     </button>
                 </div>
-                <p class="text-xs text-gray-400">Closes automatically in 5 seconds…</p>
             </div>
 
             {{-- ── Form (hidden while success state shows) ── --}}
@@ -937,13 +936,6 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                     this.createdDeal = lead;
                     this.showSuccessState = true;
                     this.saving = false;
-                    // Auto-close after 5 seconds
-                    setTimeout(() => {
-                        this.showAdd = false;
-                        this.showSuccessState = false;
-                        this.createdDeal = null;
-                        this.resetForm();
-                    }, 5000);
                 } else {
                     this.formError = lead.message || 'Failed to create deal.';
                     this.$dispatch('show-toast', { type: 'error', message: lead.message || 'Failed to create deal.' });
