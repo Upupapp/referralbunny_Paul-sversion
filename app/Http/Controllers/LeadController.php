@@ -323,10 +323,12 @@ class LeadController extends Controller
 
     public function moveStage(Request $request, Lead $lead): JsonResponse
     {
-        $stages = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+        $lead->assertBelongsToCurrentTenant();
+
+        $stages       = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
         $currentIndex = array_search($lead->stage, $stages);
 
-        // Accept explicit target stage OR default to next-in-sequence
+        // Accept explicit target stage OR advance to next in sequence
         if ($request->filled('stage') && in_array($request->stage, $stages)) {
             $targetStage = $request->stage;
         } else {
@@ -336,38 +338,65 @@ class LeadController extends Controller
             $targetStage = $stages[$currentIndex + 1];
         }
 
+        if ($targetStage === $lead->stage) {
+            return response()->json(['message' => 'Deal is already at this stage.'], 422);
+        }
+
         $isLocking = $targetStage === 'signed';
         $isPaid    = $targetStage === 'paid';
+        $note      = trim((string) $request->input('note', ''));
 
-        $lead->update([
+        $updates = [
             'stage'             => $targetStage,
             'commission_status' => $isLocking ? 'locked' : ($isPaid ? 'paid' : $lead->commission_status),
-        ]);
+        ];
 
-        LeadHistory::create([
-            'lead_id' => $lead->id,
-            'action'  => 'Stage moved to ' . str_replace('_', ' ', $targetStage),
-            'type'    => 'stage',
-            'date'    => now()->toDateString(),
-        ]);
-
-        if ($isLocking) {
-            LeadHistory::create([
-                'lead_id' => $lead->id,
-                'action'  => 'Contract signed — commission locked at ₱' . number_format((float)$lead->added_amount * 0.70, 2),
-                'type'    => 'commission',
-                'date'    => now()->toDateString(),
-            ]);
+        // ── LGU IDS: reset days_left when stage advances ──────────────
+        // LOCKED RULE — mirrors update() (LGU IDS pipeline protection)
+        if ($lead->tenant_id === 'lgu-ids') {
+            $stageRule = DB::table('tenant_pipeline_stage_rules')
+                ->where('tenant_id', 'lgu-ids')
+                ->where('stage', $targetStage)
+                ->first();
+            if ($stageRule) {
+                $updates['days_left'] = $stageRule->max_days;
+                $updates['status']    = 'active';
+            }
         }
 
-        if ($isPaid) {
+        DB::transaction(function () use ($lead, $updates, $targetStage, $isLocking, $isPaid, $note) {
+            $lead->update($updates);
+
+            $historyAction = 'Stage moved to ' . ucwords(str_replace('_', ' ', $targetStage));
+            if ($note !== '') {
+                $historyAction .= ' — ' . $note;
+            }
+
             LeadHistory::create([
                 'lead_id' => $lead->id,
-                'action'  => 'Payment received — commission pool ₱' . number_format((float)$lead->added_amount * 0.70, 2) . ' marked paid',
-                'type'    => 'commission',
+                'action'  => $historyAction,
+                'type'    => 'stage',
                 'date'    => now()->toDateString(),
             ]);
-        }
+
+            if ($isLocking) {
+                LeadHistory::create([
+                    'lead_id' => $lead->id,
+                    'action'  => 'Contract signed — commission locked at ₱' . number_format((float)$lead->added_amount * 0.70, 2),
+                    'type'    => 'commission',
+                    'date'    => now()->toDateString(),
+                ]);
+            }
+
+            if ($isPaid) {
+                LeadHistory::create([
+                    'lead_id' => $lead->id,
+                    'action'  => 'Payment received — commission pool ₱' . number_format((float)$lead->added_amount * 0.70, 2) . ' marked paid',
+                    'type'    => 'commission',
+                    'date'    => now()->toDateString(),
+                ]);
+            }
+        });
 
         return response()->json($lead->fresh(['commissionSplits', 'history']));
     }

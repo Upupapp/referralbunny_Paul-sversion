@@ -684,28 +684,48 @@
         </div>
     </div>
 
-    {{-- â”€â”€ Move Stage Modal â”€â”€ --}}
-    <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
-            <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-[#1E1B4B]">Move to Stage</h3>
-                <button @click="showMoveStage = false" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    {{-- ── Move Stage Modal ── --}}
+    <div x-show=”showMoveStage” x-cloak
+         class=”fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4”
+         @keydown.escape.window=”showMoveStage = false; moveStageNote = ''”>
+        <div class=”bg-white rounded-2xl shadow-xl w-full max-w-sm” @click.stop>
+            <div class=”flex items-center justify-between px-6 py-4 border-b border-gray-100”>
+                <div>
+                    <h3 class=”font-semibold text-[#1E1B4B]”>Move Stage</h3>
+                    <p class=”text-xs text-gray-400 mt-0.5”>
+                        <span x-text=”lead?.name”></span>
+                    </p>
+                </div>
+                <button @click=”showMoveStage = false; moveStageNote = ''” class=”text-gray-400 hover:text-gray-600”>
+                    <svg class=”w-5 h-5” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M6 18L18 6M6 6l12 12”/></svg>
                 </button>
             </div>
-            <p class="text-sm text-gray-500">Currently: <span class="font-semibold" x-text="stageLabel(lead?.stage)"></span></p>
-            <div class="space-y-2">
-                <template x-for="s in allStages" :key="s.key">
-                    <button @click="moveToStage(s.key)"
-                            :disabled="s.key === lead?.stage || saving"
-                            :class="s.key === lead?.stage ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'"
-                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left">
-                        <span :class="stageBadge(s.key)" class="shrink-0 text-xs" x-text="s.label"></span>
-                        <span x-show="s.key === 'signed'" class="text-xs text-orange-600">→ locks commission at <span x-text="fmt(commPool())"></span></span>
-                        <span x-show="s.key === 'paid'"   class="text-xs text-emerald-600">→ marks <span x-text="fmt(commPool())"></span> paid</span>
-                        <span x-show="s.key === lead?.stage" class="ml-auto text-xs text-gray-400">current</span>
-                    </button>
-                </template>
+            <div class=”p-6 space-y-4”>
+                <p class=”text-sm text-gray-500”>
+                    Current stage: <span class=”font-semibold text-[#1E1B4B]” x-text=”stageLabel(lead?.stage)”></span>
+                </p>
+                <div class=”space-y-2”>
+                    <template x-for=”s in allStages” :key=”s.key”>
+                        <button @click=”moveToStage(s.key)”
+                                :disabled=”s.key === lead?.stage || saving”
+                                :class=”s.key === lead?.stage
+                                    ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100'
+                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'”
+                                class=”w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left”>
+                            <span :class=”stageBadge(s.key)” class=”shrink-0 text-xs” x-text=”s.label”></span>
+                            <span x-show=”s.key === 'signed'” class=”text-xs text-orange-600”>→ locks commission at <span x-text=”fmt(commPool())”></span></span>
+                            <span x-show=”s.key === 'paid'”   class=”text-xs text-emerald-600”>→ marks <span x-text=”fmt(commPool())”></span> paid</span>
+                            <span x-show=”s.key === lead?.stage” class=”ml-auto text-xs text-gray-400”>current</span>
+                            <svg x-show=”saving && s.key !== lead?.stage” class=”w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0” fill=”none” viewBox=”0 0 24 24”><circle class=”opacity-25” cx=”12” cy=”12” r=”10” stroke=”currentColor” stroke-width=”4”/><path class=”opacity-75” fill=”currentColor” d=”M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z”/></svg>
+                        </button>
+                    </template>
+                </div>
+                <div>
+                    <label class=”form-label”>Note <span class=”text-gray-400 font-normal”>(optional)</span></label>
+                    <textarea x-model=”moveStageNote” rows=”2” class=”form-input text-sm resize-none”
+                              placeholder=”Reason for stage movement, e.g. 'Proposal sent to procurement office'…”></textarea>
+                </div>
+                <p class=”text-xs text-gray-400”>The note will be saved to the activity history.</p>
             </div>
         </div>
     </div>
@@ -923,6 +943,7 @@ function dealDetail(leadId, tenantId) {
         lead: null, loading: true,
         showNoteForm: false, showMoveStage: false, showReassign: false,
         noteText: '', noteAuthor: '', saving: false, reassignName: '',
+        moveStageNote: '',
         editFinance: false,
         financeForm: { base_cost: 0, added_amount: 0 },
         editSplits: false,
@@ -984,11 +1005,18 @@ function dealDetail(leadId, tenantId) {
         async saveFinance() {
             this.saving = true;
             try {
-                const bc = Number(this.financeForm.base_cost)    || 0;
-                const aa = Number(this.financeForm.added_amount) || 0;
-                const res = await fetch(`/api/leads/${this.lead.id}`, {
+                const bc   = Number(this.financeForm.base_cost)    || 0;
+                const aa   = Number(this.financeForm.added_amount) || 0;
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${this.lead.id}`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ base_cost: bc, added_amount: aa, deal_value: bc + aa }),
                 });
                 const updated = await res.json();
@@ -1027,15 +1055,23 @@ function dealDetail(leadId, tenantId) {
             if (stage === this.lead?.stage) return;
             this.saving = true;
             try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const res = await fetch(`/api/leads/${this.lead.id}/stage`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ stage }),
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ stage, note: this.moveStageNote }),
                 });
                 const updated = await res.json();
                 if (updated.id) {
                     this.lead = { ...this.lead, ...updated, history: updated.history, commission_splits: updated.commission_splits };
                     this.showMoveStage = false;
+                    this.moveStageNote = '';
                     this.$dispatch('show-toast', { type: 'success', message: 'Stage updated.' });
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: updated.message || 'Failed to move stage.' });
@@ -1049,9 +1085,16 @@ function dealDetail(leadId, tenantId) {
             if (!this.noteText) return;
             this.saving = true;
             try {
-                const res = await fetch(`/api/leads/${this.lead.id}/notes`, {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${this.lead.id}/notes`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ text: this.noteText, author: this.noteAuthor || 'Admin' }),
                 });
                 const note = await res.json();
@@ -1072,9 +1115,16 @@ function dealDetail(leadId, tenantId) {
             if (!this.reassignName) return;
             this.saving = true;
             try {
-                const res = await fetch(`/api/leads/${this.lead.id}/reassign`, {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${this.lead.id}/reassign`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ reseller_name: this.reassignName }),
                 });
                 const updated = await res.json();
@@ -1182,9 +1232,16 @@ function dealDetail(leadId, tenantId) {
         async saveSplits() {
             this.saving = true;
             try {
-                const res = await fetch(`/api/leads/${this.lead.id}/commission-splits`, {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const res  = await fetch(`/api/leads/${this.lead.id}/commission-splits`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ splits: this.splitsForm }),
                 });
                 const updated = await res.json();

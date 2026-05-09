@@ -33,7 +33,7 @@
 <div class="space-y-5"
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
-     @open-add-deal.window="showAdd = true; loadActivatedReferrers(); resetForm()">
+     @open-add-deal.window="showAdd = true; resetForm(); searchReferrers()">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -188,7 +188,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
-                                <button x-show="leads.length === 0" @click="showAdd = true; loadActivatedReferrers(); resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm(); searchReferrers()" class="btn-primary mt-3 text-sm">Add First Deal</button>
                             </td>
                         </tr>
                     </template>
@@ -348,41 +348,127 @@
                     </select>
                 </div>
 
-                {{-- Referrer selector --}}
+                {{-- Referrer assignment — searchable combobox --}}
                 <div>
                     <label class="form-label">Referrer *</label>
+                    <p class="text-[11px] text-gray-400 mb-2">Select an existing referrer, admin, or manager. Use manual add only if the person is not yet in the system.</p>
+
+                    {{-- Combobox mode (default) --}}
                     <div x-show="!manualReferrer">
-                        <select x-model="selectedReferrerId"
-                                @change="onReferrerSelect($event.target.value)"
-                                class="form-input"
-                                :class="activatedReferrers.length === 0 ? 'opacity-50' : ''">
-                            <option value="">
-                                <span x-show="loadingReferrers">Loading referrers…</span>
-                                <span x-show="!loadingReferrers && activatedReferrers.length === 0">No activated referrers — enter manually</span>
-                                <span x-show="!loadingReferrers && activatedReferrers.length > 0">Select an activated referrer…</span>
-                            </option>
-                            <template x-for="r in activatedReferrers" :key="r.id">
-                                <option :value="r.id" x-text="r.display_name"></option>
-                            </template>
-                        </select>
-                        <div class="flex items-center justify-between mt-1">
-                            <p class="text-[11px] text-gray-400" x-show="!loadingReferrers && activatedReferrers.length === 0">
-                                No activated referrers found.
-                            </p>
-                            <button type="button" @click="manualReferrer = true; form.reseller_name = ''"
-                                    class="text-[11px] text-[#7B61FF] hover:underline mt-0.5">
-                                Enter referrer manually instead
+
+                        {{-- Selected referrer pill --}}
+                        <div x-show="referrerSelected"
+                             class="flex items-center gap-2 p-2.5 border border-purple-200 rounded-xl bg-purple-50 mb-2">
+                            <div class="w-7 h-7 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                                 x-text="(referrerSelected?.name||'?').slice(0,2).toUpperCase()"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="referrerSelected?.name"></p>
+                                <p class="text-xs text-gray-400 truncate" x-text="referrerSelected?.email"></p>
+                            </div>
+                            <div class="flex gap-1 items-center shrink-0 flex-wrap justify-end max-w-[130px]">
+                                <template x-for="badge in (referrerSelected?.role_badges||[]).slice(0,2)">
+                                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                          :class="badge.includes('Admin')||badge.includes('Owner') ? 'bg-blue-100 text-blue-700' : badge.includes('Manager') ? 'bg-teal-100 text-teal-700' : badge.includes('Pending') ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'"
+                                          x-text="badge"></span>
+                                </template>
+                                <span x-show="referrerSelected?.status === 'invited' && !(referrerSelected?.role_badges||[]).some(b => b.includes('Pending'))"
+                                      class="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Pending</span>
+                            </div>
+                            <button type="button" @click="clearReferrerSelection()" title="Change referrer"
+                                    class="ml-1 p-0.5 text-gray-400 hover:text-gray-600 shrink-0 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
+
+                        {{-- Search input + dropdown --}}
+                        {{-- @click.outside is on the wrapper so clicking the input (a sibling of the dropdown) doesn't trigger a close --}}
+                        <div x-show="!referrerSelected" class="relative" @click.outside="referrerOpen = false">
+                            <div class="relative">
+                                <input type="text"
+                                       x-model="referrerQuery"
+                                       @input.debounce.300ms="searchReferrers()"
+                                       @focus="referrerOpen = true; if (!activatedReferrers.length && !loadingReferrers) searchReferrers()"
+                                       @keydown.escape="referrerOpen = false"
+                                       @keydown.arrow-down.prevent="referrerFocusNext()"
+                                       @keydown.arrow-up.prevent="referrerFocusPrev()"
+                                       @keydown.enter.prevent="referrerSelectFocused()"
+                                       placeholder="Search referrers, admins, or managers…"
+                                       autocomplete="off"
+                                       class="form-input pr-8">
+                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <svg x-show="!loadingReferrers" class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    <svg x-show="loadingReferrers" class="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                </div>
+                            </div>
+
+                            {{-- Dropdown list --}}
+                            <div x-show="referrerOpen"
+                                 class="absolute z-[60] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-100 max-h-56 overflow-y-auto"
+                                 style="display:none">
+
+                                {{-- Loading --}}
+                                <div x-show="loadingReferrers" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-400">
+                                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    Loading referrers…
+                                </div>
+
+                                {{-- Error --}}
+                                <div x-show="!loadingReferrers && referrerLoadError" class="px-4 py-3">
+                                    <p class="text-xs text-red-500" x-text="referrerLoadError"></p>
+                                    <button type="button" @click="searchReferrers()" class="text-xs text-purple-600 hover:underline mt-1">Try again</button>
+                                </div>
+
+                                {{-- Options --}}
+                                <div x-show="!loadingReferrers && !referrerLoadError">
+                                    <template x-for="(r, idx) in activatedReferrers" :key="r.id">
+                                        <button type="button"
+                                                @click="selectReferrer(r)"
+                                                :class="referrerFocusIdx === idx ? 'bg-[#F0EFFA]' : 'hover:bg-gray-50'"
+                                                class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors">
+                                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                                 :class="r.status === 'invited' ? 'bg-amber-100 text-amber-700' : (r.type === 'admin' || r.type === 'owner') ? 'bg-blue-100 text-blue-700' : r.type === 'manager' ? 'bg-teal-100 text-teal-700' : 'bg-purple-100 text-purple-700'"
+                                                 x-text="(r.name||'?').slice(0,2).toUpperCase()"></div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                                <p class="text-xs text-gray-400 truncate" x-text="r.email"></p>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1 items-center justify-end shrink-0 max-w-[120px]">
+                                                <template x-for="badge in (r.role_badges||[]).slice(0,2)">
+                                                    <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                                          :class="badge.includes('Admin')||badge.includes('Owner') ? 'bg-blue-100 text-blue-700' : badge.includes('Manager') ? 'bg-teal-100 text-teal-700' : badge.includes('Pending') ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'"
+                                                          x-text="badge"></span>
+                                                </template>
+                                            </div>
+                                        </button>
+                                    </template>
+
+                                    {{-- Empty state --}}
+                                    <div x-show="activatedReferrers.length === 0 && !loadingReferrers && !referrerLoadError"
+                                         class="px-4 py-6 text-center">
+                                        <p class="text-sm text-gray-400" x-text="referrerQuery ? 'No matching referrers found in this tenant.' : 'No referrers found. Start typing to search.'"></p>
+                                    </div>
+                                </div>
+
+                                {{-- Footer: manual add --}}
+                                <div class="border-t border-gray-100 px-4 py-2.5">
+                                    <button type="button"
+                                            @click="manualReferrer = true; referrerOpen = false; form.reseller_name = ''; form.reseller_email = ''"
+                                            class="text-xs text-[#7B61FF] hover:underline font-medium flex items-center gap-1.5">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        Can't find the referrer? Add manually
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- Manual mode --}}
                     <div x-show="manualReferrer" class="space-y-2">
-                        <input type="text" x-model="form.reseller_name" class="form-input" placeholder="Referrer full name">
-                        <input type="email" x-model="form.reseller_email" class="form-input" placeholder="referrer@email.com (required)">
-                        <p class="text-[11px] text-gray-400">Enter name and email. They will be saved as a tenant contact and can be invited as a Referrer later.</p>
-                        <button type="button" @click="manualReferrer = false; form.reseller_name = ''; form.reseller_email = ''"
-                                class="text-[11px] text-[#7B61FF] hover:underline">
-                            ← Back to referrer list
-                        </button>
+                        <input type="text"  x-model="form.reseller_name"  class="form-input" placeholder="Referrer full name *">
+                        <input type="email" x-model="form.reseller_email" class="form-input" placeholder="referrer@email.com *">
+                        <p class="text-[11px] text-gray-400">Enter name and email. An invitation can be sent from the Referrers tab after the deal is created.</p>
+                        <button type="button" @click="manualReferrer = false; form.reseller_name = ''; form.reseller_email = ''; clearReferrerSelection()"
+                                class="text-[11px] text-[#7B61FF] hover:underline">← Back to referrer list</button>
                     </div>
                 </div>
 
@@ -488,8 +574,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         municipalityOptions: [],
-        // Referrer dropdown
-        activatedReferrers: [], loadingReferrers: false, manualReferrer: false, selectedReferrerId: '',
+        // Referrer combobox
+        activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
+        referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
         form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '' },
 
         stages: [
@@ -643,26 +730,58 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
 
         viewDeal(id) { window.location.href = `/tenant/${tenantId}/deals/${id}`; },
 
-        // ── Referrer dropdown ─────────────────────────────────────────────────
-        onReferrerSelect(id) {
-            if (!id) { this.form.reseller_name = ''; return; }
-            const r = this.activatedReferrers.find(x => x.id === id);
-            if (r) this.form.reseller_name = r.name;
-        },
+        // ── Referrer combobox ─────────────────────────────────────────────────
 
-        async loadActivatedReferrers() {
+        async searchReferrers() {
             this.loadingReferrers = true;
+            this.referrerLoadError = '';
             try {
-                const res = await fetch(`/api/resellers/activated-options?tenant_id=${tenantId}`, {
+                const q   = encodeURIComponent(this.referrerQuery || '');
+                const res = await fetch(`/api/resellers/activated-options?tenant_id=${tenantId}&search=${q}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) throw new Error('Server error ' + res.status);
                 const data = await res.json();
                 this.activatedReferrers = Array.isArray(data) ? data : [];
-                // If no active referrers, default to manual entry
-                if (this.activatedReferrers.length === 0) this.manualReferrer = true;
-            } catch(e) { this.activatedReferrers = []; }
+                this.referrerFocusIdx   = -1;
+            } catch(e) {
+                this.referrerLoadError  = 'Unable to load referrers. Try again.';
+                this.activatedReferrers = [];
+            }
             this.loadingReferrers = false;
+        },
+
+        selectReferrer(r) {
+            this.referrerSelected       = r;
+            this.form.reseller_name     = r.name;
+            this.form.reseller_email    = '';   // no invite for dropdown selections
+            this.referrerOpen           = false;
+            this.referrerQuery          = r.name;
+        },
+
+        clearReferrerSelection() {
+            this.referrerSelected    = null;
+            this.form.reseller_name  = '';
+            this.form.reseller_email = '';
+            this.referrerQuery       = '';
+            this.referrerOpen        = false;
+            this.referrerFocusIdx    = -1;
+        },
+
+        referrerFocusNext() {
+            if (!this.referrerOpen) { this.referrerOpen = true; return; }
+            this.referrerFocusIdx = Math.min(this.referrerFocusIdx + 1, this.activatedReferrers.length - 1);
+        },
+
+        referrerFocusPrev() {
+            this.referrerFocusIdx = Math.max(this.referrerFocusIdx - 1, -1);
+        },
+
+        referrerSelectFocused() {
+            if (this.referrerFocusIdx >= 0 && this.referrerFocusIdx < this.activatedReferrers.length) {
+                this.selectReferrer(this.activatedReferrers[this.referrerFocusIdx]);
+            }
         },
 
         // ── LGU IDS deal value ↔ cost parts sync ─────────────────────────────
@@ -724,22 +843,28 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
 
         resetForm() {
             this.form = { name:'', stage:'introduction', deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'' };
-            this.formError = '';
+            this.formError      = '';
             this.nameAutoFilled = false;
             this.municipalityOptions = [];
-            this.manualReferrer = this.activatedReferrers.length === 0;
-            this.selectedReferrerId = '';
-            // Apply LGU IDS default tier for deal_value=4M
+            this.manualReferrer      = false;
+            this.referrerSelected    = null;
+            this.referrerQuery       = '';
+            this.referrerOpen        = false;
+            this.referrerFocusIdx    = -1;
+            this.referrerLoadError   = '';
             if (showLocation) this.syncFromDealValue();
         },
 
         async addRecord() {
-            if (showLocation && !this.form.province)     { this.formError = 'Province is required.'; return; }
-            if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; return; }
-            if (!this.form.name)          { this.formError = 'Deal name is required.'; return; }
-            if (!this.form.reseller_name) { this.formError = 'Referrer name is required.'; return; }
-            if (this.manualReferrer && !this.form.reseller_email) { this.formError = 'Referrer email is required when entering manually.'; return; }
-            if (!this.isConsistent()) { this.formError = 'Deal Value must equal Base Cost + Added Amount. Please review the amounts.'; return; }
+            if (showLocation && !this.form.province)     { this.formError = 'Province is required.'; this.saving = false; return; }
+            if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; this.saving = false; return; }
+            if (!this.form.name) { this.formError = 'Deal name is required.'; this.saving = false; return; }
+            if (!this.manualReferrer && !this.referrerSelected) {
+                this.formError = 'Please select a referrer from the list, or use "Add manually".'; this.saving = false; return;
+            }
+            if (this.manualReferrer && !this.form.reseller_name)  { this.formError = 'Referrer name is required.'; this.saving = false; return; }
+            if (this.manualReferrer && !this.form.reseller_email) { this.formError = 'Referrer email is required when entering manually.'; this.saving = false; return; }
+            if (!this.isConsistent()) { this.formError = 'Deal Value must equal Base Cost + Added Amount. Please review the amounts.'; this.saving = false; return; }
             this.saving = true; this.formError = '';
             try {
                 const bc = Number(this.form.base_cost)    || 0;

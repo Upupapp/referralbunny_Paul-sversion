@@ -7,52 +7,93 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Provides the activated Referrer list for deal creation dropdowns.
+ * Provides the Referrer dropdown list for deal creation and assignment.
  *
- * Rules:
+ * Dropdown eligibility rules:
  * - Include: Resellers with status active|nda_signed (tenant-scoped)
- * - Include: Admin/Manager users who ALSO have a Reseller record (linked_tenant_user_id set)
- * - Exclude: Admins/Managers who do NOT have a Reseller record (no Referrer role)
- * - Exclude: Deactivated, pending/invited Referrers
- * - Exclude: Referrers from other tenants
+ * - Include: Resellers with status invited/pending (shown with Pending badge)
+ * - Include: Tenant Owners, Admins, Managers who have NO Reseller record
+ *            (selecting them stores reseller_name only — role is never changed)
+ * - Exclude: Deactivated Referrers
+ * - Exclude: Users from other tenants
  * - Tenant isolation is strict — never cross tenants
  */
 class DealReferrerAssignmentService
 {
     /**
-     * Return all activated Referrers for a tenant, ready for dropdown display.
+     * Return all dropdown-eligible users for a tenant's Referrer assignment field.
+     *
+     * Includes (in priority order):
+     *   1. Active / NDA-signed Referrers
+     *   2. Invited / pending Referrers (so admins can assign without re-inviting)
+     *   3. Tenant Owners, Admins, and Managers who do NOT already have a Reseller record
+     *      (selecting them stores their name as reseller_name without role conversion)
+     *
+     * Tenant isolation is strict — never crosses tenant boundaries.
      *
      * @return Collection<array{
      *   id: string,
      *   name: string,
      *   email: string,
      *   status: string,
+     *   type: string,
+     *   source: string,
      *   display_name: string,
      *   role_badges: list<string>,
-     *   is_multi_role: bool
+     *   is_multi_role: bool,
+     *   tenant_role: string|null
      * }>
      */
     public function getActivatedReferrersForTenant(string $tenantId, ?string $search = null): Collection
     {
-        $query = Reseller::where('tenant_id', $tenantId)
+        $q = $search ? '%' . strtolower($search) . '%' : null;
+
+        // ── 1. Active / NDA-signed Referrers ─────────────────────────────
+        $activeResellers = Reseller::where('tenant_id', $tenantId)
             ->whereIn('status', ['active', 'nda_signed'])
             ->whereNotNull('email')
-            ->orderBy('name');
-
-        if ($search) {
-            $q = '%' . strtolower($search) . '%';
-            $query->where(function ($qb) use ($q) {
+            ->when($q, fn($query) => $query->where(function ($qb) use ($q) {
                 $qb->whereRaw('LOWER(name) LIKE ?', [$q])
                    ->orWhereRaw('LOWER(email) LIKE ?', [$q]);
+            }))
+            ->orderBy('name')
+            ->get();
+
+        // ── 2. Invited / pending Referrers ───────────────────────────────
+        $invitedResellers = Reseller::where('tenant_id', $tenantId)
+            ->where('status', 'invited')
+            ->whereNotNull('email')
+            ->when($q, fn($query) => $query->where(function ($qb) use ($q) {
+                $qb->whereRaw('LOWER(name) LIKE ?', [$q])
+                   ->orWhereRaw('LOWER(email) LIKE ?', [$q]);
+            }))
+            ->orderBy('name')
+            ->get();
+
+        // ── 3. Tenant Owners / Admins / Managers (without Reseller record) ─
+        $tenantUserQuery = DB::table('tenant_memberships as tm')
+            ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+            ->whereNotNull('u.email')
+            ->select('u.id as tenant_user_id', 'u.name', 'u.email', 'tm.role as tenant_role');
+
+        if ($q) {
+            $tenantUserQuery->where(function ($qb) use ($q) {
+                $qb->whereRaw('LOWER(u.name) LIKE ?', [$q])
+                   ->orWhereRaw('LOWER(u.email) LIKE ?', [$q]);
             });
         }
 
-        $resellers = $query->get();
+        $tenantUsers = $tenantUserQuery->orderBy('u.name')->get();
 
-        // Pre-fetch tenant membership roles for linked admin/manager referrers
-        $linkedUserIds = $resellers->pluck('linked_tenant_user_id')->filter()->unique()->values();
+        // ── Pre-fetch membership roles for all linked Reseller records ────
+        $linkedUserIds = $activeResellers->pluck('linked_tenant_user_id')
+            ->merge($invitedResellers->pluck('linked_tenant_user_id'))
+            ->filter()->unique()->values();
+
         $membershipRoles = collect();
-
         if ($linkedUserIds->isNotEmpty()) {
             $membershipRoles = DB::table('tenant_memberships')
                 ->where('tenant_id', $tenantId)
@@ -63,10 +104,21 @@ class DealReferrerAssignmentService
                 ->keyBy('tenant_user_id');
         }
 
-        return $resellers->map(function (Reseller $r) use ($membershipRoles): array {
-            $roleBadges   = ['Referrer'];
-            $isMultiRole  = false;
-            $tenantRole   = null;
+        // ── Build email coverage map to avoid duplicates ──────────────────
+        $coveredEmails = $activeResellers->pluck('email')
+            ->merge($invitedResellers->pluck('email'))
+            ->map(fn($e) => strtolower(trim($e ?? '')))
+            ->filter()
+            ->flip()
+            ->all();
+
+        $results = collect();
+
+        // ── Map active Referrers ──────────────────────────────────────────
+        foreach ($activeResellers as $r) {
+            $roleBadges  = ['Referrer'];
+            $isMultiRole = false;
+            $tenantRole  = null;
 
             if ($r->linked_tenant_user_id && isset($membershipRoles[$r->linked_tenant_user_id])) {
                 $tenantRole  = $membershipRoles[$r->linked_tenant_user_id]->role;
@@ -76,24 +128,83 @@ class DealReferrerAssignmentService
                     'manager' => 'Tenant Manager',
                     default   => ucfirst($tenantRole),
                 };
-                $roleBadges[]= $roleLabel;
-                $isMultiRole = true;
+                $roleBadges[] = $roleLabel;
+                $isMultiRole  = true;
             }
 
-            $badgeStr    = implode(' · ', $roleBadges);
-            $displayName = "{$r->name} — {$r->email} · {$badgeStr}";
-
-            return [
+            $results->push([
                 'id'           => $r->id,
                 'name'         => $r->name,
                 'email'        => $r->email,
                 'status'       => $r->status,
-                'display_name' => $displayName,
+                'type'         => 'referrer',
+                'source'       => 'existing_referrer',
+                'display_name' => "{$r->name} — {$r->email} · " . implode(' · ', $roleBadges),
                 'role_badges'  => $roleBadges,
                 'is_multi_role'=> $isMultiRole,
                 'tenant_role'  => $tenantRole,
-            ];
-        });
+            ]);
+        }
+
+        // ── Map invited / pending Referrers ───────────────────────────────
+        foreach ($invitedResellers as $r) {
+            $roleBadges = ['Pending Referrer'];
+            $tenantRole = null;
+
+            if ($r->linked_tenant_user_id && isset($membershipRoles[$r->linked_tenant_user_id])) {
+                $tenantRole = $membershipRoles[$r->linked_tenant_user_id]->role;
+                $roleLabel  = match ($tenantRole) {
+                    'owner'   => 'Tenant Owner',
+                    'admin'   => 'Tenant Admin',
+                    'manager' => 'Tenant Manager',
+                    default   => ucfirst($tenantRole),
+                };
+                $roleBadges[] = $roleLabel;
+            }
+
+            $results->push([
+                'id'           => $r->id,
+                'name'         => $r->name,
+                'email'        => $r->email,
+                'status'       => 'invited',
+                'type'         => 'pending_referrer',
+                'source'       => 'pending_referrer',
+                'display_name' => "{$r->name} — {$r->email} · Pending Referrer",
+                'role_badges'  => $roleBadges,
+                'is_multi_role'=> count($roleBadges) > 1,
+                'tenant_role'  => $tenantRole,
+            ]);
+        }
+
+        // ── Map Tenant Admins/Managers not already covered by a Reseller record ──
+        // Selecting these stores reseller_name only — their system role is never changed.
+        foreach ($tenantUsers as $u) {
+            if (isset($coveredEmails[strtolower(trim($u->email ?? ''))])) {
+                continue; // Already represented via their Reseller record above
+            }
+
+            $roleLabel = match ($u->tenant_role) {
+                'owner'   => 'Tenant Owner',
+                'admin'   => 'Tenant Admin',
+                'manager' => 'Tenant Manager',
+                default   => ucfirst($u->tenant_role),
+            };
+
+            $results->push([
+                'id'           => 'tu_' . $u->tenant_user_id,
+                'name'         => $u->name,
+                'email'        => $u->email,
+                'status'       => 'active',
+                'type'         => $u->tenant_role,
+                'source'       => 'tenant_user',
+                'display_name' => "{$u->name} — {$u->email} · {$roleLabel}",
+                'role_badges'  => [$roleLabel],
+                'is_multi_role'=> false,
+                'tenant_role'  => $u->tenant_role,
+            ]);
+        }
+
+        return $results;
     }
 
     /**
