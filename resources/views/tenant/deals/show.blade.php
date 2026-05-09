@@ -503,12 +503,39 @@
                         </button>
                     </div>
 
-                    <div class="flex gap-2">
-                        <input type="number" x-model.number="form.split_share_value" class="form-input text-xs w-20 shrink-0" placeholder="%" min="0" max="100">
-                        <select x-model="form.split_share_type" class="form-input text-xs flex-1">
-                            <option value="percentage">Percentage (%)</option>
-                            <option value="fixed_amount">Fixed Amount (₱)</option>
-                        </select>
+                    {{-- Share amount row --}}
+                    <div class="space-y-1.5">
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <input type="number"
+                                       x-model.number="form.split_share_value"
+                                       class="form-input text-sm pr-8"
+                                       placeholder="0"
+                                       min="0"
+                                       :max="form.split_share_type === 'percentage' ? 100 : null">
+                                <span class="absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-gray-400 pointer-events-none"
+                                      x-text="form.split_share_type === 'percentage' ? '%' : '₱'"></span>
+                            </div>
+                            <select x-model="form.split_share_type" class="form-input text-xs w-32 shrink-0">
+                                <option value="percentage">Percentage</option>
+                                <option value="fixed_amount">Fixed Amount</option>
+                            </select>
+                        </div>
+                        {{-- Exact peso amount hint --}}
+                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value > 0 && dealValue > 0"
+                           class="text-xs text-purple-600 font-medium flex items-center gap-1">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                        </p>
+                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value > 0 && dealValue > 0"
+                           class="text-xs text-gray-400 flex items-center gap-1">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="'≈ ' + (form.split_share_value / dealValue * 100).toFixed(1) + '% of deal value'"></span>
+                        </p>
                     </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div class="flex gap-2">
@@ -1336,6 +1363,7 @@ function partnerSplitSection(dealId, tenantId) {
     return {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
+        dealValue: 0,
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox
         contactQuery: '', contactOpen: false, contactSelected: null,
@@ -1382,13 +1410,25 @@ function partnerSplitSection(dealId, tenantId) {
         async load() {
             this.loading = true;
             try {
-                const res  = await fetch(`/api/leads/${dealId}/partner-splits?tenant_id=${tenantId}`, {
-                    credentials: 'same-origin',
-                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                const data = await res.json();
+                const [splitsRes, leadRes] = await Promise.all([
+                    fetch(`/api/leads/${dealId}/partner-splits?tenant_id=${tenantId}`, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    }),
+                    fetch(`/api/leads/${dealId}?tenant_id=${tenantId}`, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    }),
+                ]);
+                const data = await splitsRes.json();
                 this.splits   = data.splits   || [];
                 this.totalPct = data.total_percentage || 0;
+                if (leadRes.ok) {
+                    const lead = await leadRes.json();
+                    const bc   = Number(lead.base_cost    || 0);
+                    const aa   = Number(lead.added_amount || 0);
+                    this.dealValue = (bc + aa) || Number(lead.deal_value || 0);
+                }
             } catch(e) { this.splits = []; }
             this.loading = false;
         },
