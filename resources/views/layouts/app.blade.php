@@ -42,7 +42,7 @@
 </head>
 <body class="bg-[#F0EFFA] font-sans antialiased">
 
-<div class="flex h-screen overflow-hidden relative">
+<div class="flex h-screen overflow-hidden">
 
     {{-- Mobile backdrop --}}
     <div x-show="sidebarOpen"
