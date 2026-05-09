@@ -265,6 +265,36 @@
                 </div>
             </div>
         </div>
+        <script>
+        // Apply financial layout — JS setProperty bypasses ALL CSS blocking
+        (function applyFin(){
+            ['.fin-row','.fin-grid-3'].forEach(function(sel){
+                document.querySelectorAll(sel).forEach(function(el){
+                    if(sel==='.fin-row'){
+                        el.style.setProperty('display','flex','important');
+                        el.style.setProperty('justify-content','space-between','important');
+                        el.style.setProperty('align-items','center','important');
+                    } else {
+                        el.style.setProperty('display','grid','important');
+                        el.style.setProperty('grid-template-columns','repeat(3,minmax(0,1fr))','important');
+                        el.style.setProperty('gap','.5rem','important');
+                    }
+                });
+            });
+        })();
+        document.addEventListener('DOMContentLoaded',function(){
+            document.querySelectorAll('.fin-row').forEach(function(el){
+                el.style.setProperty('display','flex','important');
+                el.style.setProperty('justify-content','space-between','important');
+                el.style.setProperty('align-items','center','important');
+            });
+            document.querySelectorAll('.fin-grid-3').forEach(function(el){
+                el.style.setProperty('display','grid','important');
+                el.style.setProperty('grid-template-columns','repeat(3,minmax(0,1fr))','important');
+                el.style.setProperty('gap','.5rem','important');
+            });
+        });
+        </script>
 
         {{-- â”€â”€ Bottom layout: Details + Notes/History â”€â”€ --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
