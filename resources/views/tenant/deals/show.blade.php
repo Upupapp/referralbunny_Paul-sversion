@@ -320,67 +320,6 @@
                     </div>
                 </div>
 
-                {{-- Commission Splits --}}
-                <div class="card space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="font-semibold text-[#1E1B4B] text-sm">Commission Splits</h3>
-                        <button x-show="!editSplits" @click="openEditSplits()" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Edit</button>
-                        <button x-show="editSplits"  @click="editSplits = false" class="text-xs text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-                    </div>
-
-                    {{-- View mode --}}
-                    <div x-show="!editSplits" class="space-y-2">
-                        <template x-if="(lead?.commission_splits||[]).length === 0">
-                            <p class="text-xs text-gray-400 py-1">Primary referrer gets 100% of pool. <button @click="openEditSplits()" class="text-purple-600 hover:underline">Add splits</button></p>
-                        </template>
-                        <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
-                            <div class="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
-                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                     :class="split.role==='primary' ? 'bg-purple-100 text-purple-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
-                                     x-text="(split.reseller_name||'?').slice(0,2).toUpperCase()"></div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="split.reseller_name"></p>
-                                    <p class="text-xs text-gray-400 capitalize" x-text="split.role"></p>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <p class="text-sm font-bold text-[#1E1B4B] tabular-nums" x-text="split.percentage + '%'"></p>
-                                    <p class="text-xs text-emerald-600 tabular-nums" x-show="commPool() > 0" x-text="fmt(commPool() * split.percentage / 100)"></p>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    {{-- Edit mode --}}
-                    <div x-show="editSplits" class="space-y-2.5">
-                        <template x-for="(split, i) in splitsForm" :key="i">
-                            <div class="flex items-center gap-2">
-                                <input type="text" x-model="split.reseller_name" class="form-input text-xs flex-1 min-w-0" placeholder="Referrer name">
-                                <select x-model="split.role" class="form-input text-xs w-24 shrink-0">
-                                    <option value="primary">Primary</option>
-                                    <option value="secondary">Secondary</option>
-                                    <option value="tertiary">Tertiary</option>
-                                </select>
-                                <div class="flex items-center gap-1 shrink-0">
-                                    <input type="number" x-model.number="split.percentage" class="form-input text-xs w-16" placeholder="%" min="0" max="100">
-                                    <span class="text-xs text-gray-400">%</span>
-                                </div>
-                                <button @click="splitsForm.splice(i,1)" class="text-red-400 hover:text-red-600 shrink-0" type="button">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
-                            </div>
-                        </template>
-                        <button @click="splitsForm.push({reseller_name:'',role:'secondary',percentage:0})"
-                                type="button" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add split</button>
-                        <div class="p-2 bg-gray-50 rounded-lg text-xs text-gray-500">
-                            Total: <span :class="totalSplitPct() === 100 ? 'text-emerald-600 font-bold' : 'text-orange-600 font-bold'" x-text="totalSplitPct() + '%'"></span>
-                            <span x-show="totalSplitPct() !== 100" class="ml-1 text-orange-600">(should equal 100%)</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button @click="editSplits = false" class="btn-secondary text-xs flex-1">Cancel</button>
-                            <button @click="saveSplits()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Save Splits'"></button>
-                        </div>
-                    </div>
-                </div>
             {{-- Partners & Split Share --}}
             <div class="card space-y-3"
                  x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}')"
@@ -1052,8 +991,6 @@ function dealDetail(leadId, tenantId) {
         moveStageNote: '',
         editFinance: false,
         financeForm: { base_cost: 0, added_amount: 0 },
-        editSplits: false,
-        splitsForm: [],
 
         // Contacts
         dealContacts: [], loadingContacts: true,
@@ -1327,49 +1264,6 @@ function dealDetail(leadId, tenantId) {
             } catch(e) { this.$dispatch('show-toast', { type: 'error', message: 'Failed to unlink contact.' }); }
         },
 
-        openEditSplits() {
-            this.splitsForm = (this.lead?.commission_splits || []).map(s => ({
-                reseller_name: s.reseller_name || '',
-                role: s.role || 'primary',
-                percentage: Number(s.percentage) || 0,
-            }));
-            if (this.splitsForm.length === 0 && this.lead?.reseller_name) {
-                this.splitsForm.push({ reseller_name: this.lead.reseller_name, role: 'primary', percentage: 100 });
-            }
-            this.editSplits = true;
-        },
-
-        totalSplitPct() {
-            return this.splitsForm.reduce((s, sp) => s + (Number(sp.percentage) || 0), 0);
-        },
-
-        async saveSplits() {
-            this.saving = true;
-            try {
-                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const res  = await fetch(`/api/leads/${this.lead.id}/commission-splits`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({ splits: this.splitsForm }),
-                });
-                const updated = await res.json();
-                if (updated.commission_splits) {
-                    this.lead = { ...this.lead, commission_splits: updated.commission_splits };
-                    this.editSplits = false;
-                    this.$dispatch('show-toast', { type: 'success', message: 'Commission splits saved.' });
-                } else {
-                    this.$dispatch('show-toast', { type: 'error', message: updated.message || 'Failed to save splits.' });
-                }
-            } catch(e) {
-                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
-            } finally { this.saving = false; }
-        },
     }
 }
 
