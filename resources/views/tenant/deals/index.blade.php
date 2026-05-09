@@ -507,7 +507,13 @@
                             <input type="number" x-model.number="form.base_cost"
                                    @input="syncFromBaseCost()"
                                    class="form-input" placeholder="0" min="0" step="100">
-                            <p class="text-xs text-gray-400 mt-1">Auto-fills from Deal Value %. Edit to override.</p>
+                            <p class="text-xs text-gray-400 mt-1"
+                               x-text="showLocation && form.deal_value > 0
+                                   ? (form.deal_value <= 6000000  ? 'Auto-fills at 60% of Deal Value. Edit to override.'
+                                   : form.deal_value <= 12000000 ? 'Auto-fills at 58% of Deal Value. Edit to override.'
+                                   : form.deal_value <= 15000000 ? 'Auto-fills at 48% of Deal Value. Edit to override.'
+                                   : 'Auto-fills at 41% of Deal Value. Edit to override.')
+                                   : 'Auto-fills from Deal Value %. Edit to override.'"></p>
                         </div>
                         <div>
                             <label class="form-label">Added Amount (₱)</label>
