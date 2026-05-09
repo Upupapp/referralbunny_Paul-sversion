@@ -290,7 +290,7 @@
         </div>
 
         {{-- Top bar --}}
-        <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-20">
+        <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-40">
 
             {{-- Mobile: sidebar toggle --}}
             <button @click="sidebarOpen = true"
@@ -584,6 +584,7 @@ function notifPanel() {
             try {
                 await fetch('/api/notifications/mine/mark-all-read', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 this.notifs = []; this.count = 0;

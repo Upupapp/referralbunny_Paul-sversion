@@ -1211,7 +1211,7 @@ function dealDetail(leadId, tenantId) {
                 });
                 const data = await res.json();
                 this.dealContacts = Array.isArray(data) ? data : [];
-            } catch(e) { this.dealContacts = []; }
+            } catch(e) { this.dealContacts = []; this.$dispatch('show-toast', { type: 'error', message: 'Failed to load contacts.' }); }
             this.loadingContacts = false;
         },
 
@@ -1351,7 +1351,7 @@ function partnerSplitSection(dealId, tenantId) {
                     const aa   = Number(lead.added_amount || 0);
                     this.dealValue = (bc + aa) || Number(lead.deal_value || 0);
                 }
-            } catch(e) { this.splits = []; }
+            } catch(e) { this.splits = []; this.$dispatch('show-toast', { type: 'error', message: 'Failed to load partner splits.' }); }
             this.loading = false;
         },
 
