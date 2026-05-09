@@ -139,9 +139,24 @@ class LeadController extends Controller
             }
         }
 
-        $baseCost    = (float) ($data['base_cost']    ?? 0);
+        // Resellers and Partners cannot set financial fields — always compute server-side
+        $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
+        $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
+
+        $dealValue   = (float) ($data['deal_value'] ?? 0);
+        $baseCost    = (float) ($data['base_cost']   ?? 0);
         $addedAmount = (float) ($data['added_amount'] ?? 0);
-        $dealValue   = $baseCost + $addedAmount ?: (float) ($data['deal_value'] ?? 0);
+
+        // For LGU IDS referrers: always compute base_cost from range formula (LOCKED)
+        if (($isReferrer || $isPartner) && $tenantId === 'lgu-ids' && $dealValue > 0) {
+            $baseCost    = \App\Services\LguIds\LguIdsPricingService::lookupBaseCost($dealValue);
+            $addedAmount = $dealValue - $baseCost;
+        } elseif (!$isReferrer && !$isPartner) {
+            // Admins/managers: use supplied values
+            $baseCost    = (float) ($data['base_cost']    ?? 0);
+            $addedAmount = (float) ($data['added_amount'] ?? 0);
+            $dealValue   = $baseCost + $addedAmount ?: $dealValue;
+        }
 
         // ── LGU IDS: default editable deal value ₱4,000,000 ─────────────
         // ADDITIVE RULE — does not change base_cost/added_amount computation.
@@ -266,6 +281,15 @@ class LeadController extends Controller
     {
         $lead->assertBelongsToCurrentTenant();
 
+        // Resellers and Partners cannot modify financial fields — strip them from the request
+        $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
+        $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
+        if ($isReferrer || $isPartner) {
+            $request->request->remove('base_cost');
+            $request->request->remove('added_amount');
+            $request->request->remove('deal_value');
+        }
+
         $data = $request->validate([
             'name'              => 'sometimes|string',
             'stage'             => 'sometimes|string',
@@ -278,6 +302,11 @@ class LeadController extends Controller
             'deal_value'        => 'sometimes|numeric',
             'data'              => 'sometimes|array',
         ]);
+
+        // Capture old financial values before update for history log
+        $oldDealValue   = (float) ($lead->deal_value   ?? 0);
+        $oldBaseCost    = (float) ($lead->base_cost     ?? 0);
+        $oldAddedAmount = (float) ($lead->added_amount  ?? 0);
 
         // Auto-recompute deal_value whenever financial fields change
         if (isset($data['base_cost']) || isset($data['added_amount'])) {
@@ -311,6 +340,30 @@ class LeadController extends Controller
         }
 
         $lead->update($data);
+
+        // ── Audit: log financial changes to deal history ──────────────
+        $newDealValue   = (float) ($lead->deal_value   ?? 0);
+        $newBaseCost    = (float) ($lead->base_cost     ?? 0);
+        $newAddedAmount = (float) ($lead->added_amount  ?? 0);
+
+        $financialChanged = abs($newDealValue - $oldDealValue)     > 0.01
+                         || abs($newBaseCost - $oldBaseCost)       > 0.01
+                         || abs($newAddedAmount - $oldAddedAmount) > 0.01;
+
+        if ($financialChanged) {
+            [$actorId, $actorRole] = $this->resolveActor();
+            LeadHistory::create([
+                'lead_id' => $lead->id,
+                'action'  => "Financial data updated by {$actorRole}"
+                           . " — Contract Value: ₱" . number_format($newDealValue, 2)
+                           . " | Base Cost: ₱" . number_format($newBaseCost, 2)
+                           . " | Added Amount: ₱" . number_format($newAddedAmount, 2)
+                           . " (was ₱" . number_format($oldDealValue, 2) . ")",
+                'type'    => 'financial',
+                'date'    => now()->toDateString(),
+            ]);
+        }
+
         return response()->json($lead->fresh(['commissionSplits', 'notes', 'history']));
     }
 

@@ -572,6 +572,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
         leads: [], filtered: [], loading: true,
         canViewReferrers,
+        showLocation,
         viewMode: 'table',
         search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
         sortCol: 'created_at', sortDir: 'desc',

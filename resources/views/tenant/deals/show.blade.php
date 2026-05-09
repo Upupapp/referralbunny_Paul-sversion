@@ -608,15 +608,17 @@
                             <div class="flex gap-3">
                                 <div class="flex flex-col items-center shrink-0">
                                     <div :class="{
-                                        'bg-purple-100 text-purple-600': event.type === 'stage',
-                                        'bg-blue-100 text-blue-600':    event.type === 'assignment',
-                                        'bg-emerald-100 text-emerald-600': event.type === 'commission',
-                                        'bg-gray-100 text-gray-500':    !event.type || event.type === 'notes',
+                                        'bg-purple-100 text-purple-600':  event.type === 'stage',
+                                        'bg-blue-100 text-blue-600':      event.type === 'assignment',
+                                        'bg-emerald-100 text-emerald-600':event.type === 'commission',
+                                        'bg-amber-100 text-amber-600':    event.type === 'financial',
+                                        'bg-gray-100 text-gray-500':      !event.type || event.type === 'notes',
                                     }" class="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <template x-if="event.type === 'stage'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></template>
                                             <template x-if="event.type === 'assignment'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></template>
                                             <template x-if="event.type === 'commission'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2"/></template>
+                                            <template x-if="event.type === 'financial'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></template>
                                             <template x-if="!event.type || event.type === 'notes'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></template>
                                         </svg>
                                     </div>
@@ -652,13 +654,22 @@
             </div>
             <div class=”p-5 space-y-3”>
                 <div class=”search-group”>
-                    <svg fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z”/></svg>
-                    <input type=”text” x-model=”linkSearch” placeholder=”Search contacts by name or email…” autofocus>
+                    <svg @click=”if(!allTenantContacts.length) fetchAllContacts()”
+                         class=”cursor-pointer hover:text-purple-600 transition-colors”
+                         fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”>
+                        <path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z”/>
+                    </svg>
+                    <input type=”text” x-model=”linkSearch”
+                           @input.debounce.200ms=”if(!allTenantContacts.length) fetchAllContacts()”
+                           placeholder=”Click 🔍 or type to search contacts…” autofocus>
                 </div>
                 <div class=”max-h-72 overflow-y-auto space-y-1”>
-                    <template x-if=”linkableContacts().length === 0”>
+                    <template x-if=”allTenantContacts.length === 0”>
+                        <p class=”text-center text-gray-400 text-sm py-6”>Click the search icon or start typing to load contacts.</p>
+                    </template>
+                    <template x-if=”allTenantContacts.length > 0 && linkableContacts().length === 0”>
                         <p class=”text-center text-gray-400 text-sm py-6”>
-                            <span x-text=”allTenantContacts.length === 0 ? 'No contacts in this tenant yet.' : 'No matching contacts.'”></span>
+                            <span x-text=”'No matching contacts.'”></span>
                         </p>
                     </template>
                     <template x-for=”c in linkableContacts()” :key=”c.id”>
@@ -969,7 +980,6 @@ function dealDetail(leadId, tenantId) {
             this.lead = await leadRes.json();
             this.loading = false;
             this.fetchContacts();
-            this.fetchAllContacts();
         },
 
         // â”€â”€ Financial helpers â”€â”€
@@ -1168,7 +1178,6 @@ function dealDetail(leadId, tenantId) {
         openLinkContact() {
             this.linkSearch = '';
             this.showLinkContact = true;
-            if (this.allTenantContacts.length === 0) this.fetchAllContacts();
         },
 
         linkableContacts() {
