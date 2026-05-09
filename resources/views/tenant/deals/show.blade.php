@@ -14,8 +14,9 @@
 @endsection
 
 @section('content')
+<script>var __dealSsrLead = @json($ssrLead ?? null);</script>
 <div class="space-y-5"
-     x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', @json($ssrLead ?? null))"
+     x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', __dealSsrLead)"
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
      @open-reassign-deal.window="showReassign = true">
