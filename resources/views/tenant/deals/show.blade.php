@@ -118,38 +118,50 @@
 
             {{-- â”€â”€ View mode â”€â”€ --}}
             <div x-show=”!editFinance” class=”space-y-4”>
+                @php
+                    $bc = (float)($ssrLead['base_cost']    ?? 0);
+                    $aa = (float)($ssrLead['added_amount'] ?? 0);
+                    $dv = (float)($ssrLead['deal_value']   ?? 0);
+                    $cv = ($bc + $aa) ?: $dv;
+                @endphp
 
-                {{-- Formula rows — same structure as add deal modal --}}
+                {{-- Formula rows --}}
                 <div class=”space-y-0”>
-                    <div class=”flex justify-between py-2.5 border-b border-gray-100”>
+                    <div style=”display:flex;justify-content:space-between;align-items:center” class=”py-2.5 border-b border-gray-100”>
                         <p class=”text-sm text-gray-500”>₱ Base Cost</p>
-                        <p class=”text-sm font-semibold text-gray-700 tabular-nums” x-text=”'₱' + Math.round(lead?.base_cost||0).toLocaleString()”></p>
+                        <p class=”text-sm font-semibold text-gray-700 tabular-nums”
+                           x-text=”'₱' + Math.round(lead?.base_cost||0).toLocaleString()”>₱{{ number_format((int)$bc) }}</p>
                     </div>
-                    <div class=”flex justify-between py-2.5 border-b border-dashed border-gray-200”>
+                    <div style=”display:flex;justify-content:space-between;align-items:center” class=”py-2.5 border-b border-dashed border-gray-200”>
                         <p class=”text-sm text-gray-500”>+ Added Amount <span class=”text-xs text-gray-400”>(margin)</span></p>
-                        <p class=”text-sm font-semibold text-blue-600 tabular-nums” x-text=”'₱' + Math.round(lead?.added_amount||0).toLocaleString()”></p>
+                        <p class=”text-sm font-semibold text-blue-600 tabular-nums”
+                           x-text=”'₱' + Math.round(lead?.added_amount||0).toLocaleString()”>₱{{ number_format((int)$aa) }}</p>
                     </div>
-                    <div class=”flex justify-between py-2.5 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
-                        <p class=”text-sm font-semibold text-[#1E1B4B]”>= Contract Value</p>
-                        <p class=”text-sm font-bold text-[#1E1B4B] tabular-nums” x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”></p>
+                    <div style=”display:flex;justify-content:space-between;align-items:center;background:#F0EFFA” class=”py-2.5 rounded-xl px-3 mt-1”>
+                        <p class=”text-sm font-semibold” style=”color:#1E1B4B”>= Contract Value</p>
+                        <p class=”text-sm font-bold tabular-nums” style=”color:#1E1B4B”
+                           x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”>₱{{ number_format((int)$cv) }}</p>
                     </div>
                 </div>
 
-                {{-- 3-column summary — exact same structure as add deal modal live preview --}}
-                <div class=”grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100”>
+                {{-- 3-column summary --}}
+                <div style=”display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem” class=”p-3 rounded-xl bg-gray-50 border border-gray-100”>
                     <div class=”text-center”>
                         <p class=”text-xs text-gray-400 uppercase tracking-wide”>Contract Value</p>
-                        <p class=”text-sm font-bold text-[#1E1B4B] tabular-nums mt-0.5” x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”></p>
+                        <p class=”text-sm font-bold tabular-nums mt-0.5” style=”color:#1E1B4B”
+                           x-text=”'₱' + Math.round(((lead?.base_cost||0)+(lead?.added_amount||0))||(lead?.deal_value||0)).toLocaleString()”>₱{{ number_format((int)$cv) }}</p>
                         <p class=”text-xs text-gray-400”>base + margin</p>
                     </div>
-                    <div class=”text-center border-x border-gray-200”>
+                    <div class=”text-center” style=”border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb”>
                         <p class=”text-xs text-blue-500 uppercase tracking-wide”>Company Share</p>
-                        <p class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5” x-text=”'₱' + Math.round((lead?.added_amount||0)*0.30).toLocaleString()”></p>
+                        <p class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5”
+                           x-text=”'₱' + Math.round((lead?.added_amount||0)*0.30).toLocaleString()”>₱{{ number_format((int)($aa * 0.30)) }}</p>
                         <p class=”text-xs text-blue-400”>30% margin</p>
                     </div>
                     <div class=”text-center”>
                         <p class=”text-xs text-emerald-500 uppercase tracking-wide”>Commission Pool</p>
-                        <p class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5” x-text=”'₱' + Math.round((lead?.added_amount||0)*0.70).toLocaleString()”></p>
+                        <p class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5”
+                           x-text=”'₱' + Math.round((lead?.added_amount||0)*0.70).toLocaleString()”>₱{{ number_format((int)($aa * 0.70)) }}</p>
                         <p class=”text-xs text-emerald-400”>70% margin</p>
                     </div>
                 </div>
