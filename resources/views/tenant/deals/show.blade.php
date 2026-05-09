@@ -87,7 +87,7 @@
                             </div>
                             <span class="text-[10px] text-gray-500 text-center mt-1.5 leading-tight" x-text="s.label"></span>
                         </div>
-                        <div x-show="i < allStages.length - 1" class="flex-1 h-0.5 mx-1 transition-colors"
+                        <div x-show="i + 1 !== allStages.length" class="flex-1 h-0.5 mx-1 transition-colors"
                              :class="isStageDone(allStages[i+1]?.key) ? 'bg-[#7B61FF]' : 'bg-gray-200'"></div>
                     </div>
                 </template>
@@ -247,7 +247,7 @@
                     </div>
 
                     {{-- Per-reseller preview --}}
-                    <div x-show="(lead?.commission_splits||[]).length > 0" class="space-y-1.5 pt-1">
+                    <div x-show="(lead?.commission_splits||[]).length" class="space-y-1.5 pt-1">
                         <p class="text-xs text-gray-400 uppercase tracking-wider">Referrer Earnings</p>
                         <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
                             <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-xs">
@@ -352,10 +352,10 @@
                     </template>
 
                     {{-- Total --}}
-                    <div x-show="splits.filter(s => s.split_share_type === 'percentage').length > 0"
+                    <div x-show="hasPctSplits()"
                          class="flex justify-between text-xs py-1 border-t border-gray-100 mt-1">
                         <span class="text-gray-400">Total Partner %</span>
-                        <span :class="totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'" x-text="totalPct + '%'"></span>
+                        <span :class="totalPctClass()" x-text="totalPct + '%'"></span>
                     </div>
                 </div>
 
@@ -446,14 +446,14 @@
                             </select>
                         </div>
                         {{-- Exact peso amount hint --}}
-                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value > 0 && dealValue > 0"
+                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value && dealValue"
                            class="text-xs text-purple-600 font-medium flex items-center gap-1">
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                             <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
                         </p>
-                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value > 0 && dealValue > 0"
+                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value && dealValue"
                            class="text-xs text-gray-400 flex items-center gap-1">
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -476,7 +476,7 @@
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Extend Assignment</h3>
                     <div class="flex items-center gap-2">
-                        <span x-show="requests.some(r => r.status === 'pending_review')"
+                        <span x-show="hasPendingRequests()"
                               class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                             Needs Review
                         </span>
@@ -573,7 +573,7 @@
                             <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">Link a contact</button>
                         </div>
                     </template>
-                    <div x-show="dealContacts.length > 0" class="space-y-1">
+                    <div x-show="dealContacts.length" class="space-y-1">
                         <template x-for="c in dealContacts" :key="c.id">
                             <div class="flex items-center gap-2.5 py-2 border-b border-gray-50 last:border-0 group">
                                 <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
@@ -855,7 +855,7 @@
             No comments yet. Start the discussion.
         </div>
 
-        <div x-show="!loadingComments && comments.length > 0" class="space-y-4">
+        <div x-show="!loadingComments && comments.length" class="space-y-4">
             <template x-for="c in comments" :key="c.id">
                 <div class="flex gap-3 group/comment">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
@@ -1277,6 +1277,8 @@ function partnerSplitSection(dealId, tenantId) {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
         dealValue: 0,
+        totalPctClass() { return this.totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'; },
+        hasPctSplits() { return this.splits.some(function(s) { return s.split_share_type === 'percentage'; }); },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox
         contactQuery: '', contactOpen: false, contactSelected: null,
@@ -1396,6 +1398,7 @@ function extensionRequestSection(dealId, tenantId) {
         requests: [], loading: true, saving: false, actionError: null,
         showExtendForm: false, extendError: '',
         extendForm: { days: 14, reason: '' },
+        hasPendingRequests() { return this.requests.some(function(r) { return r.status === 'pending_review'; }); },
 
         async load() {
             this.loading = true;
