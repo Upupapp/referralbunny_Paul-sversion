@@ -438,8 +438,71 @@
                 {{-- Add form --}}
                 <div x-show="showAdd" class="space-y-2.5 pt-2 border-t border-gray-100">
                     <p class="text-xs font-medium text-[#1E1B4B]">Add Partner Split</p>
-                    <input type="text" x-model="form.partner_name" class="form-input text-xs" placeholder="Partner full name *">
-                    <input type="email" x-model="form.partner_email" class="form-input text-xs" placeholder="partner@email.com *">
+
+                    {{-- Contact combobox --}}
+                    <div x-show="!contactSelected" class="relative" @click.outside="contactOpen = false">
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="contactQuery"
+                                   @input.debounce.300ms="contactOpen = true; searchContacts()"
+                                   @keydown.escape="contactOpen = false"
+                                   @keydown.arrow-down.prevent="contactFocusIdx = Math.min(contactFocusIdx + 1, contactOptions.length - 1)"
+                                   @keydown.arrow-up.prevent="contactFocusIdx = Math.max(contactFocusIdx - 1, -1)"
+                                   @keydown.enter.prevent="if(contactFocusIdx >= 0 && contactOptions[contactFocusIdx]) selectContact(contactOptions[contactFocusIdx])"
+                                   placeholder="Search contacts by name or email…"
+                                   autocomplete="off"
+                                   class="form-input text-xs pr-7">
+                            <div class="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+                                 @click="contactOpen = true; searchContacts()" title="Search contacts">
+                                <svg x-show="!loadingContacts" class="w-3.5 h-3.5 text-gray-400 hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <svg x-show="loadingContacts" class="w-3.5 h-3.5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            </div>
+                        </div>
+                        <div x-show="contactOpen"
+                             class="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-100 max-h-44 overflow-y-auto"
+                             style="display:none">
+                            <div x-show="loadingContacts" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
+                                <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Loading contacts…
+                            </div>
+                            <div x-show="!loadingContacts && contactLoadError" class="px-3 py-2.5">
+                                <p class="text-xs text-red-500" x-text="contactLoadError"></p>
+                                <button type="button" @click="searchContacts()" class="text-xs text-purple-600 hover:underline mt-0.5">Try again</button>
+                            </div>
+                            <div x-show="!loadingContacts && !contactLoadError">
+                                <template x-for="(c, idx) in contactOptions" :key="c.id">
+                                    <button type="button"
+                                            @click="selectContact(c)"
+                                            :class="contactFocusIdx === idx ? 'bg-[#F0EFFA]' : 'hover:bg-gray-50'"
+                                            class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors">
+                                        <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                                             x-text="([c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '?').slice(0,2).toUpperCase()"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="[c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '—'"></p>
+                                            <p class="text-[10px] text-gray-400 truncate" x-text="c.email || c.job_title || ''"></p>
+                                        </div>
+                                    </button>
+                                </template>
+                                <div x-show="contactOptions.length === 0 && !loadingContacts && !contactLoadError"
+                                     class="px-3 py-4 text-center text-xs text-gray-400"
+                                     x-text="contactQuery ? 'No matching contacts.' : 'Click 🔍 or type to search contacts.'"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Selected contact pill --}}
+                    <div x-show="contactSelected" class="flex items-center gap-2 p-2 border border-purple-200 rounded-xl bg-purple-50">
+                        <div class="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-[10px] font-bold shrink-0"
+                             x-text="([contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || '?').slice(0,2).toUpperCase()"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="[contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || '—'"></p>
+                            <p class="text-[10px] text-gray-400 truncate" x-text="contactSelected?.email || ''"></p>
+                        </div>
+                        <button type="button" @click="clearContact()" class="text-gray-400 hover:text-gray-600 shrink-0">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
                     <div class="flex gap-2">
                         <input type="number" x-model.number="form.split_share_value" class="form-input text-xs w-20 shrink-0" placeholder="%" min="0" max="100">
                         <select x-model="form.split_share_type" class="form-input text-xs flex-1">
@@ -449,7 +512,7 @@
                     </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div class="flex gap-2">
-                        <button @click="showAdd = false; formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
+                        <button @click="showAdd = false; clearContact(); formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
                         <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Add Split'"></button>
                     </div>
                 </div>
@@ -1274,6 +1337,47 @@ function partnerSplitSection(dealId, tenantId) {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
+        // Contact combobox
+        contactQuery: '', contactOpen: false, contactSelected: null,
+        contactOptions: [], loadingContacts: false, contactLoadError: '', contactFocusIdx: -1,
+
+        async searchContacts() {
+            this.loadingContacts = true;
+            this.contactLoadError = '';
+            try {
+                const q = encodeURIComponent(this.contactQuery || '');
+                const res = await fetch(`/api/contacts?tenant_id=${tenantId}&search=${q}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('Server error');
+                const data = await res.json();
+                this.contactOptions = Array.isArray(data) ? data : (data.data || []);
+                this.contactFocusIdx = -1;
+            } catch(e) {
+                this.contactLoadError = 'Unable to load contacts. Try again.';
+                this.contactOptions = [];
+            }
+            this.loadingContacts = false;
+        },
+
+        selectContact(c) {
+            this.contactSelected = c;
+            const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '';
+            this.form.partner_name  = fullName;
+            this.form.partner_email = c.email || '';
+            this.contactQuery = fullName;
+            this.contactOpen  = false;
+        },
+
+        clearContact() {
+            this.contactSelected   = null;
+            this.form.partner_name  = '';
+            this.form.partner_email = '';
+            this.contactQuery  = '';
+            this.contactOpen   = false;
+            this.contactOptions = [];
+        },
 
         async load() {
             this.loading = true;
