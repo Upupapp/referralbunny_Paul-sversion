@@ -117,7 +117,7 @@
             </div>
 
             {{-- â”€â”€ View mode â”€â”€ --}}
-            <div x-show=”!editFinance” class=”space-y-4”>
+            <div :class=”editFinance ? 'hidden' : ''” class=”space-y-4”>
                 @php
                     $bc = (float)($ssrLead['base_cost']    ?? 0);
                     $aa = (float)($ssrLead['added_amount'] ?? 0);
