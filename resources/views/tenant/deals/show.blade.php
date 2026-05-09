@@ -195,7 +195,7 @@
                 </div>
 
                 {{-- Commission distribution --}}
-                <div x-show="(lead?.commission_splits||[]).length > 0">
+                <div x-show="(lead?.commission_splits||[]).length">
                     <div class="flex items-center justify-between mb-3">
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission Distribution</p>
                         <span :class="{
@@ -274,7 +274,7 @@
                     </div>
 
                     {{-- Per-reseller preview --}}
-                    <div x-show="(lead?.commission_splits||[]).length > 0" class="space-y-1.5 pt-1">
+                    <div x-show="(lead?.commission_splits||[]).length" class="space-y-1.5 pt-1">
                         <p class="text-xs text-gray-400 uppercase tracking-wider">Referrer Earnings</p>
                         <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
                             <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-xs">
@@ -378,7 +378,7 @@
                                 </div>
                                 <div class="text-right shrink-0">
                                     <p class="text-sm font-bold text-[#1E1B4B] tabular-nums" x-text="split.percentage + '%'"></p>
-                                    <p class="text-xs text-emerald-600 tabular-nums" x-show="commPool() > 0" x-text="fmt(commPool() * split.percentage / 100)"></p>
+                                    <p class="text-xs text-emerald-600 tabular-nums" x-show="commPool()" x-text="fmt(commPool() * split.percentage / 100)"></p>
                                 </div>
                             </div>
                         </template>
@@ -462,10 +462,10 @@
                     </template>
 
                     {{-- Total --}}
-                    <div x-show="splits.filter(s => s.split_share_type === 'percentage').length > 0"
+                    <div x-show="splits.filter(s => s.split_share_type === 'percentage').length"
                          class="flex justify-between text-xs py-1 border-t border-gray-100 mt-1">
                         <span class="text-gray-400">Total Partner %</span>
-                        <span :class="totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'" x-text="totalPct + '%'"></span>
+                        <span :class="totalPctClass()" x-text="totalPct + '%'"></span>
                     </div>
                 </div>
 
@@ -556,14 +556,14 @@
                             </select>
                         </div>
                         {{-- Exact peso amount hint --}}
-                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value > 0 && dealValue > 0"
+                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value && dealValue"
                            class="text-xs text-purple-600 font-medium flex items-center gap-1">
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                             <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
                         </p>
-                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value > 0 && dealValue > 0"
+                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value && dealValue"
                            class="text-xs text-gray-400 flex items-center gap-1">
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -664,7 +664,7 @@
                             <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">Link a contact</button>
                         </div>
                     </template>
-                    <div x-show="dealContacts.length > 0" class="space-y-1">
+                    <div x-show="dealContacts.length" class="space-y-1">
                         <template x-for="c in dealContacts" :key="c.id">
                             <div class="flex items-center gap-2.5 py-2 border-b border-gray-50 last:border-0 group">
                                 <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
@@ -752,7 +752,7 @@
                                             <template x-if="!event.type || event.type === 'notes'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></template>
                                         </svg>
                                     </div>
-                                    <div x-show="ei < (lead?.history||[]).length - 1" class="w-px flex-1 bg-gray-100 mt-1"></div>
+                                    <div x-show="ei + 1 !== (lead?.history||[]).length" class="w-px flex-1 bg-gray-100 mt-1"></div>
                                 </div>
                                 <div class="pb-3 flex-1 min-w-0">
                                     <p class="text-sm text-gray-700" x-text="event.action"></p>
@@ -947,7 +947,7 @@
             No comments yet. Start the discussion.
         </div>
 
-        <div x-show="!loadingComments && comments.length > 0" class="space-y-4">
+        <div x-show="!loadingComments && comments.length" class="space-y-4">
             <template x-for="c in comments" :key="c.id">
                 <div class="flex gap-3 group/comment">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
@@ -1438,6 +1438,7 @@ function partnerSplitSection(dealId, tenantId) {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
         dealValue: 0,
+        totalPctClass() { return this.totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'; },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox
         contactQuery: '', contactOpen: false, contactSelected: null,
