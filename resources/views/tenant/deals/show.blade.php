@@ -35,33 +35,55 @@
     <div x-show="!loading && lead" class="space-y-5">
 
         {{-- â”€â”€ Header â”€â”€ --}}
-        <div class="card">
-            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
-                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-lg shrink-0"
-                     style="background:#EDE9FE" x-text="(lead?.name||'?').slice(0,2).toUpperCase()"></div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h2 class="text-xl font-bold text-[#1E1B4B]" x-text="lead?.name"></h2>
-                        <span :class="{
+        <div class=”card border-l-4 transition-colors”
+             :class=”{
+                 'border-emerald-400': lead?.status === 'active',
+                 'border-amber-400':   lead?.status === 'expiring',
+                 'border-red-500':     lead?.status === 'expired',
+                 'border-gray-200':    !['active','expiring','expired'].includes(lead?.status||''),
+             }”>
+            <div class=”flex flex-col sm:flex-row sm:items-start gap-4”>
+                <div class=”w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-xl shrink-0”
+                     style=”background:#EDE9FE” x-text=”(lead?.name||'?').slice(0,2).toUpperCase()”></div>
+                <div class=”flex-1 min-w-0”>
+                    <div class=”flex flex-wrap items-center gap-2 mb-1.5”>
+                        <h2 class=”text-xl font-bold text-[#1E1B4B]” x-text=”lead?.name”></h2>
+                        <span :class=”{
                             'badge badge-green':  lead?.status === 'active',
                             'badge badge-orange': lead?.status === 'expiring',
                             'badge badge-red':    lead?.status === 'expired',
                             'badge badge-gray':   !['active','expiring','expired'].includes(lead?.status||''),
-                        }" x-text="lead?.status ? lead.status.charAt(0).toUpperCase()+lead.status.slice(1) : ''"></span>
-                        <span :class="stageBadge(lead?.stage)" x-text="stageLabel(lead?.stage)"></span>
+                        }” x-text=”lead?.status ? lead.status.charAt(0).toUpperCase()+lead.status.slice(1) : ''”></span>
+                        <span :class=”stageBadge(lead?.stage)” x-text=”stageLabel(lead?.stage)”></span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3 mt-1">
-                        <p class="text-sm text-gray-500">Referrer: <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'Unassigned'"></span></p>
-                        <span x-show="lead?.data?.province" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span x-text="[lead?.data?.municipality, lead?.data?.province].filter(Boolean).join(', ')"></span>
+                    <div class=”flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1”>
+                        <p class=”text-sm text-gray-500 flex items-center gap-1.5”>
+                            <svg class=”w-3.5 h-3.5 text-gray-400 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z”/></svg>
+                            <span class=”font-medium text-gray-700” x-text=”lead?.reseller_name || 'Unassigned'”></span>
+                        </p>
+                        <span x-show=”lead?.data?.province” class=”inline-flex items-center gap-1 text-xs text-blue-600”>
+                            <svg class=”w-3 h-3 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z”/><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M15 11a3 3 0 11-6 0 3 3 0 016 0z”/></svg>
+                            <span x-text=”[lead?.data?.municipality, lead?.data?.province].filter(Boolean).join(', ')”></span>
                         </span>
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5" x-text="lead?.created_at ? 'Created ' + new Date(lead.created_at).toLocaleDateString('en',{month:'long',day:'numeric',year:'numeric'}) : ''"></p>
+                    <p class=”text-xs text-gray-400 mt-1.5” x-text=”lead?.created_at ? 'Created ' + new Date(lead.created_at).toLocaleDateString('en',{month:'long',day:'numeric',year:'numeric'}) : ''”></p>
                 </div>
-                <div class="text-right shrink-0">
-                    <p class="text-2xl font-bold text-[#1E1B4B]" x-text="fmt(contractValue())"></p>
-                    <p class="text-xs text-gray-400">Contract Value</p>
+                <div class=”flex flex-col items-end gap-2 shrink-0”>
+                    <div class=”text-right”>
+                        <p class=”text-2xl font-bold text-[#1E1B4B]” x-text=”fmt(contractValue())”></p>
+                        <p class=”text-xs text-gray-400”>Contract Value</p>
+                    </div>
+                    {{-- Days left urgency badge --}}
+                    <div x-show=”lead?.days_left != null”
+                         class=”inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold”
+                         :class=”{
+                             'bg-red-100 text-red-700':    lead?.days_left <= 3,
+                             'bg-amber-100 text-amber-700': lead?.days_left > 3 && lead?.days_left <= 7,
+                             'bg-gray-100 text-gray-600':   lead?.days_left > 7,
+                         }”>
+                        <svg class=”w-3 h-3 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z”/></svg>
+                        <span x-text=”lead?.days_left + ' days left'”></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -85,7 +107,7 @@
                                     <span x-text="i + 1"></span>
                                 </template>
                             </div>
-                            <span class="text-xs text-gray-500 text-center mt-1.5 leading-tight hidden sm:block" x-text="s.label"></span>
+                            <span class="text-[10px] text-gray-500 text-center mt-1.5 leading-tight" x-text="s.label"></span>
                         </div>
                         <div x-show="i < allStages.length - 1" class="flex-1 h-0.5 mx-1 transition-colors"
                              :class="isStageDone(allStages[i+1]?.key) ? 'bg-[#7B61FF]' : 'bg-gray-200'"></div>
@@ -286,37 +308,63 @@
 
             {{-- Left: Details + Commission splits quick view --}}
             <div class="space-y-4">
-                <div class="card space-y-3">
-                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Deal Details</h3>
-                    <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
-                        <span class="text-gray-400">Referrer</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || '—'"></span>
-                    </div>
-                    @if($showLocation ?? false)
-                    <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
-                        <span class="text-gray-400">Province</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || '—'"></span>
-                    </div>
-                    <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
-                        <span class="text-gray-400">Municipality</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || '—'"></span>
-                    </div>
-                    @endif
-                    <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
-                        <span class="text-gray-400">Stage</span>
-                        <span class="font-medium text-gray-700" x-text="stageLabel(lead?.stage)"></span>
-                    </div>
-                    <div class="flex justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
-                        <span class="text-gray-400">Days Left</span>
-                        <span class="font-medium text-gray-700" x-text="(lead?.days_left ?? 21) + ' days'"></span>
-                    </div>
-                    <div class="flex justify-between text-sm py-1.5">
-                        <span class="text-gray-400">Commission</span>
-                        <span :class="{
-                            'badge badge-gray':   lead?.commission_status === 'pending',
-                            'badge badge-orange': lead?.commission_status === 'locked',
-                            'badge badge-green':  lead?.commission_status === 'paid',
-                        }" x-text="lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'"></span>
+                <div class="card">
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm mb-3">Deal Details</h3>
+                    <div class="divide-y divide-gray-50">
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span class="text-sm">Referrer</span>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 text-right max-w-[55%] truncate" x-text="lead?.reseller_name || '—'"></span>
+                        </div>
+                        @if($showLocation ?? false)
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+                                <span class="text-sm">Province</span>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700" x-text="lead?.data?.province || '—'"></span>
+                        </div>
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span class="text-sm">Municipality</span>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700" x-text="lead?.data?.municipality || '—'"></span>
+                        </div>
+                        @endif
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                <span class="text-sm">Stage</span>
+                            </div>
+                            <span :class="stageBadge(lead?.stage)" x-text="stageLabel(lead?.stage)"></span>
+                        </div>
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-sm">Days Left</span>
+                            </div>
+                            <span class="text-sm font-semibold tabular-nums"
+                                  :class="{
+                                      'text-red-600':   lead?.days_left != null && lead.days_left <= 3,
+                                      'text-amber-600': lead?.days_left != null && lead.days_left > 3 && lead.days_left <= 7,
+                                      'text-gray-700':  lead?.days_left == null || lead.days_left > 7,
+                                  }"
+                                  x-text="lead?.days_left != null ? lead.days_left + ' days' : '—'"></span>
+                        </div>
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-sm">Commission</span>
+                            </div>
+                            <span :class="{
+                                'badge badge-gray':   lead?.commission_status === 'pending',
+                                'badge badge-orange': lead?.commission_status === 'locked',
+                                'badge badge-green':  lead?.commission_status === 'paid',
+                            }" x-text="lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -387,7 +435,7 @@
                  x-init="load()">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Partners &amp; Split Share</h3>
-                    <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                    <button @click="showAdd = !showAdd; if(!showAdd){ clearContact(); formError = '' }" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Add Partner
                     </button>
@@ -664,8 +712,7 @@
                         <button @click="showNoteForm = !showNoteForm" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add Note</button>
                     </div>
                     <div x-show="showNoteForm" class="space-y-2 p-3 bg-[#F0EFFA] rounded-xl">
-                        <textarea x-model="noteText" rows="3" class="form-input text-sm" placeholder="Add a note…"></textarea>
-                        <input type="text" x-model="noteAuthor" class="form-input text-sm" placeholder="Your name">
+                        <textarea x-model="noteText" rows="3" class="form-input text-sm" placeholder="Add a note…" autofocus></textarea>
                         <div class="flex justify-end gap-2">
                             <button @click="showNoteForm = false; noteText=''; noteAuthor=''" class="btn-secondary text-xs">Cancel</button>
                             <button @click="addNote()" :disabled="saving || !noteText" class="btn-primary text-xs" x-text="saving ? 'Saving…' : 'Save Note'"></button>
@@ -673,7 +720,11 @@
                     </div>
                     <div class="space-y-2">
                         <template x-if="(lead?.notes||[]).length === 0">
-                            <p class="text-gray-400 text-sm text-center py-4">No notes yet.</p>
+                            <div class="text-center py-6">
+                                <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <p class="text-gray-400 text-sm">No notes yet.</p>
+                                <button @click="showNoteForm = true" class="text-xs text-purple-600 hover:underline mt-1">Add the first note</button>
+                            </div>
                         </template>
                         <template x-for="note in (lead?.notes||[])" :key="note.id">
                             <div class="p-3 bg-gray-50 rounded-xl">
@@ -692,7 +743,10 @@
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Activity History</h3>
                     <div class="space-y-3">
                         <template x-if="(lead?.history||[]).length === 0">
-                            <p class="text-gray-400 text-sm text-center py-4">No activity yet.</p>
+                            <div class="text-center py-6">
+                                <svg class="w-8 h-8 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <p class="text-gray-400 text-sm">No activity yet.</p>
+                            </div>
                         </template>
                         <template x-for="(event, ei) in [...(lead?.history||[])].reverse()" :key="event.id">
                             <div class="flex gap-3">
@@ -712,7 +766,7 @@
                                             <template x-if="!event.type || event.type === 'notes'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></template>
                                         </svg>
                                     </div>
-                                    <div class="w-px flex-1 bg-gray-100 mt-1"></div>
+                                    <div x-show="ei < (lead?.history||[]).length - 1" class="w-px flex-1 bg-gray-100 mt-1"></div>
                                 </div>
                                 <div class="pb-3 flex-1 min-w-0">
                                     <p class="text-sm text-gray-700" x-text="event.action"></p>
@@ -841,7 +895,7 @@
                 </button>
             </div>
             <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-                This resets the stage to Introduction, restarts the 21-day timer, and transfers 100% of the commission pool to the new referrer.
+                This resets the stage to Introduction, restarts the pipeline timer, and transfers 100% of the commission pool to the new referrer.
             </div>
             <div>
                 <label class="form-label">New Referrer Name *</label>
@@ -1064,10 +1118,11 @@ function dealDetail(leadId, tenantId) {
         ],
 
         async init() {
-            const [leadRes] = await Promise.all([
-                fetch(`/api/leads/${leadId}`),
-            ]);
-            this.lead = await leadRes.json();
+            const res = await fetch(`/api/leads/${leadId}`, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            this.lead = await res.json();
             this.loading = false;
             this.fetchContacts();
         },
@@ -1250,7 +1305,10 @@ function dealDetail(leadId, tenantId) {
         async fetchContacts() {
             this.loadingContacts = true;
             try {
-                const res = await fetch(`/api/deals/${leadId}/contacts`);
+                const res = await fetch(`/api/deals/${leadId}/contacts`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
                 const data = await res.json();
                 this.dealContacts = Array.isArray(data) ? data : [];
             } catch(e) { this.dealContacts = []; }
@@ -1259,7 +1317,10 @@ function dealDetail(leadId, tenantId) {
 
         async fetchAllContacts() {
             try {
-                const res = await fetch(`/api/contacts?tenant_id=${tenantId}`);
+                const res = await fetch(`/api/contacts?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
                 const data = await res.json();
                 this.allTenantContacts = Array.isArray(data) ? data : [];
             } catch(e) { this.allTenantContacts = []; }
@@ -1283,9 +1344,11 @@ function dealDetail(leadId, tenantId) {
         async linkContact(contact) {
             this.linkSaving = true;
             try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const res = await fetch(`/api/deals/${leadId}/contacts`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ contact_id: contact.id, tenant_id: tenantId }),
                 });
                 const data = await res.json();
@@ -1303,9 +1366,11 @@ function dealDetail(leadId, tenantId) {
 
         async unlinkContact(contactId) {
             try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 await fetch(`/api/deals/${leadId}/contacts/${contactId}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 this.dealContacts = this.dealContacts.filter(c => c.id !== contactId);
                 this.$dispatch('show-toast', { type: 'success', message: 'Contact unlinked.' });
