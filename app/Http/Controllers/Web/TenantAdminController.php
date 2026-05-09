@@ -179,7 +179,15 @@ class TenantAdminController extends Controller
     public function dealShow($tenantId, $dealId)
     {
         $tenant = Tenant::findOrFail($tenantId);
-        return view('tenant.deals.show', array_merge(['tenant' => $tenant, 'dealId' => $dealId], $this->configMeta($tenantId)));
+        $lead   = \App\Models\Lead::where('id', $dealId)
+            ->where('tenant_id', $tenantId)
+            ->with(['commissionSplits', 'notes', 'history'])
+            ->first();
+        $ssrLead = $lead?->toArray();
+        return view('tenant.deals.show', array_merge(
+            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead],
+            $this->configMeta($tenantId)
+        ));
     }
 
     public function contacts($tenantId)

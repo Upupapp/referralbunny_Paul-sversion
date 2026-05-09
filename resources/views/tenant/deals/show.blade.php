@@ -15,7 +15,7 @@
 
 @section('content')
 <div class="space-y-5"
-     x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}')"
+     x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', @json($ssrLead ?? null))"
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
      @open-reassign-deal.window="showReassign = true">
@@ -972,9 +972,9 @@ function dealComments(dealId, tenantId) {
     };
 }
 
-function dealDetail(leadId, tenantId) {
+function dealDetail(leadId, tenantId, ssrLead) {
     return {
-        lead: null, loading: true,
+        lead: ssrLead || null, loading: !ssrLead,
         showNoteForm: false, showMoveStage: false, showReassign: false,
         noteText: '', noteAuthor: '', saving: false, reassignName: '',
         moveStageNote: '',
@@ -995,12 +995,21 @@ function dealDetail(leadId, tenantId) {
         ],
 
         async init() {
-            try {
-                const res = await fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' });
-                if (res.ok) this.lead = await res.json();
-            } catch(e) { /* silent — lead stays null, loading clears */ }
-            this.loading = false;
             this.fetchContacts();
+            if (this.lead) {
+                // SSR data already present — page is instantly visible.
+                // Refresh silently in background so any stale fields update.
+                fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => { if (d) this.lead = d; })
+                    .catch(() => {});
+            } else {
+                try {
+                    const res = await fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' });
+                    if (res.ok) this.lead = await res.json();
+                } catch(e) { /* silent */ }
+                this.loading = false;
+            }
         },
 
         // â”€â”€ Financial helpers â”€â”€
