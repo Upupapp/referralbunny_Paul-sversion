@@ -116,107 +116,92 @@
             </div>
 
             {{-- â”€â”€ View mode â”€â”€ --}}
-            <div x-show="!editFinance" class="space-y-5">
+            <div x-show=”!editFinance” class=”space-y-4”>
 
-                {{-- Calculation table --}}
-                <div class="space-y-0">
-                    <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">₱</span>
-                            <div>
-                                <p class="text-sm font-medium text-[#1E1B4B]">Base Cost</p>
-                                <p class="text-xs text-gray-400">Actual cost to deliver</p>
-                            </div>
+                {{-- Formula line items --}}
+                <div class=”space-y-0”>
+                    <div class=”flex items-center justify-between py-2.5 border-b border-gray-100”>
+                        <div class=”flex items-center gap-2 text-gray-500 text-sm”>
+                            <span class=”w-5 h-5 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold shrink-0”>₱</span>
+                            Base Cost
                         </div>
-                        <span class="text-base font-bold text-gray-800 tabular-nums" x-text="fmt(lead?.base_cost || 0)"></span>
+                        <span class=”text-sm font-semibold text-gray-700 tabular-nums” x-text=”fmt(lead?.base_cost || 0)”></span>
                     </div>
-                    <div class="flex items-center justify-between py-3 border-b border-dashed border-gray-200">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-500 shrink-0">+</span>
-                            <div>
-                                <p class="text-sm font-medium text-[#1E1B4B]">Added Amount</p>
-                                <p class="text-xs text-gray-400">Markup / margin — this gets split</p>
-                            </div>
+                    <div class=”flex items-center justify-between py-2.5 border-b border-dashed border-gray-200”>
+                        <div class=”flex items-center gap-2 text-gray-500 text-sm”>
+                            <span class=”w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-[10px] font-bold text-blue-500 shrink-0”>+</span>
+                            Added Amount <span class=”text-xs text-gray-400”>(margin)</span>
                         </div>
-                        <span class="text-base font-semibold text-blue-600 tabular-nums" x-text="fmt(lead?.added_amount || 0)"></span>
+                        <span class=”text-sm font-semibold text-blue-600 tabular-nums” x-text=”fmt(lead?.added_amount || 0)”></span>
                     </div>
-                    <div class="flex items-center justify-between py-3 bg-[#F0EFFA] rounded-xl px-4 mt-1">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-lg bg-purple-200 flex items-center justify-center text-xs font-bold text-purple-700 shrink-0">=</span>
-                            <div>
-                                <p class="text-sm font-bold text-[#1E1B4B]">Contract Value</p>
-                                <p class="text-xs text-purple-500">Base Cost + Added Amount</p>
-                            </div>
+                    <div class=”flex items-center justify-between py-2.5 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
+                        <div class=”flex items-center gap-2 text-sm font-semibold text-[#1E1B4B]”>
+                            <span class=”w-5 h-5 rounded bg-purple-200 flex items-center justify-center text-[10px] font-bold text-purple-700 shrink-0”>=</span>
+                            Contract Value
                         </div>
-                        <span class="text-xl font-bold text-[#1E1B4B] tabular-nums" x-text="fmt(contractValue())"></span>
+                        <span class=”text-base font-bold text-[#1E1B4B] tabular-nums” x-text=”fmt(contractValue())”></span>
                     </div>
                 </div>
 
-                {{-- Split boxes --}}
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-2xl p-4 space-y-1.5" style="background:linear-gradient(135deg,#EFF6FF,#DBEAFE)">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-lg bg-blue-200 flex items-center justify-center">
-                                <svg class="w-3.5 h-3.5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
-                            </div>
-                            <div class="flex items-center gap-1"><p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Company Share</p>@if($showLocation ?? false)<x-tax-tip />@endif</div>
-                        </div>
-                        <p class="text-2xl font-bold text-blue-800 tabular-nums" x-text="fmt(companyShare())"></p>
-                        <p class="text-xs text-blue-600">30% of Added Amount</p>
-                        <div class="h-1 bg-blue-200 rounded-full overflow-hidden mt-2">
-                            <div class="h-full bg-blue-500 rounded-full" style="width:30%"></div>
-                        </div>
+                {{-- 3-column summary — same pattern as new deal form --}}
+                <div x-show=”contractValue()” class=”grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100”>
+                    <div class=”text-center”>
+                        <p class=”text-[10px] text-gray-400 uppercase tracking-wide”>Contract Value</p>
+                        <p class=”text-sm font-bold text-[#1E1B4B] tabular-nums mt-0.5” x-text=”fmt(contractValue())”></p>
+                        <p class=”text-[10px] text-gray-400 mt-0.5”>base + margin</p>
                     </div>
-                    <div class="rounded-2xl p-4 space-y-1.5" style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7)">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-lg bg-emerald-200 flex items-center justify-center">
-                                <svg class="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-                            </div>
-                            <div class="flex items-center gap-1"><p class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Commission Pool</p>@if($showLocation ?? false)<x-tax-tip />@endif</div>
-                        </div>
-                        <p class="text-2xl font-bold text-emerald-800 tabular-nums" x-text="fmt(commPool())"></p>
-                        <p class="text-xs text-emerald-600">70% of Added Amount</p>
-                        <div class="h-1 bg-emerald-200 rounded-full overflow-hidden mt-2">
-                            <div class="h-full bg-emerald-500 rounded-full" style="width:70%"></div>
-                        </div>
+                    <div class=”text-center border-x border-gray-200”>
+                        <p class=”text-[10px] text-blue-500 uppercase tracking-wide flex items-center justify-center gap-1”>
+                            Company Share
+                            @if($showLocation ?? false)<x-tax-tip />@endif
+                        </p>
+                        <p class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5” x-text=”fmt(companyShare())”></p>
+                        <p class=”text-[10px] text-blue-400 mt-0.5”>30% of margin</p>
+                    </div>
+                    <div class=”text-center”>
+                        <p class=”text-[10px] text-emerald-500 uppercase tracking-wide flex items-center justify-center gap-1”>
+                            Commission Pool
+                            @if($showLocation ?? false)<x-tax-tip />@endif
+                        </p>
+                        <p class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5” x-text=”fmt(commPool())”></p>
+                        <p class=”text-[10px] text-emerald-400 mt-0.5”>70% of margin</p>
                     </div>
                 </div>
 
                 {{-- Commission distribution --}}
-                <div x-show="(lead?.commission_splits||[]).length > 0">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission Distribution</p>
-                        <span :class="{
+                <div x-show=”(lead?.commission_splits||[]).length”>
+                    <div class=”flex items-center justify-between mb-2”>
+                        <p class=”text-xs font-semibold text-gray-500 uppercase tracking-wider”>Commission Distribution</p>
+                        <span :class=”{
                             'badge badge-gray':   lead?.commission_status === 'pending',
                             'badge badge-orange': lead?.commission_status === 'locked',
                             'badge badge-green':  lead?.commission_status === 'paid',
-                        }" x-text="lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'"></span>
+                        }” x-text=”lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'”></span>
                     </div>
-                    <div class="space-y-2">
-                        <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
-                            <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                     :class="split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'"
-                                     x-text="split.reseller_name.slice(0,2).toUpperCase()"></div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="split.reseller_name"></p>
-                                    <p class="text-xs text-gray-400 capitalize" x-text="split.role + ' · ' + split.percentage + '% of pool'"></p>
+                    <div class=”space-y-1.5”>
+                        <template x-for=”split in (lead?.commission_splits||[])” :key=”split.id”>
+                            <div class=”flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5”>
+                                <div class=”flex items-center gap-2.5 min-w-0”>
+                                    <div class=”w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0”
+                                         :class=”split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'”
+                                         x-text=”(split.reseller_name||'?').slice(0,2).toUpperCase()”></div>
+                                    <div class=”min-w-0”>
+                                        <p class=”text-sm font-medium text-[#1E1B4B] truncate” x-text=”split.reseller_name”></p>
+                                        <p class=”text-xs text-gray-400 capitalize” x-text=”split.role”></p>
+                                    </div>
                                 </div>
-                                <div class="text-right shrink-0">
-                                    <p class="text-sm font-bold text-[#1E1B4B] tabular-nums" x-text="fmt(commPool() * split.percentage / 100)"></p>
-                                    <p class="text-xs text-gray-400">commission</p>
+                                <div class=”text-right shrink-0 ml-3”>
+                                    <p class=”text-sm font-bold text-emerald-700 tabular-nums” x-text=”fmt(commPool() * split.percentage / 100)”></p>
+                                    <p class=”text-xs text-gray-400” x-text=”split.percentage + '% of pool'”></p>
                                 </div>
                             </div>
                         </template>
                     </div>
-                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 text-sm">
-                        <span class="text-gray-500">Total pool distributed</span>
-                        <span class="font-bold text-[#1E1B4B]" x-text="fmt(commPool())"></span>
-                    </div>
                 </div>
 
                 {{-- No financial data notice --}}
-                <div x-show="!lead?.added_amount || Number(lead?.added_amount) === 0" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                <div x-show=”!lead?.added_amount || Number(lead?.added_amount) === 0”
+                     class=”p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800”>
                     No financial data set yet. Click <strong>Edit</strong> to enter Base Cost and Added Amount.
                 </div>
 
