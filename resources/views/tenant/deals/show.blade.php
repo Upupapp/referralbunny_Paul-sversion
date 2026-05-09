@@ -119,52 +119,52 @@
             <div x-show=”!editFinance” class=”space-y-4”>
 
                 {{-- Formula line items --}}
-                <div>
-                    <div class=”flex items-center justify-between py-2.5 border-b border-gray-100”>
-                        <div class=”flex items-center gap-2 text-gray-500 text-sm”>
-                            <span class=”w-5 h-5 rounded bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0”>₱</span>
-                            <span>Base Cost</span>
+                <div class=”space-y-0”>
+                    <div class=”flex items-center justify-between py-3 border-b border-gray-100”>
+                        <div class=”flex items-center gap-2.5”>
+                            <span class=”w-5 h-5 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0”>₱</span>
+                            <span class=”text-sm text-gray-600”>Base Cost</span>
                         </div>
                         <span class=”text-sm font-semibold text-gray-700 tabular-nums” x-text=”fmt(lead?.base_cost || 0)”></span>
                     </div>
-                    <div class=”flex items-center justify-between py-2.5 border-b border-dashed border-gray-200”>
-                        <div class=”flex items-center gap-2 text-gray-500 text-sm”>
-                            <span class=”w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-[10px] font-bold text-blue-500 shrink-0”>+</span>
-                            <span>Added Amount <span class=”text-xs text-gray-400”>(margin)</span></span>
+                    <div class=”flex items-center justify-between py-3 border-b border-dashed border-gray-200”>
+                        <div class=”flex items-center gap-2.5”>
+                            <span class=”w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-500 shrink-0”>+</span>
+                            <span class=”text-sm text-gray-600”>Added Amount <span class=”text-xs text-gray-400”>(margin)</span></span>
                         </div>
                         <span class=”text-sm font-semibold text-blue-600 tabular-nums” x-text=”fmt(lead?.added_amount || 0)”></span>
                     </div>
-                    <div class=”flex items-center justify-between py-2.5 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
-                        <div class=”flex items-center gap-2 text-sm font-semibold text-[#1E1B4B]”>
-                            <span class=”w-5 h-5 rounded bg-purple-200 flex items-center justify-center text-[10px] font-bold text-purple-700 shrink-0”>=</span>
-                            <span>Contract Value</span>
+                    <div class=”flex items-center justify-between py-3 bg-[#F0EFFA] rounded-xl px-3 mt-1”>
+                        <div class=”flex items-center gap-2.5”>
+                            <span class=”w-5 h-5 rounded bg-purple-200 flex items-center justify-center text-xs font-bold text-purple-700 shrink-0”>=</span>
+                            <span class=”text-sm font-semibold text-[#1E1B4B]”>Contract Value</span>
                         </div>
                         <span class=”text-base font-bold text-[#1E1B4B] tabular-nums” x-text=”fmt(contractValue())”></span>
                     </div>
                 </div>
 
-                {{-- 3-column summary — same pattern as new deal form --}}
-                <div x-show=”contractValue()” class=”grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100”>
+                {{-- 3-column summary (always rendered so x-text bindings stay active) --}}
+                <div class=”grid grid-cols-3 gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100”>
                     <div class=”text-center”>
-                        <div class=”text-[10px] text-gray-400 uppercase tracking-wide”>Contract Value</div>
-                        <div class=”text-sm font-bold text-[#1E1B4B] tabular-nums mt-0.5” x-text=”fmt(contractValue())”></div>
-                        <div class=”text-[10px] text-gray-400 mt-0.5”>base + margin</div>
+                        <div class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Contract Value</div>
+                        <div class=”text-sm font-bold text-[#1E1B4B] tabular-nums” x-text=”fmt(contractValue())”></div>
+                        <div class=”text-xs text-gray-400 mt-0.5”>base + margin</div>
                     </div>
                     <div class=”text-center border-x border-gray-200”>
-                        <div class=”text-[10px] text-blue-500 uppercase tracking-wide flex items-center justify-center gap-1”>
+                        <div class=”text-xs text-blue-500 uppercase tracking-wide mb-0.5 flex items-center justify-center gap-1”>
                             <span>Company Share</span>
                             @if($showLocation ?? false)<x-tax-tip />@endif
                         </div>
-                        <div class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5” x-text=”fmt(companyShare())”></div>
-                        <div class=”text-[10px] text-blue-400 mt-0.5”>30% of margin</div>
+                        <div class=”text-sm font-bold text-blue-700 tabular-nums” x-text=”fmt(companyShare())”></div>
+                        <div class=”text-xs text-blue-400 mt-0.5”>30% of margin</div>
                     </div>
                     <div class=”text-center”>
-                        <div class=”text-[10px] text-emerald-500 uppercase tracking-wide flex items-center justify-center gap-1”>
+                        <div class=”text-xs text-emerald-500 uppercase tracking-wide mb-0.5 flex items-center justify-center gap-1”>
                             <span>Commission Pool</span>
                             @if($showLocation ?? false)<x-tax-tip />@endif
                         </div>
-                        <div class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5” x-text=”fmt(commPool())”></div>
-                        <div class=”text-[10px] text-emerald-400 mt-0.5”>70% of margin</div>
+                        <div class=”text-sm font-bold text-emerald-700 tabular-nums” x-text=”fmt(commPool())”></div>
+                        <div class=”text-xs text-emerald-400 mt-0.5”>70% of margin</div>
                     </div>
                 </div>
 
