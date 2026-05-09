@@ -906,10 +906,13 @@ function dealImportPreview() {
             const csrf = document.querySelector('meta[name=csrf-token]').content;
             try {
                 const res = await fetch('{{ route('tenant.imports.deals.approve-row', [$tenant->id, $batch->id, '__ROW__']) }}'.replace('__ROW__', rowId), {
-                    method: 'PATCH',
+                    method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
                     },
                     body: JSON.stringify({ action }),
@@ -932,10 +935,12 @@ function dealImportPreview() {
             try {
                 const res = await fetch('{{ route('tenant.imports.deals.bulk-approve', [$tenant->id, $batch->id]) }}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
                         'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify({
                         row_ids: this.selectedRows,

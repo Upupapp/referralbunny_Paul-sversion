@@ -19,7 +19,7 @@
         </svg>
         <span class="hidden sm:inline">Import Settings</span>
     </a>
-    <button @click="showUpload = true" class="btn-primary">
+    <button x-data @click="$dispatch('open-upload-modal')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
@@ -28,7 +28,9 @@
 @endsection
 
 @section('content')
-<div x-data="{ showUpload: false }" class="space-y-5">
+<div x-data="{ showUpload: false, uploading: false, fileName: null, dragging: false }"
+     @open-upload-modal.window="showUpload = true; uploading = false; fileName = null; dragging = false"
+     class="space-y-5">
 
     {{-- ── Page header ─────────────────────────────────────── --}}
     <div class="card">
@@ -218,7 +220,7 @@
             <x-r-bunny variant="sleeping" size="md" :decorative="true" class="mb-5 opacity-80" />
             <h3 class="text-[#1E1B4B] font-semibold text-base">No import history yet</h3>
             <p class="text-gray-400 text-sm mt-1 max-w-xs">Upload your first file to get started.</p>
-            <button @click="showUpload = true"
+            <button @click="showUpload = true; uploading = false; fileName = null"
                     class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
                     style="background: #7B61FF;" onmouseover="this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,11 +270,15 @@
                 </button>
             </div>
 
-            {{-- Modal body --}}
+            {{-- Modal body — x-data lives on the parent wrapper, no inner scope needed --}}
             <form action="{{ route('tenant.imports.deals.upload', $tenant->id) }}"
                   method="POST"
                   enctype="multipart/form-data"
-                  x-data="{ dragging: false, fileName: null }">
+                  @submit.prevent="
+                      if (!fileName) { $dispatch('show-toast', { type: 'error', message: 'Choose a CSV or Excel file before uploading.' }); return; }
+                      uploading = true;
+                      $el.submit();
+                  ">
                 @csrf
                 <div class="p-6 space-y-4">
 
@@ -280,25 +286,53 @@
                     <div class="relative"
                          @dragover.prevent="dragging = true"
                          @dragleave.prevent="dragging = false"
-                         @drop.prevent="dragging = false; fileName = $event.dataTransfer.files[0]?.name; $el.querySelector('input[type=file]').files = $event.dataTransfer.files">
-                        <label :class="dragging ? 'border-[#7B61FF] bg-[#EDE9FE]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'"
+                         @drop.prevent="
+                             dragging = false;
+                             const f = $event.dataTransfer.files[0];
+                             if (f) { fileName = f.name; $el.querySelector('input[type=file]').files = $event.dataTransfer.files; }
+                         ">
+                        <label :class="dragging ? 'border-[#7B61FF] bg-[#EDE9FE]' : (fileName ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50')"
                                class="flex flex-col items-center justify-center gap-3 w-full border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all">
-                            <div class="w-12 h-12 rounded-xl flex items-center justify-center" :style="dragging ? 'background:#EDE9FE' : 'background:#F3F4F6'">
-                                <svg class="w-6 h-6 transition-colors" :style="dragging ? 'color:#7B61FF' : 'color:#9CA3AF'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                                </svg>
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
+                                 :style="dragging ? 'background:#EDE9FE' : (fileName ? 'background:#ECFDF5' : 'background:#F3F4F6')">
+                                <template x-if="!fileName">
+                                    <svg class="w-6 h-6 transition-colors" :style="dragging ? 'color:#7B61FF' : 'color:#9CA3AF'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                </template>
+                                <template x-if="fileName">
+                                    <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </template>
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-[#1E1B4B]" x-text="fileName ? fileName : 'Drop your file here, or click to browse'"></p>
-                                <p class="text-xs text-gray-400 mt-1">Accepted: .csv or .xlsx · Max 10MB · Columns can be in any order</p>
+                                <p class="text-xs mt-1" :class="fileName ? 'text-emerald-600' : 'text-gray-400'"
+                                   x-text="fileName ? 'File selected — ready to upload' : 'Accepted: .csv or .xlsx · Max 10 MB · Columns can be in any order'"></p>
                             </div>
+                            <template x-if="fileName">
+                                <button type="button"
+                                        @click.prevent="fileName = null; $el.closest('form').querySelector('input[type=file]').value = ''"
+                                        class="text-xs text-red-400 hover:text-red-600 transition-colors">
+                                    Remove file
+                                </button>
+                            </template>
                             <input type="file"
                                    name="file"
                                    accept=".csv,.xlsx"
                                    class="sr-only"
-                                   required
-                                   @change="fileName = $event.target.files[0]?.name">
+                                   @change="fileName = $event.target.files[0]?.name ?? null">
                         </label>
+                    </div>
+
+                    {{-- Upload progress message --}}
+                    <div x-show="uploading" class="flex items-center gap-2.5 p-3 rounded-xl bg-purple-50 border border-purple-100">
+                        <svg class="w-4 h-4 animate-spin text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <p class="text-xs text-purple-700 font-medium">Uploading your file — please keep this tab open.</p>
                     </div>
 
                     {{-- Template note --}}
@@ -313,14 +347,28 @@
 
                 {{-- Modal footer --}}
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
-                    <button type="button" @click="showUpload = false" class="btn-secondary">Cancel</button>
+                    <button type="button"
+                            @click="showUpload = false; uploading = false; fileName = null"
+                            :disabled="uploading"
+                            :class="uploading ? 'opacity-50 cursor-not-allowed' : ''"
+                            class="btn-secondary">Cancel</button>
                     <button type="submit"
-                            class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-colors"
-                            style="background: #7B61FF;" onmouseover="this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                        Upload & Preview
+                            :disabled="uploading || !fileName"
+                            :class="(uploading || !fileName) ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90'"
+                            class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-all"
+                            style="background: #7B61FF;">
+                        <template x-if="!uploading">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </template>
+                        <template x-if="uploading">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                        </template>
+                        <span x-text="uploading ? 'Uploading...' : (fileName ? 'Upload & Preview' : 'Select a File First')"></span>
                     </button>
                 </div>
             </form>
