@@ -996,7 +996,7 @@ function dealDetail(leadId, tenantId) {
 
         async init() {
             try {
-                const res = await fetch(`/api/leads/${leadId}`);
+                const res = await fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' });
                 if (res.ok) this.lead = await res.json();
             } catch(e) { /* silent — lead stays null, loading clears */ }
             this.loading = false;
