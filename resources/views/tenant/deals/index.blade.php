@@ -33,7 +33,7 @@
 <div class="space-y-5"
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
-     @open-add-deal.window="showAdd = true; resetForm(); searchReferrers().then(() => { referrerOpen = true; })">
+     @open-add-deal.window="showAdd = true; resetForm()">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -188,7 +188,7 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
-                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm(); searchReferrers().then(() => { referrerOpen = true; })" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
                             </td>
                         </tr>
                     </template>
@@ -386,8 +386,7 @@
                             <div class="relative">
                                 <input type="text"
                                        x-model="referrerQuery"
-                                       @input.debounce.300ms="searchReferrers()"
-                                       @focus="referrerOpen = true; if (!activatedReferrers.length && !loadingReferrers) searchReferrers()"
+                                       @input.debounce.300ms="referrerOpen = true; searchReferrers()"
                                        @keydown.escape="referrerOpen = false"
                                        @keydown.arrow-down.prevent="referrerFocusNext()"
                                        @keydown.arrow-up.prevent="referrerFocusPrev()"
@@ -395,8 +394,10 @@
                                        placeholder="Search referrers, admins, or managers…"
                                        autocomplete="off"
                                        class="form-input pr-8">
-                                <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <svg x-show="!loadingReferrers" class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <div class="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+                                     @click="referrerOpen = true; searchReferrers()"
+                                     title="Search referrers">
+                                    <svg x-show="!loadingReferrers" class="w-4 h-4 text-gray-400 hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     <svg x-show="loadingReferrers" class="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                 </div>
                             </div>
