@@ -165,7 +165,10 @@ class ContactsImportService
 
     const REQUIRED_COLUMNS = []; // No single required column — need at least email OR phone_number
 
-    public function __construct(private NotificationDispatchService $notifications) {}
+    public function __construct(
+        private NotificationDispatchService $notifications,
+        private ImportSnapshotService       $snapshots,
+    ) {}
 
     // ── Column detection ──────────────────────────────────────────
 
@@ -972,24 +975,32 @@ class ContactsImportService
                 ];
 
                 if ($row->row_action === 'overwrite' && $row->existing_contact_id) {
-                    DB::table('contacts')
-                        ->where('id', $row->existing_contact_id)
-                        ->update(array_merge($contactData, [
-                            'updated_at'          => now(),
-                            'updated_by_user_id'  => $executorId,
-                        ]));
+                    $beforeContact = DB::table('contacts')->where('id', $row->existing_contact_id)->first();
+                    DB::table('contacts')->where('id', $row->existing_contact_id)
+                        ->update(array_merge($contactData, ['updated_at' => now(), 'updated_by_user_id' => $executorId]));
+                    $this->snapshots->recordUpdated(
+                        batchId: $batch->id, tenantId: $tenantId,
+                        entityType: 'contact', entityId: $row->existing_contact_id,
+                        beforeData: $beforeContact ? (array) $beforeContact : [], afterData: $contactData,
+                        changedFields: array_keys($contactData), operationType: 'overwritten',
+                        batchRowId: $row->id, row: $row,
+                    );
                     $row->update(['created_contact_id' => $row->existing_contact_id]);
                     $updated++;
                 } elseif ($row->row_action === 'merge' && $row->existing_contact_id) {
-                    // Merge: only fill null fields on the existing contact
                     $existing = DB::table('contacts')->where('id', $row->existing_contact_id)->first();
                     if ($existing) {
                         $mergeData = array_filter($contactData, fn ($v) => $v !== null);
-                        // Do not overwrite ownership or tenant on merge
                         unset($mergeData['tenant_id'], $mergeData['owner_user_id'], $mergeData['owner_referrer_id']);
-                        DB::table('contacts')
-                            ->where('id', $row->existing_contact_id)
+                        DB::table('contacts')->where('id', $row->existing_contact_id)
                             ->update(array_merge($mergeData, ['updated_at' => now()]));
+                        $this->snapshots->recordUpdated(
+                            batchId: $batch->id, tenantId: $tenantId,
+                            entityType: 'contact', entityId: $row->existing_contact_id,
+                            beforeData: (array) $existing, afterData: $mergeData,
+                            changedFields: array_keys($mergeData), operationType: 'merged',
+                            batchRowId: $row->id, row: $row,
+                        );
                     }
                     $row->update(['created_contact_id' => $row->existing_contact_id]);
                     $updated++;
@@ -1001,6 +1012,12 @@ class ContactsImportService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]));
+                    $this->snapshots->recordCreated(
+                        batchId: $batch->id, tenantId: $tenantId,
+                        entityType: 'contact', entityId: $contactId,
+                        entityData: array_merge($contactData, ['id' => $contactId]),
+                        batchRowId: $row->id, row: $row,
+                    );
 
                     // Associate to deal if a deal was resolved during validation
                     $dealId = $row->existing_deal_id ?? null;
@@ -1039,6 +1056,8 @@ class ContactsImportService
             'completed_at'    => now(),
             'summary_json'    => compact('created', 'updated', 'skipped', 'failed'),
         ]);
+
+        $this->snapshots->markBatchEligible($batch->id);
 
         $this->notifications->dispatchToTenantAdmins(
             tenantId:     $tenantId,

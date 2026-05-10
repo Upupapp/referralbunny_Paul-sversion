@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\ImportRollback;
+use App\Models\ImportSnapshot;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -23,6 +25,7 @@ class ImportBatch extends Model
         'possible_duplicate_rows', 'same_email_different_referrer_rows',
         'unknown_deal_rows', 'unknown_organization_rows',
         'unmapped_columns_json', 'column_actions_json', 'template_adoption_status',
+        'rollback_status', 'rollback_id',
     ];
 
     protected $casts = [
@@ -47,5 +50,29 @@ class ImportBatch extends Model
     public function isComplete(): bool
     {
         return in_array($this->status, ['completed', 'completed_with_warnings', 'failed']);
+    }
+
+    public function isRollbackEligible(): bool
+    {
+        return in_array($this->status, ['completed', 'completed_with_warnings'])
+            && in_array($this->rollback_status ?? 'none', ['none', 'eligible'])
+            && $this->rollback_id === null;
+    }
+
+    public function isAlreadyRolledBack(): bool
+    {
+        return in_array($this->rollback_status ?? 'none', ['completed', 'completed_with_warnings']);
+    }
+
+    public function rollback(): ?ImportRollback
+    {
+        return $this->rollback_id
+            ? ImportRollback::find($this->rollback_id)
+            : null;
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(ImportSnapshot::class, 'import_batch_id');
     }
 }

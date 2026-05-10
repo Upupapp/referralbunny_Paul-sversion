@@ -261,6 +261,16 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/imports/deals/{batchId}/report',        [TenantDealImportController::class, 'show'])->name('imports.deals.show');
     Route::get('/imports/deals/{batchId}/failed',        [TenantDealImportController::class, 'downloadFailed'])->name('imports.deals.failed');
 
+    // ── Import Rollback (Undo Import) — Tenant Admin only ────────
+    Route::get('/imports/{batchId}/rollback/preview',
+        [\App\Http\Controllers\Web\ImportRollbackController::class, 'preview'])->name('imports.rollback.preview');
+    Route::post('/imports/{batchId}/rollback',
+        [\App\Http\Controllers\Web\ImportRollbackController::class, 'store'])->name('imports.rollback.store');
+    Route::get('/imports/{batchId}/rollback/{rollbackId}',
+        [\App\Http\Controllers\Web\ImportRollbackController::class, 'show'])->name('imports.rollback.show');
+    Route::get('/imports/{batchId}/rollback/{rollbackId}/status',
+        [\App\Http\Controllers\Web\ImportRollbackController::class, 'status'])->name('imports.rollback.status');
+
     // ── Dynamic Column Handling ───────────────────────────────────
     Route::post('/imports/deals/{batchId}/column-actions',       [TenantDealImportController::class, 'saveColumnActions'])->name('imports.deals.column-actions');
     Route::post('/imports/deals/{batchId}/initiate-adoption',    [TenantDealImportController::class, 'initiateTemplateAdoption'])->name('imports.deals.initiate-adoption');

@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\PendingReferrerInvite;
 use App\Models\Reseller;
+use App\Services\ImportSnapshotService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +93,10 @@ class LguIdsImportService
 
     const VALID_STAGES = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
 
-    public function __construct(private NotificationDispatchService $notifications) {}
+    public function __construct(
+        private NotificationDispatchService $notifications,
+        private ImportSnapshotService       $snapshots,
+    ) {}
 
     // ── CSV parsing ───────────────────────────────────────────────
 
@@ -666,38 +670,38 @@ class LguIdsImportService
                 }
 
                 if ($row->row_action === 'overwrite' && $row->existing_deal_id) {
-                    // Update existing deal
-                    DB::table('leads')->where('id', $row->existing_deal_id)->update([
-                        'stage'         => $stage,
-                        'reseller_name' => $resellerName,
-                        'base_cost'     => $baseCost,
-                        'added_amount'  => $addedAmount,
-                        'deal_value'    => $dealValue,
-                        'updated_at'    => now(),
-                    ]);
-                    LeadHistory::create([
-                        'lead_id' => $row->existing_deal_id,
-                        'action'  => 'Deal updated via LGU IDS import (batch: ' . $batch->id . ')',
-                        'type'    => 'import',
-                        'date'    => now()->toDateString(),
-                    ]);
+                    $beforeLead = DB::table('leads')->where('id', $row->existing_deal_id)->first();
+                    $changes    = ['stage' => $stage, 'reseller_name' => $resellerName, 'base_cost' => $baseCost, 'added_amount' => $addedAmount, 'deal_value' => $dealValue];
+                    DB::table('leads')->where('id', $row->existing_deal_id)->update(array_merge($changes, ['updated_at' => now()]));
+                    $this->snapshots->recordUpdated(
+                        batchId: $batch->id, tenantId: self::TENANT_ID,
+                        entityType: 'lead', entityId: $row->existing_deal_id,
+                        beforeData: $beforeLead ? (array) $beforeLead : [], afterData: $changes,
+                        changedFields: array_keys($changes), operationType: 'overwritten',
+                        batchRowId: $row->id, row: $row,
+                    );
+                    LeadHistory::create(['lead_id' => $row->existing_deal_id, 'action' => 'Deal updated via LGU IDS import (batch: ' . $batch->id . ')', 'type' => 'import', 'date' => now()->toDateString()]);
                     $row->update(['created_deal_id' => $row->existing_deal_id]);
                     $updated++;
                 } elseif ($row->row_action === 'merge' && $row->existing_deal_id) {
-                    // Merge: only fill blank fields
                     $existing = Lead::find($row->existing_deal_id);
                     if ($existing) {
-                        $updates = [];
+                        $beforeLead = $existing->toArray();
+                        $updates    = [];
                         if (!$existing->base_cost && $baseCost)       $updates['base_cost']    = $baseCost;
                         if (!$existing->added_amount && $addedAmount) $updates['added_amount'] = $addedAmount;
                         if (!$existing->deal_value && $dealValue)     $updates['deal_value']   = $dealValue;
-                        if (!empty($updates)) $existing->update($updates);
-                        LeadHistory::create([
-                            'lead_id' => $existing->id,
-                            'action'  => 'Deal merged via LGU IDS import (batch: ' . $batch->id . ')',
-                            'type'    => 'import',
-                            'date'    => now()->toDateString(),
-                        ]);
+                        if (!empty($updates)) {
+                            $existing->update($updates);
+                            $this->snapshots->recordUpdated(
+                                batchId: $batch->id, tenantId: self::TENANT_ID,
+                                entityType: 'lead', entityId: $existing->id,
+                                beforeData: $beforeLead, afterData: $updates,
+                                changedFields: array_keys($updates), operationType: 'merged',
+                                batchRowId: $row->id, row: $row,
+                            );
+                        }
+                        LeadHistory::create(['lead_id' => $existing->id, 'action' => 'Deal merged via LGU IDS import (batch: ' . $batch->id . ')', 'type' => 'import', 'date' => now()->toDateString()]);
                     }
                     $row->update(['created_deal_id' => $row->existing_deal_id]);
                     $updated++;
@@ -729,6 +733,11 @@ class LguIdsImportService
                         'type'    => 'import',
                         'date'    => now()->toDateString(),
                     ]);
+                    $this->snapshots->recordCreated(
+                        batchId: $batch->id, tenantId: self::TENANT_ID,
+                        entityType: 'lead', entityId: $newLead->id,
+                        entityData: $newLead->toArray(), batchRowId: $row->id, row: $row,
+                    );
                     $row->update(['created_deal_id' => $newLead->id]);
                     $created++;
                 }
@@ -760,6 +769,8 @@ class LguIdsImportService
                 'errors'  => $errors,
             ],
         ]);
+
+        $this->snapshots->markBatchEligible($batch->id);
 
         // Notify tenant admins
         $titleMap = [

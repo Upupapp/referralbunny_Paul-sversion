@@ -33,7 +33,10 @@ class GenericDealImportService
      */
     const VALID_STAGES = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
 
-    public function __construct(private NotificationDispatchService $notifications) {}
+    public function __construct(
+        private NotificationDispatchService $notifications,
+        private ImportSnapshotService       $snapshots,
+    ) {}
 
     // ── Template resolution ───────────────────────────────────────
 
@@ -725,13 +728,26 @@ class GenericDealImportService
                 }
 
                 if ($row->row_action === 'overwrite' && $row->existing_deal_id) {
-                    // Replace key fields on the existing deal
-                    DB::table('leads')->where('id', $row->existing_deal_id)->update([
-                        'stage'         => $stage,
-                        'reseller_name' => $resellerName,
-                        'deal_value'    => $dealAmount,
-                        'updated_at'    => now(),
-                    ]);
+                    // Capture before-state for rollback
+                    $beforeLead = DB::table('leads')->where('id', $row->existing_deal_id)->first();
+                    $changes    = ['stage' => $stage, 'reseller_name' => $resellerName, 'deal_value' => $dealAmount];
+
+                    DB::table('leads')->where('id', $row->existing_deal_id)->update(array_merge($changes, ['updated_at' => now()]));
+
+                    // Record snapshot AFTER successful update
+                    $this->snapshots->recordUpdated(
+                        batchId:       $batch->id,
+                        tenantId:      $tenantId,
+                        entityType:    'lead',
+                        entityId:      $row->existing_deal_id,
+                        beforeData:    $beforeLead ? (array) $beforeLead : [],
+                        afterData:     $changes,
+                        changedFields: array_keys($changes),
+                        operationType: 'overwritten',
+                        batchRowId:    $row->id,
+                        row:           $row,
+                    );
+
                     LeadHistory::create([
                         'lead_id' => $row->existing_deal_id,
                         'action'  => "Deal updated via generic import (batch: {$batch->id})",
@@ -744,12 +760,26 @@ class GenericDealImportService
                     // Merge: only fill in blank fields on existing deal
                     $existing = Lead::find($row->existing_deal_id);
                     if ($existing) {
-                        $updates = [];
+                        $beforeLead = $existing->toArray();
+                        $updates    = [];
                         if (!$existing->deal_value && $dealAmount) {
                             $updates['deal_value'] = $dealAmount;
                         }
                         if (!empty($updates)) {
                             $existing->update($updates);
+
+                            $this->snapshots->recordUpdated(
+                                batchId:       $batch->id,
+                                tenantId:      $tenantId,
+                                entityType:    'lead',
+                                entityId:      $existing->id,
+                                beforeData:    $beforeLead,
+                                afterData:     $updates,
+                                changedFields: array_keys($updates),
+                                operationType: 'merged',
+                                batchRowId:    $row->id,
+                                row:           $row,
+                            );
                         }
                         LeadHistory::create([
                             'lead_id' => $existing->id,
@@ -789,6 +819,15 @@ class GenericDealImportService
                         'type'    => 'import',
                         'date'    => now()->toDateString(),
                     ]);
+                    $this->snapshots->recordCreated(
+                        batchId:    $batch->id,
+                        tenantId:   $tenantId,
+                        entityType: 'lead',
+                        entityId:   $newLead->id,
+                        entityData: $newLead->toArray(),
+                        batchRowId: $row->id,
+                        row:        $row,
+                    );
                     $row->update(['created_deal_id' => $newLead->id]);
                     $created++;
                 }
@@ -816,6 +855,9 @@ class GenericDealImportService
             'completed_at'    => now(),
             'summary_json'    => compact('created', 'updated', 'skipped', 'failed', 'errors'),
         ]);
+
+        // Mark batch rollback_status based on snapshots captured
+        $this->snapshots->markBatchEligible($batch->id);
 
         $titleMap = [
             'completed'               => 'Deals Import Complete',

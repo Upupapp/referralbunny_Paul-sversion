@@ -69,7 +69,7 @@
             </div>
 
             {{-- Quick actions panel --}}
-            <div class="flex flex-col gap-2 shrink-0 min-w-[180px]">
+            <div class="flex flex-col gap-2 shrink-0 min-w-[180px]" x-data="importRollback('{{ $batch->id }}', '{{ $tenant->id }}')">
                 @if($batch->failed_rows > 0)
                 <a href="{{ route('tenant.imports.deals.failed', [$tenant->id, $batch->id]) }}"
                    class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
@@ -86,6 +86,153 @@
                     </svg>
                     View Imported Deals
                 </a>
+
+                {{-- Undo Import button --}}
+                @if(in_array($batch->status, ['completed', 'completed_with_warnings']))
+                    @if($batch->isAlreadyRolledBack())
+                        {{-- Already rolled back — show report link --}}
+                        @if($batch->rollback_id)
+                        <a href="{{ route('tenant.imports.rollback.show', [$tenant->id, $batch->id, $batch->rollback_id]) }}"
+                           class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            View Rollback Report
+                        </a>
+                        @endif
+                    @elseif($batch->rollback_status === 'processing')
+                        <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-amber-600 bg-amber-50 border border-amber-200">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Undoing import…
+                        </div>
+                    @else
+                        <button @click="openRollbackModal()"
+                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            Undo Import
+                        </button>
+                    @endif
+                @endif
+
+                {{-- Rollback modal --}}
+                <template x-teleport="body">
+                <div x-show="showModal" x-cloak
+                     class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
+                     @keydown.escape.window="showModal = false">
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
+
+                        {{-- Header --}}
+                        <div class="flex items-start justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+                            <div>
+                                <h3 class="font-bold text-[#1E1B4B]">Undo Import</h3>
+                                <p class="text-xs text-gray-400 mt-0.5">Review what will be changed before confirming.</p>
+                            </div>
+                            <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 mt-0.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        {{-- Loading preview --}}
+                        <div x-show="loadingPreview" class="flex items-center gap-3 p-8 justify-center text-gray-400">
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <span class="text-sm">Loading preview…</span>
+                        </div>
+
+                        {{-- Not eligible --}}
+                        <div x-show="!loadingPreview && !preview?.eligible" class="p-6">
+                            <div class="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <p class="text-sm text-amber-800 font-medium" x-text="preview?.reason || 'This import cannot be undone.'"></p>
+                            </div>
+                            <div class="flex justify-end mt-4">
+                                <button @click="showModal = false" class="btn-secondary text-sm">Close</button>
+                            </div>
+                        </div>
+
+                        {{-- Preview summary --}}
+                        <div x-show="!loadingPreview && preview?.eligible" class="p-6 space-y-5">
+
+                            {{-- Warning banner --}}
+                            <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                                <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <p class="text-xs text-red-700 leading-relaxed">
+                                    Undoing this import will remove records created by the import and restore previous values for records updated by the import. This action may affect deals, contacts, referrers, organizations, reports, and related activity. Review the summary before continuing.
+                                </p>
+                            </div>
+
+                            {{-- Summary counts --}}
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="text-center p-3 bg-red-50 rounded-xl">
+                                    <p class="text-xl font-bold text-red-700" x-text="preview?.summary?.remove_count ?? 0"></p>
+                                    <p class="text-xs text-red-500 mt-0.5">To remove</p>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-xl">
+                                    <p class="text-xl font-bold text-blue-700" x-text="preview?.summary?.restore_count ?? 0"></p>
+                                    <p class="text-xs text-blue-500 mt-0.5">To restore</p>
+                                </div>
+                                <div class="text-center p-3 bg-amber-50 rounded-xl">
+                                    <p class="text-xl font-bold text-amber-700" x-text="preview?.summary?.conflict_count ?? 0"></p>
+                                    <p class="text-xs text-amber-500 mt-0.5">Conflicts</p>
+                                </div>
+                            </div>
+
+                            {{-- Conflicts list --}}
+                            <div x-show="(preview?.summary?.conflicts?.length ?? 0) > 0">
+                                <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Items that cannot be automatically undone</p>
+                                <div class="space-y-1.5 max-h-32 overflow-y-auto">
+                                    <template x-for="c in (preview?.summary?.conflicts ?? [])" :key="c.entity_id">
+                                        <div class="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+                                            <svg class="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <p class="text-xs text-amber-800" x-text="c.reason"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Confirmation --}}
+                            <div class="space-y-3 pt-2 border-t border-gray-100">
+                                <label class="flex items-start gap-2 cursor-pointer">
+                                    <input type="checkbox" x-model="confirmed" class="mt-0.5 rounded border-gray-300 text-red-500 focus:ring-red-300">
+                                    <span class="text-xs text-gray-600">I understand this will undo the selected import and the action cannot be automatically reversed.</span>
+                                </label>
+
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1.5">
+                                        Type <span class="font-bold text-gray-700">UNDO IMPORT</span> to confirm
+                                    </label>
+                                    <input type="text" x-model="confirmPhrase"
+                                           class="form-input text-sm"
+                                           placeholder="UNDO IMPORT"
+                                           @keydown.enter.prevent="if(canSubmit()) submitRollback()">
+                                </div>
+                            </div>
+
+                            {{-- Error --}}
+                            <div x-show="rollbackError" class="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span x-text="rollbackError"></span>
+                            </div>
+
+                            {{-- Actions --}}
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button @click="showModal = false" class="btn-secondary text-sm">Cancel</button>
+                                <button @click="submitRollback()"
+                                        :disabled="!canSubmit() || submitting"
+                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    <svg x-show="submitting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    <span x-text="submitting ? 'Undoing import…' : 'Undo Import'"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Processing state --}}
+                        <div x-show="processing" class="p-8 text-center space-y-3">
+                            <svg class="w-10 h-10 text-purple-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <p class="font-semibold text-[#1E1B4B]">Undoing import…</p>
+                            <p class="text-sm text-gray-400">Restoring previous records and removing imported records. This may take a moment.</p>
+                        </div>
+                    </div>
+                </div>
+                </template>
+            </div>
                 @if(isset($batch->unknown_referrer_rows) && $batch->unknown_referrer_rows > 0)
                 <a href="{{ route('tenant.resellers', $tenant->id) }}"
                    class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors">
@@ -354,3 +501,98 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function importRollback(batchId, tenantId) {
+    return {
+        showModal:     false,
+        loadingPreview:false,
+        processing:    false,
+        submitting:    false,
+        confirmed:     false,
+        confirmPhrase: '',
+        preview:       null,
+        rollbackError: '',
+
+        csrf() {
+            return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        },
+
+        async openRollbackModal() {
+            this.showModal      = true;
+            this.loadingPreview = true;
+            this.confirmed      = false;
+            this.confirmPhrase  = '';
+            this.rollbackError  = '';
+            this.preview        = null;
+
+            try {
+                const res = await fetch(`/tenant/${tenantId}/imports/${batchId}/rollback/preview`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.preview = await res.json();
+            } catch(e) {
+                this.preview = { eligible: false, reason: 'Unable to load rollback preview. Please try again.' };
+            }
+            this.loadingPreview = false;
+        },
+
+        canSubmit() {
+            return this.confirmed
+                && this.confirmPhrase.trim().toUpperCase() === 'UNDO IMPORT'
+                && !this.submitting;
+        },
+
+        async submitRollback() {
+            if (!this.canSubmit()) return;
+            this.submitting    = true;
+            this.rollbackError = '';
+
+            try {
+                const res = await fetch(`/tenant/${tenantId}/imports/${batchId}/rollback`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ confirmation_phrase: this.confirmPhrase }),
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.processing = true;
+                    this.showModal  = true;
+                    // Poll for completion
+                    const rollbackId = data.rollback_id;
+                    const poll = setInterval(async () => {
+                        try {
+                            const sr = await fetch(`/tenant/${tenantId}/imports/${batchId}/rollback/${rollbackId}/status`, {
+                                credentials: 'same-origin',
+                                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            });
+                            const sd = await sr.json();
+                            if (sd.is_done) {
+                                clearInterval(poll);
+                                // Redirect to rollback report
+                                window.location.href = `/tenant/${tenantId}/imports/${batchId}/rollback/${rollbackId}`;
+                            }
+                        } catch(e) {}
+                    }, 3000);
+                } else {
+                    this.rollbackError = data.error || 'Unable to start rollback. Please try again.';
+                    this.submitting = false;
+                }
+            } catch(e) {
+                this.rollbackError = 'Network error. Please check your connection and try again.';
+                this.submitting = false;
+            }
+        },
+    };
+}
+</script>
+@endpush

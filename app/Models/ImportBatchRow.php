@@ -21,6 +21,7 @@ class ImportBatchRow extends Model
         'existing_deal_id', 'created_deal_id', 'organization_id',
         'approved_by_id', 'approved_at', 'error_message',
         'existing_contact_id', 'created_contact_id',
+        'snapshot_id',
     ];
 
     protected $casts = [
