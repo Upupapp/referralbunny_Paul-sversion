@@ -195,6 +195,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/tasks',                 [\App\Http\Controllers\Web\TaskController::class, 'store'])->name('tasks.store');
     Route::get('/tasks/eligible-assignees', [\App\Http\Controllers\Web\TaskController::class, 'eligibleAssignees'])->name('tasks.eligible-assignees');
     Route::get('/tasks/{taskId}',         [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tasks.show');
+    Route::post('/tasks/{taskId}/assign-to-me',           [\App\Http\Controllers\Web\TaskController::class, 'assignToSelf'])->name('tasks.assign-to-me');
     Route::post('/tasks/{taskId}/complete',               [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tasks.complete');
     Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tasks.complete-response');
 
@@ -331,6 +332,7 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::post('/tasks',                    [\App\Http\Controllers\Web\TaskController::class, 'store'])->name('tenant.sub.tasks.store');
         Route::get('/tasks/eligible-assignees',  [\App\Http\Controllers\Web\TaskController::class, 'eligibleAssignees'])->name('tenant.sub.tasks.eligible-assignees');
         Route::get('/tasks/{taskId}',            [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tenant.sub.tasks.show');
+        Route::post('/tasks/{taskId}/assign-to-me', [\App\Http\Controllers\Web\TaskController::class, 'assignToSelf'])->name('tenant.sub.tasks.assign-to-me');
         Route::post('/tasks/{taskId}/complete',  [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tenant.sub.tasks.complete');
         Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tenant.sub.tasks.complete-response');
         Route::get('/request-forms',             [\App\Http\Controllers\Web\RequestFormController::class, 'index'])->name('tenant.sub.request-forms');

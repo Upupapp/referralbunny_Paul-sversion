@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-3xl space-y-5"
-     x-data="taskDetail('{{ $task->id }}', '{{ $tenant->id }}', {{ $canComplete ? 'true' : 'false' }}, {{ $completionEmailEnabled ? 'true' : 'false' }})">
+     x-data="taskDetail('{{ $task->id }}', '{{ $tenant->id }}', {{ $canComplete ? 'true' : 'false' }}, {{ $completionEmailEnabled ? 'true' : 'false' }}, {{ $canAssignToSelf ? 'true' : 'false' }}, {{ $isCurrentAssignee ? 'true' : 'false' }})">
 
     <div>
         <a href="{{ route('tenant.tasks', $tenant->id) }}" style="font-size:13px;color:#9ca3af;text-decoration:none">&larr; Back to Tasks</a>
@@ -51,8 +51,18 @@
                 @endif
             </div>
 
-            @if($canComplete && $task->status !== 'completed')
-            <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;align-items:flex-start">
+                {{-- Assign to me / Reassign to me --}}
+                @if($canAssignToSelf && !$isCurrentAssignee && !in_array($task->status, ['completed','cancelled','archived']))
+                <button @click="assignToSelf()"
+                        :disabled="assigning"
+                        style="padding:9px 18px;border-radius:12px;background:#ede9fe;color:#7B61FF;border:1.5px solid #c4b5fd;font-size:13px;font-weight:600;cursor:pointer"
+                        :style="assigning ? 'opacity:.6;cursor:not-allowed' : ''"
+                        x-text="assigning ? 'Assigning…' : '{{ $task->assigned_to_id ? 'Reassign to me' : 'Assign to me' }}'">
+                </button>
+                @endif
+
+                @if($canComplete && $task->status !== 'completed')
                 @if($completionEmailEnabled && $task->requestor_email)
                 <button @click="showCompleteModal = true"
                         style="padding:9px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
@@ -64,9 +74,67 @@
                         :disabled="completing" x-text="completing ? 'Completing...' : 'Mark Complete'">
                 </button>
                 @endif
+                @endif
             </div>
+        </div>
+    </div>
+
+    {{-- Assigned To --}}
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <h3 style="font-size:14px;font-weight:700;color:#1E1B4B">Assigned To</h3>
+            @if($canAssignToSelf && !$isCurrentAssignee && !in_array($task->status, ['completed','cancelled','archived']))
+            <button @click="assignToSelf()" :disabled="assigning"
+                    style="display:flex;align-items:center;gap:5px;padding:5px 14px;border-radius:9999px;background:#ede9fe;color:#7B61FF;border:1.5px solid #c4b5fd;font-size:11px;font-weight:700;cursor:pointer"
+                    :style="assigning ? 'opacity:.6;cursor:not-allowed' : ''"
+                    x-text="assigning ? 'Assigning…' : '{{ $task->assigned_to_id ? 'Reassign to me' : 'Assign to me' }}'">
+            </button>
             @endif
         </div>
+
+        @if($task->assigned_to_id)
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;background:#f9fafb;border-radius:12px">
+            <div style="width:36px;height:36px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;
+                        {{ $isCurrentAssignee ? 'background:#7B61FF;color:white' : 'background:#ede9fe;color:#7B61FF' }}">
+                {{ strtoupper(substr($assigneeName ?? 'U', 0, 2)) }}
+            </div>
+            <div style="flex:1;min-width:0">
+                <p style="font-size:14px;font-weight:600;color:#1E1B4B">
+                    {{ $assigneeName ?? 'Unknown' }}
+                    @if($isCurrentAssignee)
+                    <span style="font-size:11px;font-weight:600;color:#7B61FF;background:#ede9fe;padding:1px 8px;border-radius:9999px;margin-left:6px">You</span>
+                    @endif
+                </p>
+                <p style="font-size:11px;color:#9ca3af;margin-top:1px">
+                    @php
+                    $assigneeRole = DB::table('tenant_memberships')
+                        ->where('tenant_id', $tenant->id)
+                        ->where('tenant_user_id', $task->assigned_to_id)
+                        ->value('role');
+                    @endphp
+                    {{ $assigneeRole ? ucfirst($assigneeRole) : 'Team Member' }}
+                </p>
+            </div>
+            @if($task->completed_at)
+            <span style="font-size:11px;font-weight:700;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:9999px;flex-shrink:0">Completed</span>
+            @endif
+        </div>
+        @else
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;background:#fffbeb;border-radius:12px;border:1.5px dashed #fbbf24">
+            <svg style="width:18px;height:18px;color:#d97706;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <div style="flex:1">
+                <p style="font-size:13px;font-weight:600;color:#d97706">Unassigned</p>
+                <p style="font-size:11px;color:#9ca3af">No one is assigned to this task yet.</p>
+            </div>
+            @if($canAssignToSelf && !in_array($task->status, ['completed','cancelled','archived']))
+            <button @click="assignToSelf()" :disabled="assigning"
+                    style="padding:6px 14px;border-radius:9999px;background:#7B61FF;color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0"
+                    :style="assigning ? 'opacity:.6;cursor:not-allowed' : ''"
+                    x-text="assigning ? 'Assigning…' : 'Take this task'">
+            </button>
+            @endif
+        </div>
+        @endif
     </div>
 
     {{-- Request Details --}}
@@ -251,7 +319,7 @@
 
 @push('scripts')
 <script>
-function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled) {
+function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled, canAssignToSelf, isCurrentAssignee) {
     const csrf = document.querySelector('meta[name=csrf-token]')?.content ?? '';
     return {
         showCompleteModal: false,
@@ -261,6 +329,30 @@ function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled) {
         responseError: '',
         successMsg: '',
         completing: false,
+        assigning: false,
+
+        async assignToSelf() {
+            if (!canAssignToSelf || this.assigning) return;
+            this.assigning = true;
+            try {
+                const res = await fetch(`/tenant/${tenantId}/tasks/${taskId}/assign-to-me`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.$dispatch('show-toast', { type: 'success', message: data.message || 'Task assigned to you.' });
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Unable to assign this task to you.' });
+                }
+            } catch {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            } finally {
+                this.assigning = false;
+            }
+        },
 
         async completeTask() {
             if (!canComplete) return;

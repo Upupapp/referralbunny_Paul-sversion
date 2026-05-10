@@ -7,6 +7,7 @@ use App\Mail\ManualTaskAssignedMail;
 use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\Tenant;
+use App\Models\TenantUser;
 use App\Services\TaskCompletionService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
@@ -22,6 +23,8 @@ class TaskController extends Controller
     {
         $this->authorizeAdmin($tenantId);
 
+        [$actorType, $actorId] = $this->resolveActor();
+
         $members = DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
             ->where('tm.tenant_id', $tenantId)
@@ -29,7 +32,8 @@ class TaskController extends Controller
             ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, tm.role")
             ->orderBy('tm.role')
             ->orderBy('tu.first_name')
-            ->get();
+            ->get()
+            ->map(fn ($m) => array_merge((array) $m, ['is_me' => ($m->id === $actorId)]));
 
         return response()->json($members);
     }
@@ -46,15 +50,18 @@ class TaskController extends Controller
             'priority'        => 'required|in:low,medium,high,urgent',
             'due_at'          => 'nullable|date',
             'assignee_ids'    => 'required|array|min:1|max:10',
-            'assignee_ids.*'  => 'required|string|uuid',
+            'assignee_ids.*'  => 'required|string|max:64',
             'source_type'     => 'nullable|in:deal,lead,contact,referrer,partner',
             'source_id'       => 'nullable|string|uuid',
         ]);
 
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
+        // Resolve 'me' to the authenticated user's ID (server-side — never trust frontend user ID alone)
+        $rawIds = collect($data['assignee_ids'])->map(fn ($id) => $id === 'me' ? $actorId : $id);
+
         // Verify all assignees belong to this tenant
-        $assigneeIds = collect($data['assignee_ids'])->unique()->values();
+        $assigneeIds    = $rawIds->unique()->values()->filter(fn ($id) => !empty($id));
         $validAssignees = DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
             ->where('tm.tenant_id', $tenantId)
@@ -64,15 +71,21 @@ class TaskController extends Controller
             ->get()
             ->keyBy('id');
 
+        // Super admins (web guard) assigning to self are always valid
+        if (Auth::guard('web')->check() && $validAssignees->isEmpty() && $assigneeIds->contains($actorId)) {
+            return response()->json(['error' => 'Super Admin self-assignment is not supported in this context.'], 422);
+        }
+
         if ($validAssignees->isEmpty()) {
             return response()->json(['error' => 'No valid assignees found.'], 422);
         }
 
         $createdTasks = [];
+        $isSelfAssign = $assigneeIds->count() === 1 && $assigneeIds->first() === $actorId;
 
         DB::transaction(function () use (
             $data, $tenantId, $actorType, $actorId, $actorName,
-            $assigneeIds, $validAssignees, &$createdTasks
+            $assigneeIds, $validAssignees, $isSelfAssign, &$createdTasks
         ) {
             foreach ($assigneeIds as $assigneeId) {
                 $assignee = $validAssignees->get($assigneeId);
@@ -97,43 +110,50 @@ class TaskController extends Controller
                     'visibility'        => 'tenant',
                 ]);
 
+                $actionType = ($assigneeId === $actorId) ? 'task_created_self_assigned' : 'task_created';
+
                 TaskActivity::create([
                     'tenant_id'   => $tenantId,
                     'task_id'     => $task->id,
                     'actor_type'  => $actorType,
                     'actor_id'    => $actorId,
                     'actor_name'  => $actorName,
-                    'action_type' => 'task_created',
+                    'action_type' => $actionType,
                     'new_values'  => [
-                        'title'    => $task->title,
-                        'priority' => $task->priority,
-                        'assignee' => $assignee->name,
-                        'due_at'   => $task->due_at?->toDateString(),
+                        'title'       => $task->title,
+                        'priority'    => $task->priority,
+                        'assignee'    => $assignee->name,
+                        'self_assign' => ($assigneeId === $actorId),
+                        'due_at'      => $task->due_at?->toDateString(),
                     ],
                 ]);
 
                 $createdTasks[] = $task;
 
-                // In-app notification to assignee
-                try {
-                    app(\App\Services\NotificationDispatchService::class)->dispatch(
-                        category:         'task',
-                        priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
-                        title:            'New Task: ' . $task->title,
-                        body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
-                        notifiableType:   'tenant_user',
-                        notifiableId:     $assigneeId,
-                        tenantId:         $tenantId,
-                        actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
-                        actionLabel:      'View Task',
-                        deduplicationKey: "task_assigned_{$task->id}",
-                    );
-                } catch (\Throwable) {}
+                // In-app notification — skip if assigning to self (actor is already aware)
+                if ($assigneeId !== $actorId) {
+                    try {
+                        app(\App\Services\NotificationDispatchService::class)->dispatch(
+                            category:         'task',
+                            priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
+                            title:            'New Task: ' . $task->title,
+                            body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
+                            notifiableType:   'tenant_user',
+                            notifiableId:     $assigneeId,
+                            tenantId:         $tenantId,
+                            actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                            actionLabel:      'View Task',
+                            deduplicationKey: "task_assigned_{$task->id}",
+                        );
+                    } catch (\Throwable) {}
+                }
             }
         });
 
-        // After commit: send email notifications
+        // After commit: send email notifications (skip self-assign)
         foreach ($createdTasks as $task) {
+            if ($task->assigned_to_id === $actorId) continue; // don't email yourself
+
             $assignee = $validAssignees->get($task->assigned_to_id);
             if (!$assignee || !$assignee->email) continue;
 
@@ -150,12 +170,139 @@ class TaskController extends Controller
             } catch (\Throwable) {}
         }
 
+        $selfMsg  = $isSelfAssign ? 'Task created and assigned to you.' : null;
+        $multiMsg = count($createdTasks) === 1
+            ? 'Task created and assignee notified.'
+            : count($createdTasks) . ' tasks created and assignees notified.';
+
         return response()->json([
-            'created' => count($createdTasks),
-            'task_ids' => collect($createdTasks)->pluck('id'),
-            'message'  => count($createdTasks) === 1
-                ? 'Task created and assignee notified.'
-                : count($createdTasks) . ' tasks created and assignees notified.',
+            'created'   => count($createdTasks),
+            'task_ids'  => collect($createdTasks)->pluck('id'),
+            'self_assigned' => $isSelfAssign,
+            'message'   => $selfMsg ?? $multiMsg,
+        ]);
+    }
+
+    // ── Assign task to self (claim / reassign-to-me) ──────────────────────────
+
+    public function assignToSelf(string $tenantId, string $taskId): \Illuminate\Http\JsonResponse
+    {
+        // Resolve current user — never trust frontend user ID
+        [$actorType, $actorId, $actorName] = $this->resolveActorFull();
+
+        if (!$actorId) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        // Tenant-scoped task lookup
+        $task = Task::where('tenant_id', $tenantId)->whereNull('deleted_at')->find($taskId);
+        if (!$task) {
+            return response()->json(['error' => 'Task not found.'], 404);
+        }
+
+        // Tenant isolation — belt + suspenders
+        if ($task->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        // Task must not be in a terminal state
+        if (in_array($task->status, ['completed', 'cancelled', 'archived'])) {
+            return response()->json(['error' => 'This task is no longer available for assignment.'], 422);
+        }
+
+        // Verify actor is an active member of this tenant (super admin web guard is always allowed)
+        if (!Auth::guard('web')->check()) {
+            $isMember = DB::table('tenant_memberships')
+                ->where('tenant_id', $tenantId)
+                ->where('tenant_user_id', $actorId)
+                ->where('status', 'active')
+                ->exists();
+
+            if (!$isMember) {
+                return response()->json(['error' => 'You do not have access to this tenant.'], 403);
+            }
+        }
+
+        // Verify actor can view this task (admin or current assignee)
+        $isAdmin = Auth::guard('web')->check()
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        $isCurrentAssignee = $task->assigned_to_type === $actorType
+            && $task->assigned_to_id === $actorId;
+
+        if (!$isAdmin && !$isCurrentAssignee && $task->assigned_to_id) {
+            // Non-admins can only claim unassigned tasks they can see
+            return response()->json(['error' => 'You do not have permission to assign this task to yourself.'], 403);
+        }
+
+        // Idempotent — already assigned to self
+        if ($task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId) {
+            return response()->json(['message' => 'Task is already assigned to you.', 'already_assigned' => true]);
+        }
+
+        $oldAssigneeType = $task->assigned_to_type;
+        $oldAssigneeId   = $task->assigned_to_id;
+        $oldAssigneeName = $oldAssigneeId
+            ? $this->resolveUserName($oldAssigneeType, $oldAssigneeId)
+            : null;
+
+        $actionType = $oldAssigneeId ? 'task_reassigned_to_self' : 'task_claimed';
+
+        DB::transaction(function () use (
+            $task, $actorType, $actorId, $actorName,
+            $tenantId, $oldAssigneeType, $oldAssigneeId, $oldAssigneeName, $actionType
+        ) {
+            $task->update([
+                'assigned_to_type' => $actorType,
+                'assigned_to_id'   => $actorId,
+                'assigned_by_type' => $actorType,
+                'assigned_by_id'   => $actorId,
+            ]);
+
+            TaskActivity::create([
+                'tenant_id'   => $tenantId,
+                'task_id'     => $task->id,
+                'actor_type'  => $actorType,
+                'actor_id'    => $actorId,
+                'actor_name'  => $actorName,
+                'action_type' => $actionType,
+                'old_values'  => [
+                    'assigned_to_id'   => $oldAssigneeId,
+                    'assigned_to_name' => $oldAssigneeName,
+                ],
+                'new_values'  => [
+                    'assigned_to_id'   => $actorId,
+                    'assigned_to_name' => $actorName,
+                ],
+            ]);
+        });
+
+        // Notify old assignee (only if reassigned from someone else)
+        if ($oldAssigneeId && $oldAssigneeId !== $actorId) {
+            try {
+                app(\App\Services\NotificationDispatchService::class)->dispatch(
+                    category:         'task',
+                    priority:         'normal',
+                    title:            'Task reassigned',
+                    body:             "{$actorName} reassigned \"{$task->title}\" to themselves.",
+                    notifiableType:   $oldAssigneeType,
+                    notifiableId:     $oldAssigneeId,
+                    tenantId:         $tenantId,
+                    actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                    actionLabel:      'View Task',
+                    deduplicationKey: "task_reassigned_{$task->id}_" . now()->format('YmdH'),
+                );
+            } catch (\Throwable) {}
+        }
+
+        $msg = $actionType === 'task_claimed'
+            ? 'Task assigned to you.'
+            : 'Task reassigned to you.';
+
+        return response()->json([
+            'message'          => $msg,
+            'action'           => $actionType,
+            'assigned_to_id'   => $actorId,
+            'assigned_to_name' => $actorName,
         ]);
     }
 
@@ -164,7 +311,7 @@ class TaskController extends Controller
     public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
         $tenant = Tenant::findOrFail($tenantId);
-        [$actorType, $actorId] = $this->resolveActor();
+        [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
         $tab      = $request->query('tab', 'mine');
         $status   = $request->query('status');
@@ -177,15 +324,13 @@ class TaskController extends Controller
         } elseif ($tab === 'assigned_by_me') {
             $query->where('assigned_by_type', $actorType)->where('assigned_by_id', $actorId);
         } elseif ($tab === 'completed') {
-            $q = $query->where('status', 'completed');
-            // Non-admins only see their own completed tasks
-            if (!$isAdmin) $q->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
+            $query->where('status', 'completed');
+            if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'overdue') {
             $query->whereNotIn('status', ['completed','cancelled','archived'])
                   ->where('due_at', '<', now());
             if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'all') {
-            // Only admins/managers can see all tasks
             if (!$isAdmin) {
                 $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
             }
@@ -200,7 +345,7 @@ class TaskController extends Controller
                        ->paginate(30)
                        ->withQueryString();
 
-        return view('tenant.tasks.index', compact('tenant', 'tasks', 'tab'));
+        return view('tenant.tasks.index', compact('tenant', 'tasks', 'tab', 'actorId', 'actorName'));
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────
@@ -217,11 +362,36 @@ class TaskController extends Controller
             $source = \App\Models\RequestFormSubmission::with('form')->find($task->source_id);
         }
 
-        $canComplete    = $this->canComplete($task, $tenantId);
+        $canComplete            = $this->canComplete($task, $tenantId);
         $completionEmailEnabled = $this->tenantCompletionEmailEnabled($tenantId);
 
+        // Resolve current actor for self-assignment UI
+        [$actorType, $actorId, $actorName] = $this->resolveActorFull();
+
+        // Resolve current assignee display info
+        $assigneeName = null;
+        if ($task->assigned_to_id && $task->assigned_to_type === 'tenant_user') {
+            $assigneeUser = TenantUser::find($task->assigned_to_id);
+            $assigneeName = $assigneeUser?->full_name ?? 'Unknown';
+        }
+
+        // Self-assignment eligibility:
+        // Admins can always assign to self. Non-admins can claim only if task is unassigned.
+        $isAdmin           = Auth::guard('web')->check()
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        $isCurrentAssignee = $task->assigned_to_type === $actorType
+            && $task->assigned_to_id === $actorId;
+        $isTerminal        = in_array($task->status, ['completed', 'cancelled', 'archived']);
+
+        $canAssignToSelf = !$isTerminal && (
+            $isAdmin
+            || !$task->assigned_to_id  // unassigned — anyone who can view can claim
+        );
+
         return view('tenant.tasks.show', compact(
-            'tenant', 'task', 'source', 'canComplete', 'completionEmailEnabled'
+            'tenant', 'task', 'source', 'canComplete', 'completionEmailEnabled',
+            'actorId', 'actorName', 'actorType', 'assigneeName',
+            'canAssignToSelf', 'isCurrentAssignee', 'isAdmin'
         ));
     }
 
@@ -272,7 +442,6 @@ class TaskController extends Controller
 
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
-        // Store attachments
         $attachmentPaths = [];
         if (!empty($data['attachments'])) {
             $attachmentPaths = $svc->storeAttachments($tenantId, $taskId, $data['attachments']);
@@ -328,7 +497,6 @@ class TaskController extends Controller
     {
         if (Auth::guard('tenant')->check()) {
             $u = Auth::guard('tenant')->user();
-            // TenantUser uses first_name + last_name (not a 'name' field)
             $name = method_exists($u, 'getFullNameAttribute')
                 ? $u->full_name
                 : ($u->first_name ?? $u->email ?? 'Admin');
@@ -341,10 +509,20 @@ class TaskController extends Controller
         return ['system', 'system', 'System'];
     }
 
+    private function resolveUserName(string $type, string $id): string
+    {
+        try {
+            if ($type === 'tenant_user') {
+                $u = TenantUser::find($id);
+                return $u ? $u->full_name : 'Unknown';
+            }
+        } catch (\Throwable) {}
+        return 'Unknown';
+    }
+
     private function authorizeView(Task $task, string $tenantId): void
     {
         if ($task->tenant_id !== $tenantId) abort(403);
-        // Admins and assignees can view; all others see 403
         [$actorType, $actorId] = $this->resolveActor();
         $isAdmin = Auth::guard('web')->check()
             || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
@@ -356,9 +534,10 @@ class TaskController extends Controller
     private function authorizeComplete(Task $task, string $tenantId): void
     {
         if ($task->tenant_id !== $tenantId) abort(403);
-        // Admins and task assignees can complete
         [$actorType, $actorId] = $this->resolveActor();
-        $isAdmin = Auth::guard('web')->check() || TenantContext::role() === 'admin' || TenantContext::role() === 'owner';
+        $isAdmin    = Auth::guard('web')->check()
+            || TenantContext::role() === 'admin'
+            || TenantContext::role() === 'owner';
         $isAssignee = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
         if (!$isAdmin && !$isAssignee) abort(403, 'You cannot complete this task.');
     }
@@ -374,16 +553,12 @@ class TaskController extends Controller
 
     private function tenantCompletionEmailEnabled(string $tenantId): bool
     {
-        // Check tenant_configs for a task_completion_email_enabled flag.
-        // Default: false (opt-in per tenant). Enable by inserting a key into the config row.
         try {
             $config = DB::table('tenant_configs')->where('tenant_id', $tenantId)->first();
             if (!$config) return false;
-            // Support both a dedicated column or a JSON settings field
             if (isset($config->task_completion_email_enabled)) {
                 return (bool) $config->task_completion_email_enabled;
             }
-            // Fall back to checking any JSON settings field
             foreach (['settings', 'commission', 'fields'] as $jsonField) {
                 if (isset($config->{$jsonField})) {
                     $decoded = is_string($config->{$jsonField})

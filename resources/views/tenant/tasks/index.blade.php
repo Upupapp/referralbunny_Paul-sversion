@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
-<div class="space-y-5" x-data="createTaskModal('{{ $tenant->id }}')" x-init="init()">
+<div class="space-y-5" x-data="createTaskModal('{{ $tenant->id }}', '{{ $actorId }}', '{{ addslashes($actorName) }}')" x-init="init()">
 
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
@@ -164,21 +164,35 @@
 
                 {{-- Assignees --}}
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Assign To *</label>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                        <label style="font-size:12px;font-weight:600;color:#374151">Assign To *</label>
+                        {{-- Assign to me quick chip --}}
+                        <button type="button" @click="assignToMe()"
+                                style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .12s"
+                                :style="form.assignee_ids.includes(currentUserId)
+                                    ? 'background:#7B61FF;color:white;border-color:#7B61FF'
+                                    : 'background:#ede9fe;color:#7B61FF;border-color:#c4b5fd'">
+                            <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span x-text="form.assignee_ids.includes(currentUserId) ? '✓ Assigned to me' : 'Assign to me'"></span>
+                        </button>
+                    </div>
 
                     {{-- Loading assignees --}}
                     <div x-show="loadingAssignees" style="padding:8px;font-size:12px;color:#9ca3af">Loading team members…</div>
 
-                    {{-- Assignee list --}}
+                    {{-- Assignee list — current user pinned to top --}}
                     <div x-show="!loadingAssignees" class="space-y-2" style="max-height:180px;overflow-y:auto">
-                        <template x-for="m in assignees" :key="m.id">
+                        <template x-for="m in sortedAssignees" :key="m.id">
                             <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f9fafb;border-radius:10px;cursor:pointer;border:1.5px solid transparent"
                                    :style="form.assignee_ids.includes(m.id) ? 'border-color:#c4b5fd;background:#f5f3ff' : ''">
                                 <input type="checkbox" :value="m.id" x-model="form.assignee_ids" style="width:15px;height:15px;cursor:pointer;accent-color:#7B61FF">
-                                <div style="width:28px;height:28px;border-radius:9999px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#7B61FF;flex-shrink:0"
+                                <div style="width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0"
+                                     :style="m.is_me ? 'background:#7B61FF;color:white' : 'background:#ede9fe;color:#7B61FF'"
                                      x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
                                 <div style="flex:1;min-width:0">
-                                    <p style="font-size:13px;font-weight:600;color:#1E1B4B" x-text="m.name"></p>
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                        <p style="font-size:13px;font-weight:600;color:#1E1B4B" x-text="m.is_me ? m.name + ' (you)' : m.name"></p>
+                                    </div>
                                     <p style="font-size:11px;color:#9ca3af" x-text="m.email + ' · ' + (m.role ? m.role.charAt(0).toUpperCase() + m.role.slice(1) : '')"></p>
                                 </div>
                             </label>
@@ -215,12 +229,14 @@
 
 @push('scripts')
 <script>
-function createTaskModal(tenantId) {
+function createTaskModal(tenantId, currentUserId, currentUserName) {
     return {
         open: false,
         loadingAssignees: false,
         submitting: false,
         assignees: [],
+        currentUserId: currentUserId || '',
+        currentUserName: currentUserName || '',
         success: '',
         error: '',
         form: {
@@ -233,8 +249,14 @@ function createTaskModal(tenantId) {
             source_id: '',
         },
 
+        get sortedAssignees() {
+            // Pin current user to top of list
+            const me    = this.assignees.filter(m => m.id === this.currentUserId);
+            const others = this.assignees.filter(m => m.id !== this.currentUserId);
+            return [...me, ...others];
+        },
+
         init() {
-            // Auto-open if ?create=1 in URL (e.g. from deal detail "New Task" link)
             const params = new URLSearchParams(window.location.search);
             if (params.get('create') === '1' || params.get('source_type')) {
                 this.$nextTick(() => {
@@ -250,6 +272,16 @@ function createTaskModal(tenantId) {
             this.success = '';
             this.error = '';
             if (this.assignees.length === 0) this.fetchAssignees();
+        },
+
+        assignToMe() {
+            if (!this.currentUserId) return;
+            const idx = this.form.assignee_ids.indexOf(this.currentUserId);
+            if (idx === -1) {
+                this.form.assignee_ids.push(this.currentUserId);
+            } else {
+                this.form.assignee_ids.splice(idx, 1);
+            }
         },
 
         fetchAssignees() {
@@ -292,7 +324,9 @@ function createTaskModal(tenantId) {
                     this.error = data.message || data.error || 'Failed to create task.';
                     return;
                 }
-                this.success = data.message || 'Task created successfully.';
+                this.success = data.self_assigned
+                    ? 'Task created and assigned to you.'
+                    : (data.message || 'Task created successfully.');
                 setTimeout(() => {
                     this.open = false;
                     window.location.reload();
