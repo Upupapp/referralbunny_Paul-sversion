@@ -15,7 +15,7 @@ class AgreementController extends Controller
     public function index(Request $request): JsonResponse
     {
         $agreements = DB::table('reseller_agreement_files')
-            ->where('tenant_id', TenantContext::id() ?? $request->tenant_id)
+            ->where('tenant_id', TenantContext::id())
             ->orderBy('display_order')
             ->orderBy('created_at')
             ->get();
@@ -25,8 +25,9 @@ class AgreementController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $tenantId = TenantContext::requireId();
+
         $data = $request->validate([
-            'tenant_id'      => 'required|string|exists:tenants,id',
             'label'          => 'required|string|max:100',
             'description'    => 'nullable|string',
             'file_url'       => 'nullable|string|max:2048',
@@ -39,7 +40,7 @@ class AgreementController extends Controller
         $id = (string) Str::uuid();
         DB::table('reseller_agreement_files')->insert([
             'id'             => $id,
-            'tenant_id'      => $data['tenant_id'],
+            'tenant_id'      => $tenantId,
             'label'          => $data['label'],
             'description'    => $data['description'] ?? null,
             'file_url'       => $data['file_url'] ?? null,
@@ -70,6 +71,7 @@ class AgreementController extends Controller
 
         DB::table('reseller_agreement_files')
             ->where('id', $id)
+            ->where('tenant_id', TenantContext::requireId())
             ->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json(DB::table('reseller_agreement_files')->where('id', $id)->first());
@@ -77,26 +79,30 @@ class AgreementController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        DB::table('reseller_agreement_files')->where('id', $id)->delete();
+        DB::table('reseller_agreement_files')
+            ->where('id', $id)
+            ->where('tenant_id', TenantContext::requireId())
+            ->delete();
         return response()->json(['deleted' => true]);
     }
 
     // ── Acknowledgments ──────────────────────────────────────────────────
 
     /**
-     * GET /api/agreements/reseller-status?tenant_id=&reseller_id=
+     * GET /api/agreements/reseller-status?reseller_id=
      * All active agreements + whether this reseller acknowledged each one
      */
     public function resellerStatus(Request $request): JsonResponse
     {
         $resellerId = $request->reseller_id;
+        $tenantId   = TenantContext::id();
 
         $agreements = DB::table('reseller_agreement_files as af')
             ->leftJoin('reseller_agreement_acknowledgments as ack', function ($join) use ($resellerId) {
                 $join->on('af.id', '=', 'ack.agreement_file_id')
                      ->where('ack.reseller_id', '=', $resellerId);
             })
-            ->where('af.tenant_id', TenantContext::id() ?? $request->tenant_id)
+            ->where('af.tenant_id', $tenantId)
             ->where('af.is_active', true)
             ->select('af.*', 'ack.agreed_at', 'ack.agreed_by_name')
             ->orderBy('af.display_order')
@@ -106,12 +112,12 @@ class AgreementController extends Controller
     }
 
     /**
-     * GET /api/agreements/compliance?tenant_id=
+     * GET /api/agreements/compliance
      * Per-reseller summary: how many required agreements each reseller has signed
      */
     public function compliance(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->tenant_id;
+        $tenantId = TenantContext::id();
 
         $requiredCount = DB::table('reseller_agreement_files')
             ->where('tenant_id', $tenantId)
@@ -162,6 +168,10 @@ class AgreementController extends Controller
             return response()->json(['error' => 'Agreement not found'], 404);
         }
 
+        if ($agreement->tenant_id !== TenantContext::id()) {
+            abort(403, 'You do not have access to this agreement.');
+        }
+
         $existing = DB::table('reseller_agreement_acknowledgments')
             ->where('reseller_id', $data['reseller_id'])
             ->where('agreement_file_id', $agreementId)
@@ -197,6 +207,11 @@ class AgreementController extends Controller
      */
     public function revokeAcknowledgment(Request $request, string $agreementId): JsonResponse
     {
+        $agreement = DB::table('reseller_agreement_files')->where('id', $agreementId)->first();
+        if (!$agreement || $agreement->tenant_id !== TenantContext::id()) {
+            abort(403, 'You do not have access to this agreement.');
+        }
+
         DB::table('reseller_agreement_acknowledgments')
             ->where('agreement_file_id', $agreementId)
             ->where('reseller_id', $request->reseller_id)

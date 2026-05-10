@@ -196,6 +196,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');
+    Route::post('/settings',       [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('settings.update');
 
     // ── Export Approval Center ────────────────────────────────────
     Route::get('/exports',                           [\App\Http\Controllers\Web\TenantExportController::class, 'index'])->name('exports');
@@ -312,4 +313,5 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::get('/users',       [TenantAdminController::class, 'users'])->name('tenant.sub.users');
         Route::get('/billing',     [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('tenant.sub.billing');
         Route::get('/settings',    [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('tenant.sub.settings');
+        Route::post('/settings',   [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('tenant.sub.settings.update');
     });

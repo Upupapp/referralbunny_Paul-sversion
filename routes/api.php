@@ -47,7 +47,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     // Auth — Tenant Admin (uses same sanctum guard; tokenable_type distinguishes)
     Route::post('/auth/tenant/logout',                [TenantAuthController::class, 'logout']);
     Route::get('/auth/tenant/me',                     [TenantAuthController::class, 'me']);
-    Route::post('/auth/tenant/password/update',       [TenantAuthController::class, 'updatePassword']);
+    Route::post('/auth/tenant/password/update',       [TenantAuthController::class, 'updatePassword'])->middleware('throttle:5,5');
     Route::post('/auth/tenant/password/mark-reviewed',[TenantAuthController::class, 'markPasswordReviewed']);
     Route::post('/tenant-invitations',                [TenantInvitationController::class, 'store']);
     Route::delete('/tenant-invitations/{id}',         [TenantInvitationController::class, 'revoke']);

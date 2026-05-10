@@ -48,34 +48,57 @@
 
         <div class="lg:col-span-2 space-y-4">
 
-            <div class="card" id="general-settings">
+            <form method="POST" action="{{ route('settings.update', $tenant->id) }}"
+                  class="card" id="general-settings">
+                @csrf
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-semibold text-[#1E1B4B]">General Settings</h3>
-                    <button class="btn-primary text-sm py-1.5 px-4">Save</button>
+                    <button type="submit" class="btn-primary text-sm py-1.5 px-4">Save</button>
                 </div>
+
+                @if(session('settings_saved'))
+                <div class="mb-4 flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 border border-green-200 text-sm text-green-700">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ session('settings_saved') }}
+                </div>
+                @endif
+
+                @if($errors->any())
+                <div class="mb-4 flex items-start gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <ul class="list-disc list-inside space-y-0.5">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                </div>
+                @endif
+
                 <div class="space-y-4">
                     <div>
                         <label class="form-label">Program Name</label>
-                        <input type="text" class="form-input" value="{{ $tenant->program_name }}" placeholder="Your program name">
+                        <input type="text" name="program_name" class="form-input"
+                               value="{{ old('program_name', $tenant->program_name) }}"
+                               placeholder="Your program name">
                     </div>
                     <div>
                         <label class="form-label">Business Name</label>
-                        <input type="text" class="form-input" value="{{ $tenant->business_name }}" placeholder="Business or company name">
+                        <input type="text" name="business_name" class="form-input"
+                               value="{{ old('business_name', $tenant->business_name) }}"
+                               placeholder="Business or company name">
                     </div>
                     <div>
                         <label class="form-label">Description</label>
-                        <textarea class="form-input" rows="3" placeholder="Describe your referral program">{{ $tenant->description }}</textarea>
+                        <textarea name="description" class="form-input" rows="3"
+                                  placeholder="Describe your referral program">{{ old('description', $tenant->description) }}</textarea>
                     </div>
                     <div>
                         <label class="form-label">Accent Color</label>
                         <div class="flex items-center gap-3">
-                            <input type="color" class="h-10 w-16 rounded-lg border border-gray-200 p-1 cursor-pointer"
-                                   value="{{ $tenant->accent_color ?? '#7B61FF' }}">
+                            <input type="color" name="accent_color"
+                                   class="h-10 w-16 rounded-lg border border-gray-200 p-1 cursor-pointer"
+                                   value="{{ old('accent_color', $tenant->accent_color ?? '#7B61FF') }}">
                             <span class="text-sm text-gray-400">Used for avatars and highlights</span>
                         </div>
                     </div>
                 </div>
-            </div>
+            </form>
 
             <div class="card" id="contact-info">
                 <div class="flex items-center justify-between mb-4">
@@ -467,10 +490,14 @@ function agreementManager(tenantId) {
 
         async init() {
             try {
-                const res = await fetch(`/api/agreements?tenant_id=${tenantId}`);
+                const res = await fetch(`/api/agreements`);
+                if (!res.ok) throw new Error('Failed to load');
                 const data = await res.json();
                 this.agreements = Array.isArray(data) ? data : [];
-            } catch(e) { this.agreements = []; }
+            } catch(e) {
+                this.agreements = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Unable to load agreements. Please refresh.' });
+            }
             this.loading = false;
         },
 
@@ -511,13 +538,15 @@ function agreementManager(tenantId) {
                     method,
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
                     },
                     body: JSON.stringify(body),
                 });
                 const data = await res.json();
 
-                if (data.id) {
+                if (!res.ok) {
+                    this.formError = data.message || (res.status === 403 ? 'You do not have permission.' : 'Failed to save agreement.');
+                } else if (data.id) {
                     if (this.editId) {
                         const i = this.agreements.findIndex(a => a.id === this.editId);
                         if (i !== -1) this.agreements.splice(i, 1, data);
@@ -577,10 +606,14 @@ function requiredDocManager(tenantId) {
 
         async init() {
             try {
-                const res = await fetch(`/api/required-documents?tenant_id=${tenantId}`);
+                const res = await fetch(`/api/required-documents`);
+                if (!res.ok) throw new Error('Failed to load');
                 const data = await res.json();
                 this.docs = Array.isArray(data) ? data : [];
-            } catch(e) { this.docs = []; }
+            } catch(e) {
+                this.docs = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Unable to load document requirements. Please refresh.' });
+            }
             this.loading = false;
         },
 
@@ -615,11 +648,13 @@ function requiredDocManager(tenantId) {
                 const body   = this.editId ? { ...this.form } : { ...this.form, tenant_id: tenantId };
                 const res    = await fetch(url, {
                     method,
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '' },
                     body: JSON.stringify(body),
                 });
                 const data = await res.json();
-                if (data.id) {
+                if (!res.ok) {
+                    this.formError = data.message || (res.status === 403 ? 'You do not have permission.' : 'Failed to save document.');
+                } else if (data.id) {
                     if (this.editId) {
                         const i = this.docs.findIndex(d => d.id === this.editId);
                         if (i !== -1) this.docs.splice(i, 1, data);

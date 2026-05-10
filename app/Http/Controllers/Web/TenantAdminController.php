@@ -364,4 +364,31 @@ class TenantAdminController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
         return view('tenant.settings.index', compact('tenant'));
     }
+
+    public function updateSettings(Request $request, string $tenantId)
+    {
+        $tenant = Tenant::findOrFail($tenantId);
+
+        // Only owner/admin may update workspace settings
+        if ($userId = Auth::guard('tenant')->id()) {
+            $membership = TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+            if (!$membership || !in_array($membership->role, ['owner', 'admin'])) {
+                abort(403, 'Only Owners and Admins can update workspace settings.');
+            }
+        }
+
+        $data = $request->validate([
+            'program_name'  => 'required|string|max:200',
+            'business_name' => 'nullable|string|max:200',
+            'description'   => 'nullable|string|max:1000',
+            'accent_color'  => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+        ]);
+
+        $tenant->update($data);
+
+        return back()->with('settings_saved', 'Workspace settings saved successfully.');
+    }
 }

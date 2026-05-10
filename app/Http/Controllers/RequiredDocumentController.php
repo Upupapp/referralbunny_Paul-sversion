@@ -15,7 +15,7 @@ class RequiredDocumentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $docs = DB::table('reseller_required_documents')
-            ->where('tenant_id', TenantContext::id() ?? $request->tenant_id)
+            ->where('tenant_id', TenantContext::id())
             ->orderBy('display_order')
             ->orderBy('created_at')
             ->get();
@@ -25,8 +25,9 @@ class RequiredDocumentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $tenantId = TenantContext::requireId();
+
         $data = $request->validate([
-            'tenant_id'       => 'required|string|exists:tenants,id',
             'label'           => 'required|string|max:150',
             'document_type'   => 'required|string|max:100',
             'description'     => 'nullable|string',
@@ -38,7 +39,7 @@ class RequiredDocumentController extends Controller
         $id = (string) Str::uuid();
         DB::table('reseller_required_documents')->insert([
             'id'               => $id,
-            'tenant_id'        => $data['tenant_id'],
+            'tenant_id'        => $tenantId,
             'label'            => $data['label'],
             'document_type'    => $data['document_type'],
             'description'      => $data['description'] ?? null,
@@ -67,6 +68,7 @@ class RequiredDocumentController extends Controller
 
         DB::table('reseller_required_documents')
             ->where('id', $id)
+            ->where('tenant_id', TenantContext::requireId())
             ->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json(DB::table('reseller_required_documents')->where('id', $id)->first());
@@ -74,19 +76,22 @@ class RequiredDocumentController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        DB::table('reseller_required_documents')->where('id', $id)->delete();
+        DB::table('reseller_required_documents')
+            ->where('id', $id)
+            ->where('tenant_id', TenantContext::requireId())
+            ->delete();
         return response()->json(['deleted' => true]);
     }
 
     // ── Compliance & Submissions ───────────────────────────────────────────
 
     /**
-     * GET /api/required-documents/compliance?tenant_id=
+     * GET /api/required-documents/compliance
      * Per-reseller summary: how many required docs each reseller has approved
      */
     public function compliance(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->tenant_id;
+        $tenantId = TenantContext::id();
 
         $requiredCount = DB::table('reseller_required_documents')
             ->where('tenant_id', $tenantId)
@@ -123,19 +128,20 @@ class RequiredDocumentController extends Controller
     }
 
     /**
-     * GET /api/required-documents/reseller-status?tenant_id=&reseller_id=
+     * GET /api/required-documents/reseller-status?reseller_id=
      * All active required docs + this reseller's submission status for each
      */
     public function resellerStatus(Request $request): JsonResponse
     {
         $resellerId = $request->reseller_id;
+        $tenantId   = TenantContext::id();
 
         $docs = DB::table('reseller_required_documents as rd')
             ->leftJoin('reseller_document_submissions as ds', function ($join) use ($resellerId) {
                 $join->on('rd.id', '=', 'ds.required_document_id')
                      ->where('ds.reseller_id', '=', $resellerId);
             })
-            ->where('rd.tenant_id', TenantContext::id() ?? $request->tenant_id)
+            ->where('rd.tenant_id', $tenantId)
             ->where('rd.is_active', true)
             ->select(
                 'rd.*',
@@ -169,6 +175,10 @@ class RequiredDocumentController extends Controller
         $doc = DB::table('reseller_required_documents')->where('id', $docId)->first();
         if (!$doc) {
             return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        if ($doc->tenant_id !== TenantContext::id()) {
+            abort(403, 'You do not have access to this document requirement.');
         }
 
         $existing = DB::table('reseller_document_submissions')
@@ -210,6 +220,15 @@ class RequiredDocumentController extends Controller
      */
     public function review(Request $request, string $submissionId): JsonResponse
     {
+        $submission = DB::table('reseller_document_submissions')->where('id', $submissionId)->first();
+        if (!$submission) {
+            return response()->json(['error' => 'Submission not found'], 404);
+        }
+
+        if ($submission->tenant_id !== TenantContext::id()) {
+            abort(403, 'You do not have access to this submission.');
+        }
+
         $data = $request->validate([
             'status'       => 'required|in:approved,rejected',
             'reviewed_by'  => 'nullable|string',
@@ -235,6 +254,11 @@ class RequiredDocumentController extends Controller
      */
     public function resetSubmission(string $submissionId): JsonResponse
     {
+        $submission = DB::table('reseller_document_submissions')->where('id', $submissionId)->first();
+        if ($submission && $submission->tenant_id !== TenantContext::id()) {
+            abort(403, 'You do not have access to this submission.');
+        }
+
         DB::table('reseller_document_submissions')->where('id', $submissionId)->delete();
         return response()->json(['reset' => true]);
     }
