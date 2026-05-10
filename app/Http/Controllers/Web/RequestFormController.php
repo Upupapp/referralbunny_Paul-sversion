@@ -323,21 +323,32 @@ class RequestFormController extends Controller
         $dateFrom  = $request->query('date_from', '');
         $dateTo    = $request->query('date_to', '');
 
-        $submissions = RequestFormSubmission::where('tenant_id', $tenantId)
-            ->where('request_form_id', $formId)
-            ->with(['submissionRecipients'])
-            ->withCount(['tasks' => fn($q) => $q->whereNull('deleted_at')])
-            ->when($search, fn($q) => $q->where(fn($inner) => $inner
-                ->where('submitter_name', 'like', "%{$search}%")
-                ->orWhere('submitter_email', 'like', "%{$search}%")
-                ->orWhere('request_for', 'like', "%{$search}%")
-                ->orWhere('notes', 'like', "%{$search}%")
-            ))
-            ->when($dateFrom, fn($q) => $q->where('submitted_at', '>=', $dateFrom))
-            ->when($dateTo,   fn($q) => $q->where('submitted_at', '<=', $dateTo . ' 23:59:59'))
-            ->orderByDesc('submitted_at')
-            ->paginate(25)
-            ->withQueryString();
+        try {
+            $submissionsQuery = RequestFormSubmission::where('tenant_id', $tenantId)
+                ->where('request_form_id', $formId)
+                ->with(['submissionRecipients']);
+
+            // Only add tasks count if the tasks table exists
+            if (\Illuminate\Support\Facades\Schema::hasTable('tasks')) {
+                $submissionsQuery->withCount(['tasks' => fn($q) => $q->whereNull('deleted_at')]);
+            }
+
+            $submissions = $submissionsQuery
+                ->when($search, fn($q) => $q->where(fn($inner) => $inner
+                    ->where('submitter_name', 'like', "%{$search}%")
+                    ->orWhere('submitter_email', 'like', "%{$search}%")
+                    ->orWhere('request_for', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                ))
+                ->when($dateFrom, fn($q) => $q->where('submitted_at', '>=', $dateFrom))
+                ->when($dateTo,   fn($q) => $q->where('submitted_at', '<=', $dateTo . ' 23:59:59'))
+                ->orderByDesc('submitted_at')
+                ->paginate(25)
+                ->withQueryString();
+        } catch (\Throwable $e) {
+            \Log::error('submissions() failed: ' . $e->getMessage());
+            $submissions = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
+        }
 
         return view('tenant.request-forms.submissions', compact(
             'tenant', 'form', 'submissions', 'search', 'dateFrom', 'dateTo'
