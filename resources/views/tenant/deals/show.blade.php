@@ -55,6 +55,19 @@
                             'badge badge-gray':   !['active','expiring','expired'].includes(lead?.status||''),
                         }" x-text="lead?.status ? lead.status.charAt(0).toUpperCase()+lead.status.slice(1) : ''"></span>
                         <span :class="stageBadge(lead?.stage)" x-text="stageLabel(lead?.stage)"></span>
+                        {{-- Days-to-move counter --}}
+                        <span x-show="lead?.days_left !== null && lead?.days_left !== undefined && lead?.stage !== 'paid'"
+                              class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              :class="{
+                                  'bg-red-100 text-red-700':    (lead?.days_left ?? 99) <= 3,
+                                  'bg-amber-100 text-amber-700': (lead?.days_left ?? 99) > 3 && (lead?.days_left ?? 99) <= 7,
+                                  'bg-blue-50 text-blue-700':   (lead?.days_left ?? 99) > 7,
+                              }">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="(lead?.days_left ?? 0) <= 0 ? 'Overdue' : (lead.days_left + 'd to move stage')"></span>
+                        </span>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 mt-1">
                         <p class="text-sm text-gray-500">Referrer: <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'Unassigned'"></span></p>

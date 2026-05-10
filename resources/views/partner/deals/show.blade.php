@@ -45,9 +45,17 @@
                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $statusBadge }}">
                         {{ ucfirst($lead->status) }}
                     </span>
-                    @if(isset($lead->days_left) && $lead->days_left !== null)
-                    <span class="text-xs {{ $lead->days_left <= 3 ? 'text-red-600 font-bold' : ($lead->days_left <= 7 ? 'text-orange-500 font-semibold' : 'text-gray-500') }} flex items-center">
-                        {{ $lead->days_left }}d remaining
+                    @if(isset($lead->days_left) && $lead->days_left !== null && $lead->stage !== 'paid')
+                    @php
+                        $dl = $lead->days_left;
+                        $dlBadge = $dl <= 3
+                            ? 'bg-red-100 text-red-700'
+                            : ($dl <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-700');
+                        $dlLabel = $dl <= 0 ? 'Overdue' : $dl . 'd to move stage';
+                    @endphp
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $dlBadge }}">
+                        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ $dlLabel }}
                     </span>
                     @endif
                 </div>

@@ -78,7 +78,7 @@
                         <th class="hidden md:table-cell">Partner</th>
                         <th class="hidden sm:table-cell">Commission</th>
                         <th>Status</th>
-                        <th class="hidden sm:table-cell">Days Left</th>
+                        <th>Days Left</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -135,9 +135,17 @@
                                       :class="{'bg-emerald-100 text-emerald-700':d.status==='active','bg-amber-100 text-amber-700':d.status==='expiring','bg-red-100 text-red-600':d.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(d.status||'')}"
                                       x-text="d.status || 'active'"></span>
                             </td>
-                            <td class="hidden sm:table-cell text-sm tabular-nums"
-                                :class="(d.days_left||21) <= 3 ? 'text-red-500 font-bold' : (d.days_left||21) <= 7 ? 'text-amber-500 font-semibold' : 'text-gray-500'"
-                                x-text="(d.days_left ?? 21) + 'd'"></td>
+                            <td x-show="d.stage !== 'paid'">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                                      :class="{
+                                          'bg-red-100 text-red-700':    (d.days_left ?? 99) <= 3,
+                                          'bg-amber-100 text-amber-700': (d.days_left ?? 99) > 3 && (d.days_left ?? 99) <= 7,
+                                          'bg-blue-50 text-blue-600':   (d.days_left ?? 99) > 7,
+                                      }">
+                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span x-text="(d.days_left ?? 0) <= 0 ? 'Overdue' : (d.days_left + 'd')"></span>
+                                </span>
+                            </td>
                         </tr>
                     </template>
                 </tbody>

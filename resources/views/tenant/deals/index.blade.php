@@ -222,8 +222,16 @@
                             <td class="hidden md:table-cell">
                                 <span :class="commissionBadge(lead.commission_status)" x-text="(lead.commission_status || 'pending').charAt(0).toUpperCase() + (lead.commission_status || 'pending').slice(1)"></span>
                             </td>
-                            <td class="hidden md:table-cell">
-                                <span :class="daysClass(lead.days_left)" x-text="(lead.days_left ?? 21) + 'd'"></span>
+                            <td>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                                      :class="{
+                                          'bg-red-100 text-red-700':    (lead.days_left ?? 99) <= 3,
+                                          'bg-amber-100 text-amber-700': (lead.days_left ?? 99) > 3 && (lead.days_left ?? 99) <= 7,
+                                          'bg-blue-50 text-blue-600':   (lead.days_left ?? 99) > 7,
+                                      }">
+                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span x-text="(lead.days_left ?? 0) <= 0 ? 'Overdue' : (lead.days_left + 'd')"></span>
+                                </span>
                             </td>
                             <td>
                                 <span :class="{
@@ -272,6 +280,25 @@
                                 <div class="flex items-center justify-between mt-2">
                                     <span class="text-xs font-semibold text-gray-700" x-text="formatValue(lead.deal_value)"></span>
                                     <span :class="commissionBadge(lead.commission_status) + ' text-xs'" x-text="lead.commission_status || 'pending'"></span>
+                                </div>
+                                {{-- Days-to-move counter on kanban card --}}
+                                <div x-show="lead.stage !== 'paid'" class="mt-2 pt-2 border-t border-gray-100 flex items-center gap-1">
+                                    <svg class="w-3 h-3 shrink-0"
+                                         :class="{
+                                             'text-red-500':   (lead.days_left ?? 99) <= 3,
+                                             'text-amber-500': (lead.days_left ?? 99) > 3 && (lead.days_left ?? 99) <= 7,
+                                             'text-blue-400':  (lead.days_left ?? 99) > 7,
+                                         }"
+                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span class="text-[11px] font-semibold"
+                                          :class="{
+                                              'text-red-600':   (lead.days_left ?? 99) <= 3,
+                                              'text-amber-600': (lead.days_left ?? 99) > 3 && (lead.days_left ?? 99) <= 7,
+                                              'text-blue-500':  (lead.days_left ?? 99) > 7,
+                                          }"
+                                          x-text="(lead.days_left ?? 0) <= 0 ? 'Overdue' : (lead.days_left + 'd to move stage')"></span>
                                 </div>
                             </a>
                         </template>

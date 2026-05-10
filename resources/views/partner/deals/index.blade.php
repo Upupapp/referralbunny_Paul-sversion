@@ -71,6 +71,7 @@
                             <th class="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3 hidden sm:table-cell">Value</th>
                             <th class="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3">Status</th>
                             <th class="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3 hidden sm:table-cell">Referrer</th>
+                            <th class="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3">Days Left</th>
                             <th class="px-3 py-3"></th>
                         </tr>
                     </thead>
@@ -88,8 +89,17 @@
                             $statusBadge = $deal->status === 'active'
                                 ? 'bg-green-100 text-green-700'
                                 : ($deal->status === 'expiring' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700');
-                            $stageKey = $deal->stage;
-                            $dealName = strtolower($deal->name);
+                            $stageKey  = $deal->stage;
+                            $dealName  = strtolower($deal->name);
+                            $daysLeft  = $deal->days_left ?? null;
+                            $daysBadge = $daysLeft === null || $deal->stage === 'paid'
+                                ? null
+                                : ($daysLeft <= 3
+                                    ? 'bg-red-100 text-red-700'
+                                    : ($daysLeft <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'));
+                            $daysLabel = $daysLeft !== null && $deal->stage !== 'paid'
+                                ? ($daysLeft <= 0 ? 'Overdue' : $daysLeft . 'd')
+                                : null;
                         @endphp
                         <tr x-show="(search === '' || '{{ $dealName }}'.includes(search.toLowerCase())) && (filterStage === '' || filterStage === '{{ $stageKey }}')"
                             class="hover:bg-gray-50/60 transition-colors">
@@ -117,6 +127,16 @@
                             </td>
                             <td class="px-3 py-3.5 hidden sm:table-cell text-gray-500 text-sm">
                                 {{ $deal->reseller_name ?? '—' }}
+                            </td>
+                            <td class="px-3 py-3.5">
+                                @if($daysLabel)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold {{ $daysBadge }}">
+                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    {{ $daysLabel }}
+                                </span>
+                                @else
+                                <span class="text-xs text-gray-300">—</span>
+                                @endif
                             </td>
                             <td class="px-3 py-3.5">
                                 <a href="{{ route('partner.deals.show', $deal->id) }}"
