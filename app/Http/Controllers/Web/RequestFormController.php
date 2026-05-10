@@ -104,7 +104,8 @@ class RequestFormController extends Controller
                 'success_message'           => $data['success_message'] ?? 'Your request has been submitted successfully.',
                 'allow_multiple_recipients' => $data['allow_multiple_recipients'] ?? true,
                 'max_recipients'            => $data['max_recipients'] ?? 5,
-                'status'                    => 'draft',
+                'status'                    => 'published',
+                'published_at'              => now(),
             ]);
 
             foreach (($data['fields'] ?? []) as $idx => $field) {
@@ -160,10 +161,11 @@ class RequestFormController extends Controller
         // AJAX callers (create page fetch) get JSON back
         if ($request->expectsJson()) {
             return response()->json([
-                'id'       => $form->id,
-                'title'    => $form->title,
-                'edit_url' => route('tenant.request-forms.edit', [$tenantId, $form->id]),
-                'list_url' => route('tenant.request-forms', $tenantId),
+                'id'         => $form->id,
+                'title'      => $form->title,
+                'public_url' => $form->publicUrl(),
+                'edit_url'   => route('tenant.request-forms.edit', [$tenantId, $form->id]),
+                'list_url'   => route('tenant.request-forms', $tenantId),
             ], 201);
         }
 

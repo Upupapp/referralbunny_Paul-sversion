@@ -20,28 +20,48 @@
 
 {{-- Success modal --}}
 <div id="rb-form-success"
-     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:9999;align-items:center;justify-content:center">
-    <div style="background:white;border-radius:20px;padding:36px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
-        <div style="width:60px;height:60px;border-radius:18px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
-            <svg style="width:30px;height:30px;color:#10B981" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-            </svg>
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:white;border-radius:24px;padding:40px 32px;max-width:440px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        {{-- Live pulse icon --}}
+        <div style="position:relative;width:64px;height:64px;margin:0 auto 20px">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#D1FAE5;animation:rb-ping 1.5s cubic-bezier(0,0,.2,1) infinite"></div>
+            <div style="position:relative;width:64px;height:64px;border-radius:50%;background:#10B981;display:flex;align-items:center;justify-content:center">
+                <svg style="width:30px;height:30px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
         </div>
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#10B981;margin-bottom:6px">Form Created</p>
-        <h2 id="rb-form-title" style="font-size:18px;font-weight:700;color:#1E1B4B;margin-bottom:6px"></h2>
-        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">Saved as draft. Publish it when you're ready so people can start submitting requests.</p>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10B981;margin-bottom:6px">🟢 Live</p>
+        <h2 id="rb-form-title" style="font-size:20px;font-weight:700;color:#1E1B4B;margin-bottom:6px"></h2>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:20px;line-height:1.6">Your form is now live and ready to receive submissions. Share the link below.</p>
+
+        {{-- Public URL copy box --}}
+        <div style="display:flex;align-items:center;gap:8px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:12px;padding:10px 14px;margin-bottom:20px">
+            <a id="rb-public-url" href="#" target="_blank"
+               style="flex:1;font-size:12px;color:#7B61FF;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left"></a>
+            <button onclick="rbCopyUrl()"
+                    style="flex-shrink:0;padding:5px 12px;border-radius:8px;background:#7B61FF;color:white;border:none;font-size:11px;font-weight:700;cursor:pointer">
+                Copy
+            </button>
+        </div>
+
         <div style="display:flex;flex-direction:column;gap:10px">
             <a id="rb-edit-btn" href="#"
-               style="display:block;padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;text-decoration:none">
-                Edit & Publish Form
+               style="display:block;padding:12px 24px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;text-decoration:none">
+                Manage Form
             </a>
             <a id="rb-list-btn" href="#"
-               style="display:block;padding:11px 24px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;text-decoration:none">
+               style="display:block;padding:12px 24px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;text-decoration:none">
                 View All Forms
             </a>
         </div>
     </div>
 </div>
+<style>
+@keyframes rb-ping {
+    75%,100%{transform:scale(2);opacity:0}
+}
+</style>
 
 <div class="max-w-3xl space-y-5" x-data="formBuilder()">
 
@@ -212,6 +232,17 @@
 
 @push('scripts')
 <script>
+function rbCopyUrl() {
+    const url = window._rbPublicUrl;
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#10B981';
+        setTimeout(() => { btn.textContent = 'Copy'; btn.style.background = '#7B61FF'; }, 2000);
+    });
+}
+
 function formBuilder() {
     return {
         fields: [],
@@ -253,8 +284,12 @@ function formBuilder() {
                 if (res.status === 201) {
                     saving.style.display = 'none';
                     document.getElementById('rb-form-title').textContent = data.title;
-                    document.getElementById('rb-edit-btn').href = data.edit_url;
-                    document.getElementById('rb-list-btn').href = data.list_url;
+                    document.getElementById('rb-edit-btn').href  = data.edit_url;
+                    document.getElementById('rb-list-btn').href  = data.list_url;
+                    const urlEl = document.getElementById('rb-public-url');
+                    urlEl.textContent = data.public_url;
+                    urlEl.href        = data.public_url;
+                    window._rbPublicUrl = data.public_url;
                     success.style.display = 'flex';
                 } else {
                     saving.style.display = 'none';
