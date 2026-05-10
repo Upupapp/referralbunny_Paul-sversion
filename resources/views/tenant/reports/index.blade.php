@@ -193,7 +193,7 @@ function reportsPage(tenantId) {
             const res      = await resellersRes.json();
             this.resellers = Array.isArray(res) ? res : (res.data || []);
             const ldata    = await leadsRes.json();
-            this.leads     = Array.isArray(ldata) ? ldata : [];
+            this.leads     = Array.isArray(ldata) ? ldata : (ldata.data || []);
             this.maxCount  = Math.max(...this.funnel.map(f => f.count), 1);
         },
 

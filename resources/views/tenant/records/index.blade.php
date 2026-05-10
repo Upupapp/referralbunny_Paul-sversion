@@ -272,7 +272,7 @@ function recordsModule(tenantId) {
         async init() {
             try {
                 const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
-                this.leads = Array.isArray(await res.clone().json()) ? await res.json() : [];
+                const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;

@@ -327,7 +327,7 @@ function resellerDeals(tenantId, resellerName) {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 const data = await res.json();
-                this.leads = Array.isArray(data) ? data : [];
+                this.leads = Array.isArray(data) ? data : (data.data || []);
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;

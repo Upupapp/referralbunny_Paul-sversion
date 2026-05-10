@@ -96,7 +96,7 @@ function resellersPage(tenantId) {
 
         async init() {
             const res = await fetch(`/api/resellers?tenant_id=${tenantId}`);
-            this.resellers = await res.json();
+            const d = await res.json(); this.resellers = Array.isArray(d) ? d : (d.data || []);
             this.filtered  = this.resellers;
             this.loading   = false;
         },

@@ -1023,7 +1023,7 @@ function tenantDashboard(tenantId, currentResellerName) {
                 fetch(`/api/billing/tenants/${tenantId}/subscription`),
             ]);
             const lData = await lRes.json();
-            this.leads = Array.isArray(lData) ? lData : [];
+            this.leads = Array.isArray(lData) ? lData : (lData.data || []);
             const rData = await rRes.json();
             this.resellers = Array.isArray(rData) ? rData : (rData.data || []);
             this.funnel = await fRes.json();

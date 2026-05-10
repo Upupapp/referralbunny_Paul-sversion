@@ -424,7 +424,7 @@ function billingUsage(tenantId) {
             this.metric        = md.metric ?? {};
 
             const ld = await leadsRes.json();
-            this.leads = Array.isArray(ld) ? ld : [];
+            this.leads = Array.isArray(ld) ? ld : (ld.data || []);
 
             const rd = await resRes.json();
             this.resellers = Array.isArray(rd) ? rd : (rd.data || []);

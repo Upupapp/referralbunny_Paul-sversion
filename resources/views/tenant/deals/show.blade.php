@@ -773,7 +773,7 @@
 
                                 {{-- @Mention dropdown --}}
                                 <div x-show="mentionOpen" style="display:none"
-                                     class="absolute left-0 bottom-full mb-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto">
+                                     class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto">
                                     <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                         <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                         Searching…
@@ -1139,7 +1139,7 @@
 
                     {{-- @Mention dropdown --}}
                     <div x-show="mentionOpen"
-                         class="absolute left-0 bottom-full mb-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto"
+                         class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto"
                          style="display:none">
                         <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                             <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>

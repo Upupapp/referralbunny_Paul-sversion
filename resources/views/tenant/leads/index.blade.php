@@ -142,7 +142,7 @@ function leadsPage(tenantId, showLocation) {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                this.leads = await res.json();
+                const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
             } catch(e) { this.leads = []; }
             this.filtered = this.leads;
             this.loading = false;
