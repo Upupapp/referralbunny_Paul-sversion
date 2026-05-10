@@ -68,8 +68,97 @@
         <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="text-xs text-blue-700">You can view this deal because you were added as a Partner. This is a view-only stage progress.</p>
+        <p class="text-xs text-blue-700">You are a Partner on this deal. Your individual split share is shown below.</p>
     </div>
+
+    {{-- Partner's own split share — only their share, nothing else --}}
+    @if($myPartnerSplit)
+    @php
+        $splitStatus = $lead->commission_status ?? 'pending';
+        $splitStatusStyle = match($splitStatus) {
+            'paid'   => 'background:#dcfce7;color:#15803d',
+            'locked' => 'background:#fef3c7;color:#d97706',
+            default  => 'background:#ede9fe;color:#7B61FF',
+        };
+        $splitStatusLabel = match($splitStatus) {
+            'paid'   => 'Paid',
+            'locked' => 'Locked',
+            default  => 'Pending',
+        };
+    @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div>
+                <h3 style="font-size:14px;font-weight:700;color:#1E1B4B">Your Split Share</h3>
+                <p style="font-size:12px;color:#9ca3af;margin-top:2px">Your allocated portion of this deal</p>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:9999px;{{ $splitStatusStyle }}">
+                {{ $splitStatusLabel }}
+            </span>
+        </div>
+
+        {{-- Main amount --}}
+        <div style="padding:20px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:16px;text-align:center;margin-bottom:14px;border:1.5px solid #c4b5fd">
+            <p style="font-size:12px;font-weight:600;color:#7B61FF;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">Your Share</p>
+            <p style="font-size:28px;font-weight:800;color:#1E1B4B;line-height:1">
+                &#8369;{{ number_format((int) round($myPartnerSplit->peso_amount)) }}
+            </p>
+            <p style="font-size:12px;color:#7B61FF;margin-top:6px">
+                @if($myPartnerSplit->split_share_type === 'percentage')
+                    {{ number_format((float)$myPartnerSplit->split_share_value, 0) }}% of commission pool
+                @else
+                    Fixed amount
+                @endif
+            </p>
+        </div>
+
+        {{-- Detail rows --}}
+        <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                <span style="color:#9ca3af">Your split type</span>
+                <span style="font-weight:600;color:#1E1B4B">
+                    {{ $myPartnerSplit->split_share_type === 'percentage' ? 'Percentage' : 'Fixed Amount' }}
+                </span>
+            </div>
+            @if($myPartnerSplit->split_share_type === 'percentage')
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                <span style="color:#9ca3af">Your percentage</span>
+                <span style="font-weight:600;color:#1E1B4B">{{ number_format((float)$myPartnerSplit->split_share_value, 0) }}%</span>
+            </div>
+            @endif
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+                <span style="color:#9ca3af">Status</span>
+                <span style="font-weight:600;color:#1E1B4B">{{ ucfirst($myPartnerSplit->status ?? 'provisional') }}</span>
+            </div>
+        </div>
+
+        {{-- Status notice --}}
+        @if($splitStatus === 'locked')
+        <div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px">
+            <svg style="width:13px;height:13px;color:#d97706;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            <p style="font-size:11px;color:#d97706;font-weight:600">Your share is locked. Payment will be processed by the deal admin.</p>
+        </div>
+        @elseif($splitStatus === 'paid')
+        <div style="display:flex;align-items:center;gap:6px;margin-top:12px;padding:8px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px">
+            <svg style="width:13px;height:13px;color:#16a34a;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+            </svg>
+            <p style="font-size:11px;color:#16a34a;font-weight:600">Your share has been paid.</p>
+        </div>
+        @endif
+    </div>
+    @else
+    {{-- Partner exists on the deal but no split assigned yet --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-center">
+        <svg style="width:28px;height:28px;color:#d1d5db;margin:0 auto 8px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p style="font-size:13px;font-weight:600;color:#1E1B4B;margin-bottom:4px">No split assigned yet</p>
+        <p style="font-size:12px;color:#9ca3af">The deal admin has not assigned your split share yet. Check back later.</p>
+    </div>
+    @endif
 
     {{-- Deal Progress — read-only stage workflow for Partner --}}
     @php

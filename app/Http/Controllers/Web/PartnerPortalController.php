@@ -90,7 +90,23 @@ class PartnerPortalController extends Controller
             ->where('deal_id', $dealId)
             ->first();
 
-        return view('partner.deals.show', compact('partner', 'lead', 'dealPartner', 'thread'));
+        // Load only this partner's own split — never expose other partners' or referrer's shares
+        $myPartnerSplit = \Illuminate\Support\Facades\DB::table('deal_partner_splits')
+            ->where('lead_id', $dealId)
+            ->where('tenant_id', $partner->tenant_id)
+            ->where('partner_email', $partner->email)
+            ->first();
+
+        // Compute this partner's peso amount from the deal's commission pool
+        $commissionPool = round((float) ($lead->added_amount ?? 0) * 0.70, 2);
+        if ($myPartnerSplit) {
+            $myPartnerSplit->peso_amount = $myPartnerSplit->split_share_type === 'percentage'
+                ? round($commissionPool * (float) $myPartnerSplit->split_share_value / 100, 2)
+                : (float) $myPartnerSplit->split_share_value;
+            $myPartnerSplit->commission_pool = $commissionPool;
+        }
+
+        return view('partner.deals.show', compact('partner', 'lead', 'dealPartner', 'thread', 'myPartnerSplit'));
     }
 
     public function messages()

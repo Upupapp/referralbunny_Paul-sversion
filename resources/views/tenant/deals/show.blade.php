@@ -654,19 +654,19 @@
                     </div>
                 </div>
 
-            {{-- Partners & Split Share --}}
+            {{-- Commission Split Share --}}
             <div class="card space-y-3"
                  x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}')"
                  x-init="load()"
                  @finance-updated.window="load()">
                 <div class="flex items-center justify-between">
-                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Partners &amp; Split Share</h3>
+                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Commission Split Share</h3>
                     <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Add Partner
                     </button>
                 </div>
-                <p class="text-[11px] text-gray-400">Split Share must be assigned to a Partner. You can add a Partner even if they have not accepted the invitation yet.</p>
+                <p class="text-[11px] text-gray-400">The referrer holds the full commission pool. Partner splits are deducted from the referrer's share.</p>
 
                 {{-- Loading --}}
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-2">
@@ -674,59 +674,81 @@
                     Loading…
                 </div>
 
-                {{-- Split rows --}}
-                <div x-show="!loading" class="space-y-2">
-                    <template x-if="splits.length === 0 && !showAdd">
-                        <p class="text-xs text-gray-400 py-1">No Partner Split Shares added yet.</p>
-                    </template>
-                    <template x-for="s in splits" :key="s.id">
-                        <div class="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
-                            <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0"
-                                 x-text="(s.partner_name||'?').slice(0,2).toUpperCase()"></div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="s.partner_name"></p>
-                                <p class="text-xs text-gray-400 truncate" x-text="s.partner_email"></p>
-                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                                      :class="{
-                                          'bg-green-100 text-green-700': s.status === 'active',
-                                          'bg-yellow-100 text-yellow-700': s.status === 'pending_invite',
-                                          'bg-gray-100 text-gray-500': s.status === 'provisional' || s.status === 'invite_failed',
-                                      }"
-                                      x-text="s.status_label"></span>
+                <div x-show="!loading" class="space-y-1.5">
+
+                    {{-- Referrer row (top — default holder of full commission pool) --}}
+                    <div x-show="commPool > 0 || referrerName"
+                         style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:14px;border:1.5px solid #c4b5fd">
+                        <div style="width:32px;height:32px;border-radius:9999px;background:#7B61FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0"
+                             x-text="(referrerName||'R').slice(0,2).toUpperCase()"></div>
+                        <div style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <p style="font-size:13px;font-weight:700;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                                   x-text="referrerName || 'Referrer'"></p>
+                                <span style="font-size:9px;font-weight:700;color:#7B61FF;background:#ede9fe;padding:1px 7px;border-radius:9999px;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0">Referrer</span>
                             </div>
-                            <div style="text-align:right;flex-shrink:0">
-                                <p style="font-size:13px;font-weight:700;color:#1E1B4B"
-                                   x-text="s.split_share_type === 'percentage'
-                                       ? parseFloat(s.split_share_value) + '%'
-                                       : '₱' + Number(s.split_share_value).toLocaleString('en-PH')"></p>
-                                <p x-show="dealValue > 0" style="font-size:11px;font-weight:600;color:#7B61FF;margin-top:1px"
-                                   x-text="'= ₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
-                                <button @click="removeSplit(s.id)" style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto"
-                                        @mouseenter="$event.target.style.color='#dc2626'"
-                                        @mouseleave="$event.target.style.color='#f87171'">Remove</button>
-                            </div>
+                            <p style="font-size:11px;color:#7B61FF;margin-top:1px">Full commission pool — net after partner deductions</p>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0">
+                            {{-- Gross (full pool) --}}
+                            <p style="font-size:12px;color:#9ca3af;text-decoration:line-through;line-height:1"
+                               x-show="splits.length > 0"
+                               x-text="'₱' + Math.round(commPool).toLocaleString('en-PH')"></p>
+                            {{-- Net (after partner deductions) --}}
+                            <p style="font-size:14px;font-weight:700;color:#7B61FF;line-height:1.3"
+                               x-text="'₱' + Math.round(remainingPool()).toLocaleString('en-PH')"></p>
+                            <p style="font-size:10px;color:#9ca3af;margin-top:2px"
+                               x-text="splits.length > 0 ? 'net share' : 'full pool'"></p>
+                        </div>
+                    </div>
+
+                    {{-- Partner split rows (each is a deduction from referrer's pool) --}}
+                    <template x-if="splits.length > 0">
+                        <div>
+                            {{-- Deduction label --}}
+                            <p style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;padding:8px 4px 4px">
+                                Partner Deductions
+                            </p>
+                            <template x-for="s in splits" :key="s.id">
+                                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#f9fafb;border-radius:12px;border:1px solid #f3f4f6;margin-bottom:6px">
+                                    {{-- Deduct icon --}}
+                                    <div style="width:28px;height:28px;border-radius:9999px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ef4444;flex-shrink:0">
+                                        −
+                                    </div>
+                                    <div style="flex:1;min-width:0">
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                                            <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                                               x-text="s.partner_name"></p>
+                                            <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:9999px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0"
+                                                  :style="s.status === 'active'
+                                                      ? 'background:#dcfce7;color:#16a34a'
+                                                      : 'background:#f3f4f6;color:#9ca3af'"
+                                                  x-text="s.status === 'active' ? 'Active' : s.status_label || 'Provisional'"></span>
+                                        </div>
+                                        <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="s.partner_email"></p>
+                                    </div>
+                                    <div style="text-align:right;flex-shrink:0">
+                                        <p style="font-size:13px;font-weight:700;color:#ef4444"
+                                           x-text="'−₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
+                                        <p style="font-size:10px;color:#9ca3af;margin-top:1px"
+                                           x-text="s.split_share_type === 'percentage'
+                                               ? parseFloat(s.split_share_value) + '% of pool'
+                                               : 'fixed'"></p>
+                                        <button @click="removeSplit(s.id)"
+                                                style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto">Remove</button>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </template>
 
-                    {{-- Total summary --}}
-                    <div x-show="splits.length > 0"
-                         style="border-top:1px solid #f3f4f6;margin-top:8px;padding-top:8px">
-                        {{-- Partner total row --}}
-                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
-                            <span style="color:#9ca3af">Partner total</span>
-                            <div style="text-align:right">
-                                <span :class="totalPctClass()" x-text="parseFloat(totalPct) + '%'"></span>
-                                <span x-show="dealValue > 0" style="color:#7B61FF;font-weight:600;margin-left:6px"
-                                      x-text="'₱' + Math.round(allocatedPool()).toLocaleString('en-PH')"></span>
-                            </div>
-                        </div>
-                        {{-- Remaining pool row --}}
-                        <div x-show="commPool > 0" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px">
-                            <span style="color:#9ca3af">Remaining commission pool</span>
-                            <span :style="remainingPool() < 0 ? 'color:#dc2626;font-weight:700' : 'color:#16a34a;font-weight:600'"
-                                  x-text="'₱' + Math.round(remainingPool()).toLocaleString('en-PH')"></span>
-                        </div>
-                    </div>
+                    {{-- No partners yet --}}
+                    <template x-if="splits.length === 0 && !showAdd && commPool > 0">
+                        <p style="font-size:12px;color:#9ca3af;padding:4px 2px">No partner splits — referrer keeps the full pool.</p>
+                    </template>
+                    <template x-if="splits.length === 0 && !showAdd && !commPool">
+                        <p style="font-size:12px;color:#9ca3af;padding:4px 2px">Set deal financials to see commission split.</p>
+                    </template>
                 </div>
 
                 {{-- Add form --}}
@@ -2268,6 +2290,7 @@ function partnerSplitSection(dealId, tenantId) {
         totalPct: 0,
         dealValue: 0,
         commPool: 0,
+        referrerName: '',
         totalPctClass() { return this.totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'; },
         hasPctSplits() { return this.splits.some(function(s) { return s.split_share_type === 'percentage'; }); },
 
@@ -2383,8 +2406,9 @@ function partnerSplitSection(dealId, tenantId) {
                     const lead = await leadRes.json();
                     const bc   = Number(lead.base_cost    || 0);
                     const aa   = Number(lead.added_amount || 0);
-                    this.dealValue = (bc + aa) || Number(lead.deal_value || 0);
-                    this.commPool  = Math.round(aa * 0.70);
+                    this.dealValue    = (bc + aa) || Number(lead.deal_value || 0);
+                    this.commPool     = Math.round(aa * 0.70);
+                    this.referrerName = lead.reseller_name || '';
                 }
             } catch(e) { this.splits = []; this.$dispatch('show-toast', { type: 'error', message: 'Failed to load partner splits.' }); }
             this.loading = false;
