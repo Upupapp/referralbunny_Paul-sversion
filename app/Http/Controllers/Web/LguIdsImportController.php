@@ -100,7 +100,7 @@ class LguIdsImportController extends Controller
                 importedById:    $this->authId(),
                 importedByRole:  $this->authRole(),
             );
-        } catch (\InvalidArgumentException $e) {
+        } catch (\Throwable $e) {
             return redirect()
                 ->route('tenant.imports.lgu-ids', $tenantId)
                 ->withErrors(['file' => $e->getMessage()])
