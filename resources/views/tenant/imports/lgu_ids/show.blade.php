@@ -261,9 +261,18 @@
                 <tbody>
                     @forelse($rows as $row)
                     @php
-                        $statusKey = $row->status ?? 'ready';
                         $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
-                        $errors    = is_array($row->errors) ? $row->errors : (json_decode($row->errors, true) ?? []);
+                        $errorMsg  = $row->error_message;
+                        $errors    = $errorMsg ? [$errorMsg] : [];
+                        $hasLead   = !empty($row->created_deal_id);
+                        $statusKey = match(true) {
+                            !empty($errorMsg)                                                            => 'failed',
+                            $hasLead && in_array($row->row_action, ['overwrite', 'merge'])               => 'updated',
+                            $hasLead                                                                     => 'created',
+                            $row->row_action === 'skip'                                                  => 'skipped',
+                            in_array($row->row_action, ['blocked'])                                      => 'blocked',
+                            default                                                                      => $row->validation_status ?? 'ready',
+                        };
                         $rowBorder = match($statusKey) {
                             'completed','created'     => 'border-l-2 border-l-emerald-400',
                             'updated'                 => 'border-l-2 border-l-blue-400',
@@ -272,31 +281,36 @@
                             default                   => '',
                         };
                         $badgeMap = [
-                            'created'   => ['badge-green',  'Created'],
-                            'updated'   => ['badge-blue',   'Updated'],
-                            'skipped'   => ['badge-gray',   'Skipped'],
-                            'failed'    => ['badge-red',    'Failed'],
-                            'blocked'   => ['badge-gray',   'Blocked'],
-                            'completed' => ['badge-green',  'Completed'],
+                            'created'            => ['badge-green',  'Created'],
+                            'updated'            => ['badge-blue',   'Updated'],
+                            'skipped'            => ['badge-gray',   'Skipped'],
+                            'failed'             => ['badge-red',    'Failed'],
+                            'blocked'            => ['badge-gray',   'Blocked'],
+                            'completed'          => ['badge-green',  'Completed'],
+                            'ready'              => ['badge-green',  'Ready'],
+                            'duplicate'          => ['badge-orange', 'Duplicate'],
+                            'unknown_referrer'   => ['badge-blue',   'Unknown Referrer'],
+                            'pricing_issue'      => ['bg-yellow-100 text-yellow-800', 'Pricing Issue'],
+                            'previewing'         => ['badge-gray',   'Previewing'],
                         ];
-                        $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst($statusKey)];
+                        $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst(str_replace('_', ' ', $statusKey))];
                     @endphp
                     <tr class="table-row {{ $rowBorder }}">
                         <td class="text-xs text-gray-400 tabular-nums">
                             {{ isset($rows) && method_exists($rows, 'firstItem') ? ($rows->firstItem() + $loop->index) : ($loop->index + 1) }}
                         </td>
                         <td class="font-medium text-[#1E1B4B]">
-                            {{ $row->raw_data['municipality'] ?? $row->raw_data['city'] ?? '—' }}
+                            {{ $row->normalized_data['municipality_or_city'] ?? '—' }}
                         </td>
                         <td class="text-gray-600">
-                            {{ $row->raw_data['province'] ?? '—' }}
+                            {{ $row->normalized_data['province'] ?? '—' }}
                         </td>
                         <td>
-                            <span class="text-sm text-gray-700">{{ $row->raw_data['referrer_email'] ?? '—' }}</span>
+                            <span class="text-sm text-gray-700">{{ $row->normalized_data['referrer_email'] ?? '—' }}</span>
                         </td>
                         <td class="tabular-nums font-medium text-[#1E1B4B]">
-                            @if(isset($computed['deal_amount']))
-                                ₱{{ number_format($computed['deal_amount'], 2) }}
+                            @if(isset($computed['normalized_deal_amount']))
+                                ₱{{ number_format($computed['normalized_deal_amount'], 2) }}
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
@@ -305,13 +319,13 @@
                             <span class="badge {{ $sb[0] }}">{{ $sb[1] }}</span>
                         </td>
                         <td class="text-xs text-gray-500">
-                            {{ $row->action_taken ? ucfirst(str_replace('_', ' ', $row->action_taken)) : '—' }}
+                            {{ $row->row_action ? ucfirst(str_replace('_', ' ', $row->row_action)) : '—' }}
                         </td>
                         <td>
-                            @if($row->deal_id)
-                                <a href="{{ route('tenant.deals.show', [$tenant->id, $row->deal_id]) }}"
+                            @if($row->created_deal_id)
+                                <a href="{{ route('tenant.deals.show', [$tenant->id, $row->created_deal_id]) }}"
                                    class="text-xs font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">
-                                    #{{ $row->deal_id }}
+                                    View Deal
                                 </a>
                             @else
                                 <span class="text-gray-300 text-xs">—</span>

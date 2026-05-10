@@ -175,7 +175,7 @@
                     @endphp
                     @forelse($allRows as $row)
                     @php
-                        $statusKey = $row->status ?? 'ready';
+                        $statusKey = $row->validation_status ?? 'ready';
                         $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
                         $issues    = is_array($row->issue_codes)   ? $row->issue_codes   : (json_decode($row->issue_codes, true)   ?? []);
                         $rowBorder = match($statusKey) {
@@ -205,24 +205,24 @@
 
                         <td>
                             <span class="font-medium text-[#1E1B4B] text-sm">
-                                {{ $row->raw_data['municipality'] ?? $row->raw_data['city'] ?? '—' }}
+                                {{ $row->normalized_data['municipality_or_city'] ?? '—' }}
                             </span>
                         </td>
 
                         <td class="text-sm text-gray-600">
-                            {{ $row->raw_data['province'] ?? '—' }}
+                            {{ $row->normalized_data['province'] ?? '—' }}
                         </td>
 
                         <td>
                             <span class="text-sm {{ $statusKey === 'unknown_referrer' ? 'text-blue-600 font-medium' : 'text-gray-700' }}">
-                                {{ $row->raw_data['referrer_email'] ?? '—' }}
+                                {{ $row->normalized_data['referrer_email'] ?? '—' }}
                             </span>
                         </td>
 
                         {{-- Deal Amount --}}
                         <td class="tabular-nums text-sm font-medium text-[#1E1B4B]">
-                            @if(isset($computed['deal_amount']))
-                                ₱{{ number_format($computed['deal_amount'], 2) }}
+                            @if(isset($computed['normalized_deal_amount']))
+                                ₱{{ number_format($computed['normalized_deal_amount'], 2) }}
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
@@ -230,8 +230,8 @@
 
                         {{-- Base Cost --}}
                         <td class="tabular-nums text-sm text-gray-600">
-                            @if(isset($computed['base_cost']))
-                                ₱{{ number_format($computed['base_cost'], 2) }}
+                            @if(isset($computed['normalized_base_cost']))
+                                ₱{{ number_format($computed['normalized_base_cost'], 2) }}
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
@@ -239,8 +239,8 @@
 
                         {{-- Added Amount --}}
                         <td class="tabular-nums text-sm text-gray-600">
-                            @if(isset($computed['added_amount']))
-                                ₱{{ number_format($computed['added_amount'], 2) }}
+                            @if(isset($computed['normalized_added_amount']))
+                                ₱{{ number_format($computed['normalized_added_amount'], 2) }}
                             @else
                                 <span class="text-gray-400">—</span>
                             @endif
@@ -248,8 +248,8 @@
 
                         {{-- Display % --}}
                         <td class="tabular-nums text-sm">
-                            @if(isset($computed['display_percentage']))
-                                <span class="font-medium text-[#1E1B4B]">{{ $computed['display_percentage'] }}%</span>
+                            @if(isset($computed['display_pct']))
+                                <span class="font-medium text-[#1E1B4B]">{{ $computed['display_pct'] }}%</span>
                                 @if(isset($computed['pricing_tier_matched']) && $computed['pricing_tier_matched'])
                                     <span class="ml-1 text-emerald-600" title="Standard Tier">
                                         <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -265,7 +265,7 @@
                         </td>
 
                         <td>
-                            <span class="text-xs text-gray-600">{{ $row->raw_data['stage'] ?? '—' }}</span>
+                            <span class="text-xs text-gray-600">{{ $row->normalized_data['stage'] ?? '—' }}</span>
                         </td>
 
                         {{-- Row Status --}}
