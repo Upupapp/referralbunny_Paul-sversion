@@ -8,7 +8,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Task</span>
     </a>
-    <button onclick="window.dispatchEvent(new CustomEvent('open-move-stage-deal'))" class="btn-secondary text-sm">
+    <button onclick="rbOpenMoveStage()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
     </button>
@@ -101,7 +101,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     {{-- Move Stage button — always rendered; disabled only when paid or no lead --}}
-                    <button @click="window.dispatchEvent(new CustomEvent('open-move-stage-deal'))"
+                    <button onclick="rbOpenMoveStage()"
                             :disabled="lead?.stage === 'paid' || !lead"
                             style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:12px;font-weight:600;color:white;cursor:pointer;border:none;transition:opacity .15s,transform .1s;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3)"
                             :style="lead?.stage === 'paid' || !lead ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
@@ -125,7 +125,7 @@
                                  :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
                                  :aria-current="s.key === lead?.stage ? 'step' : null"
                                  :title="!isStageDone(s.key) && s.key !== lead?.stage ? 'Click to advance to ' + s.label : null"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) window.dispatchEvent(new CustomEvent('open-move-stage-deal'))">
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) rbOpenMoveStage()">
 
                                 {{-- Status label (top) --}}
                                 <div style="height:14px;display:flex;align-items:center;justify-content:center">
@@ -186,7 +186,7 @@
                         <div style="width:34px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
                             <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
                                  :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) window.dispatchEvent(new CustomEvent('open-move-stage-deal'))">
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) rbOpenMoveStage()">
                                 <template x-if="isStageDone(s.key)">
                                     <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -1446,13 +1446,13 @@
     </div>
     </template>
 
-    {{-- Move Stage Modal — no x-teleport; stays in dealDetail scope for reliable x-show binding --}}
-    <div x-show="showMoveStage" style="display:none;background:rgba(0,0,0,0.5)"
-         class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
-         @keydown.escape.window="showMoveStage = false; moveStageNote = ''"
-         @click.self="showMoveStage = false; moveStageNote = ''"
+    {{-- Move Stage Modal — plain JS open/close via rbOpenMoveStage()/rbCloseMoveStage() --}}
+    <div id="rb-move-stage-modal"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
+         onclick="if(event.target===this) rbCloseMoveStage()"
          role="dialog" aria-modal="true" aria-label="Move Stage">
-        <div class="bg-white rounded-2xl w-full max-w-sm" style="box-shadow:0 25px 60px rgba(0,0,0,0.18)" @click.stop>
+        <div style="background:white;border-radius:20px;width:100%;max-width:400px;box-shadow:0 25px 60px rgba(0,0,0,0.18);max-height:90vh;overflow-y:auto"
+             onclick="event.stopPropagation()">
 
             {{-- Modal header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between">
@@ -1467,9 +1467,8 @@
                         <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="lead?.name"></p>
                     </div>
                 </div>
-                <button @click="showMoveStage = false; moveStageNote = ''"
-                        style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;transition:all .15s"
-                        class="hover:bg-gray-100 hover:text-gray-600">
+                <button onclick="rbCloseMoveStage()"
+                        style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:none;transition:all .15s">
                     <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -1606,6 +1605,19 @@
 </div>
 
 <script>
+// ── Move Stage modal: plain JS open/close — no Alpine reactivity dependency ──
+function rbOpenMoveStage() {
+    var m = document.getElementById('rb-move-stage-modal');
+    if (m) { m.style.display = 'flex'; }
+}
+function rbCloseMoveStage() {
+    var m = document.getElementById('rb-move-stage-modal');
+    if (m) { m.style.display = 'none'; }
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') rbCloseMoveStage();
+});
+
 // ── Self-contained Activity History component ─────────────────────────────
 // Decoupled from dealDetail scope to avoid Alpine scope-chain lookup failures.
 function dealActivityHistory(initialHistory) {
@@ -2162,7 +2174,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                 const data = await res.json();
                 if (res.ok && data.id) {
                     this.lead = { ...this.lead, ...data, history: data.history, commission_splits: data.commission_splits };
-                    this.showMoveStage = false;
+                    rbCloseMoveStage();
                     this.moveStageNote = '';
                     const stageName = stage.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                     this.$dispatch('show-toast', { type: 'success', message: `Deal moved to ${stageName}.` });
