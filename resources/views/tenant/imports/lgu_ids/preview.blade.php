@@ -103,36 +103,6 @@
         </p>
     </div>
 
-    {{-- ── Filter Tabs ─────────────────────────────────────── --}}
-    <div class="card py-3">
-        <div class="filter-bar">
-            @php
-                $tabs = [
-                    ['key' => 'all',              'label' => 'All',                'count' => $cnt['all']],
-                    ['key' => 'ready',            'label' => 'Ready',              'count' => $cnt['ready']],
-                    ['key' => 'duplicate',        'label' => 'Duplicate',          'count' => $cnt['duplicate']],
-                    ['key' => 'unknown_referrer', 'label' => 'Unknown Referrer',   'count' => $cnt['unknown_referrer']],
-                    ['key' => 'pricing_issue',    'label' => 'Pricing Issue',      'count' => $cnt['pricing_issue']],
-                    ['key' => 'unknown_lgu',      'label' => 'Unknown LGU',        'count' => $cnt['unknown_lgu']],
-                    ['key' => 'failed',           'label' => 'Failed',             'count' => $cnt['failed']],
-                    ['key' => 'blocked',          'label' => 'Blocked',            'count' => $cnt['blocked']],
-                ];
-            @endphp
-            @foreach($tabs as $tab)
-            @if($tab['count'] > 0 || $tab['key'] === 'all')
-            <button @click="activeTab = '{{ $tab['key'] }}'"
-                    :class="activeTab === '{{ $tab['key'] }}' ? 'active' : ''"
-                    class="filter-pill">
-                {{ $tab['label'] }}
-                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold"
-                      :class="activeTab === '{{ $tab['key'] }}' ? 'bg-[#7B61FF] text-white' : 'bg-gray-100 text-gray-600'">
-                    {{ $tab['count'] }}
-                </span>
-            </button>
-            @endif
-            @endforeach
-        </div>
-    </div>
 
     {{-- ── Bulk Actions (Duplicates) ─────────────────────────── --}}
     <div x-show="activeTab === 'duplicate' && {{ $cnt['duplicate'] }} > 0"
@@ -461,7 +431,6 @@
                             We're processing your import in the background.<br>
                             You'll receive a notification when it's done.
                         </p>
-                        <p style="font-size:11px;color:#c4b5fd;font-weight:600;letter-spacing:.04em">DO NOT CLOSE OR REFRESH THIS PAGE</p>
                     </div>
                 </div>
             </div>
