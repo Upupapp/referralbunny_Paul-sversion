@@ -22,7 +22,12 @@ class DealNoteAttachmentController extends Controller
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/excel',
+        'application/x-excel',
+        'application/x-msexcel',
         'text/csv', 'text/plain',
+        // Browsers/OS often report legacy Office files as generic binary
+        'application/octet-stream',
     ];
 
     private const ALLOWED_EXT = [
@@ -118,10 +123,14 @@ class DealNoteAttachmentController extends Controller
             if (!$file->isValid()) continue;
             if ($file->getSize() > self::MAX_SIZE_BYTES) continue;
 
-            $mime = $file->getMimeType() ?? '';
             $ext  = strtolower($file->getClientOriginalExtension());
+            $mime = $file->getMimeType() ?? 'application/octet-stream';
 
-            if (!in_array($mime, self::ALLOWED_MIME) || !in_array($ext, self::ALLOWED_EXT)) continue;
+            // Extension is the primary security gate — extension must be explicitly allowed.
+            // MIME check is secondary and permissive because getMimeType() can return
+            // 'application/octet-stream' for valid Excel/Word files depending on the OS.
+            if (!in_array($ext, self::ALLOWED_EXT)) continue;
+            if (!in_array($mime, self::ALLOWED_MIME)) continue;
 
             $stored_name = Str::uuid() . '.' . $ext;
             $path        = "tenants/{$tenantId}/deals/{$dealId}/notes/{$commentId}/{$stored_name}";
