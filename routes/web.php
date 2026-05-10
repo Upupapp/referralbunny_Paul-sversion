@@ -200,7 +200,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/request-forms',                [\App\Http\Controllers\Web\RequestFormController::class, 'index'])->name('request-forms');
     Route::get('/request-forms/create',         [\App\Http\Controllers\Web\RequestFormController::class, 'create'])->name('request-forms.create');
     Route::post('/request-forms',               [\App\Http\Controllers\Web\RequestFormController::class, 'store'])->name('request-forms.store');
-    Route::get('/request-forms/{formId}/edit',  [\App\Http\Controllers\Web\RequestFormController::class, 'edit'])->name('request-forms.edit');
+    Route::get('/request-forms/{formId}/edit',   [\App\Http\Controllers\Web\RequestFormController::class, 'edit'])->name('request-forms.edit');
+    Route::patch('/request-forms/{formId}',      [\App\Http\Controllers\Web\RequestFormController::class, 'update'])->name('request-forms.update');
     Route::post('/request-forms/{formId}/publish',   [\App\Http\Controllers\Web\RequestFormController::class, 'publish'])->name('request-forms.publish');
     Route::post('/request-forms/{formId}/unpublish', [\App\Http\Controllers\Web\RequestFormController::class, 'unpublish'])->name('request-forms.unpublish');
     Route::get('/request-forms/{formId}/submissions', [\App\Http\Controllers\Web\RequestFormController::class, 'submissions'])->name('request-forms.submissions');
@@ -322,7 +323,11 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::get('/contacts',    [TenantAdminController::class, 'contacts'])->name('tenant.sub.contacts');
         Route::get('/organizations',[TenantAdminController::class, 'organizations'])->name('tenant.sub.organizations');
         Route::get('/referrers',   [TenantAdminController::class, 'referrers'])->name('tenant.sub.referrers');
-        Route::get('/tasks',       [TenantAdminController::class, 'tasks'])->name('tenant.sub.tasks');
+        Route::get('/tasks',                     [\App\Http\Controllers\Web\TaskController::class, 'index'])->name('tenant.sub.tasks');
+        Route::get('/tasks/{taskId}',            [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tenant.sub.tasks.show');
+        Route::post('/tasks/{taskId}/complete',  [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tenant.sub.tasks.complete');
+        Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tenant.sub.tasks.complete-response');
+        Route::get('/request-forms',             [\App\Http\Controllers\Web\RequestFormController::class, 'index'])->name('tenant.sub.request-forms');
         Route::get('/messages',    [TenantAdminController::class, 'messages'])->name('tenant.sub.messages');
         Route::get('/reports',     [TenantAdminController::class, 'reports'])->name('tenant.sub.reports');
         Route::get('/imports',     [TenantAdminController::class, 'imports'])->name('tenant.sub.imports');

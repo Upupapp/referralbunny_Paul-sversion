@@ -190,7 +190,7 @@ class TaskCompletionService
                 $stored_name = Str::uuid() . '_' . $sanitized;
                 $path  = "tenants/{$tenantId}/tasks/{$taskId}/responses/{$stored_name}";
 
-                Storage::disk('local')->put($path, $file->getContent());
+                Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
 
                 $stored[] = [
                     'disk'     => 'local',

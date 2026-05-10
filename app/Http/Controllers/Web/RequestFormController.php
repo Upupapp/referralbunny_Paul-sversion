@@ -86,6 +86,18 @@ class RequestFormController extends Controller
             ]);
 
             foreach (($data['fields'] ?? []) as $idx => $field) {
+                // Options come as newline-separated text from the form builder textarea
+                $options = null;
+                if (!empty($field['options'])) {
+                    if (is_string($field['options'])) {
+                        $options = array_values(array_filter(
+                            array_map('trim', explode("\n", $field['options']))
+                        ));
+                    } elseif (is_array($field['options'])) {
+                        $options = $field['options'];
+                    }
+                }
+
                 RequestFormField::create([
                     'tenant_id'       => $tenantId,
                     'request_form_id' => $form->id,
@@ -94,22 +106,32 @@ class RequestFormController extends Controller
                     'field_type'      => $field['field_type'],
                     'placeholder'     => $field['placeholder'] ?? null,
                     'helper_text'     => $field['helper_text'] ?? null,
-                    'options'         => $field['options'] ?? null,
-                    'is_required'     => $field['is_required'] ?? false,
+                    'options'         => $options,
+                    'is_required'     => (bool) ($field['is_required'] ?? false),
                     'sort_order'      => $idx,
                 ]);
             }
 
-            foreach (($data['recipients'] ?? []) as $idx => $rec) {
+            // Recipients are posted as recipient_data[{uuid}][field] from form checkboxes
+            foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
+                if (empty($rec['email'])) continue;
+                // Verify this recipient belongs to this tenant
+                $isTenantMember = DB::table('tenant_memberships')
+                    ->where('tenant_id', $tenantId)
+                    ->where('tenant_user_id', $recipientId)
+                    ->where('status', 'active')
+                    ->exists();
+                if (!$isTenantMember && !empty($rec['recipient_id'])) continue;
+
                 RequestFormRecipientOption::create([
                     'tenant_id'       => $tenantId,
                     'request_form_id' => $form->id,
                     'recipient_type'  => 'tenant_user',
-                    'recipient_id'    => $rec['recipient_id'] ?? null,
-                    'display_name'    => $rec['display_name'],
+                    'recipient_id'    => $rec['recipient_id'] ?? $recipientId,
+                    'display_name'    => $rec['display_name'] ?? $rec['email'],
                     'email'           => $rec['email'],
                     'role_snapshot'   => $rec['role_snapshot'] ?? null,
-                    'sort_order'      => $idx,
+                    'sort_order'      => 0,
                 ]);
             }
 
@@ -132,6 +154,46 @@ class RequestFormController extends Controller
         $form->load(['fields', 'recipientOptions']);
 
         return view('tenant.request-forms.edit', compact('tenant', 'form', 'teamMembers'));
+    }
+
+    // ── Update ───────────────────────────────────────────────────────────────
+
+    public function update(Request $request, string $tenantId, string $formId): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $form = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+
+        $data = $request->validate([
+            'title'           => 'required|string|max:120',
+            'description'     => 'nullable|string|max:500',
+            'success_message' => 'nullable|string|max:300',
+        ]);
+
+        DB::transaction(function () use ($data, $form, $tenantId, $request) {
+            $form->update([
+                'title'           => $data['title'],
+                'description'     => $data['description'] ?? null,
+                'success_message' => $data['success_message'] ?? null,
+            ]);
+
+            // Sync recipient options
+            $form->recipientOptions()->delete();
+            foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
+                if (empty($rec['email'])) continue;
+                RequestFormRecipientOption::create([
+                    'tenant_id'       => $tenantId,
+                    'request_form_id' => $form->id,
+                    'recipient_type'  => 'tenant_user',
+                    'recipient_id'    => $rec['recipient_id'] ?? $recipientId,
+                    'display_name'    => $rec['display_name'] ?? $rec['email'],
+                    'email'           => $rec['email'],
+                    'role_snapshot'   => $rec['role_snapshot'] ?? null,
+                    'sort_order'      => 0,
+                ]);
+            }
+        });
+
+        return redirect()->route('tenant.request-forms', $tenantId)->with('success', 'Form updated.');
     }
 
     // ── Publish / Unpublish ───────────────────────────────────────────────────
@@ -208,9 +270,9 @@ class RequestFormController extends Controller
             ->where('tm.tenant_id', $tenantId)
             ->where('tm.status', 'active')
             ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->select('tu.id', 'tu.name', 'tu.email', 'tm.role')
+            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, tm.role")
             ->orderBy('tm.role')
-            ->orderBy('tu.name')
+            ->orderBy('tu.first_name')
             ->get();
     }
 }

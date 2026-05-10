@@ -138,14 +138,13 @@
                         <p style="font-size:13px;font-weight:600;color:#1E1B4B">{{ $member->name }}</p>
                         <p style="font-size:11px;color:#9ca3af">{{ $member->email }} &middot; {{ ucfirst($member->role) }}</p>
                     </div>
-                    {{-- Hidden fields for selected recipients --}}
+                    {{-- Hidden fields posted when this recipient is checked --}}
                     <template x-if="selectedRecipients.includes('{{ $member->id }}')">
                         <span>
-                            <input type="hidden" name="recipients[]" value="{{ $member->id }}">
-                            <input type="hidden" :name="'recipient_data[{{ $member->id }}][recipient_id]'" value="{{ $member->id }}">
-                            <input type="hidden" :name="'recipient_data[{{ $member->id }}][display_name]'" value="{{ $member->name }}">
-                            <input type="hidden" :name="'recipient_data[{{ $member->id }}][email]'" value="{{ $member->email }}">
-                            <input type="hidden" :name="'recipient_data[{{ $member->id }}][role_snapshot]'" value="{{ $member->role }}">
+                            <input type="hidden" name="recipient_data[{{ $member->id }}][recipient_id]"    value="{{ $member->id }}">
+                            <input type="hidden" name="recipient_data[{{ $member->id }}][display_name]"   value="{{ $member->name }}">
+                            <input type="hidden" name="recipient_data[{{ $member->id }}][email]"          value="{{ $member->email }}">
+                            <input type="hidden" name="recipient_data[{{ $member->id }}][role_snapshot]"  value="{{ $member->role }}">
                         </span>
                     </template>
                 </label>

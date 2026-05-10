@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Aggregates critical actions from existing tables.
@@ -129,6 +130,8 @@ class CriticalActionService
             fn() => $this->unrepliedMessages($tenantId),
             fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
             fn() => $this->pendingExportRequests($tenantId),
+            fn() => $this->overdueOpenTasks($tenantId),
+            fn() => $this->openRequestFormTasks($tenantId),
         ];
 
         if ($canBilling) {
@@ -765,6 +768,73 @@ class CriticalActionService
         } catch (\Throwable) {
             return [];
         }
+    }
+
+    // ── Task sources ───────────────────────────────────────────────
+
+    private function overdueOpenTasks(string $tenantId): array
+    {
+        if (!Schema::hasTable('tasks')) return [];
+
+        $tasks = DB::table('tasks')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->whereNotIn('status', ['completed', 'cancelled', 'archived'])
+            ->where('due_at', '<', now())
+            ->select('id', 'title', 'priority', 'assigned_to_id', 'due_at', 'created_at')
+            ->orderBy('due_at')
+            ->limit(5)
+            ->get();
+
+        return $tasks->map(fn($t) => $this->make([
+            'type'          => 'overdue_task',
+            'category'      => 'task',
+            'severity'      => $t->priority === 'urgent' ? 'critical' : ($t->priority === 'high' ? 'high' : 'medium'),
+            'summary'       => "Overdue task: {$t->title}",
+            'actor_name'    => 'System',
+            'actor_role'    => 'System',
+            'related_label' => $t->title,
+            'related_type'  => 'task',
+            'related_id'    => $t->id,
+            'occurred_at'   => $t->due_at ?? $t->created_at,
+            'action_url'    => "/tenant/{$tenantId}/tasks/{$t->id}",
+            'action_label'  => 'View Task',
+            'action_needed' => true,
+            'source'        => 'tasks',
+        ]))->toArray();
+    }
+
+    private function openRequestFormTasks(string $tenantId): array
+    {
+        if (!Schema::hasTable('tasks')) return [];
+
+        $tasks = DB::table('tasks')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('status', 'open')
+            ->where('category', 'request_form')
+            ->where('created_at', '>', now()->subDays(3))
+            ->select('id', 'title', 'requestor_name', 'created_at')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        return $tasks->map(fn($t) => $this->make([
+            'type'          => 'new_request_form_task',
+            'category'      => 'task',
+            'severity'      => 'medium',
+            'summary'       => "New request from {$t->requestor_name}: {$t->title}",
+            'actor_name'    => $t->requestor_name ?? 'Public',
+            'actor_role'    => 'Public',
+            'related_label' => $t->title,
+            'related_type'  => 'task',
+            'related_id'    => $t->id,
+            'occurred_at'   => $t->created_at,
+            'action_url'    => "/tenant/{$tenantId}/tasks/{$t->id}",
+            'action_label'  => 'View Task',
+            'action_needed' => true,
+            'source'        => 'request_form_tasks',
+        ]))->toArray();
     }
 
     // ── DTO factory ────────────────────────────────────────────────

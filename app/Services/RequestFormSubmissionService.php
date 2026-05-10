@@ -8,6 +8,7 @@ use App\Models\RequestFormSubmission;
 use App\Models\RequestFormSubmissionRecipient;
 use App\Models\Task;
 use App\Models\TaskActivity;
+use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -144,8 +145,30 @@ class RequestFormSubmissionService
             return $submission;
         });
 
-        // After transaction: send email notifications (fail silently)
+        // After transaction: send in-app notifications + email (fail silently)
+        $notifService = app(NotificationDispatchService::class);
+        $minute = now()->format('YmdHi');
+
         foreach ($allowedRecipients as $recipient) {
+            // In-app notification to the assigned recipient (if they're an internal user)
+            if ($recipient->recipient_id) {
+                try {
+                    $notifService->dispatch(
+                        category:         'request_form',
+                        priority:         'normal',
+                        title:            'New request assigned to you',
+                        body:             "\"{$submitterName}\" submitted a " . ($requestFor ?: 'General') . " request via \"{$form->title}\".",
+                        notifiableType:   'tenant_user',
+                        notifiableId:     $recipient->recipient_id,
+                        tenantId:         $tenantId,
+                        actionUrl:        "/tenant/{$tenantId}/tasks",
+                        actionLabel:      'View Task',
+                        deduplicationKey: "req-form:{$submission->id}:{$recipient->id}:{$minute}",
+                    );
+                } catch (\Throwable) {}
+            }
+
+            // Email notification
             try {
                 Mail::to($recipient->email)
                     ->queue(new TaskAssignedMail(
@@ -156,9 +179,7 @@ class RequestFormSubmissionService
                         notes:         $notes,
                         tenantId:      $form->tenant_id,
                     ));
-            } catch (\Throwable) {
-                // Notification failure must not break submission
-            }
+            } catch (\Throwable) {}
         }
 
         return $submission;

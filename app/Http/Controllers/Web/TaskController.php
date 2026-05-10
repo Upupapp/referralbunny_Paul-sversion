@@ -21,21 +21,30 @@ class TaskController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
         [$actorType, $actorId] = $this->resolveActor();
 
-        $tab    = $request->query('tab', 'mine');
-        $status = $request->query('status');
-        $query  = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
+        $tab      = $request->query('tab', 'mine');
+        $status   = $request->query('status');
+        $isAdmin  = Auth::guard('web')->check()
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        $query    = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
 
         if ($tab === 'mine') {
             $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'assigned_by_me') {
             $query->where('assigned_by_type', $actorType)->where('assigned_by_id', $actorId);
         } elseif ($tab === 'completed') {
-            $query->where('status', 'completed');
+            $q = $query->where('status', 'completed');
+            // Non-admins only see their own completed tasks
+            if (!$isAdmin) $q->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'overdue') {
             $query->whereNotIn('status', ['completed','cancelled','archived'])
                   ->where('due_at', '<', now());
+            if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
+        } elseif ($tab === 'all') {
+            // Only admins/managers can see all tasks
+            if (!$isAdmin) {
+                $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
+            }
         }
-        // 'all' tab shows everything for admin
 
         if ($status) $query->where('status', $status);
 
@@ -165,11 +174,15 @@ class TaskController extends Controller
     {
         if (Auth::guard('tenant')->check()) {
             $u = Auth::guard('tenant')->user();
-            return ['tenant_user', (string) $u->id, $u->name ?? $u->email ?? 'Admin'];
+            // TenantUser uses first_name + last_name (not a 'name' field)
+            $name = method_exists($u, 'getFullNameAttribute')
+                ? $u->full_name
+                : ($u->first_name ?? $u->email ?? 'Admin');
+            return ['tenant_user', (string) $u->id, $name];
         }
         if (Auth::guard('web')->check()) {
             $u = Auth::guard('web')->user();
-            return ['admin_user', (string) $u->id, $u->name ?? 'Super Admin'];
+            return ['admin_user', (string) $u->id, $u->name ?? $u->email ?? 'Super Admin'];
         }
         return ['system', 'system', 'System'];
     }
@@ -177,6 +190,13 @@ class TaskController extends Controller
     private function authorizeView(Task $task, string $tenantId): void
     {
         if ($task->tenant_id !== $tenantId) abort(403);
+        // Admins and assignees can view; all others see 403
+        [$actorType, $actorId] = $this->resolveActor();
+        $isAdmin = Auth::guard('web')->check()
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        $isAssignee = $task->assigned_to_type === $actorType
+            && $task->assigned_to_id === $actorId;
+        if (!$isAdmin && !$isAssignee) abort(403);
     }
 
     private function authorizeComplete(Task $task, string $tenantId): void
@@ -200,9 +220,27 @@ class TaskController extends Controller
 
     private function tenantCompletionEmailEnabled(string $tenantId): bool
     {
-        $config = DB::table('tenant_configs')->where('tenant_id', $tenantId)->first();
-        if (!$config) return false;
-        $settings = json_decode($config->settings ?? '{}', true);
-        return (bool) ($settings['task_completion_response_email_enabled'] ?? false);
+        // Check tenant_configs for a task_completion_email_enabled flag.
+        // Default: false (opt-in per tenant). Enable by inserting a key into the config row.
+        try {
+            $config = DB::table('tenant_configs')->where('tenant_id', $tenantId)->first();
+            if (!$config) return false;
+            // Support both a dedicated column or a JSON settings field
+            if (isset($config->task_completion_email_enabled)) {
+                return (bool) $config->task_completion_email_enabled;
+            }
+            // Fall back to checking any JSON settings field
+            foreach (['settings', 'commission', 'fields'] as $jsonField) {
+                if (isset($config->{$jsonField})) {
+                    $decoded = is_string($config->{$jsonField})
+                        ? json_decode($config->{$jsonField}, true)
+                        : (array) $config->{$jsonField};
+                    if (isset($decoded['task_completion_email_enabled'])) {
+                        return (bool) $decoded['task_completion_email_enabled'];
+                    }
+                }
+            }
+        } catch (\Throwable) {}
+        return false;
     }
 }
