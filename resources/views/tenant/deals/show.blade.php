@@ -166,7 +166,7 @@
                             {{-- Formula --}}
                             <div class="space-y-1.5 bg-[#F0EFFA] rounded-xl p-3 mb-3">
                                 <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-500">â‚± Base Cost  +  Added Amount</span>
+                                    <span class="text-gray-500">₱ Base Cost  +  Added Amount</span>
                                     <span class="font-semibold text-[#1E1B4B]">= Contract Value</span>
                                 </div>
                                 <div class="flex items-center justify-between text-xs">
@@ -233,16 +233,16 @@
                 {{-- Formula rows --}}
                 <div>
                     <div class=â€fin-row py-2.5 border-b border-gray-100â€>
-                        <p class=â€text-sm text-gray-500â€>â‚± Base Cost</p>
-                        <p id=â€fin-bcâ€ class=â€text-sm font-semibold text-gray-700 tabular-numsâ€>â‚±{{ number_format((int)$bc) }}</p>
+                        <p class=â€text-sm text-gray-500â€>₱ Base Cost</p>
+                        <p id=â€fin-bcâ€ class=â€text-sm font-semibold text-gray-700 tabular-numsâ€>₱{{ number_format((int)$bc) }}</p>
                     </div>
                     <div class=â€fin-row py-2.5 border-b border-dashed border-gray-200â€>
                         <p class=â€text-sm text-gray-500â€>+ Added Amount <span class=â€text-xs text-gray-400â€>(margin)</span></p>
-                        <p id=â€fin-aaâ€ class=â€text-sm font-semibold text-blue-600 tabular-numsâ€>â‚±{{ number_format((int)$aa) }}</p>
+                        <p id=â€fin-aaâ€ class=â€text-sm font-semibold text-blue-600 tabular-numsâ€>₱{{ number_format((int)$aa) }}</p>
                     </div>
                     <div class=â€fin-row py-2.5 rounded-xl px-3 mt-1â€ style=â€background:#F0EFFAâ€>
                         <p class=â€text-sm font-semiboldâ€ style=â€color:#1E1B4Bâ€>= Contract Value</p>
-                        <p id=â€fin-cvâ€ class=â€text-sm font-bold tabular-numsâ€ style=â€color:#1E1B4Bâ€>â‚±{{ number_format((int)$cv) }}</p>
+                        <p id=â€fin-cvâ€ class=â€text-sm font-bold tabular-numsâ€ style=â€color:#1E1B4Bâ€>₱{{ number_format((int)$cv) }}</p>
                     </div>
                 </div>
 
@@ -250,17 +250,17 @@
                 <div class=â€fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100â€>
                     <div class=â€text-centerâ€>
                         <p class=â€text-xs text-gray-400 uppercase tracking-wideâ€>Contract Value</p>
-                        <p id=â€fin-cv2â€ class=â€text-sm font-bold tabular-nums mt-0.5â€ style=â€color:#1E1B4Bâ€>â‚±{{ number_format((int)$cv) }}</p>
+                        <p id=â€fin-cv2â€ class=â€text-sm font-bold tabular-nums mt-0.5â€ style=â€color:#1E1B4Bâ€>₱{{ number_format((int)$cv) }}</p>
                         <p class=â€text-xs text-gray-400â€>base + margin</p>
                     </div>
                     <div class=â€text-centerâ€ style=â€border-left:1px solid #e5e7eb;border-right:1px solid #e5e7ebâ€>
                         <p class=â€text-xs text-blue-500 uppercase tracking-wideâ€>Company Share</p>
-                        <p id=â€fin-coâ€ class=â€text-sm font-bold text-blue-700 tabular-nums mt-0.5â€>â‚±{{ number_format((int)$co) }}</p>
+                        <p id=â€fin-coâ€ class=â€text-sm font-bold text-blue-700 tabular-nums mt-0.5â€>₱{{ number_format((int)$co) }}</p>
                         <p class=â€text-xs text-blue-400â€>30% margin</p>
                     </div>
                     <div class=â€text-centerâ€>
                         <p class=â€text-xs text-emerald-500 uppercase tracking-wideâ€>Commission Pool</p>
-                        <p id=â€fin-cpâ€ class=â€text-sm font-bold text-emerald-700 tabular-nums mt-0.5â€>â‚±{{ number_format((int)$cp) }}</p>
+                        <p id=â€fin-cpâ€ class=â€text-sm font-bold text-emerald-700 tabular-nums mt-0.5â€>₱{{ number_format((int)$cp) }}</p>
                         <p class=â€text-xs text-emerald-400â€>70% margin</p>
                     </div>
                 </div>
@@ -311,12 +311,12 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="form-label">Base Cost (â‚±) <span class="text-gray-400 font-normal">â€” actual delivery cost</span></label>
+                        <label class="form-label">Base Cost (₱) <span class="text-gray-400 font-normal">â€” actual delivery cost</span></label>
                         <input type="number" x-model.number="financeForm.base_cost" @input="recalc()"
                                class="form-input" placeholder="0" min="0" step="100">
                     </div>
                     <div>
-                        <label class="form-label">Added Amount (â‚±) <span class="text-gray-400 font-normal">â€” your margin</span></label>
+                        <label class="form-label">Added Amount (₱) <span class="text-gray-400 font-normal">â€” your margin</span></label>
                         <input type="number" x-model.number="financeForm.added_amount" @input="recalc()"
                                class="form-input" placeholder="0" min="0" step="100">
                     </div>
@@ -566,7 +566,7 @@
                                        min="0"
                                        :max="form.split_share_type === 'percentage' ? 100 : null">
                                 <span class="absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-gray-400 pointer-events-none"
-                                      x-text="form.split_share_type === 'percentage' ? '%' : 'â‚±'"></span>
+                                      x-text="form.split_share_type === 'percentage' ? '%' : '₱'"></span>
                             </div>
                             <select x-model="form.split_share_type" class="form-input text-xs w-32 shrink-0">
                                 <option value="percentage">Percentage</option>
@@ -579,7 +579,7 @@
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                            <span x-text="'= â‚±' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                            <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
                         </p>
                         <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value && dealValue"
                            class="text-xs text-gray-400 flex items-center gap-1">
@@ -1439,7 +1439,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     const _bc = Math.round(Number(updated.base_cost    || 0));
                     const _aa = Math.round(Number(updated.added_amount || 0));
                     const _cv = (_bc + _aa) || Math.round(Number(updated.deal_value || 0));
-                    const _p  = n => 'â‚±' + n.toLocaleString('en');
+                    const _p  = n => '₱' + n.toLocaleString('en');
                     [['fin-bc',_bc],['fin-aa',_aa],['fin-cv',_cv],['fin-cv2',_cv],
                      ['fin-co',Math.round(_aa*.3)],['fin-cp',Math.round(_aa*.7)]].forEach(([id,v]) => {
                         const el = document.getElementById(id);
