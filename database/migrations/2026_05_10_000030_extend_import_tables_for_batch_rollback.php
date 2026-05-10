@@ -37,6 +37,7 @@ return new class extends Migration
         // ── import_rollbacks ─────────────────────────────────────────
         Schema::table('import_rollbacks', function (Blueprint $table) {
             $table->uuid('import_batch_id')->nullable()->after('import_job_id');
+            $table->string('tenant_id')->nullable()->after('import_batch_id');
             $table->string('requested_by_type')->nullable()->after('requested_by');  // tenant_admin|super_admin
             $table->string('mode')->default('full_batch')->after('requested_by_type');
             $table->jsonb('dry_run_summary')->nullable()->after('rollback_summary_json');
@@ -80,7 +81,7 @@ return new class extends Migration
         Schema::table('import_rollbacks', function (Blueprint $table) {
             $table->dropIndex('idx_rollbacks_batch');
             $table->dropColumn([
-                'import_batch_id', 'requested_by_type', 'mode',
+                'import_batch_id', 'tenant_id', 'requested_by_type', 'mode',
                 'dry_run_summary', 'result_summary', 'error_summary',
                 'started_at', 'records_skipped', 'records_failed', 'records_conflict',
             ]);

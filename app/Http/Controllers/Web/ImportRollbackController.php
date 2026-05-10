@@ -116,6 +116,7 @@ class ImportRollbackController extends Controller
         // Create rollback record
         $rollback = ImportRollback::create([
             'import_batch_id'    => $batch->id,
+            'tenant_id'          => $tenantId,
             'requested_by'       => $actorId,
             'requested_by_type'  => $this->authType(),
             'mode'               => 'full_batch',

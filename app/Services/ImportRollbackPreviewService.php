@@ -199,7 +199,7 @@ class ImportRollbackPreviewService
         $deal = DB::table('leads')->where('id', $dealId)->where('tenant_id', $tenantId)->first();
         if (!$deal) return 'Record no longer exists.';
 
-        if ($importedAt && isset($deal->updated_at) && $deal->updated_at > $importedAt) {
+        if ($importedAt && isset($deal->updated_at) && $deal->updated_at >= $importedAt) {
             return 'Record was modified after the import.';
         }
         return null;
@@ -211,7 +211,7 @@ class ImportRollbackPreviewService
         if (!$contact) return null;
 
         // If contact was manually modified after import
-        if ($importedAt && isset($contact->updated_at) && $contact->updated_at > $importedAt) {
+        if ($importedAt && isset($contact->updated_at) && $contact->updated_at >= $importedAt) {
             return 'Contact was modified after the import.';
         }
         return null;
@@ -222,7 +222,7 @@ class ImportRollbackPreviewService
         $contact = DB::table('contacts')->where('id', $contactId)->where('tenant_id', $tenantId)->first();
         if (!$contact) return 'Contact no longer exists.';
 
-        if ($importedAt && isset($contact->updated_at) && $contact->updated_at > $importedAt) {
+        if ($importedAt && isset($contact->updated_at) && $contact->updated_at >= $importedAt) {
             return 'Contact was modified after the import.';
         }
         return null;

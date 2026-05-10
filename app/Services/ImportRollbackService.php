@@ -32,18 +32,24 @@ class ImportRollbackService
      */
     public function execute(ImportRollback $rollback, ImportBatch $batch, string $tenantId): void
     {
-        // Lock — prevent duplicate execution
-        $locked = ImportRollback::where('id', $rollback->id)
-            ->where('status', 'pending')
-            ->lockForUpdate()
-            ->first();
+        // Lock inside a transaction — lockForUpdate() requires an active transaction
+        $acquired = false;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($rollback, $batch, &$acquired) {
+            $locked = ImportRollback::where('id', $rollback->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->first();
 
-        if (!$locked) {
-            return; // Already processing or completed
+            if ($locked) {
+                $locked->markProcessing();
+                $batch->update(['rollback_status' => 'processing']);
+                $acquired = true;
+            }
+        });
+
+        if (!$acquired) {
+            return; // Already processing or completed — safe no-op
         }
-
-        $rollback->markProcessing();
-        $batch->update(['rollback_status' => 'processing']);
 
         $restored = 0;
         $removed  = 0;
@@ -139,7 +145,7 @@ class ImportRollbackService
         }
 
         // Conflict: modified after snapshot
-        if ($snap->created_at && isset($deal->updated_at) && $deal->updated_at > $snap->created_at) {
+        if ($snap->created_at && isset($deal->updated_at) && $deal->updated_at >= $snap->created_at) {
             $snap->markConflict('Deal was modified after the import.');
             return 'conflict';
         }

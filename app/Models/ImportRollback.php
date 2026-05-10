@@ -18,7 +18,7 @@ class ImportRollback extends Model
         'rollback_summary_json', 'records_restored', 'records_deleted', 'completed_at',
 
         // Batch rollback
-        'import_batch_id', 'requested_by_type', 'mode',
+        'import_batch_id', 'tenant_id', 'requested_by_type', 'mode',
         'dry_run_summary', 'result_summary', 'error_summary',
         'started_at', 'records_skipped', 'records_failed', 'records_conflict',
     ];

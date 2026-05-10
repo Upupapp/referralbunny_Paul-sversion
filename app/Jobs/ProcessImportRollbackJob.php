@@ -32,13 +32,17 @@ class ProcessImportRollbackJob implements ShouldQueue
 
     public function handle(ImportRollbackService $service): void
     {
-        $rollback = ImportRollback::find($this->rollbackId);
-        $batch    = ImportBatch::where('id', $this->batchId)
+        $rollback = ImportRollback::where('id', $this->rollbackId)
+            ->where('import_batch_id', $this->batchId) // verify rollback ↔ batch link
+            ->where('tenant_id', $this->tenantId)      // tenant isolation
+            ->first();
+
+        $batch = ImportBatch::where('id', $this->batchId)
             ->where('tenant_id', $this->tenantId)
             ->first();
 
         if (!$rollback || !$batch) {
-            return;
+            return; // Silently skip — IDs don't match or tenant mismatch
         }
 
         // Guard: do not execute if already completed/failed
