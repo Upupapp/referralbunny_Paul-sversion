@@ -608,7 +608,8 @@
             {{-- Partners & Split Share --}}
             <div class="card space-y-3"
                  x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}')"
-                 x-init="load()">
+                 x-init="load()"
+                 @finance-updated.window="load()">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Partners &amp; Split Share</h3>
                     <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
@@ -644,21 +645,38 @@
                                       }"
                                       x-text="s.status_label"></span>
                             </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-sm font-bold text-[#1E1B4B]"
+                            <div style="text-align:right;flex-shrink:0">
+                                <p style="font-size:13px;font-weight:700;color:#1E1B4B"
                                    x-text="s.split_share_type === 'percentage'
                                        ? parseFloat(s.split_share_value) + '%'
                                        : '₱' + Number(s.split_share_value).toLocaleString('en-PH')"></p>
-                                <button @click="removeSplit(s.id)" style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:2px" @mouseenter="$event.target.style.color='#dc2626'" @mouseleave="$event.target.style.color='#f87171'">Remove</button>
+                                <p x-show="dealValue > 0" style="font-size:11px;font-weight:600;color:#7B61FF;margin-top:1px"
+                                   x-text="'= ₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
+                                <button @click="removeSplit(s.id)" style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto"
+                                        @mouseenter="$event.target.style.color='#dc2626'"
+                                        @mouseleave="$event.target.style.color='#f87171'">Remove</button>
                             </div>
                         </div>
                     </template>
 
-                    {{-- Total --}}
-                    <div x-show="hasPctSplits()"
-                         class="flex justify-between text-xs py-1 border-t border-gray-100 mt-1">
-                        <span class="text-gray-400">Total Partner %</span>
-                        <span :class="totalPctClass()" x-text="parseFloat(totalPct) + '%'"></span>
+                    {{-- Total summary --}}
+                    <div x-show="splits.length > 0"
+                         style="border-top:1px solid #f3f4f6;margin-top:8px;padding-top:8px">
+                        {{-- Partner total row --}}
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+                            <span style="color:#9ca3af">Partner total</span>
+                            <div style="text-align:right">
+                                <span :class="totalPctClass()" x-text="parseFloat(totalPct) + '%'"></span>
+                                <span x-show="dealValue > 0" style="color:#7B61FF;font-weight:600;margin-left:6px"
+                                      x-text="'₱' + Math.round(allocatedPool()).toLocaleString('en-PH')"></span>
+                            </div>
+                        </div>
+                        {{-- Remaining pool row --}}
+                        <div x-show="commPool > 0" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px">
+                            <span style="color:#9ca3af">Remaining commission pool</span>
+                            <span :style="remainingPool() < 0 ? 'color:#dc2626;font-weight:700' : 'color:#16a34a;font-weight:600'"
+                                  x-text="'₱' + Math.round(remainingPool()).toLocaleString('en-PH')"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -730,13 +748,25 @@
                         </button>
                     </div>
 
+                    {{-- Duplicate partner warning --}}
+                    <div x-show="isDuplicate()" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px">
+                        <svg style="width:14px;height:14px;color:#dc2626;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <div>
+                            <p style="font-size:12px;font-weight:700;color:#dc2626">Partner already added</p>
+                            <p style="font-size:11px;color:#6b7280;margin-top:2px">This email already has a split on this deal. Remove the existing entry first, or edit it to adjust the amount.</p>
+                        </div>
+                    </div>
+
                     {{-- Share amount row --}}
                     <div class="space-y-1.5">
-                        {{-- Max-cap info --}}
-                        <p x-show="commPool > 0" style="font-size:10px;color:#9ca3af;margin-bottom:2px">
-                            Max partner share: <span style="color:#7B61FF;font-weight:600"
-                                x-text="'₱' + commPool.toLocaleString('en-PH') + ' (referrer commission pool)'"></span>
-                        </p>
+                        {{-- Remaining pool info --}}
+                        <div x-show="commPool > 0" style="display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-bottom:2px">
+                            <span style="color:#9ca3af">Available commission pool</span>
+                            <span :style="remainingPool() <= 0 ? 'color:#dc2626;font-weight:700' : 'color:#7B61FF;font-weight:600'"
+                                  x-text="'₱' + Math.max(0, Math.round(remainingPool())).toLocaleString('en-PH')"></span>
+                        </div>
                         <div style="display:flex;gap:8px;align-items:stretch">
                             <div style="position:relative;flex:1">
                                 <input type="number"
@@ -774,9 +804,9 @@
                     <div style="display:flex;gap:8px">
                         <button @click="showAdd = false; clearContact(); formError = ''"
                                 style="flex:1;padding:9px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving || isOverCap()"
+                        <button @click="addSplit()" :disabled="saving || isOverCap() || isDuplicate() || remainingPool() <= 0"
                                 style="flex:1;padding:9px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s"
-                                :style="(saving || isOverCap()) ? 'opacity:0.5;cursor:not-allowed' : 'opacity:1'"
+                                :style="(saving || isOverCap() || isDuplicate() || remainingPool() <= 0) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
                                 x-text="saving ? 'Saving...' : 'Add Split'"></button>
                     </div>
                 </div>
@@ -1767,6 +1797,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     });
                     this.editFinance = false;
                     this.$dispatch('show-toast', { type: 'success', message: 'Financial data saved.' });
+                    this.$dispatch('finance-updated');
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: updated.message || 'Failed to save financial data.' });
                 }
@@ -2032,25 +2063,55 @@ function partnerSplitSection(dealId, tenantId) {
         commPool: 0,
         totalPctClass() { return this.totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'; },
         hasPctSplits() { return this.splits.some(function(s) { return s.split_share_type === 'percentage'; }); },
+
+        // Convert any split row to its peso equivalent
+        splitPesoAmount(s) {
+            const v = parseFloat(s.split_share_value) || 0;
+            if (s.split_share_type === 'percentage') return Math.round(this.dealValue * v / 100);
+            return Math.round(v);
+        },
+
+        // Total peso already allocated to existing splits
+        allocatedPool() {
+            return this.splits.reduce((sum, s) => sum + this.splitPesoAmount(s), 0);
+        },
+
+        // How much commission pool remains for new splits
+        remainingPool() {
+            return Math.max(0, this.commPool - this.allocatedPool());
+        },
+
+        // Max % a new split can take given remaining pool
         maxPct() {
             if (!this.dealValue || !this.commPool) return 100;
-            return Math.floor(this.commPool / this.dealValue * 100 * 100) / 100;
+            const remaining = this.remainingPool();
+            return Math.floor(remaining / this.dealValue * 100 * 100) / 100;
         },
+
+        // True if new split would exceed remaining pool
         isOverCap() {
-            if (!this.commPool) return false;
             const v = Number(this.form.split_share_value) || 0;
-            if (this.form.split_share_type === 'percentage') {
-                return v > this.maxPct();
-            }
-            return v > this.commPool;
+            if (this.form.split_share_type === 'percentage') return v > this.maxPct();
+            return v > this.remainingPool();
         },
+
+        // Auto-clamp value to max allowed
         enforceMax() {
             const v = Number(this.form.split_share_value) || 0;
-            if (this.form.split_share_type === 'percentage' && v > this.maxPct()) {
-                this.form.split_share_value = this.maxPct();
-            } else if (this.form.split_share_type === 'fixed_amount' && v > this.commPool && this.commPool > 0) {
-                this.form.split_share_value = Math.round(this.commPool);
+            if (this.form.split_share_type === 'percentage') {
+                const maxP = this.maxPct();
+                if (v > maxP) this.form.split_share_value = maxP;
+            } else {
+                const rem = this.remainingPool();
+                if (rem >= 0 && v > rem) this.form.split_share_value = Math.round(rem);
             }
+        },
+
+        // True if the selected partner email already has a split on this deal
+        isDuplicate() {
+            if (!this.form.partner_email.trim()) return false;
+            const email = this.form.partner_email.toLowerCase().trim();
+            return this.splits.some(function(s) { return (s.partner_email || '').toLowerCase() === email; });
         },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox
@@ -2127,11 +2188,20 @@ function partnerSplitSection(dealId, tenantId) {
             if (!this.form.partner_name.trim()) { this.formError = 'Partner name is required.'; return; }
             if (!this.form.partner_email.trim()) { this.formError = 'Partner email is required.'; return; }
             if (this.form.split_share_value <= 0) { this.formError = 'Split share must be greater than 0.'; return; }
+            if (this.isDuplicate()) {
+                this.formError = 'This partner already has a split on this deal. Remove their existing entry first if you want to change it.';
+                return;
+            }
+            if (this.remainingPool() <= 0) {
+                this.formError = 'The referrer commission pool is fully allocated. Remove an existing split to free up space.';
+                return;
+            }
             if (this.isOverCap()) {
+                const rem = Math.round(this.remainingPool());
                 const limit = this.form.split_share_type === 'percentage'
-                    ? this.maxPct() + '% max'
-                    : '₱' + Math.round(this.commPool).toLocaleString('en-PH') + ' max';
-                this.formError = 'Exceeds referrer commission pool (' + limit + ').';
+                    ? this.maxPct() + '% (= ₱' + Math.round(this.dealValue * this.maxPct() / 100).toLocaleString('en-PH') + ')'
+                    : '₱' + rem.toLocaleString('en-PH');
+                this.formError = 'Exceeds the remaining commission pool. Max for this partner: ' + limit + '.';
                 return;
             }
             this.saving = true;
