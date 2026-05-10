@@ -85,32 +85,161 @@
             </div>
         </div>
 
-        {{-- Ã¢"â‚¬Ã¢"â‚¬ Stage Progress Ã¢"â‚¬Ã¢"â‚¬ --}}
+        {{-- Deal Progress — redesigned 3D workflow --}}
         <div class="card">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-[#1E1B4B] text-sm">Pipeline Progress</h3>
-                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage →</button>
+
+            {{-- Header --}}
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]" style="font-size:15px">Deal Progress</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Track this deal from introduction to payment.</p>
+                </div>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    {{-- Completed badge --}}
+                    <span x-show="lead?.stage === 'paid'"
+                          style="display:none;background:#dcfce7;color:#15803d"
+                          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold">
+                        <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        Deal Completed
+                    </span>
+                    {{-- Days left badge --}}
+                    <div x-show="lead?.days_left !== undefined && lead?.days_left !== null && lead?.stage !== 'paid'"
+                         :style="(lead?.days_left ?? 99) <= 5
+                             ? 'background:#fef2f2;color:#dc2626'
+                             : (lead?.days_left ?? 99) <= 10
+                                 ? 'background:#fffbeb;color:#d97706'
+                                 : 'background:#f5f3ff;color:#7B61FF'"
+                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold">
+                        <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span x-text="(lead?.days_left ?? 0) + 'd left'"></span>
+                    </div>
+                    {{-- Move Stage button --}}
+                    <button @click="showMoveStage = true"
+                            x-show="lead?.stage !== 'paid'"
+                            style="display:none;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3);color:white"
+                            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1"
+                            aria-label="Move this deal to the next stage">
+                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        Move Stage
+                    </button>
+                </div>
             </div>
-            <div class="flex items-center">
-                <template x-for="(s, i) in allStages" :key="s.key">
-                    <div class="flex items-center flex-1 min-w-0">
-                        <div class="flex flex-col items-center flex-none w-16">
-                            <div :class="stageCircleClass(s.key)"
-                                 class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0">
+
+            {{-- ── Desktop / Tablet: horizontal stage cards ── --}}
+            <div class="hidden sm:block overflow-x-auto pb-1">
+                <div class="flex items-stretch" style="min-width:520px;gap:0">
+                    <template x-for="(s, i) in allStages" :key="s.key">
+                        <div class="flex items-center flex-1 min-w-0">
+
+                            {{-- Stage card --}}
+                            <div class="relative flex flex-col items-center justify-between gap-2 py-4 px-2 rounded-2xl flex-1 min-w-0 transition-all duration-200"
+                                 :style="stageCardStyle(s.key)"
+                                 :aria-current="s.key === lead?.stage ? 'step' : null">
+
+                                {{-- Status label (top) --}}
+                                <div style="height:14px;display:flex;align-items:center;justify-content:center">
+                                    <template x-if="isStageDone(s.key)">
+                                        <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;color:#16a34a;text-transform:uppercase">Done</span>
+                                    </template>
+                                    <template x-if="s.key === lead?.stage">
+                                        <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;color:rgba(255,255,255,0.9);text-transform:uppercase">Current</span>
+                                    </template>
+                                    <template x-if="isStageNext(s.key)">
+                                        <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;color:#7B61FF;text-transform:uppercase">Next</span>
+                                    </template>
+                                </div>
+
+                                {{-- Icon circle --}}
+                                <div style="width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
+                                     :style="stageIconBgStyle(s.key)">
+                                    <template x-if="isStageDone(s.key)">
+                                        <svg style="width:17px;height:17px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="!isStageDone(s.key)">
+                                        <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                             x-html="stageIconHtml(s)"></svg>
+                                    </template>
+                                </div>
+
+                                {{-- Stage label --}}
+                                <span style="font-size:11px;font-weight:600;text-align:center;line-height:1.3;width:100%;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                                      :style="stageLabelStyle(s.key)"
+                                      x-text="s.label"></span>
+                            </div>
+
+                            {{-- Arrow connector --}}
+                            <template x-if="i + 1 < allStages.length">
+                                <div style="width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center" aria-hidden="true">
+                                    <svg style="width:13px;height:13px;flex-shrink:0;transition:color .2s"
+                                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                         :style="isStageDone(allStages[i+1]?.key) || allStages[i+1]?.key === lead?.stage
+                                             ? 'color:#7B61FF;opacity:0.6' : 'color:#d1d5db'">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            </template>
+
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- ── Mobile: vertical timeline ── --}}
+            <div class="flex flex-col sm:hidden" role="list" aria-label="Deal stage progress">
+                <template x-for="(s, i) in allStages" :key="s.key + '-mob'">
+                    <div class="flex items-start gap-3" role="listitem">
+
+                        {{-- Timeline: dot + connector line --}}
+                        <div style="width:34px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
+                            <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
+                                 :style="stageMobileCircleStyle(s.key)">
                                 <template x-if="isStageDone(s.key)">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    </svg>
                                 </template>
                                 <template x-if="!isStageDone(s.key)">
-                                    <span x-text="i + 1"></span>
+                                    <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                         x-html="stageIconHtml(s)"></svg>
                                 </template>
                             </div>
-                            <span class="text-[10px] text-gray-500 text-center mt-1.5 leading-tight" x-text="s.label"></span>
+                            <div x-show="i + 1 < allStages.length"
+                                 style="width:2px;border-radius:9999px;margin-top:4px;flex:1;min-height:20px"
+                                 :style="isStageDone(allStages[i+1]?.key) || allStages[i+1]?.key === lead?.stage
+                                     ? 'background:rgba(123,97,255,0.3)' : 'background:#e5e7eb'"></div>
                         </div>
-                        <div x-show="i + 1 !== allStages.length" class="flex-1 h-0.5 mx-1 transition-colors"
-                             :class="isStageDone(allStages[i+1]?.key) ? 'bg-[#7B61FF]' : 'bg-gray-200'"></div>
+
+                        {{-- Stage info --}}
+                        <div class="flex-1 min-w-0" :style="i + 1 < allStages.length ? 'padding-bottom:14px' : 'padding-bottom:4px'">
+                            <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <span style="font-size:13px;font-weight:600"
+                                      :style="s.key === lead?.stage ? 'color:#7B61FF'
+                                          : isStageDone(s.key) ? 'color:#15803d' : 'color:#9ca3af'"
+                                      x-text="s.label"></span>
+                                <template x-if="s.key === lead?.stage">
+                                    <span style="font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background:#ede9fe;color:#7B61FF">Current</span>
+                                </template>
+                                <template x-if="isStageDone(s.key)">
+                                    <span style="font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background:#dcfce7;color:#16a34a">Done</span>
+                                </template>
+                                <template x-if="isStageNext(s.key)">
+                                    <span style="font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background:#f5f3ff;color:#7B61FF">Next</span>
+                                </template>
+                            </div>
+                            <p x-show="s.key === lead?.stage && (lead?.days_left ?? null) !== null"
+                               style="font-size:11px;color:#9ca3af;margin-top:2px"
+                               x-text="(lead?.days_left ?? 0) + ' day(s) remaining'"></p>
+                        </div>
                     </div>
                 </template>
             </div>
+
         </div>
 
         {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1077,49 +1206,114 @@
     </div>
     </template>
 
-    {{-- â"€â"€ Move Stage Modal â"€â"€ --}}
+    {{-- Move Stage Modal --}}
     <template x-teleport="body">
-    <div x-show="showMoveStage" style="display:none"
-         class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
-         @keydown.escape.window="showMoveStage = false; moveStageNote = ''">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div>
-                    <h3 class="font-semibold text-[#1E1B4B]">Move Stage</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">
-                        <span x-text="lead?.name"></span>
-                    </p>
+    <div x-show="showMoveStage" style="display:none;background:rgba(0,0,0,0.5)"
+         class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showMoveStage = false; moveStageNote = ''"
+         @click.self="showMoveStage = false; moveStageNote = ''"
+         role="dialog" aria-modal="true" aria-label="Move Stage">
+        <div class="bg-white rounded-2xl w-full max-w-sm" style="box-shadow:0 25px 60px rgba(0,0,0,0.18)" @click.stop>
+
+            {{-- Modal header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <svg style="width:16px;height:16px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="font-weight:700;color:#1E1B4B;font-size:15px">Move Stage</h3>
+                        <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="lead?.name"></p>
+                    </div>
                 </div>
-                <button @click="showMoveStage = false; moveStageNote = ''" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button @click="showMoveStage = false; moveStageNote = ''"
+                        style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;transition:all .15s"
+                        class="hover:bg-gray-100 hover:text-gray-600">
+                    <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                 </button>
             </div>
-            <div class="p-6 space-y-4">
-                <p class="text-sm text-gray-500">
-                    Current stage: <span class="font-semibold text-[#1E1B4B]" x-text="stageLabel(lead?.stage)"></span>
-                </p>
-                <div class="space-y-2">
-                    <template x-for="s in allStages" :key="s.key">
-                        <button @click="moveToStage(s.key)"
-                                :disabled="s.key === lead?.stage || saving"
-                                :class="s.key === lead?.stage
-                                    ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100'
-                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'"
-                                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left">
-                            <span :class="stageBadge(s.key)" class="shrink-0 text-xs" x-text="s.label"></span>
-                            <span x-show="s.key === 'signed'" class="text-xs text-orange-600">→ locks commission at <span x-text="fmt(commPool())"></span></span>
-                            <span x-show="s.key === 'paid'"   class="text-xs text-emerald-600">→ marks <span x-text="fmt(commPool())"></span> paid</span>
-                            <span x-show="s.key === lead?.stage" class="ml-auto text-xs text-gray-400">current</span>
-                            <svg x-show="saving && s.key !== lead?.stage" class="w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        </button>
-                    </template>
-                </div>
-                <div>
-                    <label class="form-label">Note <span class="text-gray-400 font-normal">(optional)</span></label>
-                    <textarea x-model="moveStageNote" rows="2" class="form-input text-sm resize-none"
-                              placeholder="Reason for stage movement, e.g. 'Proposal sent to procurement office'…"></textarea>
-                </div>
-                <p class="text-xs text-gray-400">The note will be saved to the activity history.</p>
+
+            {{-- Current stage indicator --}}
+            <div style="padding:12px 24px 0;display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:#9ca3af">Current:</span>
+                <span style="font-size:12px;font-weight:700;color:#7B61FF;background:#ede9fe;padding:2px 10px;border-radius:9999px"
+                      x-text="stageLabel(lead?.stage)"></span>
+            </div>
+
+            {{-- Stage selector list --}}
+            <div style="padding:12px 24px;display:flex;flex-direction:column;gap:6px">
+                <template x-for="s in allStages" :key="s.key">
+                    <button @click="moveToStage(s.key)"
+                            :disabled="s.key === lead?.stage || saving"
+                            class="w-full text-left transition-all"
+                            style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:1.5px solid #f3f4f6;cursor:pointer;background:white"
+                            :style="s.key === lead?.stage
+                                ? 'opacity:0.5;cursor:not-allowed;background:#f9fafb'
+                                : isStageDone(s.key)
+                                    ? 'border-color:#86efac;background:#f0fdf4'
+                                    : isStageNext(s.key)
+                                        ? 'border-color:#c4b5fd;background:#f5f3ff'
+                                        : 'border-color:#f3f4f6;background:white'"
+                            @mouseenter="if(s.key !== lead?.stage && !saving) $event.currentTarget.style.borderColor='#c4b5fd'"
+                            @mouseleave="if(s.key !== lead?.stage) $event.currentTarget.style.borderColor = isStageDone(s.key) ? '#86efac' : isStageNext(s.key) ? '#c4b5fd' : '#f3f4f6'">
+
+                        {{-- Stage icon dot --}}
+                        <div style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                             :style="s.key === lead?.stage ? 'background:#f3f4f6;color:#9ca3af'
+                                 : isStageDone(s.key) ? 'background:#dcfce7;color:#16a34a'
+                                 : isStageNext(s.key) ? 'background:#ede9fe;color:#7B61FF'
+                                 : 'background:#f3f4f6;color:#9ca3af'">
+                            <template x-if="isStageDone(s.key)">
+                                <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </template>
+                            <template x-if="!isStageDone(s.key)">
+                                <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                     x-html="stageIconHtml(s)"></svg>
+                            </template>
+                        </div>
+
+                        {{-- Label + hint --}}
+                        <div class="flex-1 min-w-0">
+                            <span style="font-size:13px;font-weight:600;color:#1E1B4B;display:block" x-text="s.label"></span>
+                            <span x-show="s.key === 'signed'" style="font-size:11px;color:#d97706;display:block">
+                                Locks commission at <span x-text="fmt(commPool())"></span>
+                            </span>
+                            <span x-show="s.key === 'paid'" style="font-size:11px;color:#16a34a;display:block">
+                                Marks <span x-text="fmt(commPool())"></span> as paid
+                            </span>
+                        </div>
+
+                        {{-- Current / spinner --}}
+                        <template x-if="s.key === lead?.stage">
+                            <span style="font-size:10px;font-weight:600;color:#9ca3af;flex-shrink:0">Current</span>
+                        </template>
+                        <template x-if="isStageNext(s.key) && !saving">
+                            <svg style="width:14px;height:14px;color:#7B61FF;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </template>
+                        <svg x-show="saving && s.key !== lead?.stage"
+                             style="width:14px;height:14px;flex-shrink:0;color:#7B61FF"
+                             class="animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                    </button>
+                </template>
+            </div>
+
+            {{-- Optional note + footer --}}
+            <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:10px">
+                <textarea x-model="moveStageNote" rows="2"
+                          style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;color:#1E1B4B;background:white;outline:none;resize:none;box-sizing:border-box;font-family:inherit"
+                          placeholder="Optional note — reason for stage movement..."></textarea>
+                <p style="font-size:11px;color:#9ca3af">Note is saved to the activity history.</p>
             </div>
         </div>
     </div>
@@ -1415,11 +1609,11 @@ function dealDetail(leadId, tenantId, ssrLead) {
         showLinkContact: false, linkSearch: '', linkSaving: false,
 
         allStages: [
-            { key: 'introduction',  label: 'Introduction'  },
-            { key: 'presentation',  label: 'Presentation'  },
-            { key: 'contract_sent', label: 'Contract Sent' },
-            { key: 'signed',        label: 'Signed'        },
-            { key: 'paid',          label: 'Paid'          },
+            { key: 'introduction',  label: 'Introduction',  icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+            { key: 'presentation',  label: 'Presentation',  icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+            { key: 'contract_sent', label: 'Contract Sent', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+            { key: 'signed',        label: 'Signed',        icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
+            { key: 'paid',          label: 'Paid',          icon: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z' },
         ],
 
         async init() {
@@ -1558,6 +1752,52 @@ function dealDetail(leadId, tenantId, ssrLead) {
             if (done) return 'bg-[#7B61FF] text-white';
             if (cur)  return 'bg-[#7B61FF] text-white ring-4 ring-purple-200';
             return 'bg-gray-100 text-gray-400';
+        },
+
+        // ── New workflow card helpers ──
+        isStageNext(key) {
+            const curIdx  = this.stageIdx(this.lead?.stage);
+            const thisIdx = this.stageIdx(key);
+            return thisIdx === curIdx + 1;
+        },
+        stageCardStyle(key) {
+            const done = this.isStageDone(key);
+            const cur  = key === this.lead?.stage;
+            const next = this.isStageNext(key);
+            if (cur)  return 'background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 8px 25px rgba(123,97,255,0.35);transform:translateY(-2px)';
+            if (done) return 'background:#f0fdf4;border:1.5px solid #86efac';
+            if (next) return 'background:#f5f3ff;border:1.5px solid #c4b5fd';
+            return 'background:#f9fafb;border:1.5px dashed #e5e7eb';
+        },
+        stageIconBgStyle(key) {
+            const done = this.isStageDone(key);
+            const cur  = key === this.lead?.stage;
+            const next = this.isStageNext(key);
+            if (cur)  return 'background:rgba(255,255,255,0.2);color:white';
+            if (done) return 'background:#dcfce7;color:#16a34a';
+            if (next) return 'background:#ede9fe;color:#7B61FF';
+            return 'background:#f3f4f6;color:#9ca3af';
+        },
+        stageLabelStyle(key) {
+            const done = this.isStageDone(key);
+            const cur  = key === this.lead?.stage;
+            const next = this.isStageNext(key);
+            if (cur)  return 'color:white';
+            if (done) return 'color:#15803d';
+            if (next) return 'color:#6d28d9';
+            return 'color:#9ca3af';
+        },
+        stageMobileCircleStyle(key) {
+            const done = this.isStageDone(key);
+            const cur  = key === this.lead?.stage;
+            const next = this.isStageNext(key);
+            if (cur)  return 'background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;box-shadow:0 4px 12px rgba(123,97,255,0.4)';
+            if (done) return 'background:#dcfce7;color:#16a34a';
+            if (next) return 'background:#ede9fe;color:#7B61FF';
+            return 'background:#f3f4f6;color:#d1d5db';
+        },
+        stageIconHtml(s) {
+            return '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="' + s.icon + '"/>';
         },
         stageLabel(s) {
             const m = { introduction:'Introduction', presentation:'Presentation', contract_sent:'Contract Sent', signed:'Signed', paid:'Paid' };

@@ -68,7 +68,144 @@
         <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="text-xs text-blue-700">You can view this deal because you were added as a Partner. This is a read-only view.</p>
+        <p class="text-xs text-blue-700">You can view this deal because you were added as a Partner. This is a view-only stage progress.</p>
+    </div>
+
+    {{-- Deal Progress — read-only stage workflow for Partner --}}
+    @php
+        $pipelineStages = [
+            ['key' => 'introduction',  'label' => 'Introduction',  'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'],
+            ['key' => 'presentation',  'label' => 'Presentation',  'icon' => 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+            ['key' => 'contract_sent', 'label' => 'Contract Sent', 'icon' => 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+            ['key' => 'signed',        'label' => 'Signed',        'icon' => 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'],
+            ['key' => 'paid',          'label' => 'Paid',          'icon' => 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z'],
+        ];
+        $stageOrder  = array_column($pipelineStages, 'key');
+        $currentIdx  = array_search($lead->stage, $stageOrder);
+    @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="font-bold text-[#1E1B4B]" style="font-size:14px">Deal Progress</h3>
+                <p class="text-xs text-gray-400 mt-0.5">View-only stage progress.</p>
+            </div>
+            <span style="font-size:10px;font-weight:600;color:#6b7280;background:#f3f4f6;padding:4px 10px;border-radius:9999px;letter-spacing:.04em;text-transform:uppercase">Read-only</span>
+        </div>
+
+        {{-- Desktop horizontal --}}
+        <div class="hidden sm:flex items-stretch overflow-x-auto pb-1" style="gap:0;min-width:480px">
+            @foreach($pipelineStages as $idx => $ps)
+            @php
+                $isDone = $currentIdx !== false && $idx < $currentIdx;
+                $isCur  = $lead->stage === $ps['key'];
+                $isNext = $currentIdx !== false && $idx === $currentIdx + 1;
+                if ($isCur) {
+                    $cardStyle = 'background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 8px 25px rgba(123,97,255,0.3);transform:translateY(-2px)';
+                    $iconStyle = 'background:rgba(255,255,255,0.2);color:white';
+                    $labelColor = 'color:white';
+                    $statusLabel = 'Current'; $statusColor = 'color:rgba(255,255,255,0.85)';
+                } elseif ($isDone) {
+                    $cardStyle = 'background:#f0fdf4;border:1.5px solid #86efac';
+                    $iconStyle = 'background:#dcfce7;color:#16a34a';
+                    $labelColor = 'color:#15803d';
+                    $statusLabel = 'Done'; $statusColor = 'color:#16a34a';
+                } elseif ($isNext) {
+                    $cardStyle = 'background:#f5f3ff;border:1.5px solid #c4b5fd';
+                    $iconStyle = 'background:#ede9fe;color:#7B61FF';
+                    $labelColor = 'color:#6d28d9';
+                    $statusLabel = 'Next'; $statusColor = 'color:#7B61FF';
+                } else {
+                    $cardStyle = 'background:#f9fafb;border:1.5px dashed #e5e7eb';
+                    $iconStyle = 'background:#f3f4f6;color:#9ca3af';
+                    $labelColor = 'color:#9ca3af';
+                    $statusLabel = ''; $statusColor = '';
+                }
+            @endphp
+            <div style="display:flex;align-items:center;flex:1;min-width:0">
+                <div style="{{ $cardStyle }};display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:8px;padding:14px 8px;border-radius:16px;flex:1;min-width:0;transition:all .2s"
+                     @if($isCur) aria-current="step" @endif>
+                    <div style="height:14px;display:flex;align-items:center;justify-content:center">
+                        @if($statusLabel)
+                        <span style="{{ $statusColor }};font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">{{ $statusLabel }}</span>
+                        @endif
+                    </div>
+                    <div style="{{ $iconStyle }};width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        @if($isDone)
+                        <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        @else
+                        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $ps['icon'] }}"/>
+                        </svg>
+                        @endif
+                    </div>
+                    <span style="{{ $labelColor }};font-size:11px;font-weight:600;text-align:center;line-height:1.3;width:100%;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $ps['label'] }}</span>
+                </div>
+                @if(!$loop->last)
+                <div style="width:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+                    <svg style="width:12px;height:12px;{{ ($isDone || ($currentIdx !== false && array_search($pipelineStages[$idx+1]['key'], $stageOrder) <= $currentIdx)) ? 'color:#7B61FF;opacity:0.6' : 'color:#d1d5db' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                @endif
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Mobile vertical --}}
+        <div class="flex flex-col sm:hidden" style="gap:0">
+            @foreach($pipelineStages as $idx => $ps)
+            @php
+                $isDone = $currentIdx !== false && $idx < $currentIdx;
+                $isCur  = $lead->stage === $ps['key'];
+                $isNext = $currentIdx !== false && $idx === $currentIdx + 1;
+                $isLast = $loop->last;
+                if ($isCur) {
+                    $dotStyle = 'background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;box-shadow:0 4px 12px rgba(123,97,255,0.4)';
+                    $nameColor = 'color:#7B61FF'; $badge = 'background:#ede9fe;color:#7B61FF'; $badgeLabel = 'Current';
+                } elseif ($isDone) {
+                    $dotStyle = 'background:#dcfce7;color:#16a34a';
+                    $nameColor = 'color:#15803d'; $badge = 'background:#dcfce7;color:#16a34a'; $badgeLabel = 'Done';
+                } elseif ($isNext) {
+                    $dotStyle = 'background:#ede9fe;color:#7B61FF';
+                    $nameColor = 'color:#6d28d9'; $badge = 'background:#f5f3ff;color:#7B61FF'; $badgeLabel = 'Next';
+                } else {
+                    $dotStyle = 'background:#f3f4f6;color:#d1d5db';
+                    $nameColor = 'color:#9ca3af'; $badge = ''; $badgeLabel = '';
+                }
+                $lineStyle = ($currentIdx !== false && $idx < $currentIdx - 1) || ($isCur && !$isLast)
+                    ? 'background:rgba(123,97,255,0.3)'
+                    : 'background:#e5e7eb';
+            @endphp
+            <div style="display:flex;align-items:flex-start;gap:12px">
+                <div style="width:32px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
+                    <div style="{{ $dotStyle }};width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        @if($isDone)
+                        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        @else
+                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $ps['icon'] }}"/>
+                        </svg>
+                        @endif
+                    </div>
+                    @if(!$isLast)
+                    <div style="{{ $lineStyle }};width:2px;border-radius:9999px;margin-top:4px;min-height:18px;flex:1"></div>
+                    @endif
+                </div>
+                <div style="flex:1;min-width:0;{{ $isLast ? 'padding-bottom:4px' : 'padding-bottom:12px' }};margin-top:6px">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="{{ $nameColor }};font-size:13px;font-weight:600">{{ $ps['label'] }}</span>
+                        @if($badgeLabel)
+                        <span style="{{ $badge }};font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px">{{ $badgeLabel }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
     </div>
 
     {{-- Deal value (show without commission breakdown) --}}
