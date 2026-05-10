@@ -83,7 +83,7 @@ class RequestFormController extends Controller
             'fields.*.field_type'       => 'required|in:text,email,textarea,select,multi_select,checkbox,radio,number,date,hidden',
             'fields.*.placeholder'      => 'nullable|string|max:120',
             'fields.*.helper_text'      => 'nullable|string|max:300',
-            'fields.*.options'          => 'nullable|array',
+            'fields.*.options'          => 'nullable',
             'fields.*.is_required'      => 'boolean',
             'recipients'                => 'nullable|array',
             'recipients.*.recipient_id' => 'nullable|string',
@@ -156,6 +156,16 @@ class RequestFormController extends Controller
 
             return $form;
         });
+
+        // AJAX callers (create page fetch) get JSON back
+        if ($request->expectsJson()) {
+            return response()->json([
+                'id'       => $form->id,
+                'title'    => $form->title,
+                'edit_url' => route('tenant.request-forms.edit', [$tenantId, $form->id]),
+                'list_url' => route('tenant.request-forms', $tenantId),
+            ], 201);
+        }
 
         return redirect()->route('tenant.request-forms.edit', [$tenantId, $form->id])
             ->with('form_created', true)

@@ -3,6 +3,46 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
+{{-- Loading overlay --}}
+<div id="rb-form-saving"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:white;border-radius:20px;padding:36px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        <div style="width:56px;height:56px;border-radius:16px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+            <svg style="width:26px;height:26px;color:#7B61FF" class="animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+        </div>
+        <p style="font-size:16px;font-weight:700;color:#1E1B4B;margin-bottom:6px">Saving your form…</p>
+        <p style="font-size:13px;color:#9ca3af">Please wait a moment.</p>
+    </div>
+</div>
+
+{{-- Success modal --}}
+<div id="rb-form-success"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:white;border-radius:20px;padding:36px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        <div style="width:60px;height:60px;border-radius:18px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+            <svg style="width:30px;height:30px;color:#10B981" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#10B981;margin-bottom:6px">Form Created</p>
+        <h2 id="rb-form-title" style="font-size:18px;font-weight:700;color:#1E1B4B;margin-bottom:6px"></h2>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">Saved as draft. Publish it when you're ready so people can start submitting requests.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <a id="rb-edit-btn" href="#"
+               style="display:block;padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;text-decoration:none">
+                Edit & Publish Form
+            </a>
+            <a id="rb-list-btn" href="#"
+               style="display:block;padding:11px 24px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;text-decoration:none">
+                View All Forms
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="max-w-3xl space-y-5" x-data="formBuilder()">
 
     <div>
@@ -192,8 +232,41 @@ function formBuilder() {
             document.querySelector('[name=success_message]').value = 'Thank you. Your request has been submitted and assigned to the selected recipient.';
         },
 
-        submitForm(e) {
-            e.target.submit();
+        async submitForm(e) {
+            e.preventDefault();
+            const form    = e.target;
+            const saving  = document.getElementById('rb-form-saving');
+            const success = document.getElementById('rb-form-success');
+
+            // Show loading overlay
+            saving.style.display = 'flex';
+
+            try {
+                const res  = await fetch(form.action, {
+                    method:      'POST',
+                    headers:     { 'Accept': 'application/json', 'X-CSRF-TOKEN': form.querySelector('[name=_token]').value },
+                    body:        new FormData(form),
+                    credentials: 'same-origin',
+                });
+                const data = await res.json();
+
+                if (res.status === 201) {
+                    saving.style.display = 'none';
+                    document.getElementById('rb-form-title').textContent = data.title;
+                    document.getElementById('rb-edit-btn').href = data.edit_url;
+                    document.getElementById('rb-list-btn').href = data.list_url;
+                    success.style.display = 'flex';
+                } else {
+                    saving.style.display = 'none';
+                    const msgs = data.errors
+                        ? Object.values(data.errors).flat().join('\n')
+                        : (data.message || 'An error occurred.');
+                    alert(msgs);
+                }
+            } catch (err) {
+                saving.style.display = 'none';
+                alert('Network error. Please try again.');
+            }
         },
     };
 }
