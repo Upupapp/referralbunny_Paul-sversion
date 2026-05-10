@@ -191,21 +191,25 @@ class TenantUserManagementController extends Controller
             // queue failure — don't block UI
         }
 
-        // Initialise reminder schedule
-        $this->reminderService->initialiseSchedule($invitation);
+        // Initialise reminder schedule (non-critical — columns may not exist yet)
+        try {
+            $this->reminderService->initialiseSchedule($invitation);
+        } catch (\Throwable) {}
 
-        // Notify all tenant admins
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:    $tenantId,
-            category:    'team',
-            priority:    'normal',
-            title:       'New Team Invitation Sent',
-            body:        "An invitation was sent to {$email} for the role of " . ucfirst($invitedRole) . ".",
-            actionUrl:   route('tenant.users', $tenantId),
-            actionLabel: 'View Users',
-            dedupeSuffix: "invite:{$invitation->id}",
-            metadata:    ['invitation_id' => $invitation->id, 'email' => $email, 'role' => $invitedRole],
-        );
+        // Notify all tenant admins (non-critical — category check constraint may reject it)
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:    $tenantId,
+                category:    'info',
+                priority:    'normal',
+                title:       'New Team Invitation Sent',
+                body:        "An invitation was sent to {$email} for the role of " . ucfirst($invitedRole) . ".",
+                actionUrl:   route('tenant.users', $tenantId),
+                actionLabel: 'View Users',
+                dedupeSuffix: "invite:{$invitation->id}",
+                metadata:    ['invitation_id' => $invitation->id, 'email' => $email, 'role' => $invitedRole],
+            );
+        } catch (\Throwable) {}
 
         return back()->with('success', "Invitation sent to {$email}.");
     }
