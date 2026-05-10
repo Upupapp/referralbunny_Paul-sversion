@@ -95,27 +95,6 @@
                     <p class="text-xs text-gray-400 mt-0.5">Track this deal from introduction to payment.</p>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                    {{-- Completed badge — shown only when paid --}}
-                    <template x-if="lead?.stage === 'paid'">
-                        <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9999px;background:#dcfce7;color:#15803d;font-size:12px;font-weight:600">
-                            <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                            Deal Completed
-                        </span>
-                    </template>
-                    {{-- Days left badge --}}
-                    <template x-if="(lead?.days_left ?? null) !== null && lead?.stage !== 'paid'">
-                        <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:600"
-                             :style="(lead?.days_left ?? 99) <= 5
-                                 ? 'background:#fef2f2;color:#dc2626'
-                                 : (lead?.days_left ?? 99) <= 10
-                                     ? 'background:#fffbeb;color:#d97706'
-                                     : 'background:#f5f3ff;color:#7B61FF'">
-                            <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span x-text="(lead?.days_left ?? 0) + 'd left'"></span>
-                        </div>
-                    </template>
                     {{-- Move Stage button — always rendered; disabled only when paid or no lead --}}
                     <button @click="showMoveStage = true"
                             :disabled="lead?.stage === 'paid' || !lead"
@@ -666,8 +645,11 @@
                                       x-text="s.status_label"></span>
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="text-sm font-bold text-[#1E1B4B]" x-text="s.display_share"></p>
-                                <button @click="removeSplit(s.id)" class="text-[10px] text-red-400 hover:text-red-600 mt-0.5">Remove</button>
+                                <p class="text-sm font-bold text-[#1E1B4B]"
+                                   x-text="s.split_share_type === 'percentage'
+                                       ? parseFloat(s.split_share_value) + '%'
+                                       : '₱' + Number(s.split_share_value).toLocaleString('en-PH')"></p>
+                                <button @click="removeSplit(s.id)" style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:2px" @mouseenter="$event.target.style.color='#dc2626'" @mouseleave="$event.target.style.color='#f87171'">Remove</button>
                             </div>
                         </div>
                     </template>
@@ -676,7 +658,7 @@
                     <div x-show="hasPctSplits()"
                          class="flex justify-between text-xs py-1 border-t border-gray-100 mt-1">
                         <span class="text-gray-400">Total Partner %</span>
-                        <span :class="totalPctClass()" x-text="totalPct + '%'"></span>
+                        <span :class="totalPctClass()" x-text="parseFloat(totalPct) + '%'"></span>
                     </div>
                 </div>
 
@@ -750,43 +732,52 @@
 
                     {{-- Share amount row --}}
                     <div class="space-y-1.5">
+                        {{-- Max-cap info --}}
+                        <p x-show="commPool > 0" style="font-size:10px;color:#9ca3af;margin-bottom:2px">
+                            Max partner share: <span style="color:#7B61FF;font-weight:600"
+                                x-text="'₱' + commPool.toLocaleString('en-PH') + ' (referrer commission pool)'"></span>
+                        </p>
                         <div style="display:flex;gap:8px;align-items:stretch">
                             <div style="position:relative;flex:1">
                                 <input type="number"
                                        x-model.number="form.split_share_value"
+                                       x-on:input="enforceMax()"
                                        style="display:block;width:100%;padding:9px 36px 9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;-moz-appearance:textfield"
                                        placeholder="0"
                                        min="0"
-                                       :max="form.split_share_type === 'percentage' ? 100 : null">
-                                <span style="position:absolute;inset-y:0;right:10px;display:flex;align-items:center;font-size:11px;font-weight:700;color:#9ca3af;pointer-events:none"
+                                       :max="form.split_share_type === 'percentage' ? maxPct() : commPool">
+                                <span style="position:absolute;inset-y:0;right:10px;display:flex;align-items:center;font-size:13px;font-weight:700;color:#7B61FF;pointer-events:none"
                                       x-text="form.split_share_type === 'percentage' ? '%' : '₱'"></span>
                             </div>
                             <select x-model="form.split_share_type"
+                                    x-on:change="form.split_share_value = 0"
                                     style="padding:9px 10px;border:1px solid #d1d5db;border-radius:10px;font-size:12px;color:#1E1B4B;background:white;width:130px;flex-shrink:0;cursor:pointer">
                                 <option value="percentage">Percentage</option>
                                 <option value="fixed_amount">Fixed Amount</option>
                             </select>
                         </div>
-                        {{-- Exact peso amount hint --}}
-                        <p x-show="form.split_share_type === 'percentage' && form.split_share_value && dealValue"
-                           class="text-xs text-purple-600 font-medium flex items-center gap-1">
-                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
-                            <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
-                        </p>
-                        <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value && dealValue"
-                           class="text-xs text-gray-400 flex items-center gap-1">
-                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span x-text="'â‰ˆ ' + (form.split_share_value / dealValue * 100).toFixed(1) + '% of deal value'"></span>
+                        {{-- Hints --}}
+                        <div x-show="form.split_share_value > 0 && dealValue > 0" style="font-size:11px;color:#7B61FF;display:flex;align-items:center;gap:4px">
+                            <template x-if="form.split_share_type === 'percentage'">
+                                <span x-text="'= ₱' + Math.round(dealValue * form.split_share_value / 100).toLocaleString('en-PH') + ' of contract value'"></span>
+                            </template>
+                            <template x-if="form.split_share_type === 'fixed_amount'">
+                                <span x-text="'~ ' + (dealValue > 0 ? (form.split_share_value / dealValue * 100).toFixed(1) : '0') + '% of contract value'"></span>
+                            </template>
+                        </div>
+                        {{-- Over-cap warning --}}
+                        <p x-show="isOverCap()" style="font-size:11px;color:#dc2626;font-weight:600">
+                            Exceeds the referrer commission pool. Max allowed: <span x-text="form.split_share_type === 'percentage' ? maxPct() + '%' : '₱' + commPool.toLocaleString('en-PH')"></span>
                         </p>
                     </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
-                    <div class="flex gap-2">
-                        <button @click="showAdd = false; clearContact(); formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Add Split'"></button>
+                    <div style="display:flex;gap:8px">
+                        <button @click="showAdd = false; clearContact(); formError = ''"
+                                style="flex:1;padding:9px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
+                        <button @click="addSplit()" :disabled="saving || isOverCap()"
+                                style="flex:1;padding:9px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s"
+                                :style="(saving || isOverCap()) ? 'opacity:0.5;cursor:not-allowed' : 'opacity:1'"
+                                x-text="saving ? 'Saving...' : 'Add Split'"></button>
                     </div>
                 </div>
             </div>
@@ -1196,9 +1187,17 @@
                     </template>
                     {{-- Empty — not loading --}}
                     <template x-if="!loadingAllContacts && allTenantContacts.length === 0">
-                        <p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 12px">
-                            No contacts found. <a href="{{ route('tenant.contacts', $tenant->id) }}" style="color:#7B61FF;text-decoration:underline">Add contacts</a> first.
-                        </p>
+                        <div style="text-align:center;padding:24px 12px">
+                            <p style="color:#9ca3af;font-size:13px;margin-bottom:10px">No contacts found.</p>
+                            <button @click="fetchAllContacts()"
+                                    style="font-size:12px;color:#7B61FF;background:#ede9fe;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:600">
+                                Retry
+                            </button>
+                            <a href="{{ route('tenant.contacts', $tenant->id) }}"
+                               style="display:block;margin-top:8px;color:#9ca3af;font-size:11px;text-decoration:underline">
+                                Add contacts in the Contacts module
+                            </a>
+                        </div>
                     </template>
                     {{-- No match for search --}}
                     <template x-if="!loadingAllContacts && allTenantContacts.length > 0 && linkableContacts().length === 0">
@@ -1954,13 +1953,18 @@ function dealDetail(leadId, tenantId, ssrLead) {
             if (this.loadingAllContacts) return;
             this.loadingAllContacts = true;
             try {
-                const res = await fetch(`/api/contacts?tenant_id=${tenantId}`, {
+                const res = await fetch(`/api/contacts?per_page=200`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) throw new Error('contacts-api-' + res.status);
                 const data = await res.json();
-                this.allTenantContacts = Array.isArray(data) ? data : [];
-            } catch(e) { this.allTenantContacts = []; }
+                // Handle both direct array and paginated {data:[...]} format
+                this.allTenantContacts = Array.isArray(data) ? data : (data.data || []);
+            } catch(e) {
+                this.allTenantContacts = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Could not load contacts. Please try again.' });
+            }
             this.loadingAllContacts = false;
         },
 
@@ -2025,8 +2029,29 @@ function partnerSplitSection(dealId, tenantId) {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
         dealValue: 0,
+        commPool: 0,
         totalPctClass() { return this.totalPct > 100 ? 'text-red-600 font-bold' : 'text-gray-700 font-medium'; },
         hasPctSplits() { return this.splits.some(function(s) { return s.split_share_type === 'percentage'; }); },
+        maxPct() {
+            if (!this.dealValue || !this.commPool) return 100;
+            return Math.floor(this.commPool / this.dealValue * 100 * 100) / 100;
+        },
+        isOverCap() {
+            if (!this.commPool) return false;
+            const v = Number(this.form.split_share_value) || 0;
+            if (this.form.split_share_type === 'percentage') {
+                return v > this.maxPct();
+            }
+            return v > this.commPool;
+        },
+        enforceMax() {
+            const v = Number(this.form.split_share_value) || 0;
+            if (this.form.split_share_type === 'percentage' && v > this.maxPct()) {
+                this.form.split_share_value = this.maxPct();
+            } else if (this.form.split_share_type === 'fixed_amount' && v > this.commPool && this.commPool > 0) {
+                this.form.split_share_value = Math.round(this.commPool);
+            }
+        },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox
         contactQuery: '', contactOpen: false, contactSelected: null,
@@ -2091,6 +2116,7 @@ function partnerSplitSection(dealId, tenantId) {
                     const bc   = Number(lead.base_cost    || 0);
                     const aa   = Number(lead.added_amount || 0);
                     this.dealValue = (bc + aa) || Number(lead.deal_value || 0);
+                    this.commPool  = Math.round(aa * 0.70);
                 }
             } catch(e) { this.splits = []; this.$dispatch('show-toast', { type: 'error', message: 'Failed to load partner splits.' }); }
             this.loading = false;
@@ -2100,7 +2126,14 @@ function partnerSplitSection(dealId, tenantId) {
             this.formError = '';
             if (!this.form.partner_name.trim()) { this.formError = 'Partner name is required.'; return; }
             if (!this.form.partner_email.trim()) { this.formError = 'Partner email is required.'; return; }
-            if (this.form.split_share_value < 0)  { this.formError = 'Split share must be 0 or more.'; return; }
+            if (this.form.split_share_value <= 0) { this.formError = 'Split share must be greater than 0.'; return; }
+            if (this.isOverCap()) {
+                const limit = this.form.split_share_type === 'percentage'
+                    ? this.maxPct() + '% max'
+                    : '₱' + Math.round(this.commPool).toLocaleString('en-PH') + ' max';
+                this.formError = 'Exceeds referrer commission pool (' + limit + ').';
+                return;
+            }
             this.saving = true;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
