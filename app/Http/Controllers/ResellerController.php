@@ -301,6 +301,44 @@ class ResellerController extends Controller
         ]);
     }
 
+    public function sendInvite(Request $request, Reseller $reseller): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
+        }
+
+        if ($reseller->status !== 'invited') {
+            return response()->json(['message' => 'Referrer is already active and does not need an invite.'], 422);
+        }
+
+        // Generate a setup token if one doesn't exist yet (import-created resellers have none)
+        $setupToken = $reseller->setup_token ?: Str::random(64);
+        if (!$reseller->setup_token) {
+            $reseller->update(['setup_token' => $setupToken]);
+        }
+
+        $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
+        $setupUrl   = url('/reseller/setup?token=' . $setupToken);
+
+        try {
+            Mail::send(new ResellerInvitation(
+                resellerName:  $reseller->name,
+                resellerEmail: $reseller->email,
+                tenantName:    $tenantName,
+                setupUrl:      $setupUrl,
+            ));
+            return response()->json(['success' => true, 'message' => 'Invitation sent to ' . $reseller->email . '.']);
+        } catch (\Throwable $e) {
+            Log::warning("sendInvite failed for {$reseller->email}: {$e->getMessage()}");
+            return response()->json(['message' => 'Referrer record is ready but email delivery failed. Check mail configuration.'], 500);
+        }
+    }
+
     private function auditDeactivation(string $tenantId, Reseller $reseller, string $actorId, string $event, string $reason, array $extra = []): void
     {
         try {

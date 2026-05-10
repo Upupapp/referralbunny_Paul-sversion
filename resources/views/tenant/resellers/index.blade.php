@@ -57,6 +57,20 @@
                                 </div>
                             </td>
                             <td><span :class="{'badge':true,'badge-green':r.status==='active'||r.status==='nda_signed','badge-blue':r.status==='invited','badge-gray':true}" x-text="r.status?.replace('_',' ')"></span></td>
+                            <td>
+                                <template x-if="r.status === 'invited'">
+                                    <button @click="sendInvite(r)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                                            style="background:#7B61FF"
+                                            onmouseover="this.style.background='#5B45DF'" onmouseout="this.style.background='#7B61FF'"
+                                            :disabled="r._inviting"
+                                            :class="r._inviting ? 'opacity-60 cursor-not-allowed' : ''">
+                                        <svg x-show="r._inviting" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                                        <svg x-show="!r._inviting" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                        <span x-text="r._inviting ? 'Sending…' : 'Send Invite'"></span>
+                                    </button>
+                                </template>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -122,6 +136,29 @@ function resellersPage(tenantId) {
                 this.form = { name:'', email:'', phone:'', territory:'' };
                 await this.init();
             } finally { this.saving = false; }
+        },
+
+        async sendInvite(reseller) {
+            reseller._inviting = true;
+            this.$nextTick(() => {});
+            try {
+                const csrf = document.querySelector('meta[name=csrf-token]').content;
+                const res  = await fetch(`/api/resellers/${reseller.id}/send-invite`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.$dispatch('show-toast', { type: 'success', message: `Invitation sent to ${reseller.email}` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.message || 'Failed to send invite.' });
+                }
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Try again.' });
+            } finally {
+                reseller._inviting = false;
+            }
         },
     }
 }

@@ -35,14 +35,7 @@
         default                   => ['class' => 'badge-gray',   'label' => ucfirst($batch->status)],
     };
 @endphp
-<div class="space-y-5">
-
-    @if(session('success'))
-    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;background:#dcfce7;border:1px solid #86efac;border-radius:14px;color:#15803d;font-size:14px;font-weight:600">
-        <svg style="width:20px;height:20px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-        {{ session('success') }}
-    </div>
-    @endif
+<div class="space-y-5" x-data="{ rowFilter: 'all' }">
 
 
     {{-- ── Header ──────────────────────────────────────────── --}}
@@ -117,60 +110,80 @@
     {{-- ── Result KPI Grid ──────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {{-- Created --}}
-        <div class="kpi-card">
+        <button @click="rowFilter = rowFilter === 'created' ? 'all' : 'created'"
+                class="kpi-card text-left w-full transition-all"
+                :class="rowFilter === 'created' ? 'ring-2 ring-emerald-400 shadow-md' : 'hover:ring-1 hover:ring-emerald-200'"
+                title="Click to filter rows">
             <div>
                 <p class="text-xs font-medium text-gray-500 mb-1">Created</p>
                 <p class="text-2xl font-bold text-emerald-600 tabular-nums">{{ number_format($batch->successful_rows) }}</p>
-                <p class="text-xs text-gray-400 mt-1">New deals added</p>
+                <p class="text-xs mt-1" :class="rowFilter === 'created' ? 'text-emerald-600 font-semibold' : 'text-gray-400'">
+                    <span x-text="rowFilter === 'created' ? 'Showing below ↓' : 'New deals added'"></span>
+                </p>
             </div>
             <div class="kpi-icon" style="background: #D1FAE5;">
                 <svg class="w-5 h-5" style="color: #10B981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                 </svg>
             </div>
-        </div>
+        </button>
 
         {{-- Updated --}}
-        <div class="kpi-card">
+        <button @click="rowFilter = rowFilter === 'updated' ? 'all' : 'updated'"
+                class="kpi-card text-left w-full transition-all"
+                :class="rowFilter === 'updated' ? 'ring-2 ring-blue-400 shadow-md' : 'hover:ring-1 hover:ring-blue-200'"
+                title="Click to filter rows">
             <div>
                 <p class="text-xs font-medium text-gray-500 mb-1">Updated</p>
                 <p class="text-2xl font-bold text-blue-600 tabular-nums">{{ number_format($batch->updated_rows) }}</p>
-                <p class="text-xs text-gray-400 mt-1">Existing deals merged</p>
+                <p class="text-xs mt-1" :class="rowFilter === 'updated' ? 'text-blue-600 font-semibold' : 'text-gray-400'">
+                    <span x-text="rowFilter === 'updated' ? 'Showing below ↓' : 'Existing deals merged'"></span>
+                </p>
             </div>
             <div class="kpi-icon bg-blue-50">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
             </div>
-        </div>
+        </button>
 
         {{-- Skipped --}}
-        <div class="kpi-card">
+        <button @click="rowFilter = rowFilter === 'skipped' ? 'all' : 'skipped'"
+                class="kpi-card text-left w-full transition-all"
+                :class="rowFilter === 'skipped' ? 'ring-2 ring-gray-400 shadow-md' : 'hover:ring-1 hover:ring-gray-200'"
+                title="Click to filter rows">
             <div>
                 <p class="text-xs font-medium text-gray-500 mb-1">Skipped</p>
                 <p class="text-2xl font-bold text-gray-500 tabular-nums">{{ number_format($batch->skipped_rows) }}</p>
-                <p class="text-xs text-gray-400 mt-1">Rows skipped</p>
+                <p class="text-xs mt-1" :class="rowFilter === 'skipped' ? 'text-gray-600 font-semibold' : 'text-gray-400'">
+                    <span x-text="rowFilter === 'skipped' ? 'Showing below ↓' : 'Rows skipped'"></span>
+                </p>
             </div>
             <div class="kpi-icon bg-gray-100">
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                 </svg>
             </div>
-        </div>
+        </button>
 
         {{-- Failed --}}
-        <div class="kpi-card">
+        <button @click="rowFilter = rowFilter === 'failed' ? 'all' : 'failed'"
+                class="kpi-card text-left w-full transition-all"
+                :class="rowFilter === 'failed' ? 'ring-2 ring-red-400 shadow-md' : 'hover:ring-1 hover:ring-red-200'"
+                title="Click to filter rows">
             <div>
                 <p class="text-xs font-medium text-gray-500 mb-1">Failed</p>
                 <p class="text-2xl font-bold tabular-nums {{ $batch->failed_rows > 0 ? 'text-red-600' : 'text-gray-400' }}">{{ number_format($batch->failed_rows) }}</p>
-                <p class="text-xs text-gray-400 mt-1">Could not import</p>
+                <p class="text-xs mt-1" :class="rowFilter === 'failed' ? 'text-red-600 font-semibold' : 'text-gray-400'">
+                    <span x-text="rowFilter === 'failed' ? 'Showing below ↓' : 'Could not import'"></span>
+                </p>
             </div>
             <div class="kpi-icon {{ $batch->failed_rows > 0 ? 'bg-red-50' : 'bg-gray-50' }}">
                 <svg class="w-5 h-5 {{ $batch->failed_rows > 0 ? 'text-red-500' : 'text-gray-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </div>
-        </div>
+        </button>
     </div>
 
     {{-- ── Summary Cards Row ────────────────────────────────── --}}
@@ -295,7 +308,8 @@
                         ];
                         $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst(str_replace('_', ' ', $statusKey))];
                     @endphp
-                    <tr class="table-row {{ $rowBorder }}">
+                    <tr class="table-row {{ $rowBorder }}"
+                        x-show="rowFilter === 'all' || rowFilter === '{{ $statusKey }}'">
                         <td class="text-xs text-gray-400 tabular-nums">
                             {{ isset($rows) && method_exists($rows, 'firstItem') ? ($rows->firstItem() + $loop->index) : ($loop->index + 1) }}
                         </td>
