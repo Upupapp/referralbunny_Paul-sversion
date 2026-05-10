@@ -8,6 +8,20 @@
 @section('content')
 <div x-data="lguImportPreview()" x-init="init()" class="space-y-5">
 
+    {{-- ── Upload success banner ───────────────────────────── --}}
+    @if(session('success'))
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:#dcfce7;border:1px solid #86efac;border-radius:14px;color:#15803d;font-size:14px;font-weight:600">
+        <svg style="width:18px;height:18px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+    @if($errors->has('import'))
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:#fef2f2;border:1px solid #fecaca;border-radius:14px;color:#dc2626;font-size:13px;font-weight:600">
+        <svg style="width:18px;height:18px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        {{ $errors->first('import') }}
+    </div>
+    @endif
+
     {{-- ── Sticky Summary Bar ───────────────────────────────── --}}
     <div class="sticky top-0 z-20 card py-3 shadow-md border-b border-gray-100">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">

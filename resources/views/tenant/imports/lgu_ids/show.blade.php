@@ -37,6 +37,14 @@
 @endphp
 <div class="space-y-5">
 
+    @if(session('success'))
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;background:#dcfce7;border:1px solid #86efac;border-radius:14px;color:#15803d;font-size:14px;font-weight:600">
+        <svg style="width:20px;height:20px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+
+
     {{-- ── Header ──────────────────────────────────────────── --}}
     <div class="card">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

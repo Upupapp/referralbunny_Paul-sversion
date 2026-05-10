@@ -108,8 +108,8 @@ class LguIdsImportController extends Controller
         }
 
         return redirect()
-            ->route('tenant.imports.lgu_ids.preview', [$tenantId, $batch->id])
-            ->with('success', 'File uploaded. Review your import below before confirming.');
+            ->route('tenant.imports.lgu-ids.preview', [$tenantId, $batch->id])
+            ->with('success', 'File uploaded successfully. Review your import below before confirming.');
     }
 
     // ── Preview ───────────────────────────────────────────────────
@@ -205,15 +205,15 @@ class LguIdsImportController extends Controller
         // Only allow execution from 'previewed' state
         if ($batch->status !== 'previewed') {
             return redirect()
-                ->route('tenant.imports.lgu_ids.preview', [$tenantId, $batchId])
+                ->route('tenant.imports.lgu-ids.preview', [$tenantId, $batchId])
                 ->withErrors(['import' => "Import cannot be executed in '{$batch->status}' status. It must be in 'previewed' state."]);
         }
 
         $result = $this->service->executeImport($batch, $this->authId(), $this->authRole());
 
         return redirect()
-            ->route('tenant.imports.lgu_ids.show', [$tenantId, $batchId])
-            ->with('success', "Import complete. Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}, Failed: {$result['failed']}.");
+            ->route('tenant.imports.lgu-ids.show', [$tenantId, $batchId])
+            ->with('success', "Import complete — Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}, Failed: {$result['failed']}.");
     }
 
     // ── Show report ───────────────────────────────────────────────
