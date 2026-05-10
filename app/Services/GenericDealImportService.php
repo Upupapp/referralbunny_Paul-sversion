@@ -700,17 +700,27 @@ class GenericDealImportService
                 $dealName      = $norm['deal_name'] ?? ($norm['organization_name'] ?? 'Imported Deal');
                 $stage         = $norm['deal_stage'] ?? 'introduction';
 
-                // Auto-create organisation if configured and not yet resolved
+                // Auto-create organisation if configured and not yet resolved.
+                // Lock-then-check prevents duplicate orgs when two imports run concurrently.
                 if (!$orgId && $settings->unknown_org_behavior === 'auto_create' && !empty($norm['organization_name'])) {
-                    $newOrgId = (string) Str::uuid();
-                    DB::table('organizations')->insert([
-                        'id'         => $newOrgId,
-                        'tenant_id'  => $tenantId,
-                        'name'       => $norm['organization_name'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    $orgId = $newOrgId;
+                    $existingOrg = DB::table('organizations')
+                        ->where('tenant_id', $tenantId)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($norm['organization_name'])])
+                        ->first();
+
+                    if ($existingOrg) {
+                        $orgId = $existingOrg->id;
+                    } else {
+                        $newOrgId = (string) Str::uuid();
+                        DB::table('organizations')->insert([
+                            'id'         => $newOrgId,
+                            'tenant_id'  => $tenantId,
+                            'name'       => $norm['organization_name'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $orgId = $newOrgId;
+                    }
                     $row->update(['organization_id' => $orgId]);
                 }
 

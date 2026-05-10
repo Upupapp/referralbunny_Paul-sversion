@@ -239,7 +239,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     // ── LGU IDS Deal Import ───────────────────────────────────────
     Route::get('/imports/lgu-ids',                         [LguIdsImportController::class, 'index'])->name('imports.lgu-ids');
     Route::get('/imports/lgu-ids/template',                [LguIdsImportController::class, 'downloadTemplate'])->name('imports.lgu-ids.template');
-    Route::post('/imports/lgu-ids/upload',                 [LguIdsImportController::class, 'upload'])->name('imports.lgu-ids.upload');
+    Route::post('/imports/lgu-ids/upload',                 [LguIdsImportController::class, 'upload'])->name('imports.lgu-ids.upload')->middleware('throttle:20,60');
     Route::get('/imports/lgu-ids/{batchId}',               [LguIdsImportController::class, 'preview'])->name('imports.lgu-ids.preview');
     Route::post('/imports/lgu-ids/{batchId}/rows/{rowId}', [LguIdsImportController::class, 'approveRow'])->name('imports.lgu-ids.approve-row');
     Route::post('/imports/lgu-ids/{batchId}/bulk-approve', [LguIdsImportController::class, 'bulkApprove'])->name('imports.lgu-ids.bulk-approve');
@@ -251,7 +251,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     // Blocked for lgu-ids at controller level (abort_if check in resolveTenant).
     Route::get('/imports/deals',                         [TenantDealImportController::class, 'index'])->name('imports.deals');
     Route::get('/imports/deals/template',                [TenantDealImportController::class, 'downloadTemplate'])->name('imports.deals.template');
-    Route::post('/imports/deals/upload',                 [TenantDealImportController::class, 'upload'])->name('imports.deals.upload');
+    Route::post('/imports/deals/upload',                 [TenantDealImportController::class, 'upload'])->name('imports.deals.upload')->middleware('throttle:20,60');
     Route::get('/imports/deals/settings',                [TenantDealImportController::class, 'showSettings'])->name('imports.deals.settings');
     Route::post('/imports/deals/settings',               [TenantDealImportController::class, 'updateSettings'])->name('imports.deals.settings.update');
     Route::get('/imports/deals/{batchId}',               [TenantDealImportController::class, 'preview'])->name('imports.deals.preview');

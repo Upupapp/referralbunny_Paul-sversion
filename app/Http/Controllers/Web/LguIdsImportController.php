@@ -91,7 +91,7 @@ class LguIdsImportController extends Controller
         $tenant = $this->resolveTenant($tenantId);
 
         $request->validate([
-            'file' => 'required|file|mimes:csv,xlsx,txt|max:10240',
+            'file' => 'required|file|mimes:csv,xlsx|max:10240',
         ]);
 
         try {

@@ -123,7 +123,7 @@ class TenantDealImportController extends Controller
         $tenant = $this->resolveTenant($tenantId);
 
         $request->validate([
-            'file' => 'required|file|mimes:csv,xlsx,txt|max:10240',
+            'file' => 'required|file|mimes:csv,xlsx|max:10240',
         ]);
 
         try {
@@ -344,6 +344,11 @@ class TenantDealImportController extends Controller
     {
         $this->guardCheck();
         $this->resolveTenant($tenantId);
+        abort_unless(
+            $this->authRole() === 'tenant_admin',
+            403,
+            'Only Tenant Admins can change import settings.'
+        );
 
         $validated = $request->validate([
             'industry_template_key'      => 'required|string|max:50',
