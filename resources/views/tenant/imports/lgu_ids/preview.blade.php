@@ -303,8 +303,13 @@
                         <td>
                             <div class="flex flex-wrap gap-1">
                                 @forelse($issues as $issue)
+                                @php
+                                    $issueLabel = is_array($issue)
+                                        ? ($issue['message'] ?? str_replace('_', ' ', $issue['code'] ?? 'Issue'))
+                                        : str_replace('_', ' ', (string) $issue);
+                                @endphp
                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 whitespace-nowrap">
-                                    {{ str_replace('_', ' ', $issue) }}
+                                    {{ $issueLabel }}
                                 </span>
                                 @empty
                                 <span class="text-gray-300 text-xs">—</span>
