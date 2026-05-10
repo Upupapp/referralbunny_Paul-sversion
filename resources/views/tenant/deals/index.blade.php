@@ -682,9 +682,9 @@
     </div>
 
     {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
-    <div :style="selectMode ? 'display:block' : 'display:none'"
-         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9000]">
-        <div class="flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border border-gray-200"
+    <div :style="selectMode ? 'display:flex' : 'display:none'"
+         class="fixed bottom-6 left-0 right-0 z-[9000] justify-center px-4 pointer-events-none">
+        <div class="flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border border-gray-200 pointer-events-auto"
              style="background:white;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
             <div class="flex-1">
                 <p class="text-sm font-semibold text-[#1E1B4B]"
