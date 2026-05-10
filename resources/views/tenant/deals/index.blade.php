@@ -23,7 +23,7 @@
             <span class="hidden sm:inline">Import Deals</span>
         </a>
     @endif
-    <button onclick="window.dispatchEvent(new CustomEvent('toggle-deal-select'))"
+    <button onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
             class="btn-secondary" title="Select deals to delete">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -40,7 +40,8 @@
 <div class="space-y-5"
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
-     @open-add-deal.window="showAdd = true; resetForm()">
+     @open-add-deal.window="showAdd = true; resetForm()"
+     @open-deal-delete.window="showDeleteInstructions = true; selectMode = false; selectedDeals = []">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -650,6 +651,39 @@
         </div>
     </div>
 
+    {{-- ── Delete Instructions Modal ─────────────────────────────── --}}
+    <div x-show="showDeleteInstructions" x-cloak
+         class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+            <div class="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2">Delete Deals</h3>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">
+                Tick the checkbox next to each deal you want to delete.<br>
+                A <strong>Delete</strong> button will appear once you've made your selection.
+            </p>
+            <div class="flex gap-3">
+                <button @click="showDeleteInstructions = false"
+                        class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button @click="showDeleteInstructions = false; selectMode = true"
+                        class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">
+                    Start Selecting
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
     <div x-show="selectMode"
          x-cloak
@@ -732,7 +766,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         showSuccessState: false, createdDeal: null,
-        selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false,
+        selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false, showDeleteInstructions: false,
         municipalityOptions: [],
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
@@ -748,11 +782,6 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         ],
 
         async init() {
-            window.addEventListener('toggle-deal-select', () => {
-                this.selectMode   = !this.selectMode;
-                this.selectedDeals = [];
-            });
-
             // Pre-filter from URL params (e.g. from expiry alert notifications)
             const urlParams    = new URLSearchParams(window.location.search);
             const preStatus    = urlParams.get('status');
