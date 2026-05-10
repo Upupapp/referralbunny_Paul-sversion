@@ -370,6 +370,20 @@
                 </tbody>
             </table>
         </div>
+
+        {{-- Load More — shown when more pages exist --}}
+        <div x-show="!loading && currentPage < lastPage"
+             class="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
+            <p class="text-xs text-gray-400">
+                Showing <span x-text="referrers.length"></span> of <span x-text="referrers.length + ((lastPage - currentPage) * 50)"></span> Referrers
+            </p>
+            <button @click="loadMore()"
+                    :disabled="loadingMore"
+                    class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-[#EDE9FE] text-[#7B61FF] hover:bg-purple-100 transition-colors disabled:opacity-50">
+                <svg x-show="loadingMore" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <span x-text="loadingMore ? 'Loading…' : 'Load more Referrers'"></span>
+            </button>
+        </div>
     </div>
 
     {{-- Document Management Modal --}}
@@ -838,6 +852,9 @@ function referrersModule(tenantId) {
         form: { name: '', email: '', phone: '', territory: '' },
         summary: { total: 0, active: 0, invited: 0, no_email: 0, no_password: 0 },
 
+        // Pagination
+        currentPage: 1, lastPage: 1, loadingMore: false,
+
         // Agreement data
         totalRequiredAgreements: 0,
         resellerCompliance: {},
@@ -878,11 +895,13 @@ function referrersModule(tenantId) {
 
             const hdrs = { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
 
-            // ── Step 1: Load resellers, then show the table immediately ────────
+            // ── Step 1: Load referrers (paginated), then show the table immediately ──
             try {
-                const res  = await fetch(`/api/resellers?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: hdrs });
+                const res  = await fetch(`/api/resellers?tenant_id=${tenantId}&per_page=50&page=1`, { credentials: 'same-origin', headers: hdrs });
                 const data = await res.json();
-                this.referrers = Array.isArray(data) ? data : (data.data || []);
+                this.referrers  = Array.isArray(data) ? data : (data.data || []);
+                this.currentPage = data.page ?? 1;
+                this.lastPage    = data.last_page ?? 1;
             } catch(e) { this.referrers = []; }
 
             // Show the list right away — don't block on compliance loading
@@ -903,6 +922,26 @@ function referrersModule(tenantId) {
             } catch(e) {}
             // applyFilters inside refreshCompliance/refreshDocCompliance re-filters
             // once compliance data is ready, keeping existing rows visible throughout
+        },
+
+        async loadMore() {
+            if (this.loadingMore || this.currentPage >= this.lastPage) return;
+            this.loadingMore = true;
+            const next = this.currentPage + 1;
+            const hdrs = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+            try {
+                const res  = await fetch(`/api/resellers?tenant_id=${tenantId}&per_page=50&page=${next}`, { credentials: 'same-origin', headers: hdrs });
+                const data = await res.json();
+                const more = Array.isArray(data) ? data : (data.data || []);
+                this.referrers   = [...this.referrers, ...more];
+                this.currentPage = data.page ?? next;
+                this.lastPage    = data.last_page ?? this.lastPage;
+                this.applyFilters();
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Failed to load more Referrers. Please try again.' });
+            } finally {
+                this.loadingMore = false;
+            }
         },
 
         applyFilters() {
@@ -976,11 +1015,16 @@ function referrersModule(tenantId) {
             this.loadingAgreements        = true;
 
             try {
-                const res  = await fetch(`/api/agreements/reseller-status?tenant_id=${tenantId}&reseller_id=${reseller.id}`);
+                const res  = await fetch(`/api/agreements/reseller-status?tenant_id=${tenantId}&reseller_id=${reseller.id}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('Server error ' + res.status);
                 const data = await res.json();
                 this.activeResellerAgreements = Array.isArray(data) ? data : [];
             } catch(e) {
                 this.activeResellerAgreements = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Unable to load agreement status. Please try again.' });
             }
             this.loadingAgreements = false;
         },
@@ -1092,9 +1136,16 @@ function referrersModule(tenantId) {
             this.showDocuments      = true;
             this.loadingDocs        = true;
             try {
-                const res  = await fetch(`/api/required-documents/reseller-status?tenant_id=${tenantId}&reseller_id=${reseller.id}`);
+                const res = await fetch(`/api/required-documents/reseller-status?tenant_id=${tenantId}&reseller_id=${reseller.id}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('Server error ' + res.status);
                 this.activeResellerDocs = await res.json();
-            } catch(e) { this.activeResellerDocs = []; }
+            } catch(e) {
+                this.activeResellerDocs = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Unable to load document status. Please try again.' });
+            }
             this.loadingDocs = false;
         },
 

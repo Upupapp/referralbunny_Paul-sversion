@@ -184,8 +184,6 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     // Super Admin: change tenant plan (requires double-auth in controller)
     Route::post('billing/tenants/{tenantId}/change-plan',    [BillingController::class, 'changeTenantPlan']);
     Route::get('billing/tenants/{tenantId}/plan-usage',      [BillingController::class, 'tenantPlanUsage']);
-    // Reseller summary
-    Route::get('resellers/summary',                          [ResellerController::class, 'summary']);
     Route::get('export/billing',                         [TenantMetricController::class, 'exportLeads']);
 
     // Pricing & Plans
