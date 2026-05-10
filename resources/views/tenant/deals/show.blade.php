@@ -378,15 +378,9 @@
                         </div>
                     </div>
 
-                    {{-- Divider with arrow --}}
-                    <div style="display:flex;align-items:center;justify-content:center;padding:0 12px">
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-                            <div style="width:1px;flex:1;background:#e5e7eb;min-height:20px"></div>
-                            <div style="width:28px;height:28px;border-radius:9999px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(123,97,255,0.3)">
-                                <svg style="width:13px;height:13px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                            </div>
-                            <div style="width:1px;flex:1;background:#e5e7eb;min-height:20px"></div>
-                        </div>
+                    {{-- Divider --}}
+                    <div style="display:flex;align-items:stretch;justify-content:center;padding:0 16px">
+                        <div style="width:1px;background:#e5e7eb"></div>
                     </div>
 
                     {{-- RIGHT: Contract Value → Company Share + Commission Pool --}}
