@@ -46,7 +46,15 @@ class LeadController extends Controller
             $query->where('reseller_name', $request->reseller_name);
         }
 
-        $leads = $query->get();
+        // Paginate to prevent OOM on large tenants; callers may request all via per_page=all
+        $perPage = $request->get('per_page', 50);
+        if ($perPage === 'all' && TenantContext::isSuperAdmin()) {
+            $leads = $query->get();
+        } else {
+            $perPage = min(200, max(1, (int) $perPage));
+            $paginated = $query->paginate($perPage);
+            $leads     = $paginated->getCollection();
+        }
 
         if ($includePartners) {
             // Map partner data into a clean `partners` array on each lead.
@@ -65,6 +73,16 @@ class LeadController extends Controller
                     ->toArray();
                 return $data;
             });
+        }
+
+        if (isset($paginated)) {
+            return response()->json([
+                'data'      => $leads->values(),
+                'total'     => $paginated->total(),
+                'page'      => $paginated->currentPage(),
+                'per_page'  => $paginated->perPage(),
+                'last_page' => $paginated->lastPage(),
+            ]);
         }
 
         return response()->json($leads);

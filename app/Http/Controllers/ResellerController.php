@@ -49,17 +49,31 @@ class ResellerController extends Controller
     {
         $query = Reseller::orderBy('performance_score', 'desc');
 
-        if ($request->filled('tenant_id')) {
+        // Always scope to the active tenant; super admins may override via tenant_id param
+        $tenantId = TenantContext::id();
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        } elseif ($request->filled('tenant_id') && TenantContext::isSuperAdmin()) {
             $query->where('tenant_id', $request->tenant_id);
+        } elseif (!TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
         }
 
         $isTenantAdmin = $this->callerIsTenantAdmin();
+        $perPage       = min(200, max(1, (int) $request->get('per_page', 50)));
+        $paginated     = $query->paginate($perPage);
 
-        $resellers = $query->get()->map(
+        $resellers = $paginated->getCollection()->map(
             fn ($r) => $this->applyAnonymityMask($r, $isTenantAdmin)
         );
 
-        return response()->json($resellers);
+        return response()->json([
+            'data'      => $resellers->values(),
+            'total'     => $paginated->total(),
+            'page'      => $paginated->currentPage(),
+            'per_page'  => $paginated->perPage(),
+            'last_page' => $paginated->lastPage(),
+        ]);
     }
 
     public function store(Request $request): JsonResponse

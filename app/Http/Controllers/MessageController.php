@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 
 class MessageController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $tenantId = TenantContext::id();
         $query = Message::orderBy('created_at', 'desc');
@@ -18,7 +18,15 @@ class MessageController extends Controller
         } elseif (!TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');
         }
-        return response()->json($query->get());
+        $perPage   = min(100, max(1, (int) $request->get('per_page', 50)));
+        $paginated = $query->paginate($perPage);
+        return response()->json([
+            'data'      => $paginated->items(),
+            'total'     => $paginated->total(),
+            'page'      => $paginated->currentPage(),
+            'per_page'  => $paginated->perPage(),
+            'last_page' => $paginated->lastPage(),
+        ]);
     }
 
     public function store(Request $request): JsonResponse

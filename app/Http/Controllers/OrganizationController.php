@@ -51,11 +51,15 @@ class OrganizationController extends Controller
 
         $total = (clone $base)->count();
 
-        // Scoped sub-queries (tenant-only) keep joins fast
+        // Scoped sub-queries (tenant-only) keep joins fast.
+        // $tenantId is server-resolved via TenantContext (never user-supplied), but we still
+        // use PDO quoting to eliminate the string-interpolation pattern across the codebase.
+        $quotedTenantId = DB::getPdo()->quote($tenantId);
+
         $orgs = (clone $base)
             ->leftJoin(
                 DB::raw("(SELECT organization_id, COUNT(*) as contact_count
-                          FROM contacts WHERE tenant_id = '{$tenantId}'
+                          FROM contacts WHERE tenant_id = {$quotedTenantId}
                           GROUP BY organization_id) cc"),
                 'o.id', '=', 'cc.organization_id'
             )
@@ -65,8 +69,8 @@ class OrganizationController extends Controller
                                  COALESCE(SUM(l.deal_value), 0) as deal_value
                           FROM contacts c2
                           JOIN deal_contacts dc ON c2.id = dc.contact_id
-                          JOIN leads l ON dc.deal_id = l.id AND l.tenant_id = '{$tenantId}'
-                          WHERE c2.tenant_id = '{$tenantId}'
+                          JOIN leads l ON dc.deal_id = l.id AND l.tenant_id = {$quotedTenantId}
+                          WHERE c2.tenant_id = {$quotedTenantId}
                           GROUP BY c2.organization_id) ds"),
                 'o.id', '=', 'ds.organization_id'
             )
