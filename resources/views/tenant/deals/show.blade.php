@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 @section('title', 'Deal Detail')
 @section('nav') @include('tenant._nav') @endsection
 
@@ -16,7 +16,7 @@
 @section('content')
 <script>var __dealSsrLead = @json($ssrLead ?? null);</script>
 <style>
-/* Financial breakdown layout — guaranteed, no Tailwind compile dependency */
+/* Financial breakdown layout â€” guaranteed, no Tailwind compile dependency */
 .fin-row{display:flex!important;justify-content:space-between;align-items:center}
 .fin-grid-3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
 </style>
@@ -35,12 +35,12 @@
     {{-- Loading state --}}
     <div x-show="loading" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-        <span class="text-sm">Loading deal…</span>
+        <span class="text-sm">Loading dealâ€¦</span>
     </div>
 
     <div x-show="!loading && lead" class="space-y-5">
 
-        {{-- â”€â”€ Header â”€â”€ --}}
+        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬ --}}
         <div class="card">
             <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-lg shrink-0"
@@ -85,11 +85,11 @@
             </div>
         </div>
 
-        {{-- â”€â”€ Stage Progress â”€â”€ --}}
+        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Stage Progress Ã¢â€â‚¬Ã¢â€â‚¬ --}}
         <div class="card">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-[#1E1B4B] text-sm">Pipeline Progress</h3>
-                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage →</button>
+                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage â†’</button>
             </div>
             <div class="flex items-center">
                 <template x-for="(s, i) in allStages" :key="s.key">
@@ -113,9 +113,9 @@
             </div>
         </div>
 
-        {{-- ══════════════════════════════════════════════
-             FINANCIAL BREAKDOWN  â† the key feature
-             ══════════════════════════════════════════════ --}}
+        {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+             FINANCIAL BREAKDOWN  Ã¢â€ Â the key feature
+             â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
         <div class="card">
 
             {{-- Header --}}
@@ -126,7 +126,7 @@
                     </div>
                     <h3 class="font-semibold text-[#1E1B4B]">Financial Breakdown</h3>
 
-                    {{-- ⓘ Formula explainer (orange, always visible) --}}
+                    {{-- â“˜ Formula explainer (orange, always visible) --}}
                     <div class="relative" x-data="{ open: false }">
                         <button type="button"
                                 @click="open = !open"
@@ -160,13 +160,13 @@
                             </div>
 
                             <p class="text-xs text-gray-600 leading-relaxed mb-3">
-                                ReferralBunny.ai separates the total contract value into the actual base cost and the added amount (your margin). The <span class="font-semibold text-blue-600">company share</span> is 30% of the added amount, while the <span class="font-semibold text-emerald-600">referrer commission pool</span> is 70% of the added amount. This lets everyone see exactly how the contract value, company share, and commission pool are calculated — before commissions are locked or paid.
+                                ReferralBunny.ai separates the total contract value into the actual base cost and the added amount (your margin). The <span class="font-semibold text-blue-600">company share</span> is 30% of the added amount, while the <span class="font-semibold text-emerald-600">referrer commission pool</span> is 70% of the added amount. This lets everyone see exactly how the contract value, company share, and commission pool are calculated â€” before commissions are locked or paid.
                             </p>
 
                             {{-- Formula --}}
                             <div class="space-y-1.5 bg-[#F0EFFA] rounded-xl p-3 mb-3">
                                 <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-500">₱ Base Cost  +  Added Amount</span>
+                                    <span class="text-gray-500">â‚± Base Cost  +  Added Amount</span>
                                     <span class="font-semibold text-[#1E1B4B]">= Contract Value</span>
                                 </div>
                                 <div class="flex items-center justify-between text-xs">
@@ -219,7 +219,7 @@
                 </button>
             </div>
 
-            {{-- â”€â”€ View mode (PHP-rendered — no Alpine x-text dependency) â”€â”€ --}}
+            {{-- Ã¢â€â‚¬Ã¢â€â‚¬ View mode (PHP-rendered â€” no Alpine x-text dependency) Ã¢â€â‚¬Ã¢â€â‚¬ --}}
             @php
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
@@ -228,67 +228,67 @@
                 $co = $aa * 0.30;
                 $cp = $aa * 0.70;
             @endphp
-            <div :class=”editFinance ? 'hidden' : ''” class=”space-y-4”>
+            <div :class=â€editFinance ? 'hidden' : ''â€ class=â€space-y-4â€>
 
                 {{-- Formula rows --}}
                 <div>
-                    <div class=”fin-row py-2.5 border-b border-gray-100”>
-                        <p class=”text-sm text-gray-500”>₱ Base Cost</p>
-                        <p id=”fin-bc” class=”text-sm font-semibold text-gray-700 tabular-nums”>₱{{ number_format((int)$bc) }}</p>
+                    <div class=â€fin-row py-2.5 border-b border-gray-100â€>
+                        <p class=â€text-sm text-gray-500â€>â‚± Base Cost</p>
+                        <p id=â€fin-bcâ€ class=â€text-sm font-semibold text-gray-700 tabular-numsâ€>â‚±{{ number_format((int)$bc) }}</p>
                     </div>
-                    <div class=”fin-row py-2.5 border-b border-dashed border-gray-200”>
-                        <p class=”text-sm text-gray-500”>+ Added Amount <span class=”text-xs text-gray-400”>(margin)</span></p>
-                        <p id=”fin-aa” class=”text-sm font-semibold text-blue-600 tabular-nums”>₱{{ number_format((int)$aa) }}</p>
+                    <div class=â€fin-row py-2.5 border-b border-dashed border-gray-200â€>
+                        <p class=â€text-sm text-gray-500â€>+ Added Amount <span class=â€text-xs text-gray-400â€>(margin)</span></p>
+                        <p id=â€fin-aaâ€ class=â€text-sm font-semibold text-blue-600 tabular-numsâ€>â‚±{{ number_format((int)$aa) }}</p>
                     </div>
-                    <div class=”fin-row py-2.5 rounded-xl px-3 mt-1” style=”background:#F0EFFA”>
-                        <p class=”text-sm font-semibold” style=”color:#1E1B4B”>= Contract Value</p>
-                        <p id=”fin-cv” class=”text-sm font-bold tabular-nums” style=”color:#1E1B4B”>₱{{ number_format((int)$cv) }}</p>
+                    <div class=â€fin-row py-2.5 rounded-xl px-3 mt-1â€ style=â€background:#F0EFFAâ€>
+                        <p class=â€text-sm font-semiboldâ€ style=â€color:#1E1B4Bâ€>= Contract Value</p>
+                        <p id=â€fin-cvâ€ class=â€text-sm font-bold tabular-numsâ€ style=â€color:#1E1B4Bâ€>â‚±{{ number_format((int)$cv) }}</p>
                     </div>
                 </div>
 
                 {{-- 3-column summary --}}
-                <div class=”fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100”>
-                    <div class=”text-center”>
-                        <p class=”text-xs text-gray-400 uppercase tracking-wide”>Contract Value</p>
-                        <p id=”fin-cv2” class=”text-sm font-bold tabular-nums mt-0.5” style=”color:#1E1B4B”>₱{{ number_format((int)$cv) }}</p>
-                        <p class=”text-xs text-gray-400”>base + margin</p>
+                <div class=â€fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100â€>
+                    <div class=â€text-centerâ€>
+                        <p class=â€text-xs text-gray-400 uppercase tracking-wideâ€>Contract Value</p>
+                        <p id=â€fin-cv2â€ class=â€text-sm font-bold tabular-nums mt-0.5â€ style=â€color:#1E1B4Bâ€>â‚±{{ number_format((int)$cv) }}</p>
+                        <p class=â€text-xs text-gray-400â€>base + margin</p>
                     </div>
-                    <div class=”text-center” style=”border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb”>
-                        <p class=”text-xs text-blue-500 uppercase tracking-wide”>Company Share</p>
-                        <p id=”fin-co” class=”text-sm font-bold text-blue-700 tabular-nums mt-0.5”>₱{{ number_format((int)$co) }}</p>
-                        <p class=”text-xs text-blue-400”>30% margin</p>
+                    <div class=â€text-centerâ€ style=â€border-left:1px solid #e5e7eb;border-right:1px solid #e5e7ebâ€>
+                        <p class=â€text-xs text-blue-500 uppercase tracking-wideâ€>Company Share</p>
+                        <p id=â€fin-coâ€ class=â€text-sm font-bold text-blue-700 tabular-nums mt-0.5â€>â‚±{{ number_format((int)$co) }}</p>
+                        <p class=â€text-xs text-blue-400â€>30% margin</p>
                     </div>
-                    <div class=”text-center”>
-                        <p class=”text-xs text-emerald-500 uppercase tracking-wide”>Commission Pool</p>
-                        <p id=”fin-cp” class=”text-sm font-bold text-emerald-700 tabular-nums mt-0.5”>₱{{ number_format((int)$cp) }}</p>
-                        <p class=”text-xs text-emerald-400”>70% margin</p>
+                    <div class=â€text-centerâ€>
+                        <p class=â€text-xs text-emerald-500 uppercase tracking-wideâ€>Commission Pool</p>
+                        <p id=â€fin-cpâ€ class=â€text-sm font-bold text-emerald-700 tabular-nums mt-0.5â€>â‚±{{ number_format((int)$cp) }}</p>
+                        <p class=â€text-xs text-emerald-400â€>70% margin</p>
                     </div>
                 </div>
 
-                {{-- Commission distribution (Alpine-driven — only shows when splits exist) --}}
+                {{-- Commission distribution (Alpine-driven â€” only shows when splits exist) --}}
                 @if(!empty($ssrLead['commission_splits']))
                 <div>
-                    <div class=”flex items-center justify-between mb-2”>
-                        <p class=”text-xs font-semibold text-gray-500 uppercase tracking-wider”>Commission Distribution</p>
-                        <span class=”badge badge-gray”
-                              x-text=”lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'”>
+                    <div class=â€flex items-center justify-between mb-2â€>
+                        <p class=â€text-xs font-semibold text-gray-500 uppercase tracking-widerâ€>Commission Distribution</p>
+                        <span class=â€badge badge-grayâ€
+                              x-text=â€lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'â€>
                             {{ ucfirst($ssrLead['commission_status'] ?? 'pending') }}</span>
                     </div>
-                    <div class=”space-y-1.5”>
-                        <template x-for=”split in (lead?.commission_splits||[])” :key=”split.id”>
-                            <div class=”flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5”>
-                                <div class=”flex items-center gap-2.5 min-w-0”>
-                                    <div class=”w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0”
-                                         :class=”split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'”
-                                         x-text=”(split.reseller_name||'?').slice(0,2).toUpperCase()”></div>
-                                    <div class=”min-w-0”>
-                                        <p class=”text-sm font-medium text-[#1E1B4B] truncate” x-text=”split.reseller_name”></p>
-                                        <p class=”text-xs text-gray-400 capitalize” x-text=”split.role”></p>
+                    <div class=â€space-y-1.5â€>
+                        <template x-for=â€split in (lead?.commission_splits||[])â€ :key=â€split.idâ€>
+                            <div class=â€flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5â€>
+                                <div class=â€flex items-center gap-2.5 min-w-0â€>
+                                    <div class=â€w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0â€
+                                         :class=â€split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'â€
+                                         x-text=â€(split.reseller_name||'?').slice(0,2).toUpperCase()â€></div>
+                                    <div class=â€min-w-0â€>
+                                        <p class=â€text-sm font-medium text-[#1E1B4B] truncateâ€ x-text=â€split.reseller_nameâ€></p>
+                                        <p class=â€text-xs text-gray-400 capitalizeâ€ x-text=â€split.roleâ€></p>
                                     </div>
                                 </div>
-                                <div class=”text-right shrink-0 ml-3”>
-                                    <p class=”text-sm font-bold text-emerald-700 tabular-nums” x-text=”fmt(commPool() * split.percentage / 100)”></p>
-                                    <p class=”text-xs text-gray-400” x-text=”split.percentage + '% of pool'”></p>
+                                <div class=â€text-right shrink-0 ml-3â€>
+                                    <p class=â€text-sm font-bold text-emerald-700 tabular-numsâ€ x-text=â€fmt(commPool() * split.percentage / 100)â€></p>
+                                    <p class=â€text-xs text-gray-400â€ x-text=â€split.percentage + '% of pool'â€></p>
                                 </div>
                             </div>
                         </template>
@@ -298,25 +298,25 @@
 
                 {{-- No financial data notice --}}
                 @if(!$aa)
-                <div class=”p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800”>
+                <div class=â€p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800â€>
                     No financial data set yet. Click <strong>Edit</strong> to enter Base Cost and Added Amount.
                 </div>
                 @endif
 
             </div>
 
-            {{-- â”€â”€ Edit mode â”€â”€ --}}
+            {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Edit mode Ã¢â€â‚¬Ã¢â€â‚¬ --}}
             <div x-show="editFinance" style="display:none" class="space-y-5">
                 <p class="text-xs text-gray-500">Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="form-label">Base Cost (₱) <span class="text-gray-400 font-normal">— actual delivery cost</span></label>
+                        <label class="form-label">Base Cost (â‚±) <span class="text-gray-400 font-normal">â€” actual delivery cost</span></label>
                         <input type="number" x-model.number="financeForm.base_cost" @input="recalc()"
                                class="form-input" placeholder="0" min="0" step="100">
                     </div>
                     <div>
-                        <label class="form-label">Added Amount (₱) <span class="text-gray-400 font-normal">— your margin</span></label>
+                        <label class="form-label">Added Amount (â‚±) <span class="text-gray-400 font-normal">â€” your margin</span></label>
                         <input type="number" x-model.number="financeForm.added_amount" @input="recalc()"
                                class="form-input" placeholder="0" min="0" step="100">
                     </div>
@@ -359,12 +359,12 @@
 
                 <div class="flex justify-end gap-3">
                     <button @click="cancelEditFinance()" class="btn-secondary">Cancel</button>
-                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
+                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Savingâ€¦' : 'Save Financial Data'"></button>
                 </div>
             </div>
         </div>
         <script>
-        // Apply financial layout — JS setProperty bypasses ALL CSS blocking
+        // Apply financial layout â€” JS setProperty bypasses ALL CSS blocking
         (function applyFin(){
             ['.fin-row','.fin-grid-3'].forEach(function(sel){
                 document.querySelectorAll(sel).forEach(function(el){
@@ -394,7 +394,7 @@
         });
         </script>
 
-        {{-- â”€â”€ Bottom layout: Details + Notes/History â”€â”€ --}}
+        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Bottom layout: Details + Notes/History Ã¢â€â‚¬Ã¢â€â‚¬ --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
             {{-- Left: Details + Commission splits quick view --}}
@@ -403,16 +403,16 @@
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Deal Details</h3>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Referrer</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || '—'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'â€”'"></span>
                     </div>
                     @if($showLocation ?? false)
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Province</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || '—'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || 'â€”'"></span>
                     </div>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Municipality</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || '—'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || 'â€”'"></span>
                     </div>
                     @endif
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
@@ -449,7 +449,7 @@
                 {{-- Loading --}}
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-2">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loading…
+                    Loadingâ€¦
                 </div>
 
                 {{-- Split rows --}}
@@ -501,7 +501,7 @@
                                    @keydown.arrow-down.prevent="contactFocusIdx = Math.min(contactFocusIdx + 1, contactOptions.length - 1)"
                                    @keydown.arrow-up.prevent="contactFocusIdx = Math.max(contactFocusIdx - 1, -1)"
                                    @keydown.enter.prevent="if(contactFocusIdx >= 0 && contactOptions[contactFocusIdx]) selectContact(contactOptions[contactFocusIdx])"
-                                   placeholder="Search contacts by name or email…"
+                                   placeholder="Search contacts by name or emailâ€¦"
                                    autocomplete="off"
                                    class="form-input text-xs pr-7">
                             <div class="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
@@ -515,7 +515,7 @@
                              style="display:none">
                             <div x-show="loadingContacts" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                 <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                Loading contacts…
+                                Loading contactsâ€¦
                             </div>
                             <div x-show="!loadingContacts && contactLoadError" class="px-3 py-2.5">
                                 <p class="text-xs text-red-500" x-text="contactLoadError"></p>
@@ -530,14 +530,14 @@
                                         <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
                                              x-text="([c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '?').slice(0,2).toUpperCase()"></div>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="[c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '—'"></p>
+                                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="[c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || 'â€”'"></p>
                                             <p class="text-[10px] text-gray-400 truncate" x-text="c.email || c.job_title || ''"></p>
                                         </div>
                                     </button>
                                 </template>
                                 <div x-show="contactOptions.length === 0 && !loadingContacts && !contactLoadError"
                                      class="px-3 py-4 text-center text-xs text-gray-400"
-                                     x-text="contactQuery ? 'No matching contacts.' : 'Click 🔍 or type to search contacts.'"></div>
+                                     x-text="contactQuery ? 'No matching contacts.' : 'Click ðŸ” or type to search contacts.'"></div>
                             </div>
                         </div>
                     </div>
@@ -547,7 +547,7 @@
                         <div class="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-[10px] font-bold shrink-0"
                              x-text="([contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || '?').slice(0,2).toUpperCase()"></div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="[contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || '—'"></p>
+                            <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="[contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || 'â€”'"></p>
                             <p class="text-[10px] text-gray-400 truncate" x-text="contactSelected?.email || ''"></p>
                         </div>
                         <button type="button" @click="clearContact()" class="text-gray-400 hover:text-gray-600 shrink-0">
@@ -566,7 +566,7 @@
                                        min="0"
                                        :max="form.split_share_type === 'percentage' ? 100 : null">
                                 <span class="absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-gray-400 pointer-events-none"
-                                      x-text="form.split_share_type === 'percentage' ? '%' : '₱'"></span>
+                                      x-text="form.split_share_type === 'percentage' ? '%' : 'â‚±'"></span>
                             </div>
                             <select x-model="form.split_share_type" class="form-input text-xs w-32 shrink-0">
                                 <option value="percentage">Percentage</option>
@@ -579,20 +579,20 @@
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                            <span x-text="'= ₱' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                            <span x-text="'= â‚±' + (dealValue * form.split_share_value / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
                         </p>
                         <p x-show="form.split_share_type === 'fixed_amount' && form.split_share_value && dealValue"
                            class="text-xs text-gray-400 flex items-center gap-1">
                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <span x-text="'≈ ' + (form.split_share_value / dealValue * 100).toFixed(1) + '% of deal value'"></span>
+                            <span x-text="'â‰ˆ ' + (form.split_share_value / dealValue * 100).toFixed(1) + '% of deal value'"></span>
                         </p>
                     </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div class="flex gap-2">
                         <button @click="showAdd = false; clearContact(); formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Add Split'"></button>
+                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Savingâ€¦' : 'Add Split'"></button>
                     </div>
                 </div>
             </div>
@@ -625,19 +625,19 @@
                         <option value="30">+30 days</option>
                     </select>
                     <textarea x-model="extendForm.reason" class="form-input text-xs" rows="2"
-                              placeholder="Reason for extension (optional)…"></textarea>
+                              placeholder="Reason for extension (optional)â€¦"></textarea>
                     <p x-show="extendError" class="text-xs text-red-600" x-text="extendError"></p>
                     <div class="flex gap-2">
                         <button @click="showExtendForm = false; extendError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
                         <button @click="adminExtend()" :disabled="saving"
                                 class="btn-primary text-xs flex-1"
-                                x-text="saving ? 'Extending…' : 'Confirm Extension'"></button>
+                                x-text="saving ? 'Extendingâ€¦' : 'Confirm Extension'"></button>
                     </div>
                 </div>
 
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-1">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loading…
+                    Loadingâ€¦
                 </div>
 
                 <div x-show="!loading" class="space-y-2">
@@ -692,7 +692,7 @@
                 </div>
                 <div x-show="loadingContacts" class="flex items-center gap-2 text-gray-400 text-xs py-2">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loading…
+                    Loadingâ€¦
                 </div>
                 <div x-show="!loadingContacts">
                     <template x-if="dealContacts.length === 0">
@@ -709,7 +709,7 @@
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="contactFullName(c)"></p>
                                     <p class="text-xs text-gray-400 truncate">
-                                        <span x-show="c.deal_role" x-text="c.deal_role + ' · '"></span>
+                                        <span x-show="c.deal_role" x-text="c.deal_role + ' Â· '"></span>
                                         <span x-text="c.org_name || c.job_title || c.email || ''"></span>
                                     </p>
                                 </div>
@@ -769,14 +769,14 @@
                                           @keydown.enter.prevent="if(mentionOpen && mentionResults[mentionFocusIdx]) selectMention(mentionResults[mentionFocusIdx])"
                                           rows="3"
                                           class="form-input text-sm resize-none"
-                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note — only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
+                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note â€” only visible to Tenant Admins and Managers. Type @ to tag someoneâ€¦' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contactâ€¦'"></textarea>
 
                                 {{-- @Mention dropdown --}}
                                 <div x-show="mentionOpen" style="display:none"
                                      class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto">
                                     <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                         <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                        Searching…
+                                        Searchingâ€¦
                                     </div>
                                     <template x-for="(m, idx) in mentionResults" :key="m.type + ':' + m.id">
                                         <button type="button" @click="selectMention(m)"
@@ -804,7 +804,7 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                                           :class="{'bg-purple-100 text-purple-700':m.type==='tenant_admin','bg-blue-100 text-blue-700':m.type==='referrer','bg-orange-100 text-orange-700':m.type==='partner','bg-gray-100 text-gray-600':m.type==='contact'}">
                                         @<span x-text="m.name"></span>
-                                        <button @click="mentions.splice(i,1)" class="ml-0.5 opacity-60 hover:opacity-100">×</button>
+                                        <button @click="mentions.splice(i,1)" class="ml-0.5 opacity-60 hover:opacity-100">Ã—</button>
                                     </span>
                                 </template>
                             </div>
@@ -851,7 +851,7 @@
                                         :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
                                         class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <svg x-show="posting" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                    <span x-text="posting ? 'Saving…' : 'Save Note'"></span>
+                                    <span x-text="posting ? 'Savingâ€¦' : 'Save Note'"></span>
                                 </button>
                             </div>
                         </div>
@@ -860,7 +860,7 @@
                     {{-- Notes list --}}
                     <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        Loading notes…
+                        Loading notesâ€¦
                     </div>
                     <div x-show="!loadingComments && comments.length === 0" class="flex flex-col items-center text-center py-8 text-gray-300">
                         <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -909,7 +909,7 @@
                                             <div x-show="editingId === c.id" class="mt-2 space-y-2">
                                                 <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
                                                 <div class="flex gap-2">
-                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'"></button>
+                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Savingâ€¦' : 'Save'"></button>
                                                     <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
                                                 </div>
                                             </div>
@@ -951,7 +951,7 @@
                                 <div class="pb-3 flex-1 min-w-0">
                                     <p class="text-sm text-gray-700" x-text="event.action"></p>
                                     <p class="text-xs text-gray-400 mt-0.5">
-                                        <span x-show="event.reseller" x-text="event.reseller + ' · '"></span>
+                                        <span x-show="event.reseller" x-text="event.reseller + ' Â· '"></span>
                                         <span x-text="event.date ? new Date(event.date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : ''"></span>
                                     </p>
                                 </div>
@@ -966,54 +966,54 @@
     </div>
 
     {{-- Link Contact Modal --}}
-    <template x-teleport=”body”>
-    <div x-show=”showLinkContact” style=”display:none”
-         class=”fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4”
-         @keydown.escape.window=”showLinkContact = false”>
-        <div class=”bg-white rounded-2xl shadow-xl w-full max-w-md” @click.stop>
-            <div class=”flex items-center justify-between px-6 py-4 border-b border-gray-100”>
-                <h3 class=”font-semibold text-[#1E1B4B]”>Link Contact to Deal</h3>
-                <button @click=”showLinkContact = false; linkSearch = ''” class=”text-gray-400 hover:text-gray-600 transition-colors”>
-                    <svg class=”w-5 h-5” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M6 18L18 6M6 6l12 12”/></svg>
+    <template x-teleport=â€bodyâ€>
+    <div x-show=â€showLinkContactâ€ style=â€display:noneâ€
+         class=â€fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4â€
+         @keydown.escape.window=â€showLinkContact = falseâ€>
+        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-mdâ€ @click.stop>
+            <div class=â€flex items-center justify-between px-6 py-4 border-b border-gray-100â€>
+                <h3 class=â€font-semibold text-[#1E1B4B]â€>Link Contact to Deal</h3>
+                <button @click=â€showLinkContact = false; linkSearch = ''â€ class=â€text-gray-400 hover:text-gray-600 transition-colorsâ€>
+                    <svg class=â€w-5 h-5â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M6 18L18 6M6 6l12 12â€/></svg>
                 </button>
             </div>
-            <div class=”p-5 space-y-3”>
-                <div class=”search-group”>
-                    <svg @click=”if(!allTenantContacts.length) fetchAllContacts()”
-                         class=”cursor-pointer hover:text-purple-600 transition-colors”
-                         fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”>
-                        <path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z”/>
+            <div class=â€p-5 space-y-3â€>
+                <div class=â€search-groupâ€>
+                    <svg @click=â€if(!allTenantContacts.length) fetchAllContacts()â€
+                         class=â€cursor-pointer hover:text-purple-600 transition-colorsâ€
+                         fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€>
+                        <path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zâ€/>
                     </svg>
-                    <input type=”text” x-model=”linkSearch”
-                           @input.debounce.200ms=”if(!allTenantContacts.length) fetchAllContacts()”
-                           placeholder=”Click 🔍 or type to search contacts…”>
+                    <input type=â€textâ€ x-model=â€linkSearchâ€
+                           @input.debounce.200ms=â€if(!allTenantContacts.length) fetchAllContacts()â€
+                           placeholder=â€Click ðŸ” or type to search contactsâ€¦â€>
                 </div>
-                <div class=”max-h-72 overflow-y-auto space-y-1”>
-                    <template x-if=”allTenantContacts.length === 0”>
-                        <p class=”text-center text-gray-400 text-sm py-6”>Click the search icon or start typing to load contacts.</p>
+                <div class=â€max-h-72 overflow-y-auto space-y-1â€>
+                    <template x-if=â€allTenantContacts.length === 0â€>
+                        <p class=â€text-center text-gray-400 text-sm py-6â€>Click the search icon or start typing to load contacts.</p>
                     </template>
-                    <template x-if=”allTenantContacts.length > 0 && linkableContacts().length === 0”>
-                        <p class=”text-center text-gray-400 text-sm py-6”>
-                            <span x-text=”'No matching contacts.'”></span>
+                    <template x-if=â€allTenantContacts.length > 0 && linkableContacts().length === 0â€>
+                        <p class=â€text-center text-gray-400 text-sm py-6â€>
+                            <span x-text=â€'No matching contacts.'â€></span>
                         </p>
                     </template>
-                    <template x-for=”c in linkableContacts()” :key=”c.id”>
-                        <button @click=”linkContact(c)”
-                                :disabled=”linkSaving”
-                                class=”flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left group”>
-                            <div class=”w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0”
-                                 x-text=”contactInitials(c)”></div>
-                            <div class=”flex-1 min-w-0”>
-                                <p class=”text-sm font-medium text-[#1E1B4B] truncate” x-text=”contactFullName(c)”></p>
-                                <p class=”text-xs text-gray-400 truncate” x-text=”[c.job_title, c.org_name].filter(Boolean).join(' · ') || c.email || ''”></p>
+                    <template x-for=â€c in linkableContacts()â€ :key=â€c.idâ€>
+                        <button @click=â€linkContact(c)â€
+                                :disabled=â€linkSavingâ€
+                                class=â€flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left groupâ€>
+                            <div class=â€w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0â€
+                                 x-text=â€contactInitials(c)â€></div>
+                            <div class=â€flex-1 min-w-0â€>
+                                <p class=â€text-sm font-medium text-[#1E1B4B] truncateâ€ x-text=â€contactFullName(c)â€></p>
+                                <p class=â€text-xs text-gray-400 truncateâ€ x-text=â€[c.job_title, c.org_name].filter(Boolean).join(' Â· ') || c.email || ''â€></p>
                             </div>
-                            <svg class=”w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M12 4v16m8-8H4”/></svg>
+                            <svg class=â€w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M12 4v16m8-8H4â€/></svg>
                         </button>
                     </template>
                 </div>
-                <p class=”text-xs text-gray-400 pt-1”>
+                <p class=â€text-xs text-gray-400 pt-1â€>
                     Can't find the contact?
-                    <a href=”{{ route('tenant.contacts', $tenant->id) }}” class=”text-purple-600 hover:underline”>Add them first</a>
+                    <a href=â€{{ route('tenant.contacts', $tenant->id) }}â€ class=â€text-purple-600 hover:underlineâ€>Add them first</a>
                     in the Contacts module.
                 </p>
             </div>
@@ -1021,58 +1021,58 @@
     </div>
     </template>
 
-    {{-- ── Move Stage Modal ── --}}
-    <template x-teleport=”body”>
-    <div x-show=”showMoveStage” style=”display:none”
-         class=”fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4”
-         @keydown.escape.window=”showMoveStage = false; moveStageNote = ''”>
-        <div class=”bg-white rounded-2xl shadow-xl w-full max-w-sm” @click.stop>
-            <div class=”flex items-center justify-between px-6 py-4 border-b border-gray-100”>
+    {{-- â”€â”€ Move Stage Modal â”€â”€ --}}
+    <template x-teleport=â€bodyâ€>
+    <div x-show=â€showMoveStageâ€ style=â€display:noneâ€
+         class=â€fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4â€
+         @keydown.escape.window=â€showMoveStage = false; moveStageNote = ''â€>
+        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-smâ€ @click.stop>
+            <div class=â€flex items-center justify-between px-6 py-4 border-b border-gray-100â€>
                 <div>
-                    <h3 class=”font-semibold text-[#1E1B4B]”>Move Stage</h3>
-                    <p class=”text-xs text-gray-400 mt-0.5”>
-                        <span x-text=”lead?.name”></span>
+                    <h3 class=â€font-semibold text-[#1E1B4B]â€>Move Stage</h3>
+                    <p class=â€text-xs text-gray-400 mt-0.5â€>
+                        <span x-text=â€lead?.nameâ€></span>
                     </p>
                 </div>
-                <button @click=”showMoveStage = false; moveStageNote = ''” class=”text-gray-400 hover:text-gray-600”>
-                    <svg class=”w-5 h-5” fill=”none” stroke=”currentColor” viewBox=”0 0 24 24”><path stroke-linecap=”round” stroke-linejoin=”round” stroke-width=”2” d=”M6 18L18 6M6 6l12 12”/></svg>
+                <button @click=â€showMoveStage = false; moveStageNote = ''â€ class=â€text-gray-400 hover:text-gray-600â€>
+                    <svg class=â€w-5 h-5â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M6 18L18 6M6 6l12 12â€/></svg>
                 </button>
             </div>
-            <div class=”p-6 space-y-4”>
-                <p class=”text-sm text-gray-500”>
-                    Current stage: <span class=”font-semibold text-[#1E1B4B]” x-text=”stageLabel(lead?.stage)”></span>
+            <div class=â€p-6 space-y-4â€>
+                <p class=â€text-sm text-gray-500â€>
+                    Current stage: <span class=â€font-semibold text-[#1E1B4B]â€ x-text=â€stageLabel(lead?.stage)â€></span>
                 </p>
-                <div class=”space-y-2”>
-                    <template x-for=”s in allStages” :key=”s.key”>
-                        <button @click=”moveToStage(s.key)”
-                                :disabled=”s.key === lead?.stage || saving”
-                                :class=”s.key === lead?.stage
+                <div class=â€space-y-2â€>
+                    <template x-for=â€s in allStagesâ€ :key=â€s.keyâ€>
+                        <button @click=â€moveToStage(s.key)â€
+                                :disabled=â€s.key === lead?.stage || savingâ€
+                                :class=â€s.key === lead?.stage
                                     ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100'
-                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'”
-                                class=”w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left”>
-                            <span :class=”stageBadge(s.key)” class=”shrink-0 text-xs” x-text=”s.label”></span>
-                            <span x-show=”s.key === 'signed'” class=”text-xs text-orange-600”>→ locks commission at <span x-text=”fmt(commPool())”></span></span>
-                            <span x-show=”s.key === 'paid'”   class=”text-xs text-emerald-600”>→ marks <span x-text=”fmt(commPool())”></span> paid</span>
-                            <span x-show=”s.key === lead?.stage” class=”ml-auto text-xs text-gray-400”>current</span>
-                            <svg x-show=”saving && s.key !== lead?.stage” class=”w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0” fill=”none” viewBox=”0 0 24 24”><circle class=”opacity-25” cx=”12” cy=”12” r=”10” stroke=”currentColor” stroke-width=”4”/><path class=”opacity-75” fill=”currentColor” d=”M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z”/></svg>
+                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'â€
+                                class=â€w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-leftâ€>
+                            <span :class=â€stageBadge(s.key)â€ class=â€shrink-0 text-xsâ€ x-text=â€s.labelâ€></span>
+                            <span x-show=â€s.key === 'signed'â€ class=â€text-xs text-orange-600â€>â†’ locks commission at <span x-text=â€fmt(commPool())â€></span></span>
+                            <span x-show=â€s.key === 'paid'â€   class=â€text-xs text-emerald-600â€>â†’ marks <span x-text=â€fmt(commPool())â€></span> paid</span>
+                            <span x-show=â€s.key === lead?.stageâ€ class=â€ml-auto text-xs text-gray-400â€>current</span>
+                            <svg x-show=â€saving && s.key !== lead?.stageâ€ class=â€w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0â€ fill=â€noneâ€ viewBox=â€0 0 24 24â€><circle class=â€opacity-25â€ cx=â€12â€ cy=â€12â€ r=â€10â€ stroke=â€currentColorâ€ stroke-width=â€4â€/><path class=â€opacity-75â€ fill=â€currentColorâ€ d=â€M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zâ€/></svg>
                         </button>
                     </template>
                 </div>
                 <div>
-                    <label class=”form-label”>Note <span class=”text-gray-400 font-normal”>(optional)</span></label>
-                    <textarea x-model=”moveStageNote” rows=”2” class=”form-input text-sm resize-none”
-                              placeholder=”Reason for stage movement, e.g. 'Proposal sent to procurement office'…”></textarea>
+                    <label class=â€form-labelâ€>Note <span class=â€text-gray-400 font-normalâ€>(optional)</span></label>
+                    <textarea x-model=â€moveStageNoteâ€ rows=â€2â€ class=â€form-input text-sm resize-noneâ€
+                              placeholder=â€Reason for stage movement, e.g. 'Proposal sent to procurement office'â€¦â€></textarea>
                 </div>
-                <p class=”text-xs text-gray-400”>The note will be saved to the activity history.</p>
+                <p class=â€text-xs text-gray-400â€>The note will be saved to the activity history.</p>
             </div>
         </div>
     </div>
     </template>
 
-    {{-- â”€â”€ Reassign Modal â”€â”€ --}}
-    <template x-teleport=”body”>
-    <div x-show=”showReassign” style=”display:none” class=”fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4”>
-        <div class=”bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4” @click.stop>
+    {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Reassign Modal Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+    <template x-teleport=â€bodyâ€>
+    <div x-show=â€showReassignâ€ style=â€display:noneâ€ class=â€fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4â€>
+        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4â€ @click.stop>
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B]">Reassign Record</h3>
                 <button @click="showReassign = false; reassignName = ''" class="text-gray-400 hover:text-gray-600">
@@ -1088,296 +1088,26 @@
             </div>
             <div class="flex justify-end gap-3">
                 <button @click="showReassign = false; reassignName = ''" class="btn-secondary">Cancel</button>
-                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
+                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigningâ€¦' : 'Confirm Reassign'"></button>
             </div>
         </div>
     </div>
     </template>
 
-    {{-- dealComments moved to right column above Activity History --}}
-    <div style="display:none"
-         class="card space-y-4">
-
-        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
-            <div>
-                <h3 class="font-semibold text-[#1E1B4B] text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Notes
-                    <span class="text-gray-400 font-normal text-xs" x-text="comments.length ? '(' + comments.length + ')' : ''"></span>
-                </h3>
-                <p class="text-[11px] text-gray-400 mt-0.5">Capture updates, tag people, and attach supporting files for this deal.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <label class="filter-pill text-xs" x-show="canPostInternal">
-                    <select x-model="newVisibility" class="text-xs">
-                        <option value="shared">Shared with participants</option>
-                        <option value="internal_admin">Internal admin only</option>
-                    </select>
-                </label>
-            </div>
-        </div>
-
-        {{-- ── Composer ──────────────────────────────────────────────────── --}}
-        <div class="flex gap-3">
-            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0 mt-0.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            </div>
-            <div class="flex-1 space-y-2">
-
-                {{-- Textarea with @mention support --}}
-                <div class="relative">
-                    <textarea x-ref="noteTextarea"
-                              x-model="newBody"
-                              @input="handleBodyInput($event)"
-                              @keydown.escape="mentionOpen = false"
-                              @keydown.arrow-down.prevent="mentionFocusIdx = Math.min(mentionFocusIdx + 1, mentionResults.length - 1)"
-                              @keydown.arrow-up.prevent="mentionFocusIdx = Math.max(mentionFocusIdx - 1, 0)"
-                              @keydown.enter.prevent="if(mentionOpen && mentionResults[mentionFocusIdx]) { selectMention(mentionResults[mentionFocusIdx]); } else { $event.preventDefault && $event.target.form?.requestSubmit && void 0; }"
-                              rows="3"
-                              class="form-input text-sm resize-none"
-                              :placeholder="newVisibility === 'internal_admin' ? 'Internal note — only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
-
-                    {{-- @Mention dropdown --}}
-                    <div x-show="mentionOpen"
-                         class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto"
-                         style="display:none">
-                        <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
-                            <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Searching…
-                        </div>
-                        <template x-for="(m, idx) in mentionResults" :key="m.type + ':' + m.id">
-                            <button type="button"
-                                    @click="selectMention(m)"
-                                    :class="mentionFocusIdx === idx ? 'bg-[#F0EFFA]' : 'hover:bg-gray-50'"
-                                    class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors">
-                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                     :class="{
-                                         'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
-                                         'bg-blue-100 text-blue-700':    m.type === 'referrer',
-                                         'bg-orange-100 text-orange-700':m.type === 'partner',
-                                         'bg-gray-100 text-gray-600':    m.type === 'contact',
-                                     }"
-                                     x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="m.name"></p>
-                                    <p class="text-[10px] text-gray-400 truncate" x-text="m.email || ''"></p>
-                                </div>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
-                                      :class="{
-                                          'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
-                                          'bg-blue-100 text-blue-700':    m.type === 'referrer',
-                                          'bg-orange-100 text-orange-700':m.type === 'partner',
-                                          'bg-gray-100 text-gray-600':    m.type === 'contact',
-                                      }"
-                                      x-text="m.badge"></span>
-                            </button>
-                        </template>
-                        <div x-show="!mentionLoading && mentionResults.length === 0"
-                             class="px-3 py-3 text-xs text-gray-400 text-center">No results.</div>
-                    </div>
-                </div>
-
-                {{-- Selected mentions pills --}}
-                <div x-show="mentions.length > 0" class="flex flex-wrap gap-1.5">
-                    <template x-for="(m, i) in mentions" :key="m.type + ':' + m.id">
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                              :class="{
-                                  'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
-                                  'bg-blue-100 text-blue-700':    m.type === 'referrer',
-                                  'bg-orange-100 text-orange-700':m.type === 'partner',
-                                  'bg-gray-100 text-gray-600':    m.type === 'contact',
-                              }">
-                            @<span x-text="m.name"></span>
-                            <button @click="mentions.splice(i, 1)" class="ml-0.5 opacity-60 hover:opacity-100">×</button>
-                        </span>
-                    </template>
-                </div>
-
-                {{-- Selected file previews --}}
-                <div x-show="selectedFiles.length > 0" class="space-y-1">
-                    <template x-for="(f, i) in selectedFiles" :key="i">
-                        <div class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
-                            {{-- File type icon --}}
-                            <svg class="w-3.5 h-3.5 shrink-0"
-                                 :class="f.type.startsWith('image/') ? 'text-blue-400' : 'text-gray-400'"
-                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                            </svg>
-                            <span class="text-xs text-gray-600 truncate flex-1" x-text="f.name"></span>
-                            <span class="text-[10px] text-gray-400 shrink-0" x-text="formatFileSize(f.size)"></span>
-                            <button type="button" @click="removeFile(i)"
-                                    aria-label="Remove file"
-                                    class="text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                    </template>
-                </div>
-
-                {{-- Inline success banner --}}
-                <div x-show="noteSaved"
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 -translate-y-1"
-                     x-transition:enter-end="opacity-100 translate-y-0"
-                     x-transition:leave="transition ease-in duration-150"
-                     x-transition:leave-start="opacity-100"
-                     x-transition:leave-end="opacity-0"
-                     style="display:none"
-                     class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                    Note saved successfully.
-                </div>
-
-                {{-- Error banner --}}
-                <div x-show="commentError"
-                     style="display:none"
-                     class="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span x-text="commentError"></span>
-                </div>
-
-                {{-- Toolbar + actions --}}
-                <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        {{-- Attach file — styled as a visible pill button --}}
-                        <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 text-xs text-gray-500 font-medium transition-colors"
-                               title="Attach PDFs, documents, spreadsheets, or images (max 10 MB each, up to 5 files)">
-                            <input type="file" multiple class="sr-only" x-ref="fileInput"
-                                   @change="handleFiles($event)"
-                                   accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                            </svg>
-                            Attach files
-                            <span x-show="selectedFiles.length > 0"
-                                  class="ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700"
-                                  x-text="selectedFiles.length"></span>
-                        </label>
-                    </div>
-                    <button @click="postComment()"
-                            :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
-                            class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg x-show="posting" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <span x-text="posting ? 'Saving…' : 'Save Note'"></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── Notes list ────────────────────────────────────────────────── --}}
-        <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            Loading notes…
-        </div>
-
-        <div x-show="!loadingComments && comments.length === 0"
-             class="flex flex-col items-center text-center py-8 text-gray-300">
-            <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <p class="text-sm">No notes yet. Add the first update for this deal.</p>
-        </div>
-
-        <div x-show="!loadingComments && comments.length" class="space-y-4">
-            <template x-for="c in comments" :key="c.id">
-                <div class="flex gap-3 group/note">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                         :class="{
-                             'bg-blue-100 text-blue-700':    c.author_role === 'referrer',
-                             'bg-orange-100 text-orange-700':c.author_role === 'partner',
-                             'bg-purple-100 text-purple-700':!['referrer','partner'].includes(c.author_role),
-                         }"
-                         x-text="(c.author_name||'?').slice(0,2).toUpperCase()"></div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex flex-wrap items-center gap-2 mb-1">
-                            <span class="text-sm font-semibold text-[#1E1B4B]" x-text="c.author_name"></span>
-                            <span class="text-[10px] text-gray-400 capitalize" x-text="c.author_role.replace(/_/g,' ')"></span>
-                            <template x-if="c.is_internal">
-                                <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Internal</span>
-                            </template>
-                            <span class="text-[10px] text-gray-300"
-                                  x-text="c.created_at ? new Date(c.created_at).toLocaleString('en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''"></span>
-                            <span x-show="c.edited_at" class="text-[10px] text-gray-300 italic">edited</span>
-                        </div>
-
-                        <template x-if="c.is_deleted">
-                            <p class="text-sm text-gray-300 italic">This note was deleted.</p>
-                        </template>
-
-                        <template x-if="!c.is_deleted">
-                            <div class="space-y-2">
-                                <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-text="c.body"></p>
-
-                                {{-- Mention tags --}}
-                                <div x-show="(c.mentions||[]).length > 0" class="flex flex-wrap gap-1">
-                                    <template x-for="m in (c.mentions||[])" :key="m.id">
-                                        <span class="text-xs px-1.5 py-0 rounded-full font-medium"
-                                              :class="{
-                                                  'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
-                                                  'bg-blue-100 text-blue-700':    m.type === 'referrer',
-                                                  'bg-orange-100 text-orange-700':m.type === 'partner',
-                                                  'bg-gray-100 text-gray-600':    m.type === 'contact',
-                                              }"
-                                              x-text="'@' + m.name"></span>
-                                    </template>
-                                </div>
-
-                                {{-- Attachments --}}
-                                <div x-show="(c.attachments||[]).length > 0" class="space-y-1">
-                                    <template x-for="a in (c.attachments||[])" :key="a.id">
-                                        <a :href="a.download_url"
-                                           target="_blank"
-                                           class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg hover:bg-purple-50 hover:border-purple-100 transition-colors group/att">
-                                            <svg class="w-3.5 h-3.5 shrink-0"
-                                                 :class="a.file_type_group === 'image' ? 'text-blue-400' : 'text-gray-400 group-hover/att:text-purple-500'"
-                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                                            </svg>
-                                            <span class="text-xs text-gray-600 truncate flex-1 group-hover/att:text-purple-700" x-text="a.original_filename"></span>
-                                            <span class="text-[10px] text-gray-400 shrink-0" x-text="formatFileSize(a.file_size)"></span>
-                                            <svg class="w-3 h-3 text-gray-300 group-hover/att:text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                            </svg>
-                                        </a>
-                                    </template>
-                                </div>
-
-                                {{-- Edit/Delete --}}
-                                <div class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
-                                    <button @click="startEdit(c)"
-                                            class="text-[11px] text-gray-400 hover:text-[#7B61FF] transition-colors">Edit</button>
-                                    <button @click="deleteComment(c)"
-                                            class="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Delete</button>
-                                </div>
-
-                                {{-- Inline edit --}}
-                                <div x-show="editingId === c.id" class="mt-2 space-y-2">
-                                    <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
-                                    <div class="flex gap-2">
-                                        <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5"
-                                                x-text="posting ? 'Saving…' : 'Save'"></button>
-                                        <button @click="editingId = null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </template>
-        </div>
-    </div>
 
 </div>
 
 <script>
 function dealComments(dealId, tenantId) {
     return {
-        // ── State ────────────────────────────────────────────────────────────
+        // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         comments: [], loadingComments: true, posting: false,
         newBody: '', newVisibility: 'shared', commentError: '',
         noteSaved: false,          // inline success banner
         editingId: null, editBody: '',
         canPostInternal: true,     // tenant admin default; API enforces actual permission
 
-        // Idempotency — generated once per component, rotated after each save
+        // Idempotency â€” generated once per component, rotated after each save
         clientRequestId: crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36)),
 
         // @Mention state
@@ -1393,12 +1123,12 @@ function dealComments(dealId, tenantId) {
         // File attachment state
         selectedFiles: [],
 
-        // ── Helpers ───────────────────────────────────────────────────────────
+        // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         csrf() {
             return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
         },
 
-        // ── Load notes ───────────────────────────────────────────────────────
+        // â”€â”€ Load notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         async loadComments() {
             this.loadingComments = true;
             try {
@@ -1413,9 +1143,9 @@ function dealComments(dealId, tenantId) {
             this.loadingComments = false;
         },
 
-        // ── Post note ────────────────────────────────────────────────────────
+        // â”€â”€ Post note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         async postComment() {
-            // ① Hard duplicate guard — must be the very first check
+            // â‘  Hard duplicate guard â€” must be the very first check
             if (this.posting) return;
             if (!this.newBody.trim() && this.selectedFiles.length === 0) return;
 
@@ -1450,20 +1180,20 @@ function dealComments(dealId, tenantId) {
                 } else if (!res.ok) {
                     this.commentError = data?.error || 'Unable to save note. Please try again.';
                 } else if (data?.id) {
-                    // ② Prevent duplicate in list — only add if not already present
+                    // â‘¡ Prevent duplicate in list â€” only add if not already present
                     if (!this.comments.find(c => c.id === data.id)) {
                         this.comments.unshift(data);
                     }
-                    // ③ Clear form
+                    // â‘¢ Clear form
                     this.newBody       = '';
                     this.mentions      = [];
                     this.selectedFiles = [];
                     this.mentionOpen   = false;
                     if (this.$refs.fileInput) this.$refs.fileInput.value = '';
-                    // ④ Rotate idempotency key for next note
+                    // â‘£ Rotate idempotency key for next note
                     this.clientRequestId = crypto.randomUUID ? crypto.randomUUID()
                         : (Date.now().toString(36) + Math.random().toString(36));
-                    // ⑤ Show both inline banner + toast
+                    // â‘¤ Show both inline banner + toast
                     this.noteSaved = true;
                     setTimeout(() => { this.noteSaved = false; }, 4000);
                     this.$dispatch('show-toast', { type: 'success', message: 'Note saved.' });
@@ -1477,7 +1207,7 @@ function dealComments(dealId, tenantId) {
             }
         },
 
-        // ── Edit ──────────────────────────────────────────────────────────────
+        // â”€â”€ Edit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         startEdit(c) { this.editingId = c.id; this.editBody = c.body; },
 
         async saveEdit(c) {
@@ -1506,7 +1236,7 @@ function dealComments(dealId, tenantId) {
             this.posting = false;
         },
 
-        // ── Delete ────────────────────────────────────────────────────────────
+        // â”€â”€ Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         async deleteComment(c) {
             if (!confirm('Delete this note?')) return;
             try {
@@ -1521,7 +1251,7 @@ function dealComments(dealId, tenantId) {
             } catch(e) {}
         },
 
-        // ── @Mention picker ───────────────────────────────────────────────────
+        // â”€â”€ @Mention picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         handleBodyInput(e) {
             const ta     = e.target;
             const before = ta.value.substring(0, ta.selectionStart);
@@ -1574,7 +1304,7 @@ function dealComments(dealId, tenantId) {
             this.$nextTick(() => { if (ta) { ta.focus(); const end = this.newBody.length; ta.setSelectionRange(end, end); } });
         },
 
-        // ── File attachments ──────────────────────────────────────────────────
+        // â”€â”€ File attachments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         handleFiles(e) {
             const files   = Array.from(e.target.files || []);
             const maxSize = 10 * 1024 * 1024;
@@ -1639,7 +1369,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         async init() {
             this.fetchContacts();
             if (this.lead) {
-                // SSR data already present — page is instantly visible.
+                // SSR data already present â€” page is instantly visible.
                 // Refresh silently in background so any stale fields update.
                 fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' })
                     .then(r => r.ok ? r.json() : null)
@@ -1654,7 +1384,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
             }
         },
 
-        // â”€â”€ Financial helpers â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Financial helpers Ã¢â€â‚¬Ã¢â€â‚¬
         contractValue() {
             const bc = Number(this.lead?.base_cost    || 0);
             const aa = Number(this.lead?.added_amount || 0);
@@ -1670,8 +1400,8 @@ function dealDetail(leadId, tenantId, ssrLead) {
 
         fmt(v) {
             const n = Math.round(Number(v) || 0);
-            if (n === 0) return '—';
-            return '₱' + n.toLocaleString('en');
+            if (n === 0) return 'â€”';
+            return 'â‚±' + n.toLocaleString('en');
         },
 
         startEditFinance() {
@@ -1708,7 +1438,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     const _bc = Math.round(Number(updated.base_cost    || 0));
                     const _aa = Math.round(Number(updated.added_amount || 0));
                     const _cv = (_bc + _aa) || Math.round(Number(updated.deal_value || 0));
-                    const _p  = n => '₱' + n.toLocaleString('en');
+                    const _p  = n => 'â‚±' + n.toLocaleString('en');
                     [['fin-bc',_bc],['fin-aa',_aa],['fin-cv',_cv],['fin-cv2',_cv],
                      ['fin-co',Math.round(_aa*.3)],['fin-cp',Math.round(_aa*.7)]].forEach(([id,v]) => {
                         const el = document.getElementById(id);
@@ -1724,7 +1454,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } finally { this.saving = false; }
         },
 
-        // â”€â”€ Stage helpers â”€â”€
+        // Ã¢â€â‚¬Ã¢â€â‚¬ Stage helpers Ã¢â€â‚¬Ã¢â€â‚¬
         stageIdx(key) { return this.allStages.findIndex(s => s.key === key); },
         isStageDone(key) { return this.stageIdx(key) < this.stageIdx(this.lead?.stage); },
         stageCircleClass(key) {
@@ -1736,7 +1466,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
         stageLabel(s) {
             const m = { introduction:'Introduction', presentation:'Presentation', contract_sent:'Contract Sent', signed:'Signed', paid:'Paid' };
-            return m[s] || (s || '—');
+            return m[s] || (s || 'â€”');
         },
         stageBadge(s) {
             const m = { introduction:'badge badge-gray', presentation:'badge badge-blue', contract_sent:'badge badge-orange', signed:'badge badge-purple', paid:'badge badge-green' };
@@ -1832,8 +1562,8 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } finally { this.saving = false; }
         },
 
-        // ── Contact helpers ──────────────────────────────────────────────
-        contactFullName(c) { return [c.first_name, c.last_name].filter(Boolean).join(' ') || '—'; },
+        // â”€â”€ Contact helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        contactFullName(c) { return [c.first_name, c.last_name].filter(Boolean).join(' ') || 'â€”'; },
         contactInitials(c) {
             const p = [c.first_name, c.last_name].filter(Boolean);
             return p.length ? p.map(n => n[0]).join('').toUpperCase() : '?';
@@ -1917,7 +1647,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
     }
 }
 
-// ── Partner Split Section ─────────────────────────────────────────────────
+// â”€â”€ Partner Split Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function partnerSplitSection(dealId, tenantId) {
     return {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
@@ -2038,7 +1768,7 @@ function partnerSplitSection(dealId, tenantId) {
     };
 }
 
-// ── Extension Request Section ─────────────────────────────────────────────
+// â”€â”€ Extension Request Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function extensionRequestSection(dealId, tenantId) {
     return {
         requests: [], loading: true, saving: false, actionError: null,
