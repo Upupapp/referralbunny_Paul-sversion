@@ -26,10 +26,12 @@ class LeadController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $relations = ['commissionSplits', 'notes', 'history', 'attachments', 'links'];
+        // List view only needs commission splits for the UI.
+        // history/notes/attachments/links are NOT shown on the list — load them only in show().
+        // Removing history prevents a crash if lead_history table is missing.
+        $relations = ['commissionSplits'];
 
         // Include partner associations when explicitly requested (Referrer portal deal list).
-        // Eager-loads DealPartner + Partner user in a single query per lead batch (no N+1).
         $includePartners = $request->boolean('include_partners');
         if ($includePartners) {
             $relations[] = 'dealPartners.partner';
@@ -50,11 +52,11 @@ class LeadController extends Controller
         }
 
         // Paginate to prevent OOM on large tenants; callers may request all via per_page=all
-        $perPage = $request->get('per_page', 50);
+        $perPage = $request->get('per_page', 200); // default raised from 50 → 200
         if ($perPage === 'all' && TenantContext::isSuperAdmin()) {
             $leads = $query->get();
         } else {
-            $perPage = min(200, max(1, (int) $perPage));
+            $perPage = min(500, max(1, (int) $perPage));
             $paginated = $query->paginate($perPage);
             $leads     = $paginated->getCollection();
         }
