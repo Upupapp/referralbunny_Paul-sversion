@@ -35,12 +35,12 @@
     {{-- Loading state --}}
     <div x-show="loading" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-        <span class="text-sm">Loading dealâ€¦</span>
+        <span class="text-sm">Loading deal…</span>
     </div>
 
     <div x-show="!loading && lead" class="space-y-5">
 
-        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+        {{-- Ã¢"â‚¬Ã¢"â‚¬ Header Ã¢"â‚¬Ã¢"â‚¬ --}}
         <div class="card">
             <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-lg shrink-0"
@@ -85,11 +85,11 @@
             </div>
         </div>
 
-        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Stage Progress Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+        {{-- Ã¢"â‚¬Ã¢"â‚¬ Stage Progress Ã¢"â‚¬Ã¢"â‚¬ --}}
         <div class="card">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-[#1E1B4B] text-sm">Pipeline Progress</h3>
-                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage â†’</button>
+                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage →</button>
             </div>
             <div class="flex items-center">
                 <template x-for="(s, i) in allStages" :key="s.key">
@@ -219,7 +219,7 @@
                 </button>
             </div>
 
-            {{-- Ã¢â€â‚¬Ã¢â€â‚¬ View mode (PHP-rendered â€” no Alpine x-text dependency) Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+            {{-- Ã¢"â‚¬Ã¢"â‚¬ View mode (PHP-rendered â€” no Alpine x-text dependency) Ã¢"â‚¬Ã¢"â‚¬ --}}
             @php
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
@@ -228,67 +228,67 @@
                 $co = $aa * 0.30;
                 $cp = $aa * 0.70;
             @endphp
-            <div :class=â€editFinance ? 'hidden' : ''â€ class=â€space-y-4â€>
+            <div :class="editFinance ? 'hidden' : ''" class="space-y-4">
 
                 {{-- Formula rows --}}
                 <div>
-                    <div class=â€fin-row py-2.5 border-b border-gray-100â€>
-                        <p class=â€text-sm text-gray-500â€>₱ Base Cost</p>
-                        <p id=â€fin-bcâ€ class=â€text-sm font-semibold text-gray-700 tabular-numsâ€>₱{{ number_format((int)$bc) }}</p>
+                    <div class="fin-row py-2.5 border-b border-gray-100">
+                        <p class="text-sm text-gray-500">₱ Base Cost</p>
+                        <p id="fin-bc" class="text-sm font-semibold text-gray-700 tabular-nums">₱{{ number_format((int)$bc) }}</p>
                     </div>
-                    <div class=â€fin-row py-2.5 border-b border-dashed border-gray-200â€>
-                        <p class=â€text-sm text-gray-500â€>+ Added Amount <span class=â€text-xs text-gray-400â€>(margin)</span></p>
-                        <p id=â€fin-aaâ€ class=â€text-sm font-semibold text-blue-600 tabular-numsâ€>₱{{ number_format((int)$aa) }}</p>
+                    <div class="fin-row py-2.5 border-b border-dashed border-gray-200">
+                        <p class="text-sm text-gray-500">+ Added Amount <span class="text-xs text-gray-400">(margin)</span></p>
+                        <p id="fin-aa" class="text-sm font-semibold text-blue-600 tabular-nums">₱{{ number_format((int)$aa) }}</p>
                     </div>
-                    <div class=â€fin-row py-2.5 rounded-xl px-3 mt-1â€ style=â€background:#F0EFFAâ€>
-                        <p class=â€text-sm font-semiboldâ€ style=â€color:#1E1B4Bâ€>= Contract Value</p>
-                        <p id=â€fin-cvâ€ class=â€text-sm font-bold tabular-numsâ€ style=â€color:#1E1B4Bâ€>₱{{ number_format((int)$cv) }}</p>
+                    <div class="fin-row py-2.5 rounded-xl px-3 mt-1" style="background:#F0EFFA">
+                        <p class="text-sm font-semibold" style="color:#1E1B4B">= Contract Value</p>
+                        <p id="fin-cv" class="text-sm font-bold tabular-nums" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</p>
                     </div>
                 </div>
 
                 {{-- 3-column summary --}}
-                <div class=â€fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100â€>
-                    <div class=â€text-centerâ€>
-                        <p class=â€text-xs text-gray-400 uppercase tracking-wideâ€>Contract Value</p>
-                        <p id=â€fin-cv2â€ class=â€text-sm font-bold tabular-nums mt-0.5â€ style=â€color:#1E1B4Bâ€>₱{{ number_format((int)$cv) }}</p>
-                        <p class=â€text-xs text-gray-400â€>base + margin</p>
+                <div class="fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <div class="text-center">
+                        <p class="text-xs text-gray-400 uppercase tracking-wide">Contract Value</p>
+                        <p id="fin-cv2" class="text-sm font-bold tabular-nums mt-0.5" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</p>
+                        <p class="text-xs text-gray-400">base + margin</p>
                     </div>
-                    <div class=â€text-centerâ€ style=â€border-left:1px solid #e5e7eb;border-right:1px solid #e5e7ebâ€>
-                        <p class=â€text-xs text-blue-500 uppercase tracking-wideâ€>Company Share</p>
-                        <p id=â€fin-coâ€ class=â€text-sm font-bold text-blue-700 tabular-nums mt-0.5â€>₱{{ number_format((int)$co) }}</p>
-                        <p class=â€text-xs text-blue-400â€>30% margin</p>
+                    <div class="text-center" style="border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb">
+                        <p class="text-xs text-blue-500 uppercase tracking-wide">Company Share</p>
+                        <p id="fin-co" class="text-sm font-bold text-blue-700 tabular-nums mt-0.5">₱{{ number_format((int)$co) }}</p>
+                        <p class="text-xs text-blue-400">30% margin</p>
                     </div>
-                    <div class=â€text-centerâ€>
-                        <p class=â€text-xs text-emerald-500 uppercase tracking-wideâ€>Commission Pool</p>
-                        <p id=â€fin-cpâ€ class=â€text-sm font-bold text-emerald-700 tabular-nums mt-0.5â€>₱{{ number_format((int)$cp) }}</p>
-                        <p class=â€text-xs text-emerald-400â€>70% margin</p>
+                    <div class="text-center">
+                        <p class="text-xs text-emerald-500 uppercase tracking-wide">Commission Pool</p>
+                        <p id="fin-cp" class="text-sm font-bold text-emerald-700 tabular-nums mt-0.5">₱{{ number_format((int)$cp) }}</p>
+                        <p class="text-xs text-emerald-400">70% margin</p>
                     </div>
                 </div>
 
                 {{-- Commission distribution (Alpine-driven â€” only shows when splits exist) --}}
                 @if(!empty($ssrLead['commission_splits']))
                 <div>
-                    <div class=â€flex items-center justify-between mb-2â€>
-                        <p class=â€text-xs font-semibold text-gray-500 uppercase tracking-widerâ€>Commission Distribution</p>
-                        <span class=â€badge badge-grayâ€
-                              x-text=â€lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'â€>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission Distribution</p>
+                        <span class="badge badge-gray"
+                              x-text="lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'">
                             {{ ucfirst($ssrLead['commission_status'] ?? 'pending') }}</span>
                     </div>
-                    <div class=â€space-y-1.5â€>
-                        <template x-for=â€split in (lead?.commission_splits||[])â€ :key=â€split.idâ€>
-                            <div class=â€flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5â€>
-                                <div class=â€flex items-center gap-2.5 min-w-0â€>
-                                    <div class=â€w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0â€
-                                         :class=â€split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'â€
-                                         x-text=â€(split.reseller_name||'?').slice(0,2).toUpperCase()â€></div>
-                                    <div class=â€min-w-0â€>
-                                        <p class=â€text-sm font-medium text-[#1E1B4B] truncateâ€ x-text=â€split.reseller_nameâ€></p>
-                                        <p class=â€text-xs text-gray-400 capitalizeâ€ x-text=â€split.roleâ€></p>
+                    <div class="space-y-1.5">
+                        <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
+                            <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                         :class="split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'"
+                                         x-text="(split.reseller_name||'?').slice(0,2).toUpperCase()"></div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="split.reseller_name"></p>
+                                        <p class="text-xs text-gray-400 capitalize" x-text="split.role"></p>
                                     </div>
                                 </div>
-                                <div class=â€text-right shrink-0 ml-3â€>
-                                    <p class=â€text-sm font-bold text-emerald-700 tabular-numsâ€ x-text=â€fmt(commPool() * split.percentage / 100)â€></p>
-                                    <p class=â€text-xs text-gray-400â€ x-text=â€split.percentage + '% of pool'â€></p>
+                                <div class="text-right shrink-0 ml-3">
+                                    <p class="text-sm font-bold text-emerald-700 tabular-nums" x-text="fmt(commPool() * split.percentage / 100)"></p>
+                                    <p class="text-xs text-gray-400" x-text="split.percentage + '% of pool'"></p>
                                 </div>
                             </div>
                         </template>
@@ -298,14 +298,14 @@
 
                 {{-- No financial data notice --}}
                 @if(!$aa)
-                <div class=â€p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800â€>
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
                     No financial data set yet. Click <strong>Edit</strong> to enter Base Cost and Added Amount.
                 </div>
                 @endif
 
             </div>
 
-            {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Edit mode Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+            {{-- Ã¢"â‚¬Ã¢"â‚¬ Edit mode Ã¢"â‚¬Ã¢"â‚¬ --}}
             <div x-show="editFinance" style="display:none" class="space-y-5">
                 <p class="text-xs text-gray-500">Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
 
@@ -359,7 +359,7 @@
 
                 <div class="flex justify-end gap-3">
                     <button @click="cancelEditFinance()" class="btn-secondary">Cancel</button>
-                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Savingâ€¦' : 'Save Financial Data'"></button>
+                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
                 </div>
             </div>
         </div>
@@ -394,7 +394,7 @@
         });
         </script>
 
-        {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Bottom layout: Details + Notes/History Ã¢â€â‚¬Ã¢â€â‚¬ --}}
+        {{-- Ã¢"â‚¬Ã¢"â‚¬ Bottom layout: Details + Notes/History Ã¢"â‚¬Ã¢"â‚¬ --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
             {{-- Left: Details + Commission splits quick view --}}
@@ -449,7 +449,7 @@
                 {{-- Loading --}}
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-2">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loadingâ€¦
+                    Loading…
                 </div>
 
                 {{-- Split rows --}}
@@ -501,7 +501,7 @@
                                    @keydown.arrow-down.prevent="contactFocusIdx = Math.min(contactFocusIdx + 1, contactOptions.length - 1)"
                                    @keydown.arrow-up.prevent="contactFocusIdx = Math.max(contactFocusIdx - 1, -1)"
                                    @keydown.enter.prevent="if(contactFocusIdx >= 0 && contactOptions[contactFocusIdx]) selectContact(contactOptions[contactFocusIdx])"
-                                   placeholder="Search contacts by name or emailâ€¦"
+                                   placeholder="Search contacts by name or email…"
                                    autocomplete="off"
                                    class="form-input text-xs pr-7">
                             <div class="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
@@ -515,7 +515,7 @@
                              style="display:none">
                             <div x-show="loadingContacts" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                 <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                Loading contactsâ€¦
+                                Loading contacts…
                             </div>
                             <div x-show="!loadingContacts && contactLoadError" class="px-3 py-2.5">
                                 <p class="text-xs text-red-500" x-text="contactLoadError"></p>
@@ -592,7 +592,7 @@
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div class="flex gap-2">
                         <button @click="showAdd = false; clearContact(); formError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Savingâ€¦' : 'Add Split'"></button>
+                        <button @click="addSplit()" :disabled="saving" class="btn-primary text-xs flex-1" x-text="saving ? 'Saving…' : 'Add Split'"></button>
                     </div>
                 </div>
             </div>
@@ -625,19 +625,19 @@
                         <option value="30">+30 days</option>
                     </select>
                     <textarea x-model="extendForm.reason" class="form-input text-xs" rows="2"
-                              placeholder="Reason for extension (optional)â€¦"></textarea>
+                              placeholder="Reason for extension (optional)…"></textarea>
                     <p x-show="extendError" class="text-xs text-red-600" x-text="extendError"></p>
                     <div class="flex gap-2">
                         <button @click="showExtendForm = false; extendError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
                         <button @click="adminExtend()" :disabled="saving"
                                 class="btn-primary text-xs flex-1"
-                                x-text="saving ? 'Extendingâ€¦' : 'Confirm Extension'"></button>
+                                x-text="saving ? 'Extending…' : 'Confirm Extension'"></button>
                     </div>
                 </div>
 
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-1">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loadingâ€¦
+                    Loading…
                 </div>
 
                 <div x-show="!loading" class="space-y-2">
@@ -692,7 +692,7 @@
                 </div>
                 <div x-show="loadingContacts" class="flex items-center gap-2 text-gray-400 text-xs py-2">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loadingâ€¦
+                    Loading…
                 </div>
                 <div x-show="!loadingContacts">
                     <template x-if="dealContacts.length === 0">
@@ -769,14 +769,14 @@
                                           @keydown.enter.prevent="if(mentionOpen && mentionResults[mentionFocusIdx]) selectMention(mentionResults[mentionFocusIdx])"
                                           rows="3"
                                           class="form-input text-sm resize-none"
-                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note â€” only visible to Tenant Admins and Managers. Type @ to tag someoneâ€¦' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contactâ€¦'"></textarea>
+                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note â€” only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
 
                                 {{-- @Mention dropdown --}}
                                 <div x-show="mentionOpen" style="display:none"
                                      class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto">
                                     <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                         <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                        Searchingâ€¦
+                                        Searching…
                                     </div>
                                     <template x-for="(m, idx) in mentionResults" :key="m.type + ':' + m.id">
                                         <button type="button" @click="selectMention(m)"
@@ -851,7 +851,7 @@
                                         :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
                                         class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <svg x-show="posting" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                    <span x-text="posting ? 'Savingâ€¦' : 'Save Note'"></span>
+                                    <span x-text="posting ? 'Saving…' : 'Save Note'"></span>
                                 </button>
                             </div>
                         </div>
@@ -860,7 +860,7 @@
                     {{-- Notes list --}}
                     <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        Loading notesâ€¦
+                        Loading notes…
                     </div>
                     <div x-show="!loadingComments && comments.length === 0" class="flex flex-col items-center text-center py-8 text-gray-300">
                         <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -909,7 +909,7 @@
                                             <div x-show="editingId === c.id" class="mt-2 space-y-2">
                                                 <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
                                                 <div class="flex gap-2">
-                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Savingâ€¦' : 'Save'"></button>
+                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'"></button>
                                                     <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
                                                 </div>
                                             </div>
@@ -966,54 +966,54 @@
     </div>
 
     {{-- Link Contact Modal --}}
-    <template x-teleport=â€bodyâ€>
-    <div x-show=â€showLinkContactâ€ style=â€display:noneâ€
-         class=â€fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4â€
-         @keydown.escape.window=â€showLinkContact = falseâ€>
-        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-mdâ€ @click.stop>
-            <div class=â€flex items-center justify-between px-6 py-4 border-b border-gray-100â€>
-                <h3 class=â€font-semibold text-[#1E1B4B]â€>Link Contact to Deal</h3>
-                <button @click=â€showLinkContact = false; linkSearch = ''â€ class=â€text-gray-400 hover:text-gray-600 transition-colorsâ€>
-                    <svg class=â€w-5 h-5â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M6 18L18 6M6 6l12 12â€/></svg>
+    <template x-teleport="body">
+    <div x-show="showLinkContact" style="display:none"
+         class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showLinkContact = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <h3 class="font-semibold text-[#1E1B4B]">Link Contact to Deal</h3>
+                <button @click="showLinkContact = false; linkSearch = ''" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class=â€p-5 space-y-3â€>
-                <div class=â€search-groupâ€>
-                    <svg @click=â€if(!allTenantContacts.length) fetchAllContacts()â€
-                         class=â€cursor-pointer hover:text-purple-600 transition-colorsâ€
-                         fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€>
-                        <path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zâ€/>
+            <div class="p-5 space-y-3">
+                <div class="search-group">
+                    <svg @click="if(!allTenantContacts.length) fetchAllContacts()"
+                         class="cursor-pointer hover:text-purple-600 transition-colors"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                    <input type=â€textâ€ x-model=â€linkSearchâ€
-                           @input.debounce.200ms=â€if(!allTenantContacts.length) fetchAllContacts()â€
-                           placeholder=â€Click ðŸ” or type to search contactsâ€¦â€>
+                    <input type="text" x-model="linkSearch"
+                           @input.debounce.200ms="if(!allTenantContacts.length) fetchAllContacts()"
+                           placeholder="Click ðŸ” or type to search contacts…">
                 </div>
-                <div class=â€max-h-72 overflow-y-auto space-y-1â€>
-                    <template x-if=â€allTenantContacts.length === 0â€>
-                        <p class=â€text-center text-gray-400 text-sm py-6â€>Click the search icon or start typing to load contacts.</p>
+                <div class="max-h-72 overflow-y-auto space-y-1">
+                    <template x-if="allTenantContacts.length === 0">
+                        <p class="text-center text-gray-400 text-sm py-6">Click the search icon or start typing to load contacts.</p>
                     </template>
-                    <template x-if=â€allTenantContacts.length > 0 && linkableContacts().length === 0â€>
-                        <p class=â€text-center text-gray-400 text-sm py-6â€>
-                            <span x-text=â€'No matching contacts.'â€></span>
+                    <template x-if="allTenantContacts.length > 0 && linkableContacts().length === 0">
+                        <p class="text-center text-gray-400 text-sm py-6">
+                            <span x-text="'No matching contacts.'"></span>
                         </p>
                     </template>
-                    <template x-for=â€c in linkableContacts()â€ :key=â€c.idâ€>
-                        <button @click=â€linkContact(c)â€
-                                :disabled=â€linkSavingâ€
-                                class=â€flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left groupâ€>
-                            <div class=â€w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0â€
-                                 x-text=â€contactInitials(c)â€></div>
-                            <div class=â€flex-1 min-w-0â€>
-                                <p class=â€text-sm font-medium text-[#1E1B4B] truncateâ€ x-text=â€contactFullName(c)â€></p>
-                                <p class=â€text-xs text-gray-400 truncateâ€ x-text=â€[c.job_title, c.org_name].filter(Boolean).join(' Â· ') || c.email || ''â€></p>
+                    <template x-for="c in linkableContacts()" :key="c.id">
+                        <button @click="linkContact(c)"
+                                :disabled="linkSaving"
+                                class="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left group">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                                 x-text="contactInitials(c)"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="contactFullName(c)"></p>
+                                <p class="text-xs text-gray-400 truncate" x-text="[c.job_title, c.org_name].filter(Boolean).join(' Â· ') || c.email || ''"></p>
                             </div>
-                            <svg class=â€w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M12 4v16m8-8H4â€/></svg>
+                            <svg class="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         </button>
                     </template>
                 </div>
-                <p class=â€text-xs text-gray-400 pt-1â€>
+                <p class="text-xs text-gray-400 pt-1">
                     Can't find the contact?
-                    <a href=â€{{ route('tenant.contacts', $tenant->id) }}â€ class=â€text-purple-600 hover:underlineâ€>Add them first</a>
+                    <a href="{{ route('tenant.contacts', $tenant->id) }}" class="text-purple-600 hover:underline">Add them first</a>
                     in the Contacts module.
                 </p>
             </div>
@@ -1022,57 +1022,57 @@
     </template>
 
     {{-- â”€â”€ Move Stage Modal â”€â”€ --}}
-    <template x-teleport=â€bodyâ€>
-    <div x-show=â€showMoveStageâ€ style=â€display:noneâ€
-         class=â€fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4â€
-         @keydown.escape.window=â€showMoveStage = false; moveStageNote = ''â€>
-        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-smâ€ @click.stop>
-            <div class=â€flex items-center justify-between px-6 py-4 border-b border-gray-100â€>
+    <template x-teleport="body">
+    <div x-show="showMoveStage" style="display:none"
+         class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showMoveStage = false; moveStageNote = ''">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div>
-                    <h3 class=â€font-semibold text-[#1E1B4B]â€>Move Stage</h3>
-                    <p class=â€text-xs text-gray-400 mt-0.5â€>
-                        <span x-text=â€lead?.nameâ€></span>
+                    <h3 class="font-semibold text-[#1E1B4B]">Move Stage</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        <span x-text="lead?.name"></span>
                     </p>
                 </div>
-                <button @click=â€showMoveStage = false; moveStageNote = ''â€ class=â€text-gray-400 hover:text-gray-600â€>
-                    <svg class=â€w-5 h-5â€ fill=â€noneâ€ stroke=â€currentColorâ€ viewBox=â€0 0 24 24â€><path stroke-linecap=â€roundâ€ stroke-linejoin=â€roundâ€ stroke-width=â€2â€ d=â€M6 18L18 6M6 6l12 12â€/></svg>
+                <button @click="showMoveStage = false; moveStageNote = ''" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class=â€p-6 space-y-4â€>
-                <p class=â€text-sm text-gray-500â€>
-                    Current stage: <span class=â€font-semibold text-[#1E1B4B]â€ x-text=â€stageLabel(lead?.stage)â€></span>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-gray-500">
+                    Current stage: <span class="font-semibold text-[#1E1B4B]" x-text="stageLabel(lead?.stage)"></span>
                 </p>
-                <div class=â€space-y-2â€>
-                    <template x-for=â€s in allStagesâ€ :key=â€s.keyâ€>
-                        <button @click=â€moveToStage(s.key)â€
-                                :disabled=â€s.key === lead?.stage || savingâ€
-                                :class=â€s.key === lead?.stage
+                <div class="space-y-2">
+                    <template x-for="s in allStages" :key="s.key">
+                        <button @click="moveToStage(s.key)"
+                                :disabled="s.key === lead?.stage || saving"
+                                :class="s.key === lead?.stage
                                     ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100'
-                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'â€
-                                class=â€w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-leftâ€>
-                            <span :class=â€stageBadge(s.key)â€ class=â€shrink-0 text-xsâ€ x-text=â€s.labelâ€></span>
-                            <span x-show=â€s.key === 'signed'â€ class=â€text-xs text-orange-600â€>â†’ locks commission at <span x-text=â€fmt(commPool())â€></span></span>
-                            <span x-show=â€s.key === 'paid'â€   class=â€text-xs text-emerald-600â€>â†’ marks <span x-text=â€fmt(commPool())â€></span> paid</span>
-                            <span x-show=â€s.key === lead?.stageâ€ class=â€ml-auto text-xs text-gray-400â€>current</span>
-                            <svg x-show=â€saving && s.key !== lead?.stageâ€ class=â€w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0â€ fill=â€noneâ€ viewBox=â€0 0 24 24â€><circle class=â€opacity-25â€ cx=â€12â€ cy=â€12â€ r=â€10â€ stroke=â€currentColorâ€ stroke-width=â€4â€/><path class=â€opacity-75â€ fill=â€currentColorâ€ d=â€M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zâ€/></svg>
+                                    : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'"
+                                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left">
+                            <span :class="stageBadge(s.key)" class="shrink-0 text-xs" x-text="s.label"></span>
+                            <span x-show="s.key === 'signed'" class="text-xs text-orange-600">→ locks commission at <span x-text="fmt(commPool())"></span></span>
+                            <span x-show="s.key === 'paid'"   class="text-xs text-emerald-600">→ marks <span x-text="fmt(commPool())"></span> paid</span>
+                            <span x-show="s.key === lead?.stage" class="ml-auto text-xs text-gray-400">current</span>
+                            <svg x-show="saving && s.key !== lead?.stage" class="w-3.5 h-3.5 animate-spin text-purple-400 ml-auto shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         </button>
                     </template>
                 </div>
                 <div>
-                    <label class=â€form-labelâ€>Note <span class=â€text-gray-400 font-normalâ€>(optional)</span></label>
-                    <textarea x-model=â€moveStageNoteâ€ rows=â€2â€ class=â€form-input text-sm resize-noneâ€
-                              placeholder=â€Reason for stage movement, e.g. 'Proposal sent to procurement office'â€¦â€></textarea>
+                    <label class="form-label">Note <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea x-model="moveStageNote" rows="2" class="form-input text-sm resize-none"
+                              placeholder="Reason for stage movement, e.g. 'Proposal sent to procurement office'…"></textarea>
                 </div>
-                <p class=â€text-xs text-gray-400â€>The note will be saved to the activity history.</p>
+                <p class="text-xs text-gray-400">The note will be saved to the activity history.</p>
             </div>
         </div>
     </div>
     </template>
 
-    {{-- Ã¢â€â‚¬Ã¢â€â‚¬ Reassign Modal Ã¢â€â‚¬Ã¢â€â‚¬ --}}
-    <template x-teleport=â€bodyâ€>
-    <div x-show=â€showReassignâ€ style=â€display:noneâ€ class=â€fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4â€>
-        <div class=â€bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4â€ @click.stop>
+    {{-- Ã¢"â‚¬Ã¢"â‚¬ Reassign Modal Ã¢"â‚¬Ã¢"â‚¬ --}}
+    <template x-teleport="body">
+    <div x-show="showReassign" style="display:none" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B]">Reassign Record</h3>
                 <button @click="showReassign = false; reassignName = ''" class="text-gray-400 hover:text-gray-600">
@@ -1088,7 +1088,7 @@
             </div>
             <div class="flex justify-end gap-3">
                 <button @click="showReassign = false; reassignName = ''" class="btn-secondary">Cancel</button>
-                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigningâ€¦' : 'Confirm Reassign'"></button>
+                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
             </div>
         </div>
     </div>
@@ -1384,7 +1384,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
             }
         },
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Financial helpers Ã¢â€â‚¬Ã¢â€â‚¬
+        // Ã¢"â‚¬Ã¢"â‚¬ Financial helpers Ã¢"â‚¬Ã¢"â‚¬
         contractValue() {
             const bc = Number(this.lead?.base_cost    || 0);
             const aa = Number(this.lead?.added_amount || 0);
@@ -1455,7 +1455,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } finally { this.saving = false; }
         },
 
-        // Ã¢â€â‚¬Ã¢â€â‚¬ Stage helpers Ã¢â€â‚¬Ã¢â€â‚¬
+        // Ã¢"â‚¬Ã¢"â‚¬ Stage helpers Ã¢"â‚¬Ã¢"â‚¬
         stageIdx(key) { return this.allStages.findIndex(s => s.key === key); },
         isStageDone(key) { return this.stageIdx(key) < this.stageIdx(this.lead?.stage); },
         stageCircleClass(key) {
