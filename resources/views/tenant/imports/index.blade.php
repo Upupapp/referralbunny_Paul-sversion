@@ -192,14 +192,35 @@
                 </thead>
                 <tbody>
                     @foreach($batches as $batch)
-                    <tr class="table-row">
+                    @php
+                        $needsReview = in_array($batch->status, ['previewing', 'previewed', 'needs_review']);
+                        $batchUrl = $needsReview
+                            ? route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id])
+                            : route('tenant.imports.lgu-ids.show', [$tenant->id, $batch->id]);
+                        $statusMap = [
+                            'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
+                            'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
+                            'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
+                            'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
+                            'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
+                            'previewing'              => ['class' => 'badge-blue',   'label' => 'Previewing'],
+                            'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
+                        ];
+                        $s = $statusMap[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
+                    @endphp
+                    <tr class="table-row cursor-pointer hover:bg-purple-50 transition-colors"
+                        onclick="window.location='{{ $batchUrl }}'">
                         <td class="whitespace-nowrap text-gray-500 text-xs">
                             {{ $batch->created_at->format('M d, Y') }}
                         </td>
                         <td class="max-w-[160px]">
-                            <span class="text-sm text-[#1E1B4B] font-medium truncate block" title="{{ $batch->file_name }}">
-                                {{ Str::limit($batch->file_name, 28) }}
-                            </span>
+                            <a href="{{ $batchUrl }}"
+                               class="text-sm font-semibold text-[#7B61FF] hover:underline truncate block transition-colors"
+                               title="{{ $batch->file_name }}"
+                               onclick="event.stopPropagation()">
+                                <svg class="inline-block w-3 h-3 mr-1 shrink-0 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                {{ Str::limit($batch->file_name, 26) }}
+                            </a>
                         </td>
                         <td class="tabular-nums">{{ number_format($batch->total_rows) }}</td>
                         <td class="tabular-nums text-emerald-600 font-medium">{{ number_format($batch->successful_rows) }}</td>
@@ -207,27 +228,12 @@
                         <td class="tabular-nums {{ $batch->failed_rows > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
                             {{ number_format($batch->failed_rows) }}
                         </td>
-                        <td>
-                            @php
-                                $statusMap = [
-                                    'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
-                                    'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
-                                    'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
-                                    'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
-                                    'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
-                                    'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
-                                ];
-                                $s = $statusMap[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
-                            @endphp
-                            <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
-                        </td>
-                        <td>
-                            @if(in_array($batch->status, ['previewed', 'needs_review']))
-                                <a href="{{ route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id]) }}"
-                                   class="text-xs font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">Review</a>
+                        <td><span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span></td>
+                        <td onclick="event.stopPropagation()">
+                            @if($needsReview)
+                                <a href="{{ $batchUrl }}" class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors">Review →</a>
                             @else
-                                <a href="{{ route('tenant.imports.lgu-ids.show', [$tenant->id, $batch->id]) }}"
-                                   class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
+                                <a href="{{ $batchUrl }}" class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
                             @endif
                         </td>
                     </tr>
@@ -284,42 +290,48 @@
                 </thead>
                 <tbody>
                     @foreach($batches as $batch)
-                    <tr class="table-row">
+                    @php
+                        $needsReview2 = in_array($batch->status, ['previewing', 'previewed', 'needs_review']);
+                        $batchUrl2 = $needsReview2
+                            ? route('tenant.imports.deals.preview', [$tenant->id, $batch->id])
+                            : route('tenant.imports.deals.show', [$tenant->id, $batch->id]);
+                        $statusMap2 = [
+                            'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
+                            'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
+                            'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
+                            'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
+                            'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
+                            'previewing'              => ['class' => 'badge-blue',   'label' => 'Previewing'],
+                            'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
+                        ];
+                        $s2 = $statusMap2[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
+                    @endphp
+                    <tr class="table-row cursor-pointer hover:bg-purple-50 transition-colors"
+                        onclick="window.location='{{ $batchUrl2 }}'">
                         <td class="whitespace-nowrap text-gray-500 text-xs">
                             {{ $batch->created_at->format('M d, Y') }}
                         </td>
                         <td class="max-w-[160px]">
-                            <span class="text-sm text-[#1E1B4B] font-medium truncate block" title="{{ $batch->file_name }}">
-                                {{ Str::limit($batch->file_name, 28) }}
-                            </span>
+                            <a href="{{ $batchUrl2 }}"
+                               class="text-sm font-semibold text-[#7B61FF] hover:underline truncate block"
+                               title="{{ $batch->file_name }}"
+                               onclick="event.stopPropagation()">
+                                <svg class="inline-block w-3 h-3 mr-1 shrink-0 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                {{ Str::limit($batch->file_name, 26) }}
+                            </a>
                         </td>
                         <td class="tabular-nums">{{ number_format($batch->total_rows) }}</td>
-                        <td class="tabular-nums font-medium" style="color: #7B61FF;">{{ number_format($batch->successful_rows) }}</td>
+                        <td class="tabular-nums font-medium" style="color:#7B61FF">{{ number_format($batch->successful_rows) }}</td>
                         <td class="tabular-nums text-blue-600 font-medium">{{ number_format($batch->updated_rows) }}</td>
                         <td class="tabular-nums {{ $batch->failed_rows > 0 ? 'text-red-600 font-medium' : 'text-gray-400' }}">
                             {{ number_format($batch->failed_rows) }}
                         </td>
-                        <td>
-                            @php
-                                $statusMap = [
-                                    'completed'               => ['class' => 'badge-green',  'label' => 'Completed'],
-                                    'completed_with_warnings' => ['class' => 'badge-orange', 'label' => 'With Warnings'],
-                                    'needs_review'            => ['class' => 'badge-orange', 'label' => 'Needs Review'],
-                                    'failed'                  => ['class' => 'badge-red',    'label' => 'Failed'],
-                                    'previewed'               => ['class' => 'badge-blue',   'label' => 'Previewed'],
-                                    'processing'              => ['class' => 'badge-blue',   'label' => 'Processing'],
-                                ];
-                                $s = $statusMap[$batch->status] ?? ['class' => 'badge-gray', 'label' => ucfirst($batch->status)];
-                            @endphp
-                            <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
-                        </td>
-                        <td>
-                            @if(in_array($batch->status, ['previewed', 'needs_review']))
-                                <a href="{{ route('tenant.imports.deals.preview', [$tenant->id, $batch->id]) }}"
-                                   class="text-xs font-medium hover:opacity-80 transition-colors" style="color: #7B61FF;">Review</a>
+                        <td><span class="badge {{ $s2['class'] }}">{{ $s2['label'] }}</span></td>
+                        <td onclick="event.stopPropagation()">
+                            @if($needsReview2)
+                                <a href="{{ $batchUrl2 }}" class="text-xs font-semibold hover:opacity-80 transition-colors" style="color:#7B61FF">Review →</a>
                             @else
-                                <a href="{{ route('tenant.imports.deals.show', [$tenant->id, $batch->id]) }}"
-                                   class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
+                                <a href="{{ $batchUrl2 }}" class="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">Report</a>
                             @endif
                         </td>
                     </tr>
