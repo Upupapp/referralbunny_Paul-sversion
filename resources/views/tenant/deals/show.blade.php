@@ -1210,8 +1210,8 @@
                     </div>
                 </div>
 
-                {{-- Activity History — uses dealDetail scope directly --}}
-                <div class="card">
+                {{-- Activity History — self-contained component, does not rely on dealDetail scope --}}
+                <div class="card" x-data="dealActivityHistory(@json($ssrLead['history'] ?? []))">
 
                     {{-- Header + filters --}}
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -1233,11 +1233,12 @@
                     <div class="space-y-1">
                         {{-- Empty state --}}
                         <template x-if="ahFiltered().length === 0">
-                            <div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px">
-                                <svg style="width:32px;height:32px;margin:0 auto 8px;opacity:0.4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div style="text-align:center;padding:28px 12px;color:#9ca3af;font-size:13px">
+                                <svg style="width:32px;height:32px;margin:0 auto 10px;opacity:0.35" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                 </svg>
-                                <span x-text="ahFilter === 'all' ? 'No activity recorded yet.' : 'No ' + ahFilter + ' activity yet.'"></span>
+                                <p style="font-weight:600;color:#6b7280;margin-bottom:4px" x-text="ahFilter === 'all' ? 'No activity recorded yet.' : 'No ' + ahFilter + ' activity yet.'"></p>
+                                <p style="font-size:11px">Activity will appear here when stage, financial, partner, or commission changes are made.</p>
                             </div>
                         </template>
 
@@ -1352,6 +1353,9 @@
                             </button>
                         </div>
                     </template>
+                    {{-- @window-event: refresh history when stage/financial changes happen --}}
+                    <span x-on:finance-updated.window="refreshHistory()" style="display:none"></span>
+                    <span x-on:stage-updated.window="refreshHistory()" style="display:none"></span>
 
                 </div>
 
@@ -1590,6 +1594,72 @@
 </div>
 
 <script>
+// ── Self-contained Activity History component ─────────────────────────────
+// Decoupled from dealDetail scope to avoid Alpine scope-chain lookup failures.
+function dealActivityHistory(initialHistory) {
+    return {
+        history:    Array.isArray(initialHistory) ? initialHistory : [],
+        ahFilter:   'all',
+        ahPageSize: 8,
+        ahShowAll:  false,
+        ahFilters: [
+            { key: 'all',        label: 'All'        },
+            { key: 'stage',      label: 'Stage'      },
+            { key: 'financial',  label: 'Financial'  },
+            { key: 'partner',    label: 'Partner'    },
+            { key: 'commission', label: 'Commission' },
+            { key: 'assignment', label: 'Referrer'   },
+            { key: 'import',     label: 'Import'     },
+        ],
+
+        ahFiltered() {
+            const hist = [...this.history].reverse();
+            if (this.ahFilter === 'all') return hist;
+            return hist.filter(e => (e.category || e.type || '') === this.ahFilter);
+        },
+        ahVisible() {
+            const f = this.ahFiltered();
+            return this.ahShowAll ? f : f.slice(0, this.ahPageSize);
+        },
+        ahIconStyle(event) {
+            const t = event.category || event.type || '';
+            const m = {
+                stage:      'background:#ede9fe;color:#7B61FF',
+                partner:    'background:#dbeafe;color:#2563eb',
+                financial:  'background:#fef3c7;color:#d97706',
+                commission: 'background:#dcfce7;color:#16a34a',
+                assignment: 'background:#e0f2fe;color:#0284c7',
+                import:     'background:#f3f4f6;color:#6b7280',
+                deal:       'background:#f3f4f6;color:#6b7280',
+            };
+            return m[t] || 'background:#f3f4f6;color:#6b7280';
+        },
+        ahDate(event) {
+            const ts = event.created_at || event.date;
+            if (!ts) return '';
+            try {
+                const d = new Date(ts);
+                return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+                    + ' ' + d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+            } catch { return ts; }
+        },
+        async refreshHistory() {
+            // Called via window events (finance-updated, stage-updated)
+            // Re-fetches just to get the latest history array
+            try {
+                const dealId = document.querySelector('[x-data*="dealDetail"]')
+                    ?.__x?.$data?.lead?.id;
+                if (!dealId) return;
+                const res = await fetch(`/api/leads/${dealId}`, { credentials: 'same-origin' });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.history = Array.isArray(data.history) ? data.history : [];
+                }
+            } catch {}
+        },
+    };
+}
+
 function dealComments(dealId, tenantId) {
     return {
         // â"€â"€ State â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -1844,58 +1914,6 @@ function dealDetail(leadId, tenantId, ssrLead) {
         moveStageNote: '',
         editFinance: false,
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
-
-        // Activity History state (inline in dealDetail to share lead.history)
-        ahFilter:   'all',
-        ahShowAll:  false,
-        ahPageSize: 10,
-        ahFilters:  [
-            { key: 'all',        label: 'All'        },
-            { key: 'stage',      label: 'Stage'      },
-            { key: 'financial',  label: 'Financial'  },
-            { key: 'partner',    label: 'Partner'    },
-            { key: 'commission', label: 'Commission' },
-            { key: 'assignment', label: 'Referrer'   },
-            { key: 'import',     label: 'Import'     },
-        ],
-        ahFiltered() {
-            const history = [...(this.lead?.history || [])].reverse();
-            if (this.ahFilter === 'all') return history;
-            return history.filter(e => (e.category || e.type || '') === this.ahFilter);
-        },
-        ahVisible() {
-            const f = this.ahFiltered();
-            return this.ahShowAll ? f : f.slice(0, this.ahPageSize);
-        },
-        ahIconStyle(event) {
-            const t = event.category || event.type || '';
-            const m = {
-                stage:      'background:#ede9fe;color:#7B61FF',
-                partner:    'background:#dbeafe;color:#2563eb',
-                financial:  'background:#fef3c7;color:#d97706',
-                commission: 'background:#dcfce7;color:#16a34a',
-                assignment: 'background:#e0f2fe;color:#0284c7',
-                import:     'background:#f3f4f6;color:#6b7280',
-                deal:       'background:#f3f4f6;color:#6b7280',
-            };
-            return m[t] || 'background:#f3f4f6;color:#6b7280';
-        },
-        ahDate(event) {
-            const ts = event.created_at || event.date;
-            if (!ts) return '';
-            try {
-                const d   = new Date(ts);
-                const now = new Date();
-                const min = Math.floor((now - d) / 60000);
-                const hr  = Math.floor(min / 60);
-                const dy  = Math.floor(hr / 24);
-                if (min < 2)   return 'Just now';
-                if (min < 60)  return min + 'm ago';
-                if (hr  < 24)  return hr  + 'h ago';
-                if (dy  < 7)   return dy  + 'd ago';
-                return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
-            } catch (e) { return ''; }
-        },
 
         // Contacts
         dealContacts: [], loadingContacts: true,
