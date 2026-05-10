@@ -85,6 +85,8 @@ class CriticalActionService
     {
         $sources = [
             fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
+            fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
+            fn() => $this->resellerUnreadMessages($tenantId, $resellerName),
             fn() => $this->resellerLeadHistory($tenantId, $resellerName),
             fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
         ];
@@ -110,13 +112,16 @@ class CriticalActionService
 
     private function forTenant(string $tenantId, array $opts = []): array
     {
-        $limitPer = $opts['limit_per_source'] ?? 10;
-        $since    = $opts['since'] ?? now()->subDays(30);
+        $limitPer    = $opts['limit_per_source'] ?? 10;
+        $since       = $opts['since'] ?? now()->subDays(30);
+        $canBilling  = $opts['billing'] ?? false;
 
         $sources = [
             fn() => $this->expiringDeals($tenantId),
             fn() => $this->expiredDeals($tenantId),
             fn() => $this->missingReferrerDeals($tenantId),
+            fn() => $this->pendingExtensionRequests($tenantId),
+            fn() => $this->failedRollbacks($tenantId),
             fn() => $this->recentLeadHistory($tenantId, $limitPer, $since),
             fn() => $this->importEvents($tenantId, $limitPer),
             fn() => $this->pendingInvites($tenantId),
@@ -125,6 +130,10 @@ class CriticalActionService
             fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
             fn() => $this->pendingExportRequests($tenantId),
         ];
+
+        if ($canBilling) {
+            $sources[] = fn() => $this->billingIssues($tenantId);
+        }
 
         $all = [];
         foreach ($sources as $source) {
@@ -432,9 +441,11 @@ class CriticalActionService
             'related_type'  => 'deal',
             'related_id'    => $r->id,
             'occurred_at'   => $r->updated_at ?? now(),
-            'action_url'    => null,
+            'action_url'    => "/reseller/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'View Deal',
             'action_needed' => true,
             'source'        => 'leads',
+            'meta'          => ['days_left' => $r->days_left],
         ]))->toArray();
     }
 
@@ -483,16 +494,17 @@ class CriticalActionService
         return $rows->map(fn($r) => $this->make([
             'type'          => 'commission_locked',
             'category'      => 'deal',
-            'severity'      => 'info',
-            'summary'       => "Commission locked: {$r->name}",
+            'severity'      => 'medium',
+            'summary'       => "Commission locked — review your deal: {$r->name}",
             'actor_name'    => 'System',
             'actor_role'    => 'System',
             'related_label' => $r->name,
             'related_type'  => 'deal',
             'related_id'    => $r->id,
             'occurred_at'   => $r->updated_at ?? now(),
-            'action_url'    => null,
-            'action_needed' => false,
+            'action_url'    => "/reseller/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'View Deal',
+            'action_needed' => true,
             'source'        => 'leads',
         ]))->toArray();
     }
@@ -525,6 +537,231 @@ class CriticalActionService
                 'source'        => 'export_requests',
                 'meta'          => ['is_sensitive' => (bool) $r->is_sensitive],
             ]))->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ── New source: extension requests (admin view) ────────────────
+
+    private function pendingExtensionRequests(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('deal_assignment_extension_requests as r')
+                ->join('leads as l', 'l.id', '=', 'r.deal_id')
+                ->where('r.tenant_id', $tenantId)
+                ->whereIn('r.status', ['pending_review', 'clarification_requested'])
+                ->select(
+                    'r.id', 'r.status', 'r.requested_days', 'r.reason',
+                    'r.requested_by_role', 'r.created_at',
+                    'l.id as lead_id', 'l.name as lead_name', 'l.reseller_name'
+                )
+                ->orderBy('r.created_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'extension_request_pending',
+                'category'      => 'deal',
+                'severity'      => 'high',
+                'summary'       => $r->status === 'pending_review'
+                    ? "Extension request awaiting review: {$r->lead_name}"
+                    : "Extension request needs clarification: {$r->lead_name}",
+                'actor_name'    => $r->reseller_name ?? ucfirst($r->requested_by_role ?? 'Referrer'),
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->lead_name,
+                'related_type'  => 'deal',
+                'related_id'    => $r->lead_id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}",
+                'action_label'  => 'Review Request',
+                'action_needed' => true,
+                'source'        => 'deal_assignment_extension_requests',
+                'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days],
+            ]))->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ── New source: failed/conflicted rollbacks ─────────────────────
+
+    private function failedRollbacks(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('import_rollbacks as rb')
+                ->join('import_batches as b', 'b.id', '=', 'rb.import_batch_id')
+                ->where('rb.tenant_id', $tenantId)
+                ->whereIn('rb.status', ['failed', 'completed_with_warnings'])
+                ->where('rb.created_at', '>', now()->subDays(14))
+                ->select(
+                    'rb.id', 'rb.status', 'rb.records_conflict', 'rb.records_failed',
+                    'rb.created_at', 'b.file_name'
+                )
+                ->orderByDesc('rb.created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => $r->status === 'failed' ? 'rollback_failed' : 'rollback_conflict',
+                'category'      => 'import',
+                'severity'      => $r->status === 'failed' ? 'high' : 'medium',
+                'summary'       => $r->status === 'failed'
+                    ? "Import rollback failed: {$r->file_name}"
+                    : "Import rollback completed with conflicts: {$r->file_name}",
+                'actor_name'    => 'System',
+                'actor_role'    => 'System',
+                'related_label' => $r->file_name,
+                'related_type'  => 'import',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/imports",
+                'action_label'  => 'View Imports',
+                'action_needed' => true,
+                'source'        => 'import_rollbacks',
+                'meta'          => ['records_conflict' => $r->records_conflict, 'records_failed' => $r->records_failed],
+            ]))->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ── New source: billing issues (gated by canSeeBilling) ────────
+
+    private function billingIssues(string $tenantId): array
+    {
+        try {
+            $sub = DB::table('subscriptions')
+                ->where('tenant_id', $tenantId)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if (!$sub) return [];
+
+            $actions = [];
+
+            if ($sub->status === 'suspended') {
+                $actions[] = $this->make([
+                    'type'          => 'subscription_suspended',
+                    'category'      => 'billing',
+                    'severity'      => 'urgent',
+                    'summary'       => 'Workspace subscription is suspended — access may be restricted',
+                    'actor_name'    => 'System',
+                    'actor_role'    => 'System',
+                    'related_label' => 'Subscription',
+                    'related_type'  => 'billing',
+                    'related_id'    => $sub->id ?? null,
+                    'occurred_at'   => $sub->updated_at ?? now(),
+                    'action_url'    => "/tenant/{$tenantId}/billing",
+                    'action_label'  => 'Review Billing',
+                    'action_needed' => true,
+                    'source'        => 'subscriptions',
+                ]);
+            } elseif ($sub->status === 'trial' && !empty($sub->trial_end_date)) {
+                $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($sub->trial_end_date), false);
+                if ($daysLeft >= 0 && $daysLeft <= 7) {
+                    $actions[] = $this->make([
+                        'type'          => 'trial_ending',
+                        'category'      => 'billing',
+                        'severity'      => $daysLeft <= 2 ? 'high' : 'medium',
+                        'summary'       => "Trial ending in {$daysLeft} day" . ($daysLeft === 1 ? '' : 's') . ' — upgrade to keep access',
+                        'actor_name'    => 'System',
+                        'actor_role'    => 'System',
+                        'related_label' => 'Trial subscription',
+                        'related_type'  => 'billing',
+                        'related_id'    => $sub->id ?? null,
+                        'occurred_at'   => now(),
+                        'action_url'    => "/tenant/{$tenantId}/billing",
+                        'action_label'  => 'Upgrade Plan',
+                        'action_needed' => true,
+                        'source'        => 'subscriptions',
+                        'meta'          => ['days_left' => $daysLeft],
+                    ]);
+                }
+            }
+
+            return $actions;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ── New reseller source: extension request responses ───────────
+
+    private function resellerExtensionRequests(string $tenantId, string $resellerName): array
+    {
+        try {
+            $rows = DB::table('deal_assignment_extension_requests as r')
+                ->join('leads as l', 'l.id', '=', 'r.deal_id')
+                ->where('r.tenant_id', $tenantId)
+                ->where('l.reseller_name', $resellerName)
+                ->whereIn('r.status', ['pending_review', 'clarification_requested'])
+                ->select('r.id', 'r.status', 'r.requested_days', 'r.created_at', 'l.id as lead_id', 'l.name as lead_name')
+                ->orderByDesc('r.created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'my_extension_request',
+                'category'      => 'deal',
+                'severity'      => 'medium',
+                'summary'       => $r->status === 'pending_review'
+                    ? "Your extension request is pending review: {$r->lead_name}"
+                    : "Clarification needed for your extension request: {$r->lead_name}",
+                'actor_name'    => 'You',
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->lead_name,
+                'related_type'  => 'deal',
+                'related_id'    => $r->lead_id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/reseller/{$tenantId}/deals/{$r->lead_id}",
+                'action_label'  => 'View Deal',
+                'action_needed' => $r->status === 'clarification_requested',
+                'source'        => 'deal_assignment_extension_requests',
+                'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days],
+            ]))->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    // ── New reseller source: unread partner messages ───────────────
+
+    private function resellerUnreadMessages(string $tenantId, string $resellerName): array
+    {
+        try {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('name', $resellerName)
+                ->select('id')
+                ->first();
+
+            if (!$reseller) return [];
+
+            $count = DB::table('partner_threads')
+                ->where('tenant_id', $tenantId)
+                ->where('partner_id', $reseller->id)
+                ->where('reseller_unread', '>', 0)
+                ->count();
+
+            if ($count === 0) return [];
+
+            return [$this->make([
+                'type'          => 'partner_message_unread',
+                'category'      => 'messaging',
+                'severity'      => 'medium',
+                'summary'       => "{$count} unread message" . ($count > 1 ? 's' : '') . ' from partners on your deals',
+                'actor_name'    => 'Partner',
+                'actor_role'    => 'Partner',
+                'related_label' => 'Messages',
+                'related_type'  => 'message',
+                'related_id'    => null,
+                'occurred_at'   => now(),
+                'action_url'    => "/reseller/{$tenantId}/messages",
+                'action_label'  => 'View Messages',
+                'action_needed' => true,
+                'source'        => 'partner_threads',
+            ])];
         } catch (\Throwable) {
             return [];
         }

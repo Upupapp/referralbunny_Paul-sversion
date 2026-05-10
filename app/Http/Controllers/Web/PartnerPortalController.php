@@ -34,13 +34,20 @@ class PartnerPortalController extends Controller
         $partner    = $this->partner();
         $dealIds    = $this->authorizedDealIds();
 
-        $dealCount   = count($dealIds);
-        $unreadCount = (int) PartnerThread::where('partner_id', $partner->id)->sum('partner_unread');
-        $completion  = UserDisplayNameService::completionPercent($partner);
-        $recentDeals = Lead::whereIn('id', $dealIds)->orderByDesc('created_at')->limit(5)->get();
+        $dealCount     = count($dealIds);
+        $unreadCount   = (int) PartnerThread::where('partner_id', $partner->id)->sum('partner_unread');
+        $completion    = UserDisplayNameService::completionPercent($partner);
+        $recentDeals   = Lead::whereIn('id', $dealIds)->orderByDesc('created_at')->limit(5)->get();
+
+        // Expiring deals the partner is associated with (for Needs Attention panel)
+        $expiringDeals = Lead::whereIn('id', $dealIds)
+            ->where('status', 'expiring')
+            ->orderBy('days_left')
+            ->limit(3)
+            ->get(['id', 'name', 'days_left', 'status']);
 
         return view('partner.dashboard', compact(
-            'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals'
+            'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals', 'expiringDeals'
         ));
     }
 

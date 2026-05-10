@@ -61,6 +61,8 @@ class CriticalActionsController extends Controller
             'import'    => 'Imports',
             'messaging' => 'Messages',
             'user'      => 'Users & Invitations',
+            'export'    => 'Exports',
+            'billing'   => 'Billing',
             'activity'  => 'Activity',
         ];
 

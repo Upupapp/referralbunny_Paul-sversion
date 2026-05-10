@@ -16,6 +16,8 @@
         'import'    => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
         'messaging' => 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
         'user'      => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+        'export'    => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
+        'billing'   => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
         'activity'  => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
     ];
 @endphp
@@ -171,7 +173,7 @@
                                     @if($action['action_url'])
                                         <a href="{{ $action['action_url'] }}"
                                            class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors whitespace-nowrap">
-                                            Open →
+                                            {{ $action['action_label'] ?? 'Open' }} →
                                         </a>
                                     @endif
                                 </td>
@@ -198,7 +200,7 @@
                             <p class="text-xs text-gray-500">{{ $action['actor_name'] }} · {{ $action['actor_role'] }}</p>
                             @if($action['action_url'])
                                 <a href="{{ $action['action_url'] }}"
-                                   class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">Open →</a>
+                                   class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">{{ $action['action_label'] ?? 'Open' }} →</a>
                             @endif
                         </div>
                     </div>

@@ -62,6 +62,49 @@
         </div>
     </div>
 
+    {{-- Needs Attention panel --}}
+    @if($unreadCount > 0 || $expiringDeals->isNotEmpty())
+    <div class="bg-white rounded-2xl shadow-sm border border-amber-100">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+            <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <p class="text-sm font-semibold text-amber-800">Needs Attention</p>
+        </div>
+        <div class="divide-y divide-gray-50 px-4">
+            @if($unreadCount > 0)
+            <div class="flex items-center justify-between py-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                    <p class="text-sm text-[#1E1B4B] font-medium truncate">
+                        {{ $unreadCount }} unread {{ Str::plural('message', $unreadCount) }} waiting for you
+                    </p>
+                </div>
+                <a href="{{ route('partner.messages') }}"
+                   class="ml-3 text-xs font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap shrink-0">
+                    View Messages →
+                </a>
+            </div>
+            @endif
+            @foreach($expiringDeals as $deal)
+            <div class="flex items-center justify-between py-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-2 h-2 rounded-full {{ ($deal->days_left ?? 21) <= 2 ? 'bg-red-500' : 'bg-orange-400' }} shrink-0"></span>
+                    <div class="min-w-0">
+                        <p class="text-sm text-[#1E1B4B] font-medium truncate">{{ $deal->name }}</p>
+                        <p class="text-xs text-gray-400">Expiring in {{ $deal->days_left ?? 0 }} {{ Str::plural('day', $deal->days_left ?? 0) }}</p>
+                    </div>
+                </div>
+                <a href="{{ route('partner.deals.show', $deal->id) }}"
+                   class="ml-3 text-xs font-semibold text-[#7B61FF] hover:text-purple-700 whitespace-nowrap shrink-0">
+                    View Deal →
+                </a>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     {{-- Notice: read-only role --}}
     <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border bg-blue-50 border-blue-100">
         <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
