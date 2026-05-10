@@ -30,32 +30,23 @@ class RequestFormController extends Controller
         $sort   = $request->query('sort', 'updated');
 
         $sortMap = [
-            'updated'   => ['request_forms.updated_at', 'desc'],
-            'created'   => ['request_forms.created_at', 'desc'],
-            'title'     => ['request_forms.title', 'asc'],
+            'updated'   => ['updated_at', 'desc'],
+            'created'   => ['created_at', 'desc'],
+            'title'     => ['title', 'asc'],
             'responses' => ['submissions_count', 'desc'],
             'last'      => ['submissions_max_submitted_at', 'desc'],
         ];
-        [$sortCol, $sortDir] = $sortMap[$sort] ?? ['request_forms.updated_at', 'desc'];
+        [$sortCol, $sortDir] = $sortMap[$sort] ?? ['updated_at', 'desc'];
 
-        $forms = RequestForm::where('request_forms.tenant_id', $tenantId)
-            ->whereNull('request_forms.deleted_at')
+        $forms = RequestForm::where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->withCount('submissions')
             ->withMax('submissions', 'submitted_at')
-            ->addSelect(DB::raw("(
-                SELECT COUNT(*) FROM tasks t
-                WHERE t.source_type = 'request_form_submission'
-                AND t.deleted_at IS NULL
-                AND t.source_id IN (
-                    SELECT id FROM request_form_submissions s
-                    WHERE s.request_form_id = request_forms.id
-                )
-            ) as tasks_count"))
             ->when($search, fn($q) => $q->where(fn($inner) => $inner
-                ->where('request_forms.title', 'like', "%{$search}%")
-                ->orWhere('request_forms.description', 'like', "%{$search}%")
+                ->where('title', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
             ))
-            ->when($status && $status !== 'all', fn($q) => $q->where('request_forms.status', $status))
+            ->when($status && $status !== 'all', fn($q) => $q->where('status', $status))
             ->orderBy($sortCol, $sortDir)
             ->paginate(20)
             ->withQueryString();

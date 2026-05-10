@@ -85,13 +85,21 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
 
-            <label class="filter-pill">
+            <label class="filter-pill" title="From date">
                 <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span style="font-size:10px;color:#9ca3af;margin-right:2px">From</span>
                 <input type="date" name="since" value="{{ $filters['since'] ? (is_string($filters['since']) ? $filters['since'] : $filters['since']->format('Y-m-d')) : '' }}"
                        onchange="this.form.submit()" placeholder="From date">
             </label>
 
-            @if(array_filter([$filters['search'], $filters['severity'], $filters['category'], $filters['since']]))
+            <label class="filter-pill" title="To date">
+                <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span style="font-size:10px;color:#9ca3af;margin-right:2px">To</span>
+                <input type="date" name="until" value="{{ isset($filters['until']) && $filters['until'] ? (is_string($filters['until']) ? $filters['until'] : $filters['until']->format('Y-m-d')) : '' }}"
+                       onchange="this.form.submit()" placeholder="To date">
+            </label>
+
+            @if(array_filter([$filters['search'], $filters['severity'], $filters['category'], $filters['since'], $filters['until'] ?? null]))
                 <a href="{{ route('tenant.critical-actions', $tenant->id) }}"
                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50 no-underline">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

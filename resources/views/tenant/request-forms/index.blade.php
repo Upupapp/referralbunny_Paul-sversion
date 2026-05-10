@@ -82,7 +82,6 @@
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Form</th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Status</th>
                     <th style="text-align:center;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Responses</th>
-                    <th style="text-align:center;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Tasks</th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Last Response</th>
                     <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Actions</th>
                 </tr>
@@ -133,7 +132,7 @@
                         </a>
                     </td>
                     <td style="padding:14px 16px;text-align:center;font-size:14px;font-weight:600;color:#374151">
-                        {{ $form->tasks_count ?? 0 }}
+                        {{ $form->submissions_count ?? 0 }}
                     </td>
                     <td style="padding:14px 16px;font-size:12px;color:#9ca3af;white-space:nowrap">
                         {{ $lastResp ? $lastResp->format('M j, Y') : '—' }}
