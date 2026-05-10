@@ -160,31 +160,34 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('exports/{id}/cancel',                   [ExportController::class, 'cancel']);
     Route::get('exports/{id}/download',                  [ExportController::class, 'download']);
 
-    // Billing
+    // Billing — reads
     Route::get('billing/dashboard',                      [BillingController::class, 'dashboard']);
     Route::get('billing/plans',                          [BillingController::class, 'plans']);
     Route::get('billing/exchange-rates',                 [BillingController::class, 'exchangeRates']);
-    Route::put('billing/exchange-rates',                 [BillingController::class, 'updateExchangeRate']);
     Route::get('billing/invoices',                       [BillingController::class, 'invoices']);
     Route::get('billing/invoices/{invoice}',             [BillingController::class, 'invoice']);
-    Route::post('billing/invoices',                      [BillingController::class, 'createInvoice']);
-    Route::post('billing/invoices/{invoice}/waive',      [BillingController::class, 'waiveInvoice']);
-    Route::post('billing/invoices/{invoice}/pay',        [BillingController::class, 'createPaymentIntent']);
     Route::get('billing/payments',                       [BillingController::class, 'payments']);
     Route::get('billing/refunds',                        [BillingController::class, 'refunds']);
-    Route::post('billing/refunds',                       [BillingController::class, 'requestRefund']);
-    Route::post('billing/credits',                       [BillingController::class, 'issueCredit']);
     Route::get('billing/audit-log',                      [BillingController::class, 'auditLog']);
     Route::get('billing/tenants/{tenantId}/subscription',[BillingController::class, 'tenantSubscription']);
-    Route::post('billing/tenants/{tenantId}/trial',          [BillingController::class, 'activateTrial']);
-    Route::post('billing/tenants/{tenantId}/suspend',        [BillingController::class, 'suspendTenant']);
-    Route::post('billing/tenants/{tenantId}/extend-access',  [BillingController::class, 'extendAccess']);
-    Route::post('billing/subscriptions/{subscription}/activate', [BillingController::class, 'activateSubscription']);
-    Route::post('billing/subscriptions/{subscription}/cancel',   [BillingController::class, 'cancelSubscription']);
-    // Super Admin: change tenant plan (requires double-auth in controller)
-    Route::post('billing/tenants/{tenantId}/change-plan',    [BillingController::class, 'changeTenantPlan']);
-    Route::get('billing/tenants/{tenantId}/plan-usage',      [BillingController::class, 'tenantPlanUsage']);
+    Route::get('billing/tenants/{tenantId}/plan-usage',  [BillingController::class, 'tenantPlanUsage']);
     Route::get('export/billing',                         [TenantMetricController::class, 'exportLeads']);
+
+    // Billing — writes (rate-limited: 20/min)
+    Route::middleware('throttle:20,1')->group(function () {
+        Route::put('billing/exchange-rates',                              [BillingController::class, 'updateExchangeRate']);
+        Route::post('billing/invoices',                                   [BillingController::class, 'createInvoice']);
+        Route::post('billing/invoices/{invoice}/waive',                   [BillingController::class, 'waiveInvoice']);
+        Route::post('billing/invoices/{invoice}/pay',                     [BillingController::class, 'createPaymentIntent']);
+        Route::post('billing/refunds',                                    [BillingController::class, 'requestRefund']);
+        Route::post('billing/credits',                                    [BillingController::class, 'issueCredit']);
+        Route::post('billing/tenants/{tenantId}/trial',                   [BillingController::class, 'activateTrial']);
+        Route::post('billing/tenants/{tenantId}/suspend',                 [BillingController::class, 'suspendTenant']);
+        Route::post('billing/tenants/{tenantId}/extend-access',           [BillingController::class, 'extendAccess']);
+        Route::post('billing/subscriptions/{subscription}/activate',      [BillingController::class, 'activateSubscription']);
+        Route::post('billing/subscriptions/{subscription}/cancel',        [BillingController::class, 'cancelSubscription']);
+        Route::post('billing/tenants/{tenantId}/change-plan',             [BillingController::class, 'changeTenantPlan']);
+    });
 
     // Pricing & Plans
     Route::get('pricing/plans',                      [PricingController::class, 'plans']);

@@ -93,7 +93,7 @@ class PayMongoService
     public function verifyWebhook(string $rawBody, string $signature): bool
     {
         $webhookSecret = config('services.paymongo.webhook_secret', '');
-        if (empty($webhookSecret)) return true; // Skip in dev
+        if (empty($webhookSecret)) return false;
 
         $computedSig = hash_hmac('sha256', $rawBody, $webhookSecret);
         return hash_equals($computedSig, $signature);

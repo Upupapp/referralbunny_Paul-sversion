@@ -100,7 +100,7 @@
                     <div class="p-4 rounded-2xl text-center space-y-3" style="background:linear-gradient(135deg,#F5F3FF,#FDF2F8);border:1px solid #EDE9FE">
                         <p class="text-xs font-semibold text-purple-700 uppercase tracking-wide">Upgrade Plan</p>
                         <p class="text-xs text-gray-500">Unlock more deals, referrers, and messaging</p>
-                        <button class="btn-primary w-full text-xs">
+                        <button @click="document.getElementById('plans-comparison')?.scrollIntoView({behavior:'smooth'})" class="btn-primary w-full text-xs">
                             View Plans
                         </button>
                     </div>
@@ -109,7 +109,7 @@
         </div>
 
         {{-- Plan limits comparison --}}
-        <div class="card p-0 overflow-hidden" x-show="plans.length > 0">
+        <div id="plans-comparison" class="card p-0 overflow-hidden" x-show="plans.length > 0">
             <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B] text-sm">All Plans — Pricing, Resources & Features</h3>
                 <span class="text-xs text-gray-400" x-text="plans.length + ' plans available'"></span>

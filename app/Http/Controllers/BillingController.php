@@ -13,6 +13,7 @@ use App\Models\BillingAuditLog;
 use App\Services\BillingService;
 use App\Services\InvoiceService;
 use App\Services\PayMongoService;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,11 @@ class BillingController extends Controller
         private InvoiceService  $invoiceService,
         private PayMongoService $paymongo,
     ) {}
+
+    private function actorId(): string
+    {
+        return (string) (Auth::guard('web')->id() ?? Auth::guard('tenant')->id() ?? 'system');
+    }
 
     // ── Dashboard ─────────────────────────────────────────────
     public function dashboard(): JsonResponse
@@ -67,7 +73,7 @@ class BillingController extends Controller
     {
         $request->validate(['reason' => 'required|string']);
         $sub = Subscription::findOrFail($subscriptionId);
-        $this->billing->cancel($sub, $request->reason, $request->user()?->id ?? 1);
+        $this->billing->cancel($sub, $request->reason, $this->actorId());
         return response()->json(['message' => 'Subscription canceled.']);
     }
 
@@ -75,7 +81,7 @@ class BillingController extends Controller
     {
         $request->validate(['reason' => 'required|string']);
         $sub = Subscription::where('tenant_id', $tenantId)->latest()->firstOrFail();
-        $this->billing->suspend($sub, $request->reason, $request->user()?->id ?? 1);
+        $this->billing->suspend($sub, $request->reason, $this->actorId());
         return response()->json(['message' => 'Tenant suspended.']);
     }
 
@@ -151,7 +157,7 @@ class BillingController extends Controller
         // Audit log
         BillingAuditLog::log('access_extended', [
             'tenant_id'    => $tenantId,
-            'performed_by' => $request->user()?->id ?? 1,
+            'performed_by' => $this->actorId(),
             'reason'       => "Access extended by {$data['days']} day(s). " . ($data['note'] ?? ''),
             'after'        => [
                 'days'       => $data['days'],
@@ -171,8 +177,14 @@ class BillingController extends Controller
     public function invoices(Request $request): JsonResponse
     {
         $q = Invoice::with('tenant')->orderByDesc('created_at');
-        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
-        if ($request->filled('status'))    $q->where('status', $request->status);
+
+        if (TenantContext::isSuperAdmin()) {
+            if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        } else {
+            $q->where('tenant_id', TenantContext::requireId());
+        }
+
+        if ($request->filled('status')) $q->where('status', $request->status);
         return response()->json($q->limit(100)->get());
     }
 
@@ -198,7 +210,7 @@ class BillingController extends Controller
     public function waiveInvoice(Request $request, Invoice $invoice): JsonResponse
     {
         $request->validate(['reason' => 'required|string']);
-        $this->invoiceService->waive($invoice, $request->reason, $request->user()?->id ?? 1);
+        $this->invoiceService->waive($invoice, $request->reason, $this->actorId());
         return response()->json(['message' => 'Invoice waived.']);
     }
 
@@ -212,14 +224,22 @@ class BillingController extends Controller
     public function payments(Request $request): JsonResponse
     {
         $q = Payment::with('tenant')->orderByDesc('created_at');
-        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
-        if ($request->filled('status'))    $q->where('status', $request->status);
+
+        if (TenantContext::isSuperAdmin()) {
+            if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        } else {
+            $q->where('tenant_id', TenantContext::requireId());
+        }
+
+        if ($request->filled('status')) $q->where('status', $request->status);
         return response()->json($q->limit(100)->get());
     }
 
     // ── Refunds ───────────────────────────────────────────────
     public function requestRefund(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can request refunds.');
+
         $request->validate([
             'payment_id' => 'required|string|exists:payments,id',
             'amount'     => 'required|numeric|min:1',
@@ -227,27 +247,40 @@ class BillingController extends Controller
         ]);
 
         $payment = Payment::findOrFail($request->payment_id);
-        $refund  = $this->billing->requestRefund($payment, $request->amount, $request->reason, $request->user()?->id ?? 1);
+
+        if ((float) $request->amount > (float) $payment->amount) {
+            return response()->json(['message' => 'Refund amount cannot exceed the original payment amount.'], 422);
+        }
+
+        $refund = $this->billing->requestRefund($payment, $request->amount, $request->reason, $this->actorId());
         return response()->json($refund, 201);
     }
 
     public function refunds(Request $request): JsonResponse
     {
         $q = Refund::with('payment', 'tenant')->orderByDesc('created_at');
-        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+
+        if (TenantContext::isSuperAdmin()) {
+            if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        } else {
+            $q->where('tenant_id', TenantContext::requireId());
+        }
+
         return response()->json($q->limit(100)->get());
     }
 
     // ── Credits ───────────────────────────────────────────────
     public function issueCredit(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can issue credits.');
+
         $request->validate([
             'tenant_id' => 'required|string|exists:tenants,id',
             'amount'    => 'required|numeric|min:1',
             'reason'    => 'required|string',
         ]);
 
-        $credit = $this->billing->issueCredit($request->tenant_id, $request->amount, $request->reason, $request->user()?->id ?? 1);
+        $credit = $this->billing->issueCredit($request->tenant_id, $request->amount, $request->reason, $this->actorId());
         return response()->json($credit, 201);
     }
 
@@ -255,7 +288,13 @@ class BillingController extends Controller
     public function auditLog(Request $request): JsonResponse
     {
         $q = BillingAuditLog::orderByDesc('created_at');
-        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+
+        if (TenantContext::isSuperAdmin()) {
+            if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        } else {
+            $q->where('tenant_id', TenantContext::requireId());
+        }
+
         return response()->json($q->limit(200)->get());
     }
 
