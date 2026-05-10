@@ -204,9 +204,11 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::post('/request-forms',               [\App\Http\Controllers\Web\RequestFormController::class, 'store'])->name('request-forms.store');
     Route::get('/request-forms/{formId}/edit',   [\App\Http\Controllers\Web\RequestFormController::class, 'edit'])->name('request-forms.edit');
     Route::patch('/request-forms/{formId}',      [\App\Http\Controllers\Web\RequestFormController::class, 'update'])->name('request-forms.update');
-    Route::post('/request-forms/{formId}/publish',   [\App\Http\Controllers\Web\RequestFormController::class, 'publish'])->name('request-forms.publish');
-    Route::post('/request-forms/{formId}/unpublish', [\App\Http\Controllers\Web\RequestFormController::class, 'unpublish'])->name('request-forms.unpublish');
+    Route::post('/request-forms/{formId}/publish',    [\App\Http\Controllers\Web\RequestFormController::class, 'publish'])->name('request-forms.publish');
+    Route::post('/request-forms/{formId}/unpublish',  [\App\Http\Controllers\Web\RequestFormController::class, 'unpublish'])->name('request-forms.unpublish');
+    Route::post('/request-forms/{formId}/duplicate',  [\App\Http\Controllers\Web\RequestFormController::class, 'duplicate'])->name('request-forms.duplicate');
     Route::get('/request-forms/{formId}/submissions', [\App\Http\Controllers\Web\RequestFormController::class, 'submissions'])->name('request-forms.submissions');
+    Route::get('/request-forms/{formId}/submissions/{submissionId}', [\App\Http\Controllers\Web\RequestFormController::class, 'submissionShow'])->name('request-forms.submissions.show');
     Route::delete('/request-forms/{formId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'destroy'])->name('request-forms.destroy');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');

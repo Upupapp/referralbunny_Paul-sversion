@@ -93,14 +93,29 @@
                 <p style="background:#f9fafb;border-radius:10px;padding:12px;color:#374151;line-height:1.6;border-left:3px solid #7B61FF">{{ $source->notes }}</p>
             </div>
             @endif
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af">
-                <span>Form</span>
-                <span>{{ $source->form->title ?? 'Request Form' }}</span>
+            <div style="display:flex;justify-content:space-between;font-size:12px;align-items:center">
+                <span style="color:#9ca3af">Form</span>
+                @if($source->form)
+                <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $source->form->id]) }}"
+                   style="color:#7B61FF;text-decoration:none;font-weight:600">{{ $source->form->title }}</a>
+                @else
+                <span style="color:#9ca3af">Request Form</span>
+                @endif
             </div>
             <div style="display:flex;justify-content:space-between;font-size:12px;color:#9ca3af">
                 <span>Submitted</span>
                 <span>{{ $source->submitted_at->format('M j, Y g:i A') }}</span>
             </div>
+            @if($source->form)
+            <div style="display:flex;justify-content:space-between;font-size:12px;align-items:center">
+                <span style="color:#9ca3af">Response</span>
+                <a href="{{ route('tenant.request-forms.submissions.show', [$tenant->id, $source->form->id, $source->id]) }}"
+                   style="display:inline-flex;align-items:center;gap:4px;color:#7B61FF;text-decoration:none;font-size:12px;font-weight:600">
+                    <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    View Response
+                </a>
+            </div>
+            @endif
             @endif
         </div>
     </div>

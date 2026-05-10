@@ -20,18 +20,49 @@ class RequestFormController extends Controller
 {
     // ── List ─────────────────────────────────────────────────────────────────
 
-    public function index(string $tenantId): \Illuminate\View\View
+    public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
         $this->authorizeAdmin($tenantId);
         $tenant = Tenant::findOrFail($tenantId);
 
-        $forms = RequestForm::where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
-            ->withCount('submissions')
-            ->orderByDesc('created_at')
-            ->paginate(20);
+        $search = $request->query('q', '');
+        $status = $request->query('status', 'all');
+        $sort   = $request->query('sort', 'updated');
 
-        return view('tenant.request-forms.index', compact('tenant', 'forms'));
+        $sortMap = [
+            'updated'   => ['request_forms.updated_at', 'desc'],
+            'created'   => ['request_forms.created_at', 'desc'],
+            'title'     => ['request_forms.title', 'asc'],
+            'responses' => ['submissions_count', 'desc'],
+            'last'      => ['submissions_max_submitted_at', 'desc'],
+        ];
+        [$sortCol, $sortDir] = $sortMap[$sort] ?? ['request_forms.updated_at', 'desc'];
+
+        $forms = RequestForm::where('request_forms.tenant_id', $tenantId)
+            ->whereNull('request_forms.deleted_at')
+            ->withCount('submissions')
+            ->withMax('submissions', 'submitted_at')
+            ->addSelect(DB::raw("(
+                SELECT COUNT(*) FROM tasks t
+                WHERE t.source_type = 'request_form_submission'
+                AND t.deleted_at IS NULL
+                AND t.source_id IN (
+                    SELECT id FROM request_form_submissions s
+                    WHERE s.request_form_id = request_forms.id
+                )
+            ) as tasks_count"))
+            ->when($search, fn($q) => $q->where(fn($inner) => $inner
+                ->where('request_forms.title', 'like', "%{$search}%")
+                ->orWhere('request_forms.description', 'like', "%{$search}%")
+            ))
+            ->when($status && $status !== 'all', fn($q) => $q->where('request_forms.status', $status))
+            ->orderBy($sortCol, $sortDir)
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('tenant.request-forms.index', compact(
+            'tenant', 'forms', 'search', 'status', 'sort'
+        ));
     }
 
     // ── Create / Store ────────────────────────────────────────────────────────
@@ -39,7 +70,7 @@ class RequestFormController extends Controller
     public function create(string $tenantId): \Illuminate\View\View
     {
         $this->authorizeAdmin($tenantId);
-        $tenant     = Tenant::findOrFail($tenantId);
+        $tenant      = Tenant::findOrFail($tenantId);
         $teamMembers = $this->eligibleRecipients($tenantId);
 
         return view('tenant.request-forms.create', compact('tenant', 'teamMembers'));
@@ -86,7 +117,6 @@ class RequestFormController extends Controller
             ]);
 
             foreach (($data['fields'] ?? []) as $idx => $field) {
-                // Options come as newline-separated text from the form builder textarea
                 $options = null;
                 if (!empty($field['options'])) {
                     if (is_string($field['options'])) {
@@ -112,10 +142,8 @@ class RequestFormController extends Controller
                 ]);
             }
 
-            // Recipients are posted as recipient_data[{uuid}][field] from form checkboxes
             foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
                 if (empty($rec['email'])) continue;
-                // Verify this recipient belongs to this tenant
                 $isTenantMember = DB::table('tenant_memberships')
                     ->where('tenant_id', $tenantId)
                     ->where('tenant_user_id', $recipientId)
@@ -156,8 +184,6 @@ class RequestFormController extends Controller
         return view('tenant.request-forms.edit', compact('tenant', 'form', 'teamMembers'));
     }
 
-    // ── Update ───────────────────────────────────────────────────────────────
-
     public function update(Request $request, string $tenantId, string $formId): \Illuminate\Http\RedirectResponse
     {
         $this->authorizeAdmin($tenantId);
@@ -176,8 +202,8 @@ class RequestFormController extends Controller
                 'success_message' => $data['success_message'] ?? null,
             ]);
 
-            // Sync recipient options
-            $form->recipientOptions()->delete();
+            // Sync recipient options (delete all, recreate from form data)
+            RequestFormRecipientOption::where('request_form_id', $form->id)->delete();
             foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
                 if (empty($rec['email'])) continue;
                 RequestFormRecipientOption::create([
@@ -214,21 +240,113 @@ class RequestFormController extends Controller
         return response()->json(['status' => 'unpublished']);
     }
 
+    // ── Duplicate ─────────────────────────────────────────────────────────────
+
+    public function duplicate(string $tenantId, string $formId): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $original = RequestForm::where('tenant_id', $tenantId)
+            ->with(['fields', 'recipientOptions'])
+            ->findOrFail($formId);
+
+        [$actorType, $actorId] = $this->resolveActor();
+
+        $newForm = DB::transaction(function () use ($original, $tenantId, $actorType, $actorId) {
+            $copy = RequestForm::create([
+                'tenant_id'                 => $tenantId,
+                'created_by_type'           => $actorType,
+                'created_by_id'             => $actorId,
+                'title'                     => 'Copy of ' . $original->title,
+                'description'               => $original->description,
+                'success_message'           => $original->success_message,
+                'allow_multiple_recipients' => $original->allow_multiple_recipients,
+                'max_recipients'            => $original->max_recipients,
+                'status'                    => 'draft',
+            ]);
+
+            foreach ($original->fields as $field) {
+                RequestFormField::create([
+                    'tenant_id'       => $tenantId,
+                    'request_form_id' => $copy->id,
+                    'label'           => $field->label,
+                    'field_key'       => $field->field_key,
+                    'field_type'      => $field->field_type,
+                    'placeholder'     => $field->placeholder,
+                    'helper_text'     => $field->helper_text,
+                    'options'         => $field->options,
+                    'is_required'     => $field->is_required,
+                    'sort_order'      => $field->sort_order,
+                ]);
+            }
+
+            foreach ($original->recipientOptions as $opt) {
+                RequestFormRecipientOption::create([
+                    'tenant_id'       => $tenantId,
+                    'request_form_id' => $copy->id,
+                    'recipient_type'  => $opt->recipient_type,
+                    'recipient_id'    => $opt->recipient_id,
+                    'display_name'    => $opt->display_name,
+                    'email'           => $opt->email,
+                    'role_snapshot'   => $opt->role_snapshot,
+                    'sort_order'      => $opt->sort_order,
+                ]);
+            }
+
+            return $copy;
+        });
+
+        return redirect()->route('tenant.request-forms.edit', [$tenantId, $newForm->id])
+            ->with('success', 'Form duplicated. Edit and publish when ready.');
+    }
+
     // ── Submissions list ──────────────────────────────────────────────────────
 
-    public function submissions(string $tenantId, string $formId): \Illuminate\View\View
+    public function submissions(Request $request, string $tenantId, string $formId): \Illuminate\View\View
     {
         $this->authorizeAdmin($tenantId);
         $tenant = Tenant::findOrFail($tenantId);
         $form   = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
 
+        $search    = $request->query('q', '');
+        $dateFrom  = $request->query('date_from', '');
+        $dateTo    = $request->query('date_to', '');
+
         $submissions = RequestFormSubmission::where('tenant_id', $tenantId)
             ->where('request_form_id', $formId)
-            ->with('submissionRecipients')
+            ->with(['submissionRecipients'])
+            ->withCount(['tasks' => fn($q) => $q->whereNull('deleted_at')])
+            ->when($search, fn($q) => $q->where(fn($inner) => $inner
+                ->where('submitter_name', 'like', "%{$search}%")
+                ->orWhere('submitter_email', 'like', "%{$search}%")
+                ->orWhere('request_for', 'like', "%{$search}%")
+                ->orWhere('notes', 'like', "%{$search}%")
+            ))
+            ->when($dateFrom, fn($q) => $q->where('submitted_at', '>=', $dateFrom))
+            ->when($dateTo,   fn($q) => $q->where('submitted_at', '<=', $dateTo . ' 23:59:59'))
             ->orderByDesc('submitted_at')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
-        return view('tenant.request-forms.submissions', compact('tenant', 'form', 'submissions'));
+        return view('tenant.request-forms.submissions', compact(
+            'tenant', 'form', 'submissions', 'search', 'dateFrom', 'dateTo'
+        ));
+    }
+
+    // ── Submission Detail ─────────────────────────────────────────────────────
+
+    public function submissionShow(string $tenantId, string $formId, string $submissionId): \Illuminate\View\View
+    {
+        $this->authorizeAdmin($tenantId);
+        $tenant     = Tenant::findOrFail($tenantId);
+        $form       = RequestForm::where('tenant_id', $tenantId)->with('fields')->findOrFail($formId);
+        $submission = RequestFormSubmission::where('tenant_id', $tenantId)
+            ->where('request_form_id', $formId)
+            ->with(['submissionRecipients', 'tasks.activities', 'tasks.completionResponses'])
+            ->findOrFail($submissionId);
+
+        return view('tenant.request-forms.submission-show', compact(
+            'tenant', 'form', 'submission'
+        ));
     }
 
     // ── Destroy ───────────────────────────────────────────────────────────────
