@@ -207,9 +207,9 @@
                 <p class="text-sm font-medium text-gray-700">Password</p>
                 <p class="text-xs text-gray-400 mt-0.5">Change your account password</p>
             </div>
-            <a href="{{ route('partner.login') }}"
+            <a href="{{ route('partner.forgot-password') }}"
                class="px-3 py-2 rounded-xl text-xs font-medium bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
-                Change Password
+                Reset Password
             </a>
         </div>
     </div>

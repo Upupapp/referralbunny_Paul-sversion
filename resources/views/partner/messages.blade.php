@@ -207,7 +207,8 @@ function partnerMessages() {
                 // Mark thread unread as 0 locally
                 if (t) t.partner_unread = 0;
             } catch (e) {
-                console.error('Failed to load messages', e);
+                this.messages = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Unable to load messages. Please try again.' });
             } finally {
                 this.loadingMessages = false;
                 this.$nextTick(() => this.scrollToBottom());

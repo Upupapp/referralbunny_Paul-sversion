@@ -14,6 +14,7 @@ use App\Services\ReferrerInvitationDeduplicationService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -394,6 +395,11 @@ class LeadController extends Controller
 
     public function moveStage(Request $request, Lead $lead): JsonResponse
     {
+        // Partners are read-only — they cannot advance pipeline stages
+        if (Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'Partners cannot modify deal stages.'], 403);
+        }
+
         $lead->assertBelongsToCurrentTenant();
 
         $stages       = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
@@ -474,6 +480,11 @@ class LeadController extends Controller
 
     public function addNote(Request $request, Lead $lead): JsonResponse
     {
+        // Partners are read-only; use DealCommentController for note access
+        if (Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'Partners cannot add notes via this endpoint.'], 403);
+        }
+
         $data = $request->validate([
             'text'   => 'required|string',
             'author' => 'required|string',
@@ -520,6 +531,11 @@ class LeadController extends Controller
 
     public function updateCommissionSplits(Request $request, Lead $lead): JsonResponse
     {
+        // Partners are read-only — they cannot modify commission splits
+        if (Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'Partners cannot modify commission splits.'], 403);
+        }
+
         $data = $request->validate([
             'splits'            => 'required|array',
             'splits.*.reseller_name'   => 'required|string',
