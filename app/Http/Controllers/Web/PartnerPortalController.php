@@ -90,15 +90,13 @@ class PartnerPortalController extends Controller
     {
         $partner = $this->partner();
 
+        // Load threads with deal + reseller for list display only.
+        // Messages are loaded on-demand via threadMessages() when a thread is opened.
         $threads = PartnerThread::where('partner_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)
             ->with(['deal', 'reseller'])
             ->orderByDesc('last_message_at')
             ->get();
-
-        foreach ($threads as $thread) {
-            $thread->setRelation('messages', $thread->messages()->get());
-        }
 
         return view('partner.messages', compact('partner', 'threads'));
     }

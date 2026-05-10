@@ -218,8 +218,9 @@ function partnerMessages() {
         async send() {
             if (!this.body.trim() || this.sending || !this.activeThreadId) return;
             this.sending = true;
-            const t = this.threads.find(x => x.id === this.activeThreadId);
+            const t       = this.threads.find(x => x.id === this.activeThreadId);
             const msgBody = this.body;
+            this.body     = '';
             try {
                 const r = await fetch('/partner/messages/send', {
                     method: 'POST',
@@ -231,17 +232,24 @@ function partnerMessages() {
                     }),
                 });
                 const d = await r.json();
-                if (d.message) {
+
+                if (!r.ok) {
+                    this.body = msgBody; // restore so user can retry
+                    this.$dispatch('show-toast', { type: 'error', message: d?.message || d?.error || 'Failed to send message. Please try again.' });
+                    return;
+                }
+
+                if (d.message?.body) {
                     this.messages.push(d.message);
                     if (t) { t.last_preview = msgBody.slice(0, 60); }
-                    this.body = '';
                     this.$nextTick(() => {
                         this.scrollToBottom();
                         this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));
                     });
                 }
             } catch (e) {
-                console.error('Failed to send message', e);
+                this.body = msgBody;
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please check your connection and try again.' });
             } finally {
                 this.sending = false;
             }

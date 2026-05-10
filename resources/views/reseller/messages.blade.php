@@ -108,6 +108,12 @@
                 @if(!$thread)
                     <p class="text-xs text-gray-400 mb-2 text-center">Start the conversation — your admin will be notified.</p>
                 @endif
+                {{-- Send error banner --}}
+                <div x-show="sendError" x-transition style="display:none"
+                     class="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span x-text="sendError"></span>
+                </div>
                 <form @submit.prevent="send()" class="flex gap-2 items-end">
                     <textarea x-model="body" placeholder="Type a message…" rows="1"
                               class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all"
@@ -162,22 +168,23 @@ function resellerChat() {
             this.$nextTick(() => this.scrollToBottom());
         },
 
+        sendError: '',
+
         async send() {
             if (!this.body.trim() || this.sending) return;
-            this.sending = true;
-            const msgBody = this.body;
-            this.body = '';
+            this.sending   = true;
+            this.sendError = '';
+            const msgBody  = this.body;
+            this.body      = '';
 
             try {
                 let url, method, payload;
 
                 if (this.threadId) {
-                    // Reply to existing thread
                     url     = `${BASE}/threads/${this.threadId}`;
                     method  = 'POST';
                     payload = { body: msgBody };
                 } else {
-                    // Start new thread (reseller is the sender)
                     url     = `${BASE}/threads`;
                     method  = 'POST';
                     payload = {
@@ -187,8 +194,14 @@ function resellerChat() {
                     };
                 }
 
-                const r   = await fetch(url, { method, headers: postHdrs(), body: JSON.stringify(payload) });
+                const r    = await fetch(url, { method, headers: postHdrs(), body: JSON.stringify(payload) });
                 const data = await r.json();
+
+                if (!r.ok) {
+                    this.body      = msgBody; // restore text so user can retry
+                    this.sendError = data?.message || data?.error || 'Failed to send message. Please try again.';
+                    return;
+                }
 
                 const newMsg = data.message ?? data;
                 if (newMsg?.body) {
@@ -205,6 +218,9 @@ function resellerChat() {
                     this.scrollToBottom();
                     this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));
                 });
+            } catch(e) {
+                this.body      = msgBody;
+                this.sendError = 'Network error. Please check your connection and try again.';
             } finally {
                 this.sending = false;
             }

@@ -138,7 +138,7 @@ Route::middleware(['auth:partner', 'partner.access'])
         Route::get('/deals/{dealId}',                 [PartnerPortalController::class, 'dealShow'])->name('deals.show');
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
         Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
-        Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send');
+        Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
         Route::get('/profile',                        [PartnerProfileController::class, 'show'])->name('profile');
         Route::post('/profile',                       [PartnerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
@@ -174,9 +174,9 @@ Route::middleware(['auth:tenant,reseller,web'])
     ->name('tenant.messages.')
     ->group(function () {
         Route::get('/threads',             [MessageController::class, 'threads'])->name('threads');
-        Route::post('/threads',            [MessageController::class, 'startThread'])->name('start');
+        Route::post('/threads',            [MessageController::class, 'startThread'])->name('start')->middleware('throttle:60,1');
         Route::get('/threads/{threadId}',  [MessageController::class, 'threadMessages'])->name('thread');
-        Route::post('/threads/{threadId}', [MessageController::class, 'sendMessage'])->name('send');
+        Route::post('/threads/{threadId}', [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
     });
 
 // ── Tenant app ────────────────────────────────────────────────
