@@ -190,7 +190,21 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
     Route::get('/referrers',               [TenantAdminController::class, 'referrers'])->name('referrers');
     Route::get('/referrers/{referrerId}',  [TenantAdminController::class, 'referrerDetail'])->name('referrers.show');
-    Route::get('/tasks',           [TenantAdminController::class, 'tasks'])->name('tasks');
+    // Tasks
+    Route::get('/tasks',                  [\App\Http\Controllers\Web\TaskController::class, 'index'])->name('tasks');
+    Route::get('/tasks/{taskId}',         [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tasks.show');
+    Route::post('/tasks/{taskId}/complete',               [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tasks.complete');
+    Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tasks.complete-response');
+
+    // Request Forms
+    Route::get('/request-forms',                [\App\Http\Controllers\Web\RequestFormController::class, 'index'])->name('request-forms');
+    Route::get('/request-forms/create',         [\App\Http\Controllers\Web\RequestFormController::class, 'create'])->name('request-forms.create');
+    Route::post('/request-forms',               [\App\Http\Controllers\Web\RequestFormController::class, 'store'])->name('request-forms.store');
+    Route::get('/request-forms/{formId}/edit',  [\App\Http\Controllers\Web\RequestFormController::class, 'edit'])->name('request-forms.edit');
+    Route::post('/request-forms/{formId}/publish',   [\App\Http\Controllers\Web\RequestFormController::class, 'publish'])->name('request-forms.publish');
+    Route::post('/request-forms/{formId}/unpublish', [\App\Http\Controllers\Web\RequestFormController::class, 'unpublish'])->name('request-forms.unpublish');
+    Route::get('/request-forms/{formId}/submissions', [\App\Http\Controllers\Web\RequestFormController::class, 'submissions'])->name('request-forms.submissions');
+    Route::delete('/request-forms/{formId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'destroy'])->name('request-forms.destroy');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/commission',      [\App\Http\Controllers\Web\TenantCommissionController::class, 'index'])->name('commission');
@@ -317,3 +331,9 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::get('/settings',    [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('tenant.sub.settings');
         Route::post('/settings',   [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('tenant.sub.settings.update');
     });
+
+// ── Public Request Forms (no auth required) ──────────────────────────────────
+Route::middleware(['throttle:30,1'])->group(function () {
+    Route::get('/request/{token}',        [\App\Http\Controllers\PublicRequestFormController::class, 'show'])->name('public.request-form');
+    Route::post('/request/{token}/submit',[\App\Http\Controllers\PublicRequestFormController::class, 'submit'])->name('public.request-form.submit')->middleware('throttle:5,1');
+});

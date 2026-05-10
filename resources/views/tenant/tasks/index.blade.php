@@ -1,76 +1,90 @@
 @extends('layouts.app')
-@section('title', 'Tasks & Follow-Ups')
-
-@section('nav')
-    @include('tenant._nav')
-@endsection
-
-@section('topbar-actions')
-    <button class="btn-primary">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        <span class="hidden sm:inline">New Task</span>
-    </button>
-@endsection
+@section('title', 'Tasks')
+@section('nav') @include('tenant._nav') @endsection
 
 @section('content')
 <div class="space-y-5">
 
-    <div class="card">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-                <h2 class="text-[#1E1B4B] font-bold text-lg">Tasks & Follow-Ups</h2>
-                <p class="text-gray-400 text-sm mt-0.5">Track tasks and follow-ups for your deals</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <div class="search-group flex-1 sm:w-64">
-                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    <input type="text" placeholder="Search tasks…" class="search-input">
-                </div>
-                <select class="form-input text-sm py-2 px-3 w-auto">
-                    <option value="">All Statuses</option>
-                    <option value="open">Open</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
-            </div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+            <h1 style="font-size:20px;font-weight:700;color:#1E1B4B">Tasks</h1>
+            <p style="font-size:13px;color:#9ca3af;margin-top:2px">Manage requests, assignments, and action items.</p>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="card text-center">
-            <p class="text-3xl font-bold text-[#1E1B4B]">0</p>
-            <p class="text-sm text-gray-400 mt-1">Open</p>
-        </div>
-        <div class="card text-center">
-            <p class="text-3xl font-bold text-orange-500">0</p>
-            <p class="text-sm text-gray-400 mt-1">Due Today</p>
-        </div>
-        <div class="card text-center">
-            <p class="text-3xl font-bold text-red-500">0</p>
-            <p class="text-sm text-gray-400 mt-1">Overdue</p>
-        </div>
+    {{-- Tab filters --}}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+        @foreach([['mine','My Tasks'],['all','All Tasks'],['overdue','Overdue'],['completed','Completed']] as [$key,$label])
+        <a href="{{ request()->fullUrlWithQuery(['tab' => $key]) }}"
+           style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:9999px;text-decoration:none;transition:all .15s;
+                  {{ $tab === $key ? 'background:#7B61FF;color:white;box-shadow:0 4px 12px rgba(123,97,255,0.3)' : 'background:white;color:#9ca3af;border:1.5px solid #e5e7eb' }}">
+            {{ $label }}
+        </a>
+        @endforeach
     </div>
 
-    <div class="card flex flex-col items-center justify-center py-20 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-[#EDE9FE] flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    {{-- Task list --}}
+    <div class="card" style="padding:0;overflow:hidden">
+        @if($tasks->isEmpty())
+        <div style="text-align:center;padding:48px 24px">
+            <svg style="width:40px;height:40px;color:#d1d5db;margin:0 auto 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
+            <p style="font-size:14px;font-weight:600;color:#1E1B4B;margin-bottom:4px">No tasks here</p>
+            <p style="font-size:13px;color:#9ca3af">
+                @if($tab === 'mine') Tasks assigned to you will appear here.
+                @elseif($tab === 'overdue') No overdue tasks. Great work!
+                @else No tasks found.
+                @endif
+            </p>
         </div>
-        <h3 class="text-[#1E1B4B] font-semibold text-base">No tasks yet</h3>
-        <p class="text-gray-400 text-sm mt-1 max-w-xs">Create tasks and follow-ups to stay on top of your pipeline activities.</p>
-        <button class="btn-primary mt-5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            New Task
-        </button>
+        @else
+        @foreach($tasks as $task)
+        @php
+        $priorityStyle = match($task->priority) {
+            'urgent' => 'background:#fef2f2;color:#dc2626',
+            'high'   => 'background:#fff7ed;color:#ea580c',
+            'medium' => 'background:#fffbeb;color:#d97706',
+            default  => 'background:#f3f4f6;color:#6b7280',
+        };
+        $statusStyle = match($task->status) {
+            'completed'  => 'background:#dcfce7;color:#15803d',
+            'in_progress'=> 'background:#dbeafe;color:#2563eb',
+            'cancelled'  => 'background:#fee2e2;color:#dc2626',
+            default      => 'background:#ede9fe;color:#7B61FF',
+        };
+        @endphp
+        <a href="{{ route('tenant.tasks.show', [$tenant->id, $task->id]) }}"
+           style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-bottom:1px solid #f9fafb;text-decoration:none;transition:background .1s;background:white"
+           onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
+            <div style="width:8px;height:8px;border-radius:9999px;flex-shrink:0;margin-top:6px;
+                        {{ $task->priority === 'urgent' ? 'background:#dc2626' : ($task->priority === 'high' ? 'background:#ea580c' : ($task->priority === 'medium' ? 'background:#d97706' : 'background:#9ca3af')) }}">
+            </div>
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+                    <p style="font-size:14px;font-weight:600;color:#1E1B4B">{{ $task->title }}</p>
+                    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:9999px;flex-shrink:0;{{ $statusStyle }}">
+                        {{ str_replace('_', ' ', ucfirst($task->status)) }}
+                    </span>
+                    @if($task->category === 'request_form')
+                    <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:9999px;background:#f0fdf4;color:#16a34a;flex-shrink:0">Request Form</span>
+                    @endif
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:#9ca3af">
+                    @if($task->requestor_name) <span>From: {{ $task->requestor_name }}</span> @endif
+                    @if($task->due_at)
+                    <span style="{{ $task->isOverdue() ? 'color:#dc2626;font-weight:600' : '' }}">
+                        Due {{ $task->due_at->format('M j, Y') }}{{ $task->isOverdue() ? ' (overdue)' : '' }}
+                    </span>
+                    @endif
+                    <span>{{ $task->created_at->diffForHumans() }}</span>
+                </div>
+            </div>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:9999px;flex-shrink:0;{{ $priorityStyle }}">{{ ucfirst($task->priority) }}</span>
+        </a>
+        @endforeach
+        <div style="padding:12px 16px">{{ $tasks->links() }}</div>
+        @endif
     </div>
-
 </div>
 @endsection
-
