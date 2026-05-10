@@ -115,6 +115,7 @@
                        load();
                        _timer = setInterval(load, 90000);
                        document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+                       window.addEventListener('notifications:updated', (e) => { if (typeof e.detail?.unreadCount === 'number') count = e.detail.unreadCount; });
                    "
                    :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
                    title="Notifications">

@@ -117,6 +117,7 @@
                             {{-- CTA --}}
                             <div class="mt-2" x-show="n.action_url && n.action_label">
                                 <a :href="n.action_url"
+                                   @click="markRead(n)"
                                    class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-800 transition-colors"
                                    x-text="n.action_label"></a>
                             </div>
@@ -202,25 +203,39 @@ function resellerNotifications() {
         },
 
         async markRead(n) {
+            if (n.is_read) return;
             n.is_read = true;
             this.unreadCount = Math.max(0, this.unreadCount - 1);
+            window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.unreadCount } }));
             try {
-                await fetch(`${WEB_BASE}/${n.id}/read`, {
+                const res = await fetch(`${WEB_BASE}/${n.id}/read`, {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
-            } catch(e) {}
+                if (!res.ok) throw new Error('mark-read failed');
+            } catch(e) {
+                n.is_read = false;
+                this.unreadCount = Math.min(this.unreadCount + 1, 999);
+                window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.unreadCount } }));
+            }
         },
 
         async markAllRead() {
-            this.items.forEach(n => n.is_read = true);
+            const prevCount = this.unreadCount;
+            this.items.forEach(n => { n.is_read = true; });
             this.unreadCount = 0;
+            window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
             try {
-                await fetch('/api/notifications/mine/mark-all-read', {
+                const res = await fetch('/api/notifications/mine/mark-all-read', {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
-            } catch(e) {}
+                if (!res.ok) throw new Error('mark-all-read failed');
+            } catch(e) {
+                this.items.forEach(n => { n.is_read = false; });
+                this.unreadCount = prevCount;
+                window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: prevCount } }));
+            }
         },
     };
 }

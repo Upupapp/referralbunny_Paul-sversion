@@ -373,8 +373,9 @@
                                 </div>
                             </template>
                             <template x-for="n in notifs" :key="n.id">
-                                <a :href="n.action_url || '#'" @click="open = false"
-                                   class="flex items-start gap-3 px-4 py-3 hover:bg-[#F0EFFA] transition-colors">
+                                <a :href="n.action_url || '#'" @click.prevent="markOneRead(n, n.action_url)"
+                                   class="flex items-start gap-3 px-4 py-3 hover:bg-[#F0EFFA] transition-colors"
+                                   :class="n.is_read ? 'opacity-60' : ''">
                                     <span :class="{
                                         'w-2 h-2 rounded-full mt-1.5 shrink-0': true,
                                         'bg-red-500':    ['critical','urgent'].includes(n.priority),
@@ -570,6 +571,10 @@
 
 <script>
 function notifPanel() {
+    const csrf = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const hdrs  = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
+    const whrs  = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() });
+
     return {
         open: false,
         notifs: [],
@@ -580,16 +585,15 @@ function notifPanel() {
             try {
                 const res  = await fetch('/api/notifications/mine?unread=true&limit=6', {
                     credentials: 'same-origin',
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    headers: hdrs()
                 });
                 if (!res.ok) return;
                 const data = await res.json();
                 this.notifs = Array.isArray(data.items) ? data.items : [];
-                this.count  = data.unread_count ?? this.notifs.length;
+                this.count  = data.unread_count ?? this.notifs.filter(n => !n.is_read).length;
             } catch(e) { /* silent — badge stays at last known count */ }
         },
 
-        // Poll for new notifications every 90 seconds so the badge stays fresh
         startPolling() {
             this._pollTimer = setInterval(() => {
                 if (!document.hidden) this.load();
@@ -602,17 +606,64 @@ function notifPanel() {
         init() {
             this.load();
             this.startPolling();
+            // Sync badge when another component (notification center, reseller bell) marks read
+            window.addEventListener('notifications:updated', (e) => {
+                if (typeof e.detail?.unreadCount === 'number') {
+                    this.count = e.detail.unreadCount;
+                    if (this.count === 0) this.notifs.forEach(n => { n.is_read = true; });
+                }
+            });
+        },
+
+        // Mark a single notification as read then navigate to its URL
+        markOneRead(n, url) {
+            this.open = false;
+            if (!n.is_read) {
+                // Optimistic update
+                n.is_read = true;
+                this.count = Math.max(0, this.count - 1);
+                window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
+                // Fire-and-forget — does not block navigation
+                fetch('/api/notifications/' + n.id, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: whrs(),
+                    body: JSON.stringify({ is_read: true }),
+                }).then(r => {
+                    if (!r.ok) {
+                        // Revert optimistic update on failure
+                        n.is_read = false;
+                        this.count = Math.min(this.count + 1, 99);
+                        window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
+                    }
+                }).catch(() => {
+                    n.is_read = false;
+                    this.count = Math.min(this.count + 1, 99);
+                    window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
+                });
+            }
+            if (url && url !== '#') window.location.href = url;
         },
 
         async markAllRead() {
+            const prevCount = this.count;
+            // Optimistic update immediately
+            this.notifs.forEach(n => { n.is_read = true; });
+            this.count = 0;
+            window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
             try {
-                await fetch('/api/notifications/mine/mark-all-read', {
+                const res = await fetch('/api/notifications/mine/mark-all-read', {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '', 'X-Requested-With': 'XMLHttpRequest' }
+                    headers: whrs()
                 });
-                this.notifs = []; this.count = 0;
-            } catch(e) {}
+                if (!res.ok) throw new Error('mark-all-read failed');
+            } catch(e) {
+                // Revert on failure
+                this.notifs.forEach(n => { n.is_read = false; });
+                this.count = prevCount;
+                window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: prevCount } }));
+            }
         },
     }
 }
