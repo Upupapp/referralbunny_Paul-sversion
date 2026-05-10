@@ -3,19 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DealPartnerSplitController extends Controller
 {
-    public function __construct(private DealPartnerSplitService $service) {}
+    public function __construct(
+        private DealPartnerSplitService $service,
+        private DealActivityService     $activity,
+    ) {}
 
     /**
      * GET /api/leads/{lead}/partner-splits
-     * List all partner splits for a deal.
      */
     public function index(Request $request, Lead $lead): JsonResponse
     {
@@ -35,7 +39,6 @@ class DealPartnerSplitController extends Controller
 
     /**
      * POST /api/leads/{lead}/partner-splits
-     * Create a partner split for a deal.
      */
     public function store(Request $request, Lead $lead): JsonResponse
     {
@@ -66,6 +69,14 @@ class DealPartnerSplitController extends Controller
                 actorId:      $this->resolveActorId(),
             );
 
+            // Record activity — this was completely missing before
+            $this->activity->partnerSplitAdded($lead, [
+                'partner_name'      => $data['partner_name'],
+                'partner_email'     => $data['partner_email'],
+                'split_share_value' => $data['split_share_value'],
+                'split_share_type'  => $data['split_share_type'] ?? 'percentage',
+            ]);
+
             return response()->json($split, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -74,7 +85,6 @@ class DealPartnerSplitController extends Controller
 
     /**
      * PUT /api/leads/{lead}/partner-splits/{splitId}
-     * Update an existing partner split.
      */
     public function update(Request $request, Lead $lead, string $splitId): JsonResponse
     {
@@ -91,6 +101,12 @@ class DealPartnerSplitController extends Controller
             'currency'          => 'nullable|string|max:10',
         ]);
 
+        // Capture old split BEFORE the update so we can record old→new
+        $oldSplit = DB::table('deal_partner_splits')
+            ->where('id', $splitId)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
         try {
             $split = $this->service->upsert(
                 tenantId:        $tenantId,
@@ -105,6 +121,24 @@ class DealPartnerSplitController extends Controller
                 existingSplitId: $splitId,
             );
 
+            // Record old→new activity
+            if ($oldSplit) {
+                $this->activity->partnerSplitUpdated($lead,
+                    [
+                        'partner_name'      => $oldSplit->partner_name,
+                        'partner_email'     => $oldSplit->partner_email,
+                        'split_share_value' => $oldSplit->split_share_value,
+                        'split_share_type'  => $oldSplit->split_share_type,
+                    ],
+                    [
+                        'partner_name'      => $data['partner_name'],
+                        'partner_email'     => $data['partner_email'],
+                        'split_share_value' => $data['split_share_value'],
+                        'split_share_type'  => $data['split_share_type'] ?? 'percentage',
+                    ]
+                );
+            }
+
             return response()->json($split);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -113,7 +147,6 @@ class DealPartnerSplitController extends Controller
 
     /**
      * DELETE /api/leads/{lead}/partner-splits/{splitId}
-     * Remove a partner split.
      */
     public function destroy(Request $request, Lead $lead, string $splitId): JsonResponse
     {
@@ -122,8 +155,25 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
+        // Capture split data BEFORE removal for activity recording
+        $oldSplit = DB::table('deal_partner_splits')
+            ->where('id', $splitId)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
         try {
             $this->service->remove($tenantId, $splitId, $this->resolveActorId());
+
+            // Record removal activity
+            if ($oldSplit) {
+                $this->activity->partnerSplitRemoved($lead, [
+                    'partner_name'      => $oldSplit->partner_name,
+                    'partner_email'     => $oldSplit->partner_email,
+                    'split_share_value' => $oldSplit->split_share_value,
+                    'split_share_type'  => $oldSplit->split_share_type,
+                ]);
+            }
+
             return response()->json(['success' => true, 'message' => 'Partner split removed.']);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);

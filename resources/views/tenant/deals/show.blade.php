@@ -1136,43 +1136,149 @@
                     </div>
                 </div>
 
-                {{-- Activity History --}}
-                <div class="card space-y-3">
-                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Activity History</h3>
-                    <div class="space-y-3">
-                        <template x-if="(lead?.history||[]).length === 0">
-                            <p class="text-gray-400 text-sm text-center py-4">No activity yet.</p>
+                {{-- Activity History — uses dealDetail scope directly --}}
+                <div class="card">
+
+                    {{-- Header + filters --}}
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                        <h3 class="font-semibold text-[#1E1B4B] text-sm">Activity History</h3>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <template x-for="f in ahFilters" :key="f.key">
+                                <button @click="ahFilter = f.key"
+                                        :style="ahFilter === f.key
+                                            ? 'background:#7B61FF;color:white;border-color:#7B61FF'
+                                            : 'background:white;color:#6b7280;border-color:#e5e7eb'"
+                                        style="padding:3px 12px;border-radius:9999px;border:1.5px solid;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
+                                        x-text="f.label">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Event list --}}
+                    <div class="space-y-1">
+                        {{-- Empty state --}}
+                        <template x-if="ahFiltered().length === 0">
+                            <div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px">
+                                <svg style="width:32px;height:32px;margin:0 auto 8px;opacity:0.4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <span x-text="ahFilter === 'all' ? 'No activity recorded yet.' : 'No ' + ahFilter + ' activity yet.'"></span>
+                            </div>
                         </template>
-                        <template x-for="(event, ei) in [...(lead?.history||[])].reverse()" :key="event.id">
-                            <div class="flex gap-3">
-                                <div class="flex flex-col items-center shrink-0">
-                                    <div :class="{
-                                        'bg-purple-100 text-purple-600':  event.type === 'stage',
-                                        'bg-blue-100 text-blue-600':      event.type === 'assignment',
-                                        'bg-emerald-100 text-emerald-600':event.type === 'commission',
-                                        'bg-amber-100 text-amber-600':    event.type === 'financial',
-                                        'bg-gray-100 text-gray-500':      !event.type || event.type === 'notes',
-                                    }" class="w-7 h-7 rounded-full flex items-center justify-center shrink-0">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <template x-if="event.type === 'stage'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></template>
-                                            <template x-if="event.type === 'assignment'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></template>
-                                            <template x-if="event.type === 'commission'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2"/></template>
-                                            <template x-if="event.type === 'financial'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></template>
-                                            <template x-if="!event.type || event.type === 'notes'"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></template>
+
+                        <template x-for="(event, ei) in ahVisible()" :key="event.id || ei">
+                            <div style="display:flex;gap:10px;padding-bottom:0">
+
+                                {{-- Icon column --}}
+                                <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+                                    <div style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                                         :style="ahIconStyle(event)">
+                                        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <template x-if="event.type === 'stage' || event.category === 'stage'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            </template>
+                                            <template x-if="event.type === 'partner' || event.category === 'partner'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            </template>
+                                            <template x-if="event.type === 'financial' || event.category === 'financial'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </template>
+                                            <template x-if="event.type === 'commission' || event.category === 'commission'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                                            </template>
+                                            <template x-if="event.type === 'assignment' || event.category === 'assignment'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                            </template>
+                                            <template x-if="event.type === 'import' || event.category === 'import'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                            </template>
+                                            <template x-if="!event.type && !event.category || event.type === 'deal'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </template>
                                         </svg>
                                     </div>
-                                    <div x-show="ei + 1 !== (lead?.history||[]).length" class="w-px flex-1 bg-gray-100 mt-1"></div>
+                                    <div x-show="ei + 1 < ahVisible().length"
+                                         style="width:1px;flex:1;background:#f3f4f6;margin-top:4px;min-height:12px"></div>
                                 </div>
-                                <div class="pb-3 flex-1 min-w-0">
-                                    <p class="text-sm text-gray-700" x-text="event.action"></p>
-                                    <p class="text-xs text-gray-400 mt-0.5">
-                                        <span x-show="event.reseller" x-text="event.reseller + ' Â· '"></span>
-                                        <span x-text="event.date ? new Date(event.date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : ''"></span>
-                                    </p>
+
+                                {{-- Content --}}
+                                <div style="flex:1;min-width:0;padding-bottom:16px">
+
+                                    {{-- Action text + actor --}}
+                                    <p style="font-size:13px;color:#374151;line-height:1.5;margin-bottom:2px" x-text="event.action"></p>
+
+                                    {{-- Actor + timestamp row --}}
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0">
+                                        {{-- Actor name badge (new field) --}}
+                                        <template x-if="event.actor_name">
+                                            <span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:9999px;background:#f5f3ff;color:#7B61FF"
+                                                  x-text="event.actor_name + (event.actor_role ? ' · ' + event.actor_role : '')"></span>
+                                        </template>
+                                        {{-- Fallback: reseller field from old records --}}
+                                        <template x-if="!event.actor_name && event.reseller">
+                                            <span style="font-size:10px;font-weight:600;padding:1px 8px;border-radius:9999px;background:#f5f3ff;color:#7B61FF"
+                                                  x-text="event.reseller + ' · Referrer'"></span>
+                                        </template>
+                                        {{-- Timestamp --}}
+                                        <span style="font-size:10px;color:#9ca3af"
+                                              x-text="ahDate(event)"></span>
+                                    </div>
+
+                                    {{-- Old/New value change card --}}
+                                    <template x-if="event.old_values || event.new_values">
+                                        <div x-data="{ showChanges: false }">
+                                            <button @click="showChanges = !showChanges"
+                                                    style="font-size:10px;color:#7B61FF;cursor:pointer;background:none;border:none;padding:3px 0;font-weight:600;display:flex;align-items:center;gap:3px;margin-top:4px">
+                                                <svg style="width:10px;height:10px;transition:transform .15s" :style="showChanges ? 'transform:rotate(90deg)' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                                </svg>
+                                                <span x-text="showChanges ? 'Hide changes' : 'View changes'"></span>
+                                            </button>
+                                            <div x-show="showChanges" style="display:none">
+                                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+                                                    <template x-if="event.old_values">
+                                                        <div style="padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
+                                                            <p style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Before</p>
+                                                            <template x-for="[k, v] in Object.entries(event.old_values || {})" :key="k">
+                                                                <div style="font-size:11px;color:#374151;margin-bottom:2px">
+                                                                    <span style="color:#9ca3af;text-transform:capitalize" x-text="k.replace(/_/g,' ') + ': '"></span>
+                                                                    <span style="font-weight:600" x-text="typeof v === 'number' ? v.toLocaleString('en-PH') : (v || '—')"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="event.new_values">
+                                                        <div style="padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px">
+                                                            <p style="font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">After</p>
+                                                            <template x-for="[k, v] in Object.entries(event.new_values || {})" :key="k">
+                                                                <div style="font-size:11px;color:#374151;margin-bottom:2px">
+                                                                    <span style="color:#9ca3af;text-transform:capitalize" x-text="k.replace(/_/g,' ') + ': '"></span>
+                                                                    <span style="font-weight:600;color:#16a34a" x-text="typeof v === 'number' ? v.toLocaleString('en-PH') : (v || '—')"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
                                 </div>
                             </div>
                         </template>
                     </div>
+
+                    {{-- View more / View less --}}
+                    <template x-if="ahFiltered().length > ahPageSize">
+                        <div style="text-align:center;padding-top:8px;border-top:1px solid #f3f4f6;margin-top:4px">
+                            <button @click="ahShowAll = !ahShowAll"
+                                    style="font-size:12px;font-weight:600;color:#7B61FF;background:none;border:none;cursor:pointer"
+                                    x-text="ahShowAll ? 'Show less' : 'View all ' + ahFiltered().length + ' events'">
+                            </button>
+                        </div>
+                    </template>
+
                 </div>
 
             </div>
@@ -1665,6 +1771,58 @@ function dealDetail(leadId, tenantId, ssrLead) {
         editFinance: false,
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
 
+        // Activity History state (inline in dealDetail to share lead.history)
+        ahFilter:   'all',
+        ahShowAll:  false,
+        ahPageSize: 10,
+        ahFilters:  [
+            { key: 'all',        label: 'All'        },
+            { key: 'stage',      label: 'Stage'      },
+            { key: 'financial',  label: 'Financial'  },
+            { key: 'partner',    label: 'Partner'    },
+            { key: 'commission', label: 'Commission' },
+            { key: 'assignment', label: 'Referrer'   },
+            { key: 'import',     label: 'Import'     },
+        ],
+        ahFiltered() {
+            const history = [...(this.lead?.history || [])].reverse();
+            if (this.ahFilter === 'all') return history;
+            return history.filter(e => (e.category || e.type || '') === this.ahFilter);
+        },
+        ahVisible() {
+            const f = this.ahFiltered();
+            return this.ahShowAll ? f : f.slice(0, this.ahPageSize);
+        },
+        ahIconStyle(event) {
+            const t = event.category || event.type || '';
+            const m = {
+                stage:      'background:#ede9fe;color:#7B61FF',
+                partner:    'background:#dbeafe;color:#2563eb',
+                financial:  'background:#fef3c7;color:#d97706',
+                commission: 'background:#dcfce7;color:#16a34a',
+                assignment: 'background:#e0f2fe;color:#0284c7',
+                import:     'background:#f3f4f6;color:#6b7280',
+                deal:       'background:#f3f4f6;color:#6b7280',
+            };
+            return m[t] || 'background:#f3f4f6;color:#6b7280';
+        },
+        ahDate(event) {
+            const ts = event.created_at || event.date;
+            if (!ts) return '';
+            try {
+                const d   = new Date(ts);
+                const now = new Date();
+                const min = Math.floor((now - d) / 60000);
+                const hr  = Math.floor(min / 60);
+                const dy  = Math.floor(hr / 24);
+                if (min < 2)   return 'Just now';
+                if (min < 60)  return min + 'm ago';
+                if (hr  < 24)  return hr  + 'h ago';
+                if (dy  < 7)   return dy  + 'd ago';
+                return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (e) { return ''; }
+        },
+
         // Contacts
         dealContacts: [], loadingContacts: true,
         allTenantContacts: [],
@@ -2054,7 +2212,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
     }
 }
 
-// â"€â"€ Partner Split Section â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// -- Partner Split Section ------------------------------------------------------
 function partnerSplitSection(dealId, tenantId) {
     return {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',

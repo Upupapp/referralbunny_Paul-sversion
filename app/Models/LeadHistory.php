@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeadHistory extends Model
 {
@@ -11,6 +12,30 @@ class LeadHistory extends Model
     protected $keyType = 'string';
     const UPDATED_AT = null;
 
-    protected $fillable = ['lead_id', 'action', 'type', 'reseller', 'date'];
-    protected $casts = ['date' => 'date'];
+    protected $fillable = [
+        'lead_id',
+        'tenant_id',
+        'action',
+        'type',
+        'category',
+        'reseller',
+        'actor_name',
+        'actor_role',
+        'old_values',
+        'new_values',
+        'metadata',
+        'date',
+    ];
+
+    protected $casts = [
+        'date'       => 'date',
+        'old_values' => 'array',
+        'new_values' => 'array',
+        'metadata'   => 'array',
+    ];
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class, 'lead_id');
+    }
 }

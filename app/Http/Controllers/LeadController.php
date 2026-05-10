@@ -213,11 +213,16 @@ class LeadController extends Controller
             }
         }
 
+        [$actorIdForCreate, $actorRoleForCreate, $actorNameForCreate] = $this->resolveActor();
         LeadHistory::create([
-            'lead_id' => $lead->id,
-            'action'  => 'Lead created',
-            'type'    => 'assignment',
-            'date'    => now()->toDateString(),
+            'lead_id'    => $lead->id,
+            'tenant_id'  => $lead->tenant_id,
+            'action'     => 'Deal created',
+            'type'       => 'assignment',
+            'category'   => 'deal',
+            'actor_name' => $actorNameForCreate,
+            'actor_role' => $actorRoleForCreate,
+            'date'       => now()->toDateString(),
         ]);
 
         // Fire event → triggers deal created emails (reseller + tenant admin)
@@ -279,17 +284,17 @@ class LeadController extends Controller
     {
         if (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('tenant')->user();
-            return [$u->id ?? 'unknown', 'manager'];
+            return [$u->id ?? 'unknown', 'Tenant Admin', $u->name ?? $u->email ?? 'Admin'];
         }
         if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('web')->user();
-            return [$u->id ?? 'unknown', 'owner'];
+            return [$u->id ?? 'unknown', 'Super Admin', $u->name ?? $u->email ?? 'Super Admin'];
         }
         if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('reseller')->user();
-            return [$u->id ?? 'unknown', 'referrer'];
+            return [$u->id ?? 'unknown', 'Referrer', $u->name ?? 'Referrer'];
         }
-        return ['system', 'system'];
+        return ['system', 'System', 'System'];
     }
 
     public function show(Lead $lead): JsonResponse
@@ -373,16 +378,12 @@ class LeadController extends Controller
 
         if ($financialChanged) {
             [$actorId, $actorRole] = $this->resolveActor();
-            LeadHistory::create([
-                'lead_id' => $lead->id,
-                'action'  => "Financial data updated by {$actorRole}"
-                           . " — Contract Value: ₱" . number_format($newDealValue, 2)
-                           . " | Base Cost: ₱" . number_format($newBaseCost, 2)
-                           . " | Added Amount: ₱" . number_format($newAddedAmount, 2)
-                           . " (was ₱" . number_format($oldDealValue, 2) . ")",
-                'type'    => 'financial',
-                'date'    => now()->toDateString(),
-            ]);
+            app(\App\Services\DealActivityService::class)->financialBreakdownChanged(
+                $lead,
+                ['deal_value' => $oldDealValue,   'base_cost' => $oldBaseCost,   'added_amount' => $oldAddedAmount],
+                ['deal_value' => $newDealValue,    'base_cost' => $newBaseCost,   'added_amount' => $newAddedAmount],
+                $actorRole,
+            );
         }
 
         return response()->json($lead->fresh(['commissionSplits', 'notes', 'history']));
@@ -444,37 +445,55 @@ class LeadController extends Controller
             }
         }
 
-        DB::transaction(function () use ($lead, $updates, $targetStage, $isLocking, $isPaid, $note) {
+        [$actorIdStage, $actorRoleStage, $actorNameStage] = $this->resolveActor();
+
+        DB::transaction(function () use ($lead, $updates, $targetStage, $capturedStage, $isLocking, $isPaid, $note, $actorNameStage, $actorRoleStage) {
             $lead->update($updates);
+            $commPool = round((float) $lead->added_amount * 0.70, 2);
 
-            $historyAction = 'Stage moved to ' . ucwords(str_replace('_', ' ', $targetStage));
-            if ($note !== '') {
-                $historyAction .= ' — ' . $note;
-            }
+            $activity = app(\App\Services\DealActivityService::class);
 
-            LeadHistory::create([
-                'lead_id' => $lead->id,
-                'action'  => $historyAction,
-                'type'    => 'stage',
-                'date'    => now()->toDateString(),
-            ]);
+            // Stage moved
+            $activity->record($lead,
+                'Stage moved: ' . ucwords(str_replace('_', ' ', $capturedStage))
+                    . ' \u{2192} ' . ucwords(str_replace('_', ' ', $targetStage))
+                    . ($note !== '' ? ' \u{2014} ' . $note : ''),
+                'stage',
+                [
+                    'category'   => 'stage',
+                    'actor_name' => $actorNameStage,
+                    'actor_role' => $actorRoleStage,
+                    'old_values' => ['stage' => $capturedStage],
+                    'new_values' => ['stage' => $targetStage, 'note' => $note ?: null],
+                ]
+            );
 
+            // Commission locked (Signed)
             if ($isLocking) {
-                LeadHistory::create([
-                    'lead_id' => $lead->id,
-                    'action'  => 'Contract signed — commission locked at ₱' . number_format((float)$lead->added_amount * 0.70, 2),
-                    'type'    => 'commission',
-                    'date'    => now()->toDateString(),
-                ]);
+                $activity->record($lead,
+                    'Commission locked at \u{20b1}' . number_format($commPool, 2) . ' (deal moved to Signed)',
+                    'commission',
+                    [
+                        'category'   => 'commission',
+                        'actor_name' => $actorNameStage,
+                        'actor_role' => $actorRoleStage,
+                        'new_values' => ['commission_pool' => $commPool, 'status' => 'locked'],
+                    ]
+                );
             }
 
+            // Commission paid (Paid)
             if ($isPaid) {
-                LeadHistory::create([
-                    'lead_id' => $lead->id,
-                    'action'  => 'Payment received — commission pool ₱' . number_format((float)$lead->added_amount * 0.70, 2) . ' marked paid',
-                    'type'    => 'commission',
-                    'date'    => now()->toDateString(),
-                ]);
+                $activity->record($lead,
+                    'Commission marked as paid \u{2014} pool \u{20b1}' . number_format($commPool, 2),
+                    'commission',
+                    [
+                        'category'   => 'commission',
+                        'actor_name' => $actorNameStage,
+                        'actor_role' => $actorRoleStage,
+                        'new_values' => ['commission_pool' => $commPool, 'status' => 'paid'],
+                    ]
+                );
             }
         });
 
@@ -542,6 +561,8 @@ class LeadController extends Controller
             'reset_stage'   => 'boolean',
         ]);
 
+        $oldReferrerName = $lead->reseller_name ?? '';
+
         $lead->update([
             'reseller_name'     => $data['reseller_name'],
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
@@ -559,13 +580,20 @@ class LeadController extends Controller
             'activity_status' => 'active',
         ]);
 
-        LeadHistory::create([
-            'lead_id' => $lead->id,
-            'action'  => 'Reassigned to ' . $data['reseller_name'],
-            'type'    => 'assignment',
-            'reseller'=> $data['reseller_name'],
-            'date'    => now()->toDateString(),
-        ]);
+        [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
+        app(\App\Services\DealActivityService::class)->record($lead,
+            'Referrer reassigned: ' . ($oldReferrerName ?: 'None')
+                . ' \u{2192} ' . $data['reseller_name'],
+            'assignment',
+            [
+                'category'   => 'assignment',
+                'actor_name' => $actorNameRa,
+                'actor_role' => $actorRoleRa,
+                'reseller'   => $data['reseller_name'],
+                'old_values' => ['referrer_name' => $oldReferrerName],
+                'new_values' => ['referrer_name' => $data['reseller_name']],
+            ]
+        );
 
         // Notify tenant admins and new referrer about reassignment
         try {
