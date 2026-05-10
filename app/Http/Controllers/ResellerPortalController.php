@@ -102,10 +102,31 @@ class ResellerPortalController extends Controller
             ->where('reseller_name', $reseller->name)
             ->get();
 
+        // Load this referrer's commission splits to get their percentage per deal
+        $leadIds = $leads->pluck('id');
+        $splits  = DB::table('commission_splits')
+            ->whereIn('lead_id', $leadIds)
+            ->where('reseller_name', $reseller->name)
+            ->get()
+            ->keyBy('lead_id');
+
+        // Attach computed commission amounts to each lead
+        $leads = $leads->map(function ($lead) use ($splits) {
+            $aa         = (float) ($lead->added_amount ?? 0);
+            $pool       = $aa * 0.70;
+            $splitRow   = $splits->get($lead->id);
+            $pct        = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
+            $lead->commission_pool  = round($pool, 2);
+            $lead->my_commission    = round($pool * $pct / 100, 2);
+            $lead->split_percentage = $pct;
+            return $lead;
+        });
+
+        // Summary cards show referrer's actual commission share (not deal value)
         $commissionStats = [
-            'pending' => $leads->where('commission_status', 'pending')->sum('deal_value'),
-            'locked'  => $leads->where('commission_status', 'locked')->sum('deal_value'),
-            'paid'    => $leads->where('commission_status', 'paid')->sum('deal_value'),
+            'pending' => $leads->where('commission_status', 'pending')->sum('my_commission'),
+            'locked'  => $leads->where('commission_status', 'locked')->sum('my_commission'),
+            'paid'    => $leads->where('commission_status', 'paid')->sum('my_commission'),
         ];
 
         return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats'));

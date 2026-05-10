@@ -1399,9 +1399,10 @@ function dealDetail(leadId, tenantId, ssrLead) {
         recalc() { /* reactivity happens automatically via x-model.number */ },
 
         fmt(v) {
+            // null/undefined/empty = not set → show dash; explicit 0 → show ₱0
+            if (v === null || v === undefined || v === '') return '—';
             const n = Math.round(Number(v) || 0);
-            if (n === 0) return 'â€”';
-            return 'â‚±' + n.toLocaleString('en');
+            return '₱' + n.toLocaleString('en');
         },
 
         startEditFinance() {

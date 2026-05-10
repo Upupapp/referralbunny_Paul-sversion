@@ -16,7 +16,7 @@
             <p class="text-2xl font-bold" style="color:#1E1B4B">
                 ₱{{ number_format($commissionStats[$key] ?? 0) }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ $leads->where('commission_status', $key)->count() }} deal(s)</p>
+            <p class="text-xs text-gray-400 mt-1">{{ $leads->where('commission_status', $key)->count() }} deal(s) · your share</p>
         </div>
         @endforeach
     </div>
@@ -35,17 +35,30 @@
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead><tr class="table-head">
-                    <th>Deal</th><th>Deal Value</th><th>Commission</th><th>Status</th>
+                    <th>Deal</th><th>Contract Value</th><th>Your Commission</th><th>Status</th>
                 </tr></thead>
                 <tbody>
                 @foreach($leads as $lead)
+                @php
+                    $aa  = (float) ($lead->added_amount ?? 0);
+                    $bc  = (float) ($lead->base_cost ?? 0);
+                    $cv  = ($bc + $aa) ?: (float) ($lead->deal_value ?? 0);
+                @endphp
                 <tr class="table-row">
                     <td>
                         <p class="font-medium text-sm" style="color:#1E1B4B">{{ $lead->name }}</p>
                         <p class="text-xs text-gray-400 capitalize">{{ str_replace('_', ' ', $lead->stage) }}</p>
                     </td>
-                    <td class="text-sm font-semibold tabular-nums" style="color:#1E1B4B">₱{{ number_format($lead->deal_value ?? 0) }}</td>
-                    <td class="text-sm text-gray-500">— <span class="text-xs">(set by admin)</span></td>
+                    <td class="text-sm font-semibold tabular-nums" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</td>
+                    <td>
+                        @if(($lead->my_commission ?? 0) > 0)
+                            <p class="text-sm font-bold tabular-nums" style="color:#10B981">₱{{ number_format((int)($lead->my_commission ?? 0)) }}</p>
+                            <p class="text-xs text-gray-400">{{ $lead->split_percentage ?? 100 }}% of commission pool</p>
+                        @else
+                            <p class="text-sm text-gray-400">—</p>
+                            <p class="text-xs text-gray-400">Financial data not set</p>
+                        @endif
+                    </td>
                     <td>
                         <span class="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
                               style="background:{{ $lead->commission_status === 'paid' ? '#D1FAE5' : ($lead->commission_status === 'locked' ? '#FEF3C7' : '#EDE9FE') }};color:{{ $lead->commission_status === 'paid' ? '#065F46' : ($lead->commission_status === 'locked' ? '#D97706' : '#7B61FF') }}">
