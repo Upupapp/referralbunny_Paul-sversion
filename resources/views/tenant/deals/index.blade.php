@@ -132,7 +132,7 @@
                         <template x-if="sortDir === 'asc'"><path d="M1 5L5 1L9 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></template>
                         <template x-if="sortDir === 'desc'"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></template>
                     </svg>
-                    <span x-text="{name:'Deal',stage:'Stage',reseller:'Referrer',value:'Value',commission:'Commission',days_left:'Days Left',status:'Status'}[sortCol] || sortCol"></span>
+                    <span x-text="{name:'Deal',stage:'Stage',reseller:'Referrer',value:'Value',created_at:'Date Added',days_left:'Days Left',status:'Status'}[sortCol] || sortCol"></span>
                     <button @click="sortCol = 'created_at'; sortDir = 'desc'" class="ml-0.5 hover:text-purple-800" title="Clear sort">×</button>
                 </span>
             </div>
@@ -151,7 +151,7 @@
                             ['key'=>'stage',      'label'=>'Stage',      'tip'=>'Sort by pipeline progress',              'hidden'=>''],
                             ['key'=>'reseller',   'label'=>'Referrer',   'tip'=>'Sort A → Z or Z → A',                    'hidden'=>'hidden sm:table-cell'],
                             ['key'=>'value',      'label'=>'Value',      'tip'=>'Sort highest or lowest first',           'hidden'=>''],
-                            ['key'=>'commission', 'label'=>'Commission', 'tip'=>'Sort by commission status',              'hidden'=>'hidden md:table-cell'],
+                            ['key'=>'created_at', 'label'=>'Date Added',  'tip'=>'Sort by date the deal was added',        'hidden'=>'hidden md:table-cell'],
                             ['key'=>'days_left',  'label'=>'Days Left',  'tip'=>'Sort most urgent (fewest days) first',   'hidden'=>'hidden md:table-cell'],
                             ['key'=>'status',     'label'=>'Status',     'tip'=>'Sort by deal status',                    'hidden'=>''],
                         ];
@@ -220,7 +220,7 @@
                             </td>
                             <td class="font-semibold text-[#1E1B4B]" x-text="formatValue(lead.deal_value)"></td>
                             <td class="hidden md:table-cell">
-                                <span :class="commissionBadge(lead.commission_status)" x-text="(lead.commission_status || 'pending').charAt(0).toUpperCase() + (lead.commission_status || 'pending').slice(1)"></span>
+                                <span class="text-xs text-gray-500" x-text="lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'}) : '—'"></span>
                             </td>
                             <td>
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -743,9 +743,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                         va = Number(a.deal_value) || 0;
                         vb = Number(b.deal_value) || 0;
                         break;
-                    case 'commission':
-                        va = commOrder[a.commission_status] ?? 99;
-                        vb = commOrder[b.commission_status] ?? 99;
+                    case 'created_at':
+                        va = new Date(a.created_at || 0).getTime();
+                        vb = new Date(b.created_at || 0).getTime();
                         break;
                     case 'days_left':
                         va = a.days_left ?? 21;
