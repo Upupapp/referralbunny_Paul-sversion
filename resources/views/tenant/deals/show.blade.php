@@ -1478,26 +1478,40 @@
             </div>
 
             {{-- Current stage indicator --}}
-            <div style="padding:12px 24px 0;display:flex;align-items:center;gap:8px">
+            <div style="padding:12px 24px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span style="font-size:12px;color:#9ca3af">Current:</span>
                 <span style="font-size:12px;font-weight:700;color:#7B61FF;background:#ede9fe;padding:2px 10px;border-radius:9999px"
                       x-text="stageLabel(lead?.stage)"></span>
+                {{-- Commission locked banner --}}
+                <template x-if="lead?.commission_status === 'locked'">
+                    <span style="font-size:11px;font-weight:600;background:#fef3c7;color:#d97706;padding:2px 10px;border-radius:9999px;display:flex;align-items:center;gap:4px">
+                        <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Commission locked — only Paid move allowed
+                    </span>
+                </template>
+                <template x-if="lead?.stage === 'paid'">
+                    <span style="font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:9999px">
+                        Final stage — no further moves
+                    </span>
+                </template>
             </div>
 
             {{-- Stage selector list --}}
             <div style="padding:12px 24px;display:flex;flex-direction:column;gap:6px">
                 <template x-for="s in allStages" :key="s.key">
                     <button @click="moveToStage(s.key)"
-                            :disabled="s.key === lead?.stage || saving"
+                            :disabled="s.key === lead?.stage || saving || isStageDone(s.key) || lead?.stage === 'paid' || (lead?.commission_status === 'locked' && s.key !== 'paid')"
                             class="w-full text-left transition-all"
                             style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:1.5px solid #f3f4f6;cursor:pointer;background:white"
                             :style="s.key === lead?.stage
-                                ? 'opacity:0.5;cursor:not-allowed;background:#f9fafb'
+                                ? 'opacity:0.6;cursor:not-allowed;background:#f9fafb'
                                 : isStageDone(s.key)
-                                    ? 'border-color:#86efac;background:#f0fdf4'
-                                    : isStageNext(s.key)
-                                        ? 'border-color:#c4b5fd;background:#f5f3ff'
-                                        : 'border-color:#f3f4f6;background:white'"
+                                    ? 'border-color:#86efac;background:#f0fdf4;opacity:0.7;cursor:not-allowed'
+                                    : (lead?.commission_status === 'locked' && s.key !== 'paid')
+                                        ? 'opacity:0.4;cursor:not-allowed;border-color:#f3f4f6;background:#f9fafb'
+                                        : isStageNext(s.key)
+                                            ? 'border-color:#c4b5fd;background:#f5f3ff'
+                                            : 'border-color:#f3f4f6;background:white'"
                             @mouseenter="if(s.key !== lead?.stage && !saving) $event.currentTarget.style.borderColor='#c4b5fd'"
                             @mouseleave="if(s.key !== lead?.stage) $event.currentTarget.style.borderColor = isStageDone(s.key) ? '#86efac' : isStageNext(s.key) ? '#c4b5fd' : '#f3f4f6'">
 
@@ -2122,7 +2136,17 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
 
         async moveToStage(stage) {
-            if (stage === this.lead?.stage) return;
+            if (!stage || stage === this.lead?.stage) return;
+            // Client-side guards (mirrors API guards for instant feedback)
+            if (this.lead?.stage === 'paid') {
+                this.$dispatch('show-toast', { type: 'error', message: 'This deal is at the final stage and cannot be advanced.' });
+                return;
+            }
+            if (this.lead?.commission_status === 'locked' && stage !== 'paid') {
+                this.$dispatch('show-toast', { type: 'error', message: 'Commission is locked. Only the Paid stage move is allowed.' });
+                return;
+            }
+
             this.saving = true;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
@@ -2137,16 +2161,20 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     },
                     body: JSON.stringify({ stage, note: this.moveStageNote }),
                 });
-                const updated = await res.json();
-                if (updated.id) {
-                    this.lead = { ...this.lead, ...updated, history: updated.history, commission_splits: updated.commission_splits };
+                const data = await res.json();
+                if (res.ok && data.id) {
+                    this.lead = { ...this.lead, ...data, history: data.history, commission_splits: data.commission_splits };
                     this.showMoveStage = false;
                     this.moveStageNote = '';
-                    this.$dispatch('show-toast', { type: 'success', message: 'Stage updated.' });
+                    const stageName = stage.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    this.$dispatch('show-toast', { type: 'success', message: `Deal moved to ${stageName}.` });
+                    // Trigger activity history refresh
+                    this.$dispatch('stage-updated');
+                    window.dispatchEvent(new CustomEvent('finance-updated'));
                 } else {
-                    this.$dispatch('show-toast', { type: 'error', message: updated.message || 'Failed to move stage.' });
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || data.message || 'Failed to move stage.' });
                 }
-            } catch(e) {
+            } catch {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
         },

@@ -76,7 +76,7 @@ class NotificationDispatchService
             ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
             ->where('tm.tenant_id', $tenantId)
             ->where('tm.status', 'active')
-            ->whereIn('tm.role', ['owner', 'admin'])
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
             ->select('u.id')
             ->get();
 

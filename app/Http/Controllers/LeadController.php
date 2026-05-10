@@ -421,26 +421,58 @@ class LeadController extends Controller
 
         $lead->assertBelongsToCurrentTenant();
 
+        // Role-based permission: admin/owner/manager can move any deal;
+        // referrers can only move stages for deals assigned to them.
+        if (Auth::guard('reseller')->check()) {
+            $referrer = Auth::guard('reseller')->user();
+            if ((string) $lead->reseller_id !== (string) $referrer->id
+                && $lead->reseller_name !== $referrer->name) {
+                return response()->json(['error' => 'You can only advance stages on deals assigned to you.'], 403);
+            }
+        }
+
         $stages       = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
-        $currentIndex = array_search($lead->stage, $stages);
+        $currentIndex = (int) array_search($lead->stage, $stages, true);
+
+        // ── Terminal stage guard ──────────────────────────────────────
+        if ($lead->stage === 'paid') {
+            return response()->json(['error' => 'This deal is already at the final stage (Paid) and cannot be advanced further.'], 422);
+        }
 
         // Accept explicit target stage OR advance to next in sequence
-        if ($request->filled('stage') && in_array($request->stage, $stages)) {
+        if ($request->filled('stage') && in_array($request->stage, $stages, true)) {
             $targetStage = $request->stage;
         } else {
-            if ($currentIndex === false || $currentIndex >= count($stages) - 1) {
-                return response()->json(['message' => 'Already at final stage.'], 422);
+            if ($currentIndex >= count($stages) - 1) {
+                return response()->json(['error' => 'Already at final stage.'], 422);
             }
             $targetStage = $stages[$currentIndex + 1];
         }
 
+        $targetIndex = (int) array_search($targetStage, $stages, true);
+
         if ($targetStage === $lead->stage) {
-            return response()->json(['message' => 'Deal is already at this stage.'], 422);
+            return response()->json(['error' => 'Deal is already at this stage.'], 422);
         }
 
-        $isLocking    = $targetStage === 'signed';
-        $isPaid       = $targetStage === 'paid';
-        $note         = trim((string) $request->input('note', ''));
+        // ── Forward-only guard: prevent backward/lateral stage moves ──
+        if ($targetIndex <= $currentIndex) {
+            return response()->json([
+                'error' => 'Stage moves must progress forward. You cannot move a deal to an earlier stage.',
+            ], 422);
+        }
+
+        // ── Commission lock guard ─────────────────────────────────────
+        // Once commission is locked (Signed), the only valid move is to Paid.
+        if ($lead->commission_status === 'locked' && $targetStage !== 'paid') {
+            return response()->json([
+                'error' => 'Commission is locked for this deal. The only valid move from Signed is to Paid.',
+            ], 422);
+        }
+
+        $isLocking     = $targetStage === 'signed';
+        $isPaid        = $targetStage === 'paid';
+        $note          = trim((string) $request->input('note', ''));
         $capturedStage = $lead->stage;
 
         $updates = [
@@ -448,9 +480,15 @@ class LeadController extends Controller
             'commission_status' => $isLocking ? 'locked' : ($isPaid ? 'paid' : $lead->commission_status),
         ];
 
+        // ── Paid stage always resets status — prevents stuck expiring/expired in Critical Actions ──
+        if ($isPaid) {
+            $updates['status']    = 'active';
+            $updates['days_left'] = 0;
+        }
+
         // ── LGU IDS: reset days_left when stage advances ──────────────
         // LOCKED RULE — mirrors update() (LGU IDS pipeline protection)
-        if ($lead->tenant_id === 'lgu-ids') {
+        if ($lead->tenant_id === 'lgu-ids' && !$isPaid) {
             $stageRule = DB::table('tenant_pipeline_stage_rules')
                 ->where('tenant_id', 'lgu-ids')
                 ->where('stage', $targetStage)
