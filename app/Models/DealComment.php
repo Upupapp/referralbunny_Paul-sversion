@@ -39,6 +39,16 @@ class DealComment extends Model
         return $this->hasMany(DealComment::class, 'parent_comment_id');
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(DealNoteAttachment::class, 'deal_comment_id')->orderBy('created_at');
+    }
+
+    public function mentions(): HasMany
+    {
+        return $this->hasMany(DealNoteMention::class, 'deal_comment_id')->orderBy('created_at');
+    }
+
     public function isDeleted(): bool
     {
         return $this->deleted_at !== null;

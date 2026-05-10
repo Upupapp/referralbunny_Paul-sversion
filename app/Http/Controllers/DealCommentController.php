@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\DealComment;
+use App\Models\DealNoteMention;
 use App\Models\Lead;
+use App\Services\NotificationDispatchService;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,30 +42,29 @@ class DealCommentController extends Controller
     {
         $tenantId = TenantContext::requireId();
 
-        // Verify deal belongs to tenant
         $deal = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
 
         [, $role] = $this->resolveActor();
 
-        $query = DealComment::where('deal_id', $dealId)
+        $query = DealComment::with(['attachments', 'mentions'])
+            ->where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
-            ->whereNull('parent_comment_id') // top-level only; replies via nested
+            ->whereNull('parent_comment_id')
             ->orderByDesc('created_at');
 
-        // Referrers and Partners cannot see internal_admin comments
+        // Referrers and Partners cannot see internal_admin notes
         if (in_array($role, ['referrer', 'partner'])) {
             $query->where('visibility', 'shared');
         }
 
-        $comments = $query->get()->map(function (DealComment $c) use ($role) {
-            return $this->formatComment($c, $role);
-        });
+        $comments = $query->get()->map(fn(DealComment $c) => $this->formatComment($c, $role, $dealId));
 
         return response()->json($comments);
     }
 
-    // ── POST /api/deals/{dealId}/comments ──────────────────────────────────
+    // ── POST /api/deals/{dealId}/comments ─────────────────────────────────
+    // Accepts multipart/form-data (for file attachments) or application/json.
 
     public function store(Request $request, string $dealId): JsonResponse
     {
@@ -94,10 +95,20 @@ class DealCommentController extends Controller
         }
 
         $data = $request->validate([
-            'body'              => 'required|string|max:5000',
+            'body'              => 'nullable|string|max:10000',
             'visibility'        => 'nullable|in:shared,internal_admin',
             'parent_comment_id' => 'nullable|string|exists:deal_comments,id',
+            'mentions'          => 'nullable|string', // JSON-encoded array
+            'files'             => 'nullable|array|max:5',
+            'files.*'           => 'nullable|file|max:10240', // 10MB each
         ]);
+
+        // Require either body or at least one file
+        $hasBody  = !empty(trim($data['body'] ?? ''));
+        $hasFiles = !empty($request->file('files'));
+        if (!$hasBody && !$hasFiles) {
+            return response()->json(['error' => 'Please add a note or attach a file.'], 422);
+        }
 
         // Only admins/managers can post internal notes
         $visibility = $data['visibility'] ?? 'shared';
@@ -110,15 +121,55 @@ class DealCommentController extends Controller
             'deal_id'           => $dealId,
             'author_user_id'    => $actorId,
             'author_role'       => $role,
-            'body'              => strip_tags($data['body']),
+            'body'              => $hasBody ? strip_tags($data['body']) : '',
             'visibility'        => $visibility,
             'parent_comment_id' => $data['parent_comment_id'] ?? null,
         ]);
 
+        // ── Save mentions ──────────────────────────────────────────────────
+        $mentionedUsers = [];
+        if (!empty($data['mentions'])) {
+            $mentions = json_decode($data['mentions'], true) ?? [];
+            foreach ($mentions as $m) {
+                if (empty($m['id']) || empty($m['type']) || empty($m['name'])) continue;
+
+                // Validate mention belongs to this tenant (cross-tenant guard)
+                if (!$this->validateMentionTarget($m['type'], $m['id'], $tenantId, $dealId)) continue;
+
+                DealNoteMention::create([
+                    'tenant_id'            => $tenantId,
+                    'deal_comment_id'      => $comment->id,
+                    'mentionable_type'     => $m['type'],
+                    'mentionable_id'       => $m['id'],
+                    'display_name_snapshot'=> $m['name'],
+                ]);
+
+                $mentionedUsers[] = $m;
+            }
+        }
+
+        // ── Save attachments ───────────────────────────────────────────────
+        if ($hasFiles) {
+            DealNoteAttachmentController::storeFiles(
+                $request->file('files'),
+                $tenantId,
+                $dealId,
+                $comment->id,
+                $actorId,
+                $role
+            );
+        }
+
+        // ── Notify mentioned users ─────────────────────────────────────────
+        $this->notifyMentions($mentionedUsers, $comment, $deal, $tenantId, $actorId, $role);
+
         // Audit log
         $this->auditLog($tenantId, $dealId, $actorId, 'deal_comment_created');
 
-        return response()->json($this->formatComment($comment, $role), 201);
+        // Reload with relations
+        $comment->load(['attachments', 'mentions']);
+
+        return response()->json($this->formatComment($comment, $role, $dealId), 201);
     }
 
     // ── PATCH /api/deals/{dealId}/comments/{commentId} ──────────────────────
@@ -135,12 +186,11 @@ class DealCommentController extends Controller
 
         [$actorId, $role] = $this->resolveActor();
 
-        // Only the author (or admin) can edit
         if ($comment->author_user_id !== $actorId && !in_array($role, ['tenant_admin', 'super_admin'])) {
-            return response()->json(['error' => 'You cannot edit this comment.'], 403);
+            return response()->json(['error' => 'You cannot edit this note.'], 403);
         }
 
-        $data = $request->validate(['body' => 'required|string|max:5000']);
+        $data = $request->validate(['body' => 'required|string|max:10000']);
 
         $comment->update([
             'body'      => strip_tags($data['body']),
@@ -149,7 +199,9 @@ class DealCommentController extends Controller
 
         $this->auditLog($tenantId, $dealId, $actorId, 'deal_comment_edited');
 
-        return response()->json($this->formatComment($comment->fresh(), $role));
+        $comment->load(['attachments', 'mentions']);
+
+        return response()->json($this->formatComment($comment->fresh(), $role, $dealId));
     }
 
     // ── DELETE /api/deals/{dealId}/comments/{commentId} ─────────────────────
@@ -167,7 +219,7 @@ class DealCommentController extends Controller
         [$actorId, $role] = $this->resolveActor();
 
         if ($comment->author_user_id !== $actorId && !in_array($role, ['tenant_admin', 'super_admin'])) {
-            return response()->json(['error' => 'You cannot delete this comment.'], 403);
+            return response()->json(['error' => 'You cannot delete this note.'], 403);
         }
 
         $comment->update(['deleted_at' => now()]);
@@ -179,19 +231,38 @@ class DealCommentController extends Controller
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private function formatComment(DealComment $c, string $viewerRole): array
+    private function formatComment(DealComment $c, string $viewerRole, string $dealId): array
     {
-        // Resolve author display name
         $authorName = 'User';
         try {
             $authorName = match ($c->author_role) {
                 'referrer' => DB::table('resellers')->where('id', $c->author_user_id)->value('name') ?? 'Referrer',
-                'partner'  => DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') . ' ' . DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name'),
+                'partner'  => trim(
+                    (DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
+                    (DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
+                ),
                 default    => DB::table('tenant_users')->where('id', $c->author_user_id)->value('name')
                            ?? DB::table('users')->where('id', $c->author_user_id)->value('name')
                            ?? 'Admin',
             };
         } catch (\Throwable) {}
+
+        // Format attachments
+        $attachments = $c->attachments->map(fn($a) => [
+            'id'                => $a->id,
+            'original_filename' => $a->original_filename,
+            'mime_type'         => $a->mime_type,
+            'file_size'         => $a->file_size,
+            'file_type_group'   => $a->file_type_group,
+            'download_url'      => "/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}",
+        ])->toArray();
+
+        // Format mentions
+        $mentions = $c->mentions->map(fn($m) => [
+            'id'   => $m->mentionable_id,
+            'type' => $m->mentionable_type,
+            'name' => $m->display_name_snapshot,
+        ])->toArray();
 
         return [
             'id'                => $c->id,
@@ -206,7 +277,86 @@ class DealCommentController extends Controller
             'is_deleted'        => $c->isDeleted(),
             'is_internal'       => $c->isInternal(),
             'created_at'        => $c->created_at?->toIso8601String(),
+            'attachments'       => $c->isDeleted() ? [] : $attachments,
+            'mentions'          => $mentions,
         ];
+    }
+
+    private function validateMentionTarget(string $type, string $id, string $tenantId, string $dealId): bool
+    {
+        return match ($type) {
+            'tenant_admin' => DB::table('tenant_memberships')
+                ->join('tenant_users', 'tenant_users.id', '=', 'tenant_memberships.tenant_user_id')
+                ->where('tenant_memberships.tenant_id', $tenantId)
+                ->where('tenant_users.id', $id)
+                ->where('tenant_memberships.status', 'active')
+                ->exists(),
+
+            'referrer' => DB::table('resellers')
+                ->where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->exists(),
+
+            'partner' => DB::table('deal_partners')
+                ->where('deal_id', $dealId)
+                ->where('partner_user_id', $id)
+                ->whereIn('status', ['active', 'invited'])
+                ->exists(),
+
+            'contact' => DB::table('contacts')
+                ->where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->exists(),
+
+            default => false,
+        };
+    }
+
+    private function notifyMentions(array $mentions, DealComment $comment, Lead $deal, string $tenantId, string $actorId, string $role): void
+    {
+        if (empty($mentions)) return;
+
+        // Resolve author display name for notification
+        $authorName = match ($role) {
+            'referrer' => DB::table('resellers')->where('id', $actorId)->value('name') ?? 'Referrer',
+            'partner'  => 'Partner',
+            default    => DB::table('tenant_users')->where('id', $actorId)->value('name') ?? 'Admin',
+        };
+
+        $svc    = app(NotificationDispatchService::class);
+        $dedupBase = "mention:{$comment->id}";
+
+        foreach ($mentions as $m) {
+            // Do not notify the author themselves
+            if ($m['type'] !== 'contact' && $m['id'] === $actorId) continue;
+
+            // Only notify entity types that have portal access (not contacts by default)
+            $notifiableType = match ($m['type']) {
+                'tenant_admin' => 'tenant_admin',
+                'referrer'     => 'reseller',
+                'partner'      => 'partner',
+                default        => null,
+            };
+            if (!$notifiableType) continue;
+
+            $dealUrl = "/tenant/{$tenantId}/deals/{$deal->id}";
+
+            try {
+                $svc->dispatch(
+                    category:          'deals',
+                    priority:          'normal',
+                    title:             'You were mentioned in a note',
+                    body:              "{$authorName} mentioned you in a note on {$deal->name}.",
+                    notifiableType:    $notifiableType,
+                    notifiableId:      $m['id'],
+                    tenantId:          $tenantId,
+                    actionUrl:         $dealUrl,
+                    actionLabel:       'View note',
+                    deduplicationKey:  "{$dedupBase}:{$m['id']}",
+                    metadata:          ['deal_id' => $deal->id, 'comment_id' => $comment->id],
+                );
+            } catch (\Throwable) {}
+        }
     }
 
     private function auditLog(string $tenantId, string $dealId, string $actorId, string $action): void

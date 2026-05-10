@@ -68,11 +68,20 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('leads/{lead}/notes',             [LeadController::class, 'addNote']);
     Route::post('leads/{lead}/reassign',          [LeadController::class, 'reassign']);
     Route::post('leads/{lead}/commission-splits', [LeadController::class, 'updateCommissionSplits']);
-    // Deal Comments
+    // Deal Notes (comments with attachments + mentions)
     Route::get('deals/{dealId}/comments',                    [\App\Http\Controllers\DealCommentController::class, 'index']);
     Route::post('deals/{dealId}/comments',                   [\App\Http\Controllers\DealCommentController::class, 'store']);
     Route::patch('deals/{dealId}/comments/{commentId}',      [\App\Http\Controllers\DealCommentController::class, 'update']);
     Route::delete('deals/{dealId}/comments/{commentId}',     [\App\Http\Controllers\DealCommentController::class, 'destroy']);
+
+    // Mention search — tenant-scoped, deal-scoped
+    Route::get('deals/{dealId}/mentions/search', [\App\Http\Controllers\DealMentionSearchController::class, 'search']);
+
+    // Note attachments — authorized download + delete
+    Route::get('deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
+        [\App\Http\Controllers\DealNoteAttachmentController::class, 'download']);
+    Route::delete('deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
+        [\App\Http\Controllers\DealNoteAttachmentController::class, 'destroy']);
 
     // Partner Splits
     Route::get('leads/{lead}/partner-splits',                [\App\Http\Controllers\DealPartnerSplitController::class, 'index']);

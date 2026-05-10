@@ -126,6 +126,90 @@
                     </div>
                     <h3 class="font-semibold text-[#1E1B4B]">Financial Breakdown</h3>
                     @if($showLocation ?? false)<x-tax-tip />@endif
+
+                    {{-- ⓘ Formula explainer — always visible --}}
+                    <div class="relative" x-data="{ open: false }">
+                        <button type="button"
+                                @click="open = !open"
+                                @keydown.escape.window="open = false"
+                                aria-label="Explain financial breakdown"
+                                class="text-gray-400 hover:text-purple-600 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-300 rounded-full p-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </button>
+
+                        {{-- Popover --}}
+                        <div x-show="open"
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             @click.outside="open = false"
+                             style="display:none"
+                             class="absolute left-0 top-7 z-50 w-80 sm:w-96 bg-white border border-gray-100 rounded-2xl shadow-xl p-5 text-left">
+
+                            <div class="flex items-start justify-between mb-3">
+                                <h4 class="font-semibold text-[#1E1B4B] text-sm leading-snug">How this financial breakdown works</h4>
+                                <button @click="open = false" class="text-gray-300 hover:text-gray-500 ml-3 shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+
+                            <p class="text-xs text-gray-600 leading-relaxed mb-3">
+                                ReferralBunny.ai separates the total contract value into the actual base cost and the added amount (your margin). The <span class="font-semibold text-blue-600">company share</span> is 30% of the added amount, while the <span class="font-semibold text-emerald-600">referrer commission pool</span> is 70% of the added amount. This lets everyone see exactly how the contract value, company share, and commission pool are calculated — before commissions are locked or paid.
+                            </p>
+
+                            {{-- Formula --}}
+                            <div class="space-y-1.5 bg-[#F0EFFA] rounded-xl p-3 mb-3">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-500">₱ Base Cost  +  Added Amount</span>
+                                    <span class="font-semibold text-[#1E1B4B]">= Contract Value</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-blue-500">Company Share</span>
+                                    <span class="font-semibold text-blue-700">= 30% of Added Amount</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-emerald-500">Commission Pool</span>
+                                    <span class="font-semibold text-emerald-700">= 70% of Added Amount</span>
+                                </div>
+                            </div>
+
+                            {{-- Live example using current deal --}}
+                            <div class="bg-gray-50 rounded-xl p-3 mb-3">
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-1.5">This deal</p>
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-500">Base Cost</span>
+                                        <span class="font-medium tabular-nums" x-text="fmt(lead?.base_cost || 0)"></span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-500">Added Amount</span>
+                                        <span class="font-medium text-blue-600 tabular-nums" x-text="fmt(lead?.added_amount || 0)"></span>
+                                    </div>
+                                    <div class="flex justify-between text-xs border-t border-gray-200 pt-1 mt-1">
+                                        <span class="font-semibold text-[#1E1B4B]">Contract Value</span>
+                                        <span class="font-bold text-[#1E1B4B] tabular-nums" x-text="fmt(contractValue())"></span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-blue-500">Company (30%)</span>
+                                        <span class="font-medium text-blue-700 tabular-nums" x-text="fmt(companyShare())"></span>
+                                    </div>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-emerald-500">Commission Pool (70%)</span>
+                                        <span class="font-medium text-emerald-700 tabular-nums" x-text="fmt(commPool())"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-[10px] text-gray-400 leading-relaxed">
+                                Partner split shares are tracked separately and do not automatically reduce the referrer commission pool unless the deal rules explicitly say so.
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 <button x-show="!editFinance" @click="startEditFinance()"
                         class="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium">
@@ -845,94 +929,245 @@
     </div>
     </template>
 
-    {{-- ── Deal Comments ────────────────────────────────────────────────── --}}
+    {{-- ── Notes (rich: @mentions, file attachments, visibility) ─────────── --}}
     <div x-show="!loading && lead"
          x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}')"
          x-init="loadComments()"
          class="card space-y-4">
 
         <div class="flex items-center justify-between border-b border-gray-100 pb-3">
-            <h3 class="font-semibold text-[#1E1B4B] text-sm flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                Comments
-                <span class="text-gray-400 font-normal" x-text="'(' + comments.length + ')'"></span>
-            </h3>
+            <div>
+                <h3 class="font-semibold text-[#1E1B4B] text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Notes
+                    <span class="text-gray-400 font-normal text-xs" x-text="comments.length ? '(' + comments.length + ')' : ''"></span>
+                </h3>
+                <p class="text-[11px] text-gray-400 mt-0.5">Capture updates, tag people, and attach supporting files for this deal.</p>
+            </div>
             <div class="flex items-center gap-2">
                 <label class="filter-pill text-xs" x-show="canPostInternal">
                     <select x-model="newVisibility" class="text-xs">
                         <option value="shared">Shared with participants</option>
-                        <option value="internal_admin">Internal admin note</option>
+                        <option value="internal_admin">Internal admin only</option>
                     </select>
                 </label>
             </div>
         </div>
 
-        {{-- Composer --}}
+        {{-- ── Composer ──────────────────────────────────────────────────── --}}
         <div class="flex gap-3">
-            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0">
+            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0 mt-0.5">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
             </div>
             <div class="flex-1 space-y-2">
-                <textarea x-model="newBody" rows="2"
-                          class="form-input text-sm resize-none"
-                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note — only visible to Tenant Admins and permitted Managers…' : 'Write a comment about this deal…'"></textarea>
-                <div class="flex justify-between items-center">
-                    <p x-show="commentError" class="text-xs text-red-500" x-text="commentError"></p>
-                    <div class="ml-auto">
-                        <button @click="postComment()" :disabled="!newBody.trim() || posting"
+
+                {{-- Textarea with @mention support --}}
+                <div class="relative">
+                    <textarea x-ref="noteTextarea"
+                              x-model="newBody"
+                              @input="handleBodyInput($event)"
+                              @keydown.escape="mentionOpen = false"
+                              @keydown.arrow-down.prevent="mentionFocusIdx = Math.min(mentionFocusIdx + 1, mentionResults.length - 1)"
+                              @keydown.arrow-up.prevent="mentionFocusIdx = Math.max(mentionFocusIdx - 1, 0)"
+                              @keydown.enter.prevent="if(mentionOpen && mentionResults[mentionFocusIdx]) { selectMention(mentionResults[mentionFocusIdx]); } else { $event.preventDefault && $event.target.form?.requestSubmit && void 0; }"
+                              rows="3"
+                              class="form-input text-sm resize-none"
+                              :placeholder="newVisibility === 'internal_admin' ? 'Internal note — only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
+
+                    {{-- @Mention dropdown --}}
+                    <div x-show="mentionOpen"
+                         class="absolute left-0 bottom-full mb-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto"
+                         style="display:none">
+                        <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
+                            <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Searching…
+                        </div>
+                        <template x-for="(m, idx) in mentionResults" :key="m.type + ':' + m.id">
+                            <button type="button"
+                                    @click="selectMention(m)"
+                                    :class="mentionFocusIdx === idx ? 'bg-[#F0EFFA]' : 'hover:bg-gray-50'"
+                                    class="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors">
+                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                     :class="{
+                                         'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
+                                         'bg-blue-100 text-blue-700':    m.type === 'referrer',
+                                         'bg-orange-100 text-orange-700':m.type === 'partner',
+                                         'bg-gray-100 text-gray-600':    m.type === 'contact',
+                                     }"
+                                     x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="m.name"></p>
+                                    <p class="text-[10px] text-gray-400 truncate" x-text="m.email || ''"></p>
+                                </div>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
+                                      :class="{
+                                          'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
+                                          'bg-blue-100 text-blue-700':    m.type === 'referrer',
+                                          'bg-orange-100 text-orange-700':m.type === 'partner',
+                                          'bg-gray-100 text-gray-600':    m.type === 'contact',
+                                      }"
+                                      x-text="m.badge"></span>
+                            </button>
+                        </template>
+                        <div x-show="!mentionLoading && mentionResults.length === 0"
+                             class="px-3 py-3 text-xs text-gray-400 text-center">No results.</div>
+                    </div>
+                </div>
+
+                {{-- Selected mentions pills --}}
+                <div x-show="mentions.length > 0" class="flex flex-wrap gap-1.5">
+                    <template x-for="(m, i) in mentions" :key="m.type + ':' + m.id">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                              :class="{
+                                  'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
+                                  'bg-blue-100 text-blue-700':    m.type === 'referrer',
+                                  'bg-orange-100 text-orange-700':m.type === 'partner',
+                                  'bg-gray-100 text-gray-600':    m.type === 'contact',
+                              }">
+                            @<span x-text="m.name"></span>
+                            <button @click="mentions.splice(i, 1)" class="ml-0.5 opacity-60 hover:opacity-100">×</button>
+                        </span>
+                    </template>
+                </div>
+
+                {{-- Selected file previews --}}
+                <div x-show="selectedFiles.length > 0" class="space-y-1">
+                    <template x-for="(f, i) in selectedFiles" :key="i">
+                        <div class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
+                            {{-- File type icon --}}
+                            <svg class="w-3.5 h-3.5 shrink-0"
+                                 :class="f.type.startsWith('image/') ? 'text-blue-400' : 'text-gray-400'"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <span class="text-xs text-gray-600 truncate flex-1" x-text="f.name"></span>
+                            <span class="text-[10px] text-gray-400 shrink-0" x-text="formatFileSize(f.size)"></span>
+                            <button type="button" @click="removeFile(i)"
+                                    aria-label="Remove file"
+                                    class="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Toolbar + actions --}}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        {{-- Attach file --}}
+                        <label class="cursor-pointer flex items-center gap-1 text-xs text-gray-400 hover:text-purple-600 transition-colors"
+                               title="Attach PDFs, documents, spreadsheets, or images (max 10 MB each, up to 5 files)">
+                            <input type="file" multiple class="hidden" x-ref="fileInput"
+                                   @change="handleFiles($event)"
+                                   accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            <span>Attach</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p x-show="commentError" class="text-xs text-red-500 mr-1" x-text="commentError"></p>
+                        <button @click="postComment()"
+                                :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
                                 class="btn-primary text-xs py-1.5 px-3"
-                                x-text="posting ? 'Posting…' : 'Post Comment'"></button>
+                                x-text="posting ? 'Saving…' : 'Save Note'"></button>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Comments list --}}
+        {{-- ── Notes list ────────────────────────────────────────────────── --}}
         <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            Loading comments…
+            Loading notes…
         </div>
 
         <div x-show="!loadingComments && comments.length === 0"
-             class="text-center text-gray-400 text-sm py-6">
-            No comments yet. Start the discussion.
+             class="flex flex-col items-center text-center py-8 text-gray-300">
+            <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p class="text-sm">No notes yet. Add the first update for this deal.</p>
         </div>
 
         <div x-show="!loadingComments && comments.length" class="space-y-4">
             <template x-for="c in comments" :key="c.id">
-                <div class="flex gap-3 group/comment">
+                <div class="flex gap-3 group/note">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                         :class="c.author_role === 'referrer' ? 'bg-blue-100 text-blue-700' : c.author_role === 'partner' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'"
+                         :class="{
+                             'bg-blue-100 text-blue-700':    c.author_role === 'referrer',
+                             'bg-orange-100 text-orange-700':c.author_role === 'partner',
+                             'bg-purple-100 text-purple-700':!['referrer','partner'].includes(c.author_role),
+                         }"
                          x-text="(c.author_name||'?').slice(0,2).toUpperCase()"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex flex-wrap items-center gap-2 mb-1">
                             <span class="text-sm font-semibold text-[#1E1B4B]" x-text="c.author_name"></span>
-                            <span class="text-[10px] text-gray-400 capitalize" x-text="c.author_role.replace('_',' ')"></span>
+                            <span class="text-[10px] text-gray-400 capitalize" x-text="c.author_role.replace(/_/g,' ')"></span>
                             <template x-if="c.is_internal">
-                                <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-gray-100 text-gray-500">Internal</span>
+                                <span class="px-1.5 py-0 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Internal</span>
                             </template>
-                            <span class="text-[10px] text-gray-300" x-text="c.created_at ? new Date(c.created_at).toLocaleString('en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''"></span>
+                            <span class="text-[10px] text-gray-300"
+                                  x-text="c.created_at ? new Date(c.created_at).toLocaleString('en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''"></span>
                             <span x-show="c.edited_at" class="text-[10px] text-gray-300 italic">edited</span>
                         </div>
+
                         <template x-if="c.is_deleted">
-                            <p class="text-sm text-gray-300 italic">This comment was deleted.</p>
+                            <p class="text-sm text-gray-300 italic">This note was deleted.</p>
                         </template>
+
                         <template x-if="!c.is_deleted">
-                            <div>
+                            <div class="space-y-2">
                                 <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-text="c.body"></p>
-                                {{-- Edit/Delete actions --}}
-                                <div class="mt-1 flex items-center gap-2 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+
+                                {{-- Mention tags --}}
+                                <div x-show="(c.mentions||[]).length > 0" class="flex flex-wrap gap-1">
+                                    <template x-for="m in (c.mentions||[])" :key="m.id">
+                                        <span class="text-xs px-1.5 py-0 rounded-full font-medium"
+                                              :class="{
+                                                  'bg-purple-100 text-purple-700': m.type === 'tenant_admin',
+                                                  'bg-blue-100 text-blue-700':    m.type === 'referrer',
+                                                  'bg-orange-100 text-orange-700':m.type === 'partner',
+                                                  'bg-gray-100 text-gray-600':    m.type === 'contact',
+                                              }"
+                                              x-text="'@' + m.name"></span>
+                                    </template>
+                                </div>
+
+                                {{-- Attachments --}}
+                                <div x-show="(c.attachments||[]).length > 0" class="space-y-1">
+                                    <template x-for="a in (c.attachments||[])" :key="a.id">
+                                        <a :href="a.download_url"
+                                           target="_blank"
+                                           class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg hover:bg-purple-50 hover:border-purple-100 transition-colors group/att">
+                                            <svg class="w-3.5 h-3.5 shrink-0"
+                                                 :class="a.file_type_group === 'image' ? 'text-blue-400' : 'text-gray-400 group-hover/att:text-purple-500'"
+                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                            </svg>
+                                            <span class="text-xs text-gray-600 truncate flex-1 group-hover/att:text-purple-700" x-text="a.original_filename"></span>
+                                            <span class="text-[10px] text-gray-400 shrink-0" x-text="formatFileSize(a.file_size)"></span>
+                                            <svg class="w-3 h-3 text-gray-300 group-hover/att:text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                            </svg>
+                                        </a>
+                                    </template>
+                                </div>
+
+                                {{-- Edit/Delete --}}
+                                <div class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
                                     <button @click="startEdit(c)"
                                             class="text-[11px] text-gray-400 hover:text-[#7B61FF] transition-colors">Edit</button>
                                     <button @click="deleteComment(c)"
                                             class="text-[11px] text-gray-400 hover:text-red-500 transition-colors">Delete</button>
                                 </div>
+
                                 {{-- Inline edit --}}
                                 <div x-show="editingId === c.id" class="mt-2 space-y-2">
                                     <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
                                     <div class="flex gap-2">
-                                        <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5">Save</button>
-                                        <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
+                                        <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5"
+                                                x-text="posting ? 'Saving…' : 'Save'"></button>
+                                        <button @click="editingId = null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
                                     </div>
                                 </div>
                             </div>
@@ -948,11 +1183,26 @@
 <script>
 function dealComments(dealId, tenantId) {
     return {
+        // ── State ────────────────────────────────────────────────────────────
         comments: [], loadingComments: true, posting: false,
         newBody: '', newVisibility: 'shared', commentError: '',
         editingId: null, editBody: '',
         canPostInternal: true, // Tenant admin default; API enforces actual permission
 
+        // @Mention state
+        mentions: [],          // confirmed mentions for current note [{id, type, name, badge}]
+        mentionQuery: '',
+        mentionResults: [],
+        mentionOpen: false,
+        mentionLoading: false,
+        mentionFocusIdx: -1,
+        mentionCursorStart: -1,
+        mentionDebounceTimer: null,
+
+        // File attachment state
+        selectedFiles: [],
+
+        // ── Load notes ───────────────────────────────────────────────────────
         async loadComments() {
             this.loadingComments = true;
             try {
@@ -966,32 +1216,43 @@ function dealComments(dealId, tenantId) {
             this.loadingComments = false;
         },
 
+        // ── Post note (FormData to support file uploads) ──────────────────────
         async postComment() {
-            if (!this.newBody.trim()) return;
-            this.posting = true; this.commentError = '';
+            if (!this.newBody.trim() && this.selectedFiles.length === 0) return;
+            this.posting = true;
+            this.commentError = '';
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const res  = await fetch(`/api/deals/${dealId}/comments`, {
+                const fd   = new FormData();
+                fd.append('body',       this.newBody);
+                fd.append('visibility', this.newVisibility);
+                fd.append('mentions',   JSON.stringify(this.mentions));
+                this.selectedFiles.forEach((f, i) => fd.append(`files[${i}]`, f));
+
+                const res = await fetch(`/api/deals/${dealId}/comments`, {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ body: this.newBody, visibility: this.newVisibility }),
+                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd,
                 });
                 const data = await res.json();
                 if (data.id) {
                     this.comments.unshift(data);
-                    this.newBody = '';
+                    this.newBody      = '';
+                    this.mentions     = [];
+                    this.selectedFiles = [];
+                    this.mentionOpen  = false;
+                    if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+                    this.$dispatch('show-toast', { type: 'success', message: 'Note saved.' });
                 } else {
-                    this.commentError = data.error || 'Failed to post comment.';
+                    this.commentError = data.error || 'Unable to save note. Please try again.';
                 }
-            } catch(e) { this.commentError = 'Network error.'; }
+            } catch(e) { this.commentError = 'Network error. Please try again.'; }
             this.posting = false;
         },
 
-        startEdit(c) {
-            this.editingId = c.id;
-            this.editBody  = c.body;
-        },
+        // ── Edit ──────────────────────────────────────────────────────────────
+        startEdit(c) { this.editingId = c.id; this.editBody = c.body; },
 
         async saveEdit(c) {
             if (!this.editBody.trim()) return;
@@ -1009,13 +1270,15 @@ function dealComments(dealId, tenantId) {
                     const idx = this.comments.findIndex(x => x.id === c.id);
                     if (idx !== -1) this.comments.splice(idx, 1, data);
                     this.editingId = null;
+                    this.$dispatch('show-toast', { type: 'success', message: 'Note updated.' });
                 }
             } catch(e) {}
             this.posting = false;
         },
 
+        // ── Delete ────────────────────────────────────────────────────────────
         async deleteComment(c) {
-            if (!confirm('Delete this comment?')) return;
+            if (!confirm('Delete this note?')) return;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
@@ -1025,7 +1288,93 @@ function dealComments(dealId, tenantId) {
                 });
                 const idx = this.comments.findIndex(x => x.id === c.id);
                 if (idx !== -1) this.comments[idx].is_deleted = true;
+                this.$dispatch('show-toast', { type: 'success', message: 'Note deleted.' });
             } catch(e) {}
+        },
+
+        // ── @Mention picker ───────────────────────────────────────────────────
+        handleBodyInput(e) {
+            const ta    = e.target;
+            const value = ta.value;
+            const pos   = ta.selectionStart;
+            const before = value.substring(0, pos);
+            const atIdx  = before.lastIndexOf('@');
+
+            if (atIdx !== -1) {
+                const q = before.substring(atIdx + 1);
+                // Only trigger if no space after @
+                if (!q.includes(' ') && q.length <= 40) {
+                    this.mentionCursorStart = atIdx;
+                    this.mentionQuery       = q;
+                    this.mentionFocusIdx    = 0;
+
+                    clearTimeout(this.mentionDebounceTimer);
+                    this.mentionDebounceTimer = setTimeout(() => {
+                        this.mentionOpen = true;
+                        this.fetchMentions(q);
+                    }, 200);
+                    return;
+                }
+            }
+            this.mentionOpen = false;
+        },
+
+        async fetchMentions(q) {
+            this.mentionLoading = true;
+            try {
+                const res = await fetch(`/api/deals/${dealId}/mentions/search?q=${encodeURIComponent(q)}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.mentionResults = await res.json();
+            } catch(e) { this.mentionResults = []; }
+            this.mentionLoading = false;
+        },
+
+        selectMention(m) {
+            const ta     = this.$refs.noteTextarea;
+            const before = ta.value.substring(0, this.mentionCursorStart);
+            const after  = ta.value.substring(ta.selectionStart);
+            this.newBody = before + '@' + m.name + ' ' + after;
+
+            // Record mention (deduplicate)
+            if (!this.mentions.find(x => x.id === m.id && x.type === m.type)) {
+                this.mentions.push(m);
+            }
+            this.mentionOpen     = false;
+            this.mentionResults  = [];
+            this.mentionFocusIdx = -1;
+            this.$nextTick(() => ta.focus());
+        },
+
+        // ── File attachment ───────────────────────────────────────────────────
+        handleFiles(e) {
+            const files = Array.from(e.target.files || []);
+            const maxSize = 10 * 1024 * 1024;
+            const allowed = ['jpg','jpeg','png','webp','pdf','doc','docx','xls','xlsx','csv','txt'];
+
+            for (const f of files) {
+                if (this.selectedFiles.length >= 5) break;
+                const ext = f.name.split('.').pop().toLowerCase();
+                if (!allowed.includes(ext)) {
+                    this.$dispatch('show-toast', { type: 'error', message: `${f.name}: file type not allowed.` });
+                    continue;
+                }
+                if (f.size > maxSize) {
+                    this.$dispatch('show-toast', { type: 'error', message: `${f.name}: exceeds 10 MB limit.` });
+                    continue;
+                }
+                this.selectedFiles.push(f);
+            }
+        },
+
+        removeFile(i) { this.selectedFiles.splice(i, 1); },
+
+        formatFileSize(bytes) {
+            if (!bytes) return '';
+            if (bytes < 1024)       return bytes + ' B';
+            if (bytes < 1024*1024)  return (bytes/1024).toFixed(1) + ' KB';
+            return (bytes/(1024*1024)).toFixed(1) + ' MB';
         },
     };
 }
