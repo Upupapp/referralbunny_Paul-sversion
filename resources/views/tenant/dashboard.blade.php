@@ -345,10 +345,10 @@ document.addEventListener('alpine:init', () => {
             </div>
         </div>
 
-        {{-- Top Resellers panel --}}
+        {{-- Top Referrers panel --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-[#1E1B4B]">Top Resellers</h3>
+                <h3 class="text-sm font-semibold text-[#1E1B4B]">Top Referrers</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
                     <option>Today</option><option>This Week</option><option>This Month</option>
                 </select>
@@ -375,7 +375,7 @@ document.addEventListener('alpine:init', () => {
                                 </span>
                             </div>
                             <p class="text-xs text-gray-400 truncate mt-0.5"
-                               x-text="(r.assigned_leads||0)+' deals · '+(r.performance_score||0)+'% rate'"></p>
+                               x-text="(r.assigned_leads||0)+' deals · '+(r.performance_score!=null?r.performance_score+'% rate':'not rated')"></p>
                         </div>
                         {{-- Value + time --}}
                         <div class="text-right shrink-0">
@@ -675,7 +675,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="flex items-start justify-between">
                     <div>
                         <p class="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">{{ now()->format('l, F j') }}</p>
-                        <h3 class="text-white text-xl font-bold leading-tight">Good morning 👋</h3>
+                        <h3 class="text-white text-xl font-bold leading-tight">Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }} 👋</h3>
                         <p class="text-white/60 text-sm mt-1">{{ $totalItems }} item{{ $totalItems > 1 ? 's' : '' }} need your attention today</p>
                     </div>
                     <button @click="open = false"
@@ -1015,23 +1015,54 @@ function tenantDashboard(tenantId, currentResellerName) {
         },
 
         async init() {
+            const hdrs = { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
+
+            // Load leads + resellers with high per_page so KPI totals are accurate.
+            // Both controllers cap at 200 max; this is the best we can do client-side.
             const [lRes, rRes, fRes, mRes, sRes] = await Promise.all([
-                fetch(`/api/leads?tenant_id=${tenantId}`),
-                fetch(`/api/resellers?tenant_id=${tenantId}`),
-                fetch(`/api/analytics/funnel?tenant_id=${tenantId}`),
-                fetch(`/api/metrics/${tenantId}`),
-                fetch(`/api/billing/tenants/${tenantId}/subscription`),
+                fetch(`/api/leads?tenant_id=${tenantId}&per_page=200`, hdrs),
+                fetch(`/api/resellers?tenant_id=${tenantId}&per_page=200`, hdrs),
+                fetch(`/api/analytics/funnel?tenant_id=${tenantId}`, hdrs),
+                fetch(`/api/metrics/${tenantId}`, hdrs),
+                fetch(`/api/billing/tenants/${tenantId}/subscription`, hdrs),
             ]);
-            const lData = await lRes.json();
-            this.leads = Array.isArray(lData) ? lData : (lData.data || []);
-            const rData = await rRes.json();
-            this.resellers = Array.isArray(rData) ? rData : (rData.data || []);
-            this.funnel = await fRes.json();
-            const mData = await mRes.json();
-            this.stats  = mData.detail ?? {};
-            this.metric = mData.metric ?? {};
-            this.subscription = await sRes.json();
-            this.maxCount     = Math.max(...this.funnel.map(f=>f.count), 1);
+
+            try {
+                if (lRes.ok) {
+                    const lData = await lRes.json();
+                    this.leads = Array.isArray(lData) ? lData : (lData.data || []);
+                }
+            } catch(e) {}
+
+            try {
+                if (rRes.ok) {
+                    const rData = await rRes.json();
+                    this.resellers = Array.isArray(rData) ? rData : (rData.data || []);
+                }
+            } catch(e) {}
+
+            try {
+                if (fRes.ok) {
+                    const fData = await fRes.json();
+                    this.funnel = Array.isArray(fData) ? fData : [];
+                }
+            } catch(e) { this.funnel = []; }
+
+            try {
+                if (mRes.ok) {
+                    const mData = await mRes.json();
+                    this.stats  = mData.detail ?? {};
+                    this.metric = mData.metric ?? {};
+                }
+            } catch(e) {}
+
+            try {
+                if (sRes.ok) {
+                    this.subscription = await sRes.json();
+                }
+            } catch(e) {}
+
+            this.maxCount     = Math.max(...(this.funnel.map(f=>f.count)), 1);
             this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
         },
 
