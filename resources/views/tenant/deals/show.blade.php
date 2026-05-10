@@ -1446,8 +1446,7 @@
     </div>
     </template>
 
-    {{-- Move Stage Modal --}}
-    <template x-teleport="body">
+    {{-- Move Stage Modal — no x-teleport; stays in dealDetail scope for reliable x-show binding --}}
     <div x-show="showMoveStage" style="display:none;background:rgba(0,0,0,0.5)"
          class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
          @keydown.escape.window="showMoveStage = false; moveStageNote = ''"
@@ -1571,9 +1570,8 @@
             </div>
         </div>
     </div>
-    </template>
 
-    {{-- Ã¢"â‚¬Ã¢"â‚¬ Reassign Modal Ã¢"â‚¬Ã¢"â‚¬ --}}
+    {{-- Reassign Modal --}}
     <template x-teleport="body">
     <div x-show="showReassign" style="display:none" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
