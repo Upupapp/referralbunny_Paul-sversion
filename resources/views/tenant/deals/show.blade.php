@@ -349,39 +349,74 @@
             @endphp
             <div x-show="!editFinance" class="space-y-4">
 
-                {{-- Formula rows --}}
-                <div>
-                    <div class="fin-row py-2.5 border-b border-gray-100">
-                        <p class="text-sm text-gray-500">₱ Base Cost</p>
-                        <p id="fin-bc" class="text-sm font-semibold text-gray-700 tabular-nums">₱{{ number_format((int)$bc) }}</p>
-                    </div>
-                    <div class="fin-row py-2.5 border-b border-dashed border-gray-200">
-                        <p class="text-sm text-gray-500">+ Added Amount <span class="text-xs text-gray-400">(margin)</span></p>
-                        <p id="fin-aa" class="text-sm font-semibold text-blue-600 tabular-nums">₱{{ number_format((int)$aa) }}</p>
-                    </div>
-                    <div class="fin-row py-2.5 rounded-xl px-3 mt-1" style="background:#F0EFFA">
-                        <p class="text-sm font-semibold" style="color:#1E1B4B">= Contract Value</p>
-                        <p id="fin-cv" class="text-sm font-bold tabular-nums" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</p>
-                    </div>
-                </div>
+                {{-- Two-panel layout: Left = equation, Right = distribution --}}
+                <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch">
 
-                {{-- 3-column summary --}}
-                <div class="fin-grid-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <div class="text-center">
-                        <p class="text-xs text-gray-400 uppercase tracking-wide">Contract Value</p>
-                        <p id="fin-cv2" class="text-sm font-bold tabular-nums mt-0.5" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</p>
-                        <p class="text-xs text-gray-400">base + margin</p>
+                    {{-- LEFT: Base Cost + Added Amount = Contract Value --}}
+                    <div style="padding-right:20px;display:flex;flex-direction:column;gap:0">
+                        {{-- Base Cost --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:10px 0;border-bottom:1px solid #f3f4f6">
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin:0">Base Cost</p>
+                            </div>
+                            <p id="fin-bc" style="font-size:16px;font-weight:700;color:#374151;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$bc) }}</p>
+                        </div>
+                        {{-- Added Amount --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:10px 0;border-bottom:1px dashed #e5e7eb">
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin:0">+ Added Amount</p>
+                                <p style="font-size:10px;color:#9ca3af;margin:1px 0 0">margin</p>
+                            </div>
+                            <p id="fin-aa" style="font-size:16px;font-weight:700;color:#2563eb;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$aa) }}</p>
+                        </div>
+                        {{-- Contract Value --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:12px 14px;border-radius:12px;background:#f5f3ff;margin-top:8px">
+                            <div>
+                                <p style="font-size:11px;font-weight:700;color:#7B61FF;text-transform:uppercase;letter-spacing:.05em;margin:0">= Contract Value</p>
+                            </div>
+                            <p id="fin-cv" style="font-size:18px;font-weight:800;color:#1E1B4B;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$cv) }}</p>
+                        </div>
                     </div>
-                    <div class="text-center" style="border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb">
-                        <p class="text-xs text-blue-500 uppercase tracking-wide">Company Share</p>
-                        <p id="fin-co" class="text-sm font-bold text-blue-700 tabular-nums mt-0.5">₱{{ number_format((int)$co) }}</p>
-                        <p class="text-xs text-blue-400">30% margin</p>
+
+                    {{-- Divider with arrow --}}
+                    <div style="display:flex;align-items:center;justify-content:center;padding:0 12px">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                            <div style="width:1px;flex:1;background:#e5e7eb;min-height:20px"></div>
+                            <div style="width:28px;height:28px;border-radius:9999px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(123,97,255,0.3)">
+                                <svg style="width:13px;height:13px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                            </div>
+                            <div style="width:1px;flex:1;background:#e5e7eb;min-height:20px"></div>
+                        </div>
                     </div>
-                    <div class="text-center">
-                        <p class="text-xs text-emerald-500 uppercase tracking-wide">Commission Pool</p>
-                        <p id="fin-cp" class="text-sm font-bold text-emerald-700 tabular-nums mt-0.5">₱{{ number_format((int)$cp) }}</p>
-                        <p class="text-xs text-emerald-400">70% margin</p>
+
+                    {{-- RIGHT: Contract Value → Company Share + Commission Pool --}}
+                    <div style="padding-left:20px;display:flex;flex-direction:column;gap:0">
+                        {{-- Contract Value (mirrored) --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:10px 0;border-bottom:1px solid #f3f4f6">
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin:0">Contract Value</p>
+                                <p style="font-size:10px;color:#9ca3af;margin:1px 0 0">base + margin</p>
+                            </div>
+                            <p id="fin-cv2" style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$cv) }}</p>
+                        </div>
+                        {{-- Company Share --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:10px 0;border-bottom:1px dashed #e5e7eb">
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em;margin:0">Company Share</p>
+                                <p style="font-size:10px;color:#93c5fd;margin:1px 0 0">30% of margin</p>
+                            </div>
+                            <p id="fin-co" style="font-size:16px;font-weight:700;color:#1d4ed8;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$co) }}</p>
+                        </div>
+                        {{-- Commission Pool --}}
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:12px 14px;border-radius:12px;background:#f0fdf4;margin-top:8px">
+                            <div>
+                                <p style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin:0">Commission Pool</p>
+                                <p style="font-size:10px;color:#86efac;margin:1px 0 0">70% of margin</p>
+                            </div>
+                            <p id="fin-cp" style="font-size:18px;font-weight:800;color:#15803d;margin:0;font-variant-numeric:tabular-nums">₱{{ number_format((int)$cp) }}</p>
+                        </div>
                     </div>
+
                 </div>
 
                 {{-- Commission Distribution — Referrer splits (Alpine-driven) --}}
