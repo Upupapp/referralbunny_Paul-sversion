@@ -263,7 +263,7 @@
                     @php
                         $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
                         $errorMsg  = $row->error_message;
-                        $errors    = $errorMsg ? [$errorMsg] : [];
+                        $rowErrors = $errorMsg ? [$errorMsg] : [];
                         $hasLead   = !empty($row->created_deal_id);
                         $statusKey = match(true) {
                             !empty($errorMsg)                                                            => 'failed',
@@ -332,13 +332,13 @@
                             @endif
                         </td>
                         <td class="max-w-[200px]">
-                            @if(count($errors) > 0)
+                            @if(count($rowErrors) > 0)
                                 <div class="flex flex-col gap-0.5">
-                                    @foreach(array_slice($errors, 0, 2) as $err)
+                                    @foreach(array_slice($rowErrors, 0, 2) as $err)
                                     <span class="text-xs text-red-600 leading-tight">{{ $err }}</span>
                                     @endforeach
-                                    @if(count($errors) > 2)
-                                    <span class="text-[10px] text-gray-400">+{{ count($errors) - 2 }} more</span>
+                                    @if(count($rowErrors) > 2)
+                                    <span class="text-[10px] text-gray-400">+{{ count($rowErrors) - 2 }} more</span>
                                     @endif
                                 </div>
                             @else

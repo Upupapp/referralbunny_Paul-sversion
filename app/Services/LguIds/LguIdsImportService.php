@@ -648,12 +648,25 @@ class LguIdsImportService
                 $dealName = $city . ($province ? ', ' . $province : '');
 
                 // Get days_left from LGU IDS stage rules (LOCKED)
-                $stage     = $norm['stage'] ?? 'introduction';
-                $stageRule = DB::table('tenant_pipeline_stage_rules')
-                    ->where('tenant_id', self::TENANT_ID)
-                    ->where('stage', $stage)
-                    ->first();
-                $daysLeft  = $stageRule?->max_days ?? 21;
+                $stage    = $norm['stage'] ?? 'introduction';
+                $daysLeft = match($stage) {
+                    'introduction'  => 14,
+                    'presentation'  => 21,
+                    'contract_sent' => 30,
+                    'signed'        => 30,
+                    default         => 21,
+                };
+                try {
+                    $stageRule = DB::table('tenant_pipeline_stage_rules')
+                        ->where('tenant_id', self::TENANT_ID)
+                        ->where('stage', $stage)
+                        ->first();
+                    if ($stageRule?->max_days) {
+                        $daysLeft = (int) $stageRule->max_days;
+                    }
+                } catch (\Throwable) {
+                    // Table may not exist yet — use hardcoded defaults above
+                }
 
                 // ── One-deal-per-org check (LOCKED RULE)
                 if ($orgId && $row->row_action !== 'overwrite') {
@@ -706,7 +719,7 @@ class LguIdsImportService
                     $row->update(['created_deal_id' => $row->existing_deal_id]);
                     $updated++;
                 } else {
-                    // Create new deal
+                    // Create new deal — CRITICAL PATH: lead creation must not be blocked by secondary operations
                     $newLead = Lead::create([
                         'tenant_id'         => self::TENANT_ID,
                         'name'              => $dealName,
@@ -727,25 +740,33 @@ class LguIdsImportService
                             'notes'        => $norm['notes'] ?? null,
                         ],
                     ]);
-                    LeadHistory::create([
-                        'lead_id'    => $newLead->id,
-                        'tenant_id'  => self::TENANT_ID,
-                        'action'     => 'Deal created via LGU IDS import',
-                        'type'       => 'import',
-                        'category'   => 'import',
-                        'actor_name' => $executorRole === 'reseller' ? ($resellerName ?? 'Referrer') : 'Admin (Import)',
-                        'actor_role' => $executorRole,
-                        'new_values' => [
-                            'deal_name'   => $dealName,
-                            'stage'       => $stage,
-                            'deal_value'  => $dealValue,
-                            'batch_id'    => $batch->id,
-                            'file'        => $batch->file_name,
-                        ],
-                        'date'       => now()->toDateString(),
-                    ]);
 
-                    // Notify referrer about their new deal
+                    // Record success immediately — secondary ops below must not roll this back
+                    $row->update(['created_deal_id' => $newLead->id]);
+                    $created++;
+
+                    // Secondary: audit history (non-critical)
+                    try {
+                        LeadHistory::create([
+                            'lead_id'    => $newLead->id,
+                            'tenant_id'  => self::TENANT_ID,
+                            'action'     => 'Deal created via LGU IDS import',
+                            'type'       => 'import',
+                            'category'   => 'import',
+                            'actor_name' => $executorRole === 'reseller' ? ($resellerName ?? 'Referrer') : 'Admin (Import)',
+                            'actor_role' => $executorRole,
+                            'new_values' => [
+                                'deal_name'   => $dealName,
+                                'stage'       => $stage,
+                                'deal_value'  => $dealValue,
+                                'batch_id'    => $batch->id,
+                                'file'        => $batch->file_name,
+                            ],
+                            'date'       => now()->toDateString(),
+                        ]);
+                    } catch (\Throwable) {}
+
+                    // Secondary: notify referrer (non-critical)
                     if ($reseller) {
                         try {
                             $this->notifications->dispatchToReseller(
@@ -762,13 +783,14 @@ class LguIdsImportService
                         } catch (\Throwable) {}
                     }
 
-                    $this->snapshots->recordCreated(
-                        batchId: $batch->id, tenantId: self::TENANT_ID,
-                        entityType: 'lead', entityId: $newLead->id,
-                        entityData: $newLead->toArray(), batchRowId: $row->id, row: $row,
-                    );
-                    $row->update(['created_deal_id' => $newLead->id]);
-                    $created++;
+                    // Secondary: snapshot (non-critical)
+                    try {
+                        $this->snapshots->recordCreated(
+                            batchId: $batch->id, tenantId: self::TENANT_ID,
+                            entityType: 'lead', entityId: $newLead->id,
+                            entityData: $newLead->toArray(), batchRowId: $row->id, row: $row,
+                        );
+                    } catch (\Throwable) {}
                 }
             } catch (\Throwable $e) {
                 $row->update(['error_message' => $e->getMessage()]);
