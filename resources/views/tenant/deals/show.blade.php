@@ -383,18 +383,18 @@
                     <div class="grid grid-cols-3 gap-3">
                         <div class="bg-white rounded-xl p-3 text-center shadow-sm">
                             <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Contract Value</p>
-                            <p class="text-base font-bold text-[#1E1B4B] tabular-nums" x-text="fmt(previewContract())"></p>
+                            <p class="text-base font-bold tabular-nums" style="color:#1E1B4B" x-text="fmt(previewContract())"></p>
                             <p class="text-xs text-gray-400 mt-0.5">base + margin</p>
                         </div>
                         <div class="bg-white rounded-xl p-3 text-center shadow-sm">
-                            <p class="text-xs text-blue-600 uppercase tracking-wide mb-1">Company Share</p>
-                            <p class="text-base font-bold text-blue-700 tabular-nums" x-text="fmt(previewCompanyShare())"></p>
-                            <p class="text-xs text-blue-400 mt-0.5">30% of margin</p>
+                            <p class="text-xs uppercase tracking-wide mb-1" style="color:#1d4ed8">Company Share</p>
+                            <p class="text-base font-bold tabular-nums" style="color:#1d4ed8" x-text="fmt(previewCompanyShare())"></p>
+                            <p class="text-xs mt-0.5" style="color:#60a5fa">30% of margin</p>
                         </div>
                         <div class="bg-white rounded-xl p-3 text-center shadow-sm">
-                            <p class="text-xs text-emerald-600 uppercase tracking-wide mb-1">Commission Pool</p>
-                            <p class="text-base font-bold text-emerald-700 tabular-nums" x-text="fmt(previewCommPool())"></p>
-                            <p class="text-xs text-emerald-400 mt-0.5">70% of margin</p>
+                            <p class="text-xs uppercase tracking-wide mb-1" style="color:#059669">Commission Pool</p>
+                            <p class="text-base font-bold tabular-nums" style="color:#059669" x-text="fmt(previewCommPool())"></p>
+                            <p class="text-xs mt-0.5" style="color:#34d399">70% of margin</p>
                         </div>
                     </div>
 
