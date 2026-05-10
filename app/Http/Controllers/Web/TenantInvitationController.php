@@ -109,34 +109,29 @@ class TenantInvitationController extends Controller
         $invitation->accepted_at = now();
         $invitation->save();
 
-        $this->reminderService->suppress($invitation, 'accepted');
+        try { $this->reminderService->suppress($invitation, 'accepted'); } catch (\Throwable) {}
 
         // Email the inviter (if they exist and are different from acceptee)
-        $inviter = $invitation->invitedBy;
-        if ($inviter && $inviter->id !== $user->id) {
-            try {
+        try {
+            $inviter = $invitation->invitedBy;
+            if ($inviter && $inviter->id !== $user->id) {
                 Mail::send(new TenantInvitationAcceptedMail($invitation, $inviter, $user));
-            } catch (\Throwable) {
-                // silent
             }
-        }
+        } catch (\Throwable) {}
 
-        // Notify tenant admins
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:    $invitation->tenant_id,
-            category:    'team',
-            priority:    'normal',
-            title:       'Invitation Accepted',
-            body:        "{$user->first_name} {$user->last_name} ({$email}) joined as " . ucfirst($invitation->role) . ".",
-            actionUrl:   route('tenant.users', $invitation->tenant_id),
-            actionLabel: 'View Users',
-            dedupeSuffix: "accepted:{$invitation->id}",
-            metadata:    [
-                'invitation_id' => $invitation->id,
-                'user_id'       => $user->id,
-                'role'          => $invitation->role,
-            ],
-        );
+        // Notify tenant admins (non-critical)
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:    $invitation->tenant_id,
+                category:    'info',
+                priority:    'normal',
+                title:       'Invitation Accepted',
+                body:        "{$user->first_name} {$user->last_name} ({$email}) joined as " . ucfirst($invitation->role) . ".",
+                actionUrl:   route('tenant.users', $invitation->tenant_id),
+                actionLabel: 'View Users',
+                dedupeSuffix: "accepted:{$invitation->id}",
+            );
+        } catch (\Throwable) {}
 
         // Log the user in
         Auth::guard('tenant')->login($user);
@@ -158,6 +153,8 @@ class TenantInvitationController extends Controller
         }
 
         return redirect()->route('tenant.dashboard', $invitation->tenant_id)
-            ->with('success', "Welcome to {$tenantName}! You've joined as {$roleLabel}. R Bunny will guide you through your first steps.");
+            ->with('welcome_tenant', $tenantName)
+            ->with('welcome_role',   $roleLabel)
+            ->with('welcome_name',   $user->first_name);
     }
 }

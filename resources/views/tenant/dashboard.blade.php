@@ -1355,4 +1355,33 @@ function rbAccessExtendedPopup(notifId) {
 </script>
 @endif
 
+@if(session('welcome_tenant'))
+{{-- Welcome modal shown once after accepting an invitation --}}
+<div id="rb-welcome-modal"
+     style="display:flex;position:fixed;inset:0;background:rgba(15,15,35,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:white;border-radius:24px;padding:40px 36px;max-width:420px;width:100%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.25)">
+        {{-- Animated logo/icon --}}
+        <div style="width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#EDE9FE,#D1FAE5);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+            <svg style="width:36px;height:36px;color:#7c3aed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10B981;margin-bottom:8px">You're in!</p>
+        <h2 style="font-size:22px;font-weight:800;color:#1E1B4B;margin-bottom:6px">
+            Welcome, {{ session('welcome_name') }}!
+        </h2>
+        <p style="font-size:15px;color:#7c3aed;font-weight:600;margin-bottom:10px">
+            {{ session('welcome_tenant') }}
+        </p>
+        <p style="font-size:13px;color:#9ca3af;line-height:1.65;margin-bottom:28px">
+            You've joined as <strong style="color:#374151">{{ session('welcome_role') }}</strong>. Your dashboard is ready — explore deals, contacts, and more.
+        </p>
+        <button onclick="document.getElementById('rb-welcome-modal').style.display='none'"
+                style="width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#5b4cdb);color:white;border:none;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,0.3)">
+            Go to My Dashboard →
+        </button>
+    </div>
+</div>
+@endif
+
 @endsection

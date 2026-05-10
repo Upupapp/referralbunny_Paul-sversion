@@ -293,9 +293,35 @@
     </div>
 </div>
 
+{{-- Full-page loading overlay --}}
+<div id="rb-invite-loading"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(145deg,#1E1347 0%,#2D1B69 55%,#1a1040 100%);align-items:center;justify-content:center">
+    <div style="background:white;border-radius:24px;padding:40px 36px;max-width:360px;width:90%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.5)">
+        <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#EDE9FE,#D1FAE5);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+            <svg style="width:30px;height:30px;color:#7c3aed;animation:spin 1s linear infinite" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7c3aed;margin-bottom:8px">Setting up your workspace</p>
+        <p style="font-size:17px;font-weight:700;color:#111827;margin-bottom:8px">Almost there…</p>
+        <p style="font-size:13px;color:#9ca3af;line-height:1.6;margin:0">Creating your account and adding you to the workspace.</p>
+    </div>
+</div>
+
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+
+<script>
+// Show full-page loading overlay on form submit
+document.querySelectorAll('form').forEach(function(form) {
+    form.addEventListener('submit', function() {
+        var overlay = document.getElementById('rb-invite-loading');
+        if (overlay) overlay.style.display = 'flex';
+    });
+});
+</script>
 
 </body>
 </html>
