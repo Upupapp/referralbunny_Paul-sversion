@@ -126,6 +126,23 @@ class LguIdsImportController extends Controller
         $grouped = $rows->groupBy('validation_status');
         $summary = $rows->groupBy('validation_status')->map->count();
 
+        // Heal batches stuck in 'previewing': rows exist but status was never
+        // updated to 'previewed' because the old code was missing DB columns.
+        // Now that the migration has run, advance the status so execute() works.
+        if ($batch->status === 'previewing' && $rows->count() > 0) {
+            $counts = $grouped->map->count();
+            $batch->update([
+                'status'                => 'previewed',
+                'successful_rows'       => $counts->get('ready', 0),
+                'failed_rows'           => $counts->get('failed', 0) + $counts->get('blocked', 0),
+                'duplicate_rows'        => $counts->get('duplicate', 0),
+                'unknown_referrer_rows' => $counts->get('unknown_referrer', 0),
+                'pricing_issue_rows'    => $counts->get('pricing_issue', 0),
+                'blocked_rows'          => $counts->get('blocked', 0),
+            ]);
+            $batch->refresh();
+        }
+
         return view('tenant.imports.lgu_ids.preview', compact('tenant', 'batch', 'rows', 'grouped', 'summary'));
     }
 
