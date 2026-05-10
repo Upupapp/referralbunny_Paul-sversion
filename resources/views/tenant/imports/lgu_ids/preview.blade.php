@@ -80,7 +80,7 @@
                 <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
                    class="btn-secondary text-sm">Cancel</a>
                 <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST" id="confirm-import-form"
-                      x-data="{ importing: false }" @submit="importing = true">
+                      x-data="{ importing: false }" @submit="importing = true; showImportModal()">
                     @csrf
                     <button type="submit"
                             :disabled="unresolvedDuplicates > 0 || importing"
@@ -263,7 +263,7 @@
                         {{-- Display % --}}
                         <td class="tabular-nums text-sm">
                             @if(isset($computed['display_pct']))
-                                <span class="font-medium text-[#1E1B4B]">{{ $computed['display_pct'] }}%</span>
+                                <span class="font-medium text-[#1E1B4B]">{{ $computed['display_pct'] }}</span>
                                 @if(isset($computed['pricing_tier_matched']) && $computed['pricing_tier_matched'])
                                     <span class="ml-1 text-emerald-600" title="Standard Tier">
                                         <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -423,7 +423,7 @@
             <div class="flex flex-col sm:flex-row gap-2 shrink-0">
                 {{-- Import Approved Rows Only --}}
                 <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST"
-                      x-data="{ importing: false }" @submit="importing = true">
+                      x-data="{ importing: false }" @submit="importing = true; showImportModal()">
                     @csrf
                     <input type="hidden" name="approved_only" value="1">
                     <button type="submit" :disabled="importing"
@@ -444,6 +444,26 @@
                     </svg>
                     Import Now
                 </button>
+
+                {{-- Import Loading Modal --}}
+                <div id="rb-import-modal"
+                     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px"
+                     aria-live="polite">
+                    <div style="background:white;border-radius:20px;padding:36px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+                        <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#EDE9FE,#D1FAE5);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+                            <svg style="width:28px;height:28px;color:#7B61FF" class="animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                        </div>
+                        <h2 style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px">Importing your file…</h2>
+                        <p style="font-size:13px;color:#9ca3af;line-height:1.6;margin-bottom:20px">
+                            We're processing your import in the background.<br>
+                            You'll receive a notification when it's done.
+                        </p>
+                        <p style="font-size:11px;color:#c4b5fd;font-weight:600;letter-spacing:.04em">DO NOT CLOSE OR REFRESH THIS PAGE</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -452,6 +472,11 @@
 
 @push('scripts')
 <script>
+function showImportModal() {
+    const m = document.getElementById('rb-import-modal');
+    if (m) { m.style.display = 'flex'; }
+}
+
 function lguImportPreview() {
     return {
         activeTab: 'all',

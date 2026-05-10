@@ -821,24 +821,56 @@ class LguIdsImportService
             ],
         ]);
 
-        $this->snapshots->markBatchEligible($batch->id);
+        try { $this->snapshots->markBatchEligible($batch->id); } catch (\Throwable) {}
 
-        // Notify tenant admins
+        // Notify the importer and executor about the result
         $titleMap = [
             'completed'                => 'Import Complete',
             'completed_with_warnings'  => 'Import Complete with Warnings',
             'failed'                   => 'Import Failed',
         ];
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:     self::TENANT_ID,
-            category:     'import_' . $status,
-            priority:     $failed > 0 ? 'high' : 'normal',
-            title:        $titleMap[$status] ?? 'Import Complete',
-            body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
-            actionUrl:    "/tenant/" . self::TENANT_ID . "/imports/lgu-ids/{$batch->id}",
-            actionLabel:  'View Report',
-            dedupeSuffix: $batch->id,
-        );
+        $notifyTitle  = $titleMap[$status] ?? 'Import Complete';
+        $notifyBody   = "\"{$batch->file_name}\" — Created: $created, Updated: $updated, Skipped: $skipped" . ($failed > 0 ? ", Failed: $failed." : '.');
+        $notifyPrio   = $failed > 0 ? 'high' : 'normal';
+        $reportUrl    = "/tenant/" . self::TENANT_ID . "/imports/lgu-ids/{$batch->id}/report";
+        $notifiedIds  = [];
+
+        // Notify the user who originally uploaded the file
+        if ($batch->imported_by_role === 'tenant_admin' && $batch->imported_by_id) {
+            try {
+                $this->notifications->dispatch(
+                    category:         'import_' . $status,
+                    priority:         $notifyPrio,
+                    title:            $notifyTitle,
+                    body:             $notifyBody,
+                    notifiableType:   'tenant_user',
+                    notifiableId:     (string) $batch->imported_by_id,
+                    tenantId:         self::TENANT_ID,
+                    actionUrl:        $reportUrl,
+                    actionLabel:      'View Report',
+                    deduplicationKey: 'import:' . $batch->id . ':uploader',
+                );
+                $notifiedIds[] = $batch->imported_by_id;
+            } catch (\Throwable) {}
+        }
+
+        // Notify the executor if different from the uploader
+        if ($executorId && $executorRole === 'tenant_admin' && !in_array($executorId, $notifiedIds)) {
+            try {
+                $this->notifications->dispatch(
+                    category:         'import_' . $status,
+                    priority:         $notifyPrio,
+                    title:            $notifyTitle,
+                    body:             $notifyBody,
+                    notifiableType:   'tenant_user',
+                    notifiableId:     (string) $executorId,
+                    tenantId:         self::TENANT_ID,
+                    actionUrl:        $reportUrl,
+                    actionLabel:      'View Report',
+                    deduplicationKey: 'import:' . $batch->id . ':executor',
+                );
+            } catch (\Throwable) {}
+        }
 
         return compact('created', 'updated', 'skipped', 'failed');
     }
