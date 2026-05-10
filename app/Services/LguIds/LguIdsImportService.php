@@ -323,12 +323,11 @@ class LguIdsImportService
             if ($org) {
                 $orgId = $org->id;
             } else {
-                // Fuzzy match — find similar city names in same province
+                // Fuzzy match using ILIKE — pg_trgm similarity() not available on Supabase
                 $suggestions = DB::table('organizations')
                     ->where('tenant_id', self::TENANT_ID)
                     ->whereRaw("LOWER(address) = ?", [strtolower($province)])
-                    ->whereRaw("similarity(LOWER(city), ?) > 0.3", [strtolower($cityName)])
-                    ->orderByRaw("similarity(LOWER(city), ?) DESC", [strtolower($cityName)])
+                    ->whereRaw("LOWER(city) LIKE ?", ['%' . strtolower($cityName) . '%'])
                     ->limit(3)
                     ->get(['id', 'city', 'address']);
                 $suggestOrgs = $suggestions->toArray();
