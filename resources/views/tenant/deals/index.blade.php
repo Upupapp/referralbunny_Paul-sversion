@@ -41,7 +41,9 @@
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
      @open-add-deal.window="showAdd = true; resetForm()"
-     @open-deal-delete.window="showDeleteInstructions = true; selectMode = false; selectedDeals = []">
+     @open-deal-delete.window="showDeleteInstructions = true; selectMode = false; selectedDeals = []"
+     @rb-del-cancel.window="selectMode = false; selectedDeals = []"
+     @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true">
 
     {{-- Filter bar --}}
     <div class="card space-y-3">
@@ -681,28 +683,7 @@
         </div>
     </div>
 
-    {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
-    <div :style="selectMode ? 'display:flex' : 'display:none'"
-         class="fixed bottom-6 left-0 right-0 z-[9000] justify-center px-4 pointer-events-none">
-        <div class="flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border border-gray-200 pointer-events-auto"
-             style="background:white;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
-            <div class="flex-1">
-                <p class="text-sm font-semibold text-[#1E1B4B]"
-                   x-text="selectedDeals.length === 0 ? 'Tap a deal to select it' : selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '') + ' selected'"></p>
-                <p class="text-xs text-gray-400">Tap again to deselect</p>
-            </div>
-            <button @click="selectMode=false; selectedDeals=[]"
-                    class="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
-                Cancel
-            </button>
-            <button @click="if(selectedDeals.length > 0) showDeleteConfirm = true"
-                    :class="selectedDeals.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                <span x-text="selectedDeals.length > 0 ? 'Delete (' + selectedDeals.length + ')' : 'Delete'"></span>
-            </button>
-        </div>
-    </div>
+    {{-- Floating Delete Bar is rendered outside Alpine — see below --}}
 
     {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
     <div :style="showDeleteConfirm ? 'display:flex' : 'display:none'"
@@ -774,6 +755,13 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         ],
 
         async init() {
+            // Drive the standalone floating delete bar via $watch
+            this.$watch('selectMode', (val) => {
+                const bar = document.getElementById('rb-del-bar');
+                if (bar) bar.style.display = val ? 'flex' : 'none';
+                if (!val) rbDelBarCount(0);
+            });
+
             // Pre-filter from URL params (e.g. from expiry alert notifications)
             const urlParams    = new URLSearchParams(window.location.search);
             const preStatus    = urlParams.get('status');
@@ -918,6 +906,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             const idx = this.selectedDeals.indexOf(id);
             if (idx === -1) this.selectedDeals.push(id);
             else            this.selectedDeals.splice(idx, 1);
+            rbDelBarCount(this.selectedDeals.length);
         },
 
         toggleSelectAll() {
@@ -1112,7 +1101,45 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
     }
 }
+
+// ── Standalone Delete Bar JS (completely outside Alpine) ─────────────────────
+function rbDelBarCount(n) {
+    const label = document.getElementById('rb-del-label');
+    const btn   = document.getElementById('rb-del-btn');
+    if (label) label.textContent = n === 0
+        ? 'Tap a deal row to select it'
+        : n + ' deal' + (n !== 1 ? 's' : '') + ' selected';
+    if (btn) {
+        btn.textContent = n > 0 ? 'Delete (' + n + ')' : 'Delete';
+        btn.style.background = n > 0 ? '#dc2626' : '#9ca3af';
+        btn.style.cursor     = n > 0 ? 'pointer'  : 'not-allowed';
+    }
+}
+window.rbDelBarCount = rbDelBarCount;
 </script>
+
+{{-- ── Standalone Floating Delete Bar (pure HTML, no Alpine) ─────────────── --}}
+<div id="rb-del-bar"
+     style="display:none;position:fixed;bottom:24px;left:0;right:0;z-index:9001;justify-content:center;padding:0 16px;pointer-events:none">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:18px;background:white;box-shadow:0 8px 40px rgba(0,0,0,0.2);border:1.5px solid #e5e7eb;pointer-events:auto">
+        <div style="flex:1;min-width:0">
+            <p id="rb-del-label" style="font-size:14px;font-weight:600;color:#1E1B4B;margin:0;white-space:nowrap">Tap a deal row to select it</p>
+            <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Tap again to deselect · Cancel to exit</p>
+        </div>
+        <button onclick="window.dispatchEvent(new CustomEvent('rb-del-cancel'))"
+                style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:10px;white-space:nowrap;transition:background .15s"
+                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            Cancel
+        </button>
+        <button id="rb-del-btn"
+                onclick="window.dispatchEvent(new CustomEvent('rb-del-execute'))"
+                style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:#9ca3af;color:white;border:none;font-size:13px;font-weight:700;cursor:not-allowed;white-space:nowrap;transition:background .15s">
+            <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete
+        </button>
+    </div>
+</div>
+
 @endsection
 
 
