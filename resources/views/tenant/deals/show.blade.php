@@ -1446,126 +1446,46 @@
     </div>
     </template>
 
-    {{-- Move Stage Modal — plain JS open/close via rbOpenMoveStage()/rbCloseMoveStage() --}}
+    {{-- Move Stage Modal — 100% plain JS, zero Alpine dependency --}}
     <div id="rb-move-stage-modal"
          style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
-         onclick="if(event.target===this) rbCloseMoveStage()"
-         role="dialog" aria-modal="true" aria-label="Move Stage">
-        <div style="background:white;border-radius:20px;width:100%;max-width:400px;box-shadow:0 25px 60px rgba(0,0,0,0.18);max-height:90vh;overflow-y:auto"
+         onclick="if(event.target===this) rbCloseMoveStage()">
+        <div style="background:white;border-radius:20px;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,0.18);max-height:90vh;overflow-y:auto"
              onclick="event.stopPropagation()">
 
-            {{-- Modal header --}}
+            {{-- Header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between">
                 <div style="display:flex;align-items:center;gap:12px">
                     <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                        <svg style="width:16px;height:16px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
+                        <svg style="width:16px;height:16px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </div>
                     <div>
-                        <h3 style="font-weight:700;color:#1E1B4B;font-size:15px">Move Stage</h3>
-                        <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="lead?.name"></p>
+                        <p style="font-weight:700;color:#1E1B4B;font-size:15px;margin:0">Move Stage</p>
+                        <p id="rb-modal-deal-name" style="font-size:11px;color:#9ca3af;margin:2px 0 0"></p>
                     </div>
                 </div>
-                <button onclick="rbCloseMoveStage()"
-                        style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:none;transition:all .15s">
-                    <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
+                <button onclick="rbCloseMoveStage()" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:none">
+                    <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            {{-- Current stage indicator --}}
-            <div style="padding:12px 24px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span style="font-size:12px;color:#9ca3af">Current:</span>
-                <span style="font-size:12px;font-weight:700;color:#7B61FF;background:#ede9fe;padding:2px 10px;border-radius:9999px"
-                      x-text="stageLabel(lead?.stage)"></span>
-                {{-- Commission locked banner --}}
-                <template x-if="lead?.commission_status === 'locked'">
-                    <span style="font-size:11px;font-weight:600;background:#fef3c7;color:#d97706;padding:2px 10px;border-radius:9999px;display:flex;align-items:center;gap:4px">
-                        <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Commission locked — only Paid move allowed
-                    </span>
-                </template>
-                <template x-if="lead?.stage === 'paid'">
-                    <span style="font-size:11px;font-weight:600;background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:9999px">
-                        Final stage — no further moves
-                    </span>
-                </template>
-            </div>
+            {{-- Status bar: current → target --}}
+            <div id="rb-stage-status" style="padding:14px 24px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#9ca3af"></div>
 
-            {{-- Stage selector list --}}
-            <div style="padding:12px 24px;display:flex;flex-direction:column;gap:6px">
-                <template x-for="s in allStages" :key="s.key">
-                    <button @click="moveToStage(s.key)"
-                            :disabled="s.key === lead?.stage || saving || isStageDone(s.key) || lead?.stage === 'paid' || (lead?.commission_status === 'locked' && s.key !== 'paid')"
-                            class="w-full text-left transition-all"
-                            style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:1.5px solid #f3f4f6;cursor:pointer;background:white"
-                            :style="s.key === lead?.stage
-                                ? 'opacity:0.6;cursor:not-allowed;background:#f9fafb'
-                                : isStageDone(s.key)
-                                    ? 'border-color:#86efac;background:#f0fdf4;opacity:0.7;cursor:not-allowed'
-                                    : (lead?.commission_status === 'locked' && s.key !== 'paid')
-                                        ? 'opacity:0.4;cursor:not-allowed;border-color:#f3f4f6;background:#f9fafb'
-                                        : isStageNext(s.key)
-                                            ? 'border-color:#c4b5fd;background:#f5f3ff'
-                                            : 'border-color:#f3f4f6;background:white'"
-                            @mouseenter="if(s.key !== lead?.stage && !saving) $event.currentTarget.style.borderColor='#c4b5fd'"
-                            @mouseleave="if(s.key !== lead?.stage) $event.currentTarget.style.borderColor = isStageDone(s.key) ? '#86efac' : isStageNext(s.key) ? '#c4b5fd' : '#f3f4f6'">
+            {{-- Stage list — rendered by rbRenderStageList() --}}
+            <div id="rb-stage-list" style="padding:12px 24px;display:flex;flex-direction:column;gap:6px"></div>
 
-                        {{-- Stage icon dot --}}
-                        <div style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                             :style="s.key === lead?.stage ? 'background:#f3f4f6;color:#9ca3af'
-                                 : isStageDone(s.key) ? 'background:#dcfce7;color:#16a34a'
-                                 : isStageNext(s.key) ? 'background:#ede9fe;color:#7B61FF'
-                                 : 'background:#f3f4f6;color:#9ca3af'">
-                            <template x-if="isStageDone(s.key)">
-                                <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </template>
-                            <template x-if="!isStageDone(s.key)">
-                                <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                     x-html="stageIconHtml(s)"></svg>
-                            </template>
-                        </div>
-
-                        {{-- Label + hint --}}
-                        <div class="flex-1 min-w-0">
-                            <span style="font-size:13px;font-weight:600;color:#1E1B4B;display:block" x-text="s.label"></span>
-                            <span x-show="s.key === 'signed'" style="font-size:11px;color:#d97706;display:block">
-                                Locks commission at <span x-text="fmt(commPool())"></span>
-                            </span>
-                            <span x-show="s.key === 'paid'" style="font-size:11px;color:#16a34a;display:block">
-                                Marks <span x-text="fmt(commPool())"></span> as paid
-                            </span>
-                        </div>
-
-                        {{-- Current / spinner --}}
-                        <template x-if="s.key === lead?.stage">
-                            <span style="font-size:10px;font-weight:600;color:#9ca3af;flex-shrink:0">Current</span>
-                        </template>
-                        <template x-if="isStageNext(s.key) && !saving">
-                            <svg style="width:14px;height:14px;color:#7B61FF;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </template>
-                        <svg x-show="saving && s.key !== lead?.stage"
-                             style="width:14px;height:14px;flex-shrink:0;color:#7B61FF"
-                             class="animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                    </button>
-                </template>
-            </div>
-
-            {{-- Optional note + footer --}}
-            <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:10px">
-                <textarea x-model="moveStageNote" rows="2"
+            {{-- Note + footer --}}
+            <div style="padding:0 24px 20px;display:flex;flex-direction:column;gap:8px">
+                <textarea id="rb-stage-note" rows="2"
                           style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;color:#1E1B4B;background:white;outline:none;resize:none;box-sizing:border-box;font-family:inherit"
                           placeholder="Optional note — reason for stage movement..."></textarea>
-                <p style="font-size:11px;color:#9ca3af">Note is saved to the activity history.</p>
+                <p style="font-size:11px;color:#9ca3af;margin:0">Note is saved to the activity history.</p>
+                <button id="rb-move-confirm-btn"
+                        onclick="rbConfirmMove()"
+                        style="display:none;padding:10px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
+                    Confirm Move
+                </button>
             </div>
         </div>
     </div>
@@ -1605,15 +1525,174 @@
 </div>
 
 <script>
-// ── Move Stage modal: plain JS open/close — no Alpine reactivity dependency ──
+// ── Move Stage: 100% plain JS, zero Alpine dependency ──────────────────────
+var RB_STAGES = [
+    { key: 'introduction',  label: 'Introduction'  },
+    { key: 'presentation',  label: 'Presentation'  },
+    { key: 'contract_sent', label: 'Contract Sent' },
+    { key: 'signed',        label: 'Signed'        },
+    { key: 'paid',          label: 'Paid'          },
+];
+var rbSelectedStage = null;
+
+function rbGetLead() {
+    return window.rbLead || null;
+}
+
 function rbOpenMoveStage() {
     var m = document.getElementById('rb-move-stage-modal');
-    if (m) { m.style.display = 'flex'; }
+    if (!m) return;
+    rbSelectedStage = null;
+    rbRenderStageList();
+    m.style.display = 'flex';
 }
+
 function rbCloseMoveStage() {
     var m = document.getElementById('rb-move-stage-modal');
-    if (m) { m.style.display = 'none'; }
+    if (m) m.style.display = 'none';
+    rbSelectedStage = null;
+    var note = document.getElementById('rb-stage-note');
+    if (note) note.value = '';
+    var btn = document.getElementById('rb-move-confirm-btn');
+    if (btn) btn.style.display = 'none';
 }
+
+function rbRenderStageList() {
+    var lead    = rbGetLead();
+    var current = lead ? lead.stage : '';
+    var curIdx  = RB_STAGES.findIndex(function(s) { return s.key === current; });
+    var locked  = lead && lead.commission_status === 'locked';
+
+    // Deal name
+    var nameEl = document.getElementById('rb-modal-deal-name');
+    if (nameEl && lead) nameEl.textContent = lead.name || '';
+
+    // Status bar: show current stage
+    var statusEl = document.getElementById('rb-stage-status');
+    if (statusEl) {
+        var curLabel = curIdx >= 0 ? RB_STAGES[curIdx].label : current;
+        statusEl.innerHTML = '<span>Current stage:</span>'
+            + '<span style="font-weight:700;color:#7B61FF;background:#ede9fe;padding:2px 10px;border-radius:9999px">' + curLabel + '</span>'
+            + (locked ? '<span style="font-weight:600;color:#d97706;background:#fef3c7;padding:2px 10px;border-radius:9999px">⚠ Commission locked</span>' : '')
+            + (current === 'paid' ? '<span style="font-weight:600;color:#15803d;background:#dcfce7;padding:2px 10px;border-radius:9999px">Final stage reached</span>' : '');
+    }
+
+    // Stage list
+    var list = document.getElementById('rb-stage-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    RB_STAGES.forEach(function(s, idx) {
+        var isDone    = idx < curIdx;
+        var isCurrent = s.key === current;
+        var isNext    = idx === curIdx + 1;
+        var isBlocked = locked && s.key !== 'paid';
+        var isDisabled = isDone || isCurrent || isBlocked || current === 'paid';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+
+        // Left icon box
+        var icon = document.createElement('div');
+        icon.style.cssText = 'width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px';
+
+        // Label area
+        var labelWrap = document.createElement('div');
+        labelWrap.style.cssText = 'flex:1;min-width:0;text-align:left';
+        var labelEl = document.createElement('span');
+        labelEl.style.cssText = 'font-size:13px;font-weight:600;display:block';
+        labelEl.textContent = s.label;
+
+        var hint = document.createElement('span');
+        hint.style.cssText = 'font-size:11px;display:block;margin-top:1px';
+
+        // Right badge
+        var badge = document.createElement('span');
+        badge.style.cssText = 'font-size:10px;font-weight:700;flex-shrink:0';
+
+        if (isDone) {
+            btn.style.cssText   = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1.5px solid #86efac;background:#f0fdf4;width:100%;cursor:not-allowed;opacity:0.7';
+            icon.style.background = '#dcfce7'; icon.style.color = '#16a34a'; icon.textContent = '✓';
+            labelEl.style.color = '#15803d';
+            badge.textContent = 'Done'; badge.style.color = '#16a34a';
+        } else if (isCurrent) {
+            btn.style.cssText   = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1.5px solid #c4b5fd;background:#f5f3ff;width:100%;cursor:default;opacity:0.8';
+            icon.style.background = '#ede9fe'; icon.style.color = '#7B61FF'; icon.textContent = '▸';
+            labelEl.style.color = '#7B61FF';
+            badge.textContent = 'Current'; badge.style.color = '#9ca3af';
+        } else if (isDisabled) {
+            btn.style.cssText   = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1.5px solid #f3f4f6;background:#f9fafb;width:100%;cursor:not-allowed;opacity:0.4';
+            icon.style.background = '#f3f4f6'; icon.style.color = '#9ca3af'; icon.textContent = '○';
+            labelEl.style.color = '#9ca3af';
+        } else {
+            // Clickable
+            var borderCol = isNext ? '#c4b5fd' : '#e5e7eb';
+            var bgCol     = isNext ? '#f5f3ff' : 'white';
+            btn.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1.5px solid ' + borderCol + ';background:' + bgCol + ';width:100%;cursor:pointer;transition:all .12s';
+            btn.onmouseover = function() { this.style.borderColor='#7B61FF'; this.style.background='#f5f3ff'; };
+            btn.onmouseout  = function() { this.style.borderColor=borderCol; this.style.background=bgCol; };
+
+            icon.style.background = isNext ? '#ede9fe' : '#f9fafb';
+            icon.style.color      = isNext ? '#7B61FF' : '#9ca3af';
+            icon.textContent      = isNext ? '→' : '○';
+            labelEl.style.color   = isNext ? '#7B61FF' : '#374151';
+
+            if (s.key === 'signed') { hint.textContent = 'Locks commission pool'; hint.style.color = '#d97706'; }
+            if (s.key === 'paid')   { hint.textContent = 'Marks commission as paid'; hint.style.color = '#16a34a'; }
+            if (isNext) { badge.textContent = 'Next →'; badge.style.color = '#7B61FF'; }
+
+            (function(key) {
+                btn.onclick = function() { rbSelectStage(key); };
+            })(s.key);
+        }
+
+        btn.disabled = isDisabled;
+        labelWrap.appendChild(labelEl);
+        if (hint.textContent) labelWrap.appendChild(hint);
+        btn.appendChild(icon);
+        btn.appendChild(labelWrap);
+        btn.appendChild(badge);
+        btn.id = 'rb-stage-btn-' + s.key;
+        list.appendChild(btn);
+    });
+}
+
+function rbSelectStage(key) {
+    rbSelectedStage = key;
+    // Highlight selected, de-highlight others
+    RB_STAGES.forEach(function(s) {
+        var btn = document.getElementById('rb-stage-btn-' + s.key);
+        if (!btn || btn.disabled) return;
+        if (s.key === key) {
+            btn.style.borderColor = '#7B61FF';
+            btn.style.background  = '#ede9fe';
+        }
+    });
+    // Show status: from → to
+    var lead   = rbGetLead();
+    var curIdx = RB_STAGES.findIndex(function(s) { return s.key === (lead ? lead.stage : ''); });
+    var tgtIdx = RB_STAGES.findIndex(function(s) { return s.key === key; });
+    var statusEl = document.getElementById('rb-stage-status');
+    if (statusEl) {
+        statusEl.innerHTML = '<span>Moving:</span>'
+            + '<span style="font-weight:700;color:#7B61FF;background:#ede9fe;padding:2px 10px;border-radius:9999px">'
+            + (curIdx >= 0 ? RB_STAGES[curIdx].label : '') + '</span>'
+            + '<span style="color:#374151">→</span>'
+            + '<span style="font-weight:700;color:#16a34a;background:#dcfce7;padding:2px 10px;border-radius:9999px">'
+            + RB_STAGES[tgtIdx].label + '</span>';
+    }
+    var btn = document.getElementById('rb-move-confirm-btn');
+    if (btn) { btn.style.display = 'block'; btn.textContent = 'Move to ' + RB_STAGES[tgtIdx].label; }
+}
+
+function rbConfirmMove() {
+    if (!rbSelectedStage || !window.rbDealRef) return;
+    var note = (document.getElementById('rb-stage-note') || {}).value || '';
+    var btn  = document.getElementById('rb-move-confirm-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Moving…'; }
+    window.rbDealRef.moveToStage(rbSelectedStage, note);
+}
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') rbCloseMoveStage();
 });
@@ -1953,13 +2032,15 @@ function dealDetail(leadId, tenantId, ssrLead) {
         ],
 
         async init() {
+            window.rbLead    = this.lead;   // plain JS reference for Move Stage modal
+            window.rbDealRef = this;         // allow rbConfirmMove() to call moveToStage()
             this.fetchContacts();
             if (this.lead) {
                 // SSR data already present â€" page is instantly visible.
                 // Refresh silently in background so any stale fields update.
                 fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' })
                     .then(r => r.ok ? r.json() : null)
-                    .then(d => { if (d) this.lead = d; })
+                    .then(d => { if (d) { this.lead = d; window.rbLead = d; } })
                     .catch(() => {});
             } else {
                 try {
@@ -2145,19 +2226,19 @@ function dealDetail(leadId, tenantId, ssrLead) {
             return m[s] || 'badge badge-gray';
         },
 
-        async moveToStage(stage) {
+        async moveToStage(stage, externalNote) {
             if (!stage || stage === this.lead?.stage) return;
-            // Client-side guards (mirrors API guards for instant feedback)
             if (this.lead?.stage === 'paid') {
-                this.$dispatch('show-toast', { type: 'error', message: 'This deal is at the final stage and cannot be advanced.' });
-                return;
+                this.$dispatch('show-toast', { type: 'error', message: 'This deal is at the final stage.' });
+                rbCloseMoveStage(); return;
             }
             if (this.lead?.commission_status === 'locked' && stage !== 'paid') {
-                this.$dispatch('show-toast', { type: 'error', message: 'Commission is locked. Only the Paid stage move is allowed.' });
-                return;
+                this.$dispatch('show-toast', { type: 'error', message: 'Commission locked — only Paid move allowed.' });
+                rbCloseMoveStage(); return;
             }
 
             this.saving = true;
+            const note = externalNote !== undefined ? externalNote : this.moveStageNote;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const res = await fetch(`/api/leads/${this.lead.id}/stage`, {
@@ -2169,20 +2250,22 @@ function dealDetail(leadId, tenantId, ssrLead) {
                         'X-CSRF-TOKEN': csrf,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
-                    body: JSON.stringify({ stage, note: this.moveStageNote }),
+                    body: JSON.stringify({ stage, note }),
                 });
                 const data = await res.json();
                 if (res.ok && data.id) {
                     this.lead = { ...this.lead, ...data, history: data.history, commission_splits: data.commission_splits };
+                    window.rbLead = this.lead; // keep plain JS ref in sync
                     rbCloseMoveStage();
                     this.moveStageNote = '';
                     const stageName = stage.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                     this.$dispatch('show-toast', { type: 'success', message: `Deal moved to ${stageName}.` });
-                    // Trigger activity history refresh
                     this.$dispatch('stage-updated');
                     window.dispatchEvent(new CustomEvent('finance-updated'));
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: data.error || data.message || 'Failed to move stage.' });
+                    var btn = document.getElementById('rb-move-confirm-btn');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Move'; }
                 }
             } catch {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
