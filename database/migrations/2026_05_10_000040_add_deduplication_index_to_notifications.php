@@ -20,16 +20,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Standard index for non-PostgreSQL compatibility; raw partial index below overrides on PG
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->index('deduplication_key', 'idx_notifications_dedup_key');
-        });
+        if (!Schema::hasTable('notifications') || !Schema::hasColumn('notifications', 'deduplication_key')) {
+            return;
+        }
+        try {
+            Schema::table('notifications', function (Blueprint $table) {
+                $table->index('deduplication_key', 'idx_notifications_dedup_key');
+            });
+        } catch (\Throwable) {
+            // Index already exists — skip
+        }
     }
 
     public function down(): void
     {
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->dropIndex('idx_notifications_dedup_key');
-        });
+        if (!Schema::hasTable('notifications') || !Schema::hasColumn('notifications', 'deduplication_key')) {
+            return;
+        }
+        try {
+            Schema::table('notifications', function (Blueprint $table) {
+                $table->dropIndex('idx_notifications_dedup_key');
+            });
+        } catch (\Throwable) {}
     }
 };

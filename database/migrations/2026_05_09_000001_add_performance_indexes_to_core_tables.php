@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -11,13 +12,25 @@ return new class extends Migration
     {
         if (!Schema::hasTable($table)) return;
 
-        $exists = DB::select(
-            "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
-            [$table, $name]
-        );
-        if (empty($exists)) {
-            $cols = implode(', ', $columns);
-            DB::statement("CREATE INDEX {$name} ON {$table} ({$cols})");
+        try {
+            $driver = DB::getDriverName();
+            if ($driver === 'pgsql') {
+                $exists = DB::select(
+                    "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
+                    [$table, $name]
+                );
+                if (empty($exists)) {
+                    $cols = implode(', ', $columns);
+                    DB::statement("CREATE INDEX {$name} ON {$table} ({$cols})");
+                }
+            } else {
+                // SQLite / MySQL — use Schema builder; catch if index already exists
+                Schema::table($table, function (Blueprint $table) use ($columns, $name) {
+                    $table->index($columns, $name);
+                });
+            }
+        } catch (\Throwable) {
+            // Index already exists or unsupported — skip silently
         }
     }
 

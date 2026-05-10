@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -15,53 +16,116 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // ── import_snapshots ─────────────────────────────────────────
-        Schema::table('import_snapshots', function (Blueprint $table) {
-            $table->uuid('import_batch_id')->nullable()->after('import_job_id');
-            $table->uuid('import_batch_row_id')->nullable()->after('import_batch_id');
-            $table->string('operation_type')->nullable()->after('action');  // created|updated|merged|overwritten
-            $table->jsonb('before_data')->nullable()->after('old_values_json');
-            $table->jsonb('after_data')->nullable()->after('new_values_json');
-            $table->jsonb('changed_fields')->nullable()->after('after_data');
-            $table->boolean('can_rollback')->default(true)->after('changed_fields');
-            $table->string('rollback_status')->default('pending')->after('can_rollback'); // pending|rolled_back|skipped|failed|conflict
-            $table->text('rollback_reason')->nullable()->after('rollback_status');
-            $table->timestamp('rolled_back_at')->nullable()->after('rollback_reason');
-            $table->timestamp('updated_at')->nullable()->after('rolled_back_at');
+        $isPgsql = DB::getDriverName() === 'pgsql';
 
-            $table->index('import_batch_id', 'idx_snapshots_batch');
-            $table->index('import_batch_row_id', 'idx_snapshots_batch_row');
-            $table->index(['entity_type', 'entity_id'], 'idx_snapshots_entity');
-        });
+        // ── import_snapshots ─────────────────────────────────────────
+        if (Schema::hasTable('import_snapshots')) {
+            Schema::table('import_snapshots', function (Blueprint $table) use ($isPgsql) {
+                if (!Schema::hasColumn('import_snapshots', 'import_batch_id')) {
+                    $table->uuid('import_batch_id')->nullable()->after('import_job_id');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'import_batch_row_id')) {
+                    $table->uuid('import_batch_row_id')->nullable()->after('import_batch_id');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'operation_type')) {
+                    $table->string('operation_type')->nullable()->after('action');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'before_data')) {
+                    $isPgsql ? $table->jsonb('before_data')->nullable()->after('old_values_json')
+                             : $table->json('before_data')->nullable()->after('old_values_json');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'after_data')) {
+                    $isPgsql ? $table->jsonb('after_data')->nullable()->after('new_values_json')
+                             : $table->json('after_data')->nullable()->after('new_values_json');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'changed_fields')) {
+                    $isPgsql ? $table->jsonb('changed_fields')->nullable()->after('after_data')
+                             : $table->json('changed_fields')->nullable()->after('after_data');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'can_rollback')) {
+                    $table->boolean('can_rollback')->default(true)->after('changed_fields');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'rollback_status')) {
+                    $table->string('rollback_status')->default('pending')->after('can_rollback');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'rollback_reason')) {
+                    $table->text('rollback_reason')->nullable()->after('rollback_status');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'rolled_back_at')) {
+                    $table->timestamp('rolled_back_at')->nullable()->after('rollback_reason');
+                }
+                if (!Schema::hasColumn('import_snapshots', 'updated_at')) {
+                    $table->timestamp('updated_at')->nullable()->after('rolled_back_at');
+                }
+                try { $table->index('import_batch_id', 'idx_snapshots_batch'); } catch (\Throwable) {}
+                try { $table->index('import_batch_row_id', 'idx_snapshots_batch_row'); } catch (\Throwable) {}
+                try { $table->index(['entity_type', 'entity_id'], 'idx_snapshots_entity'); } catch (\Throwable) {}
+            });
+        }
 
         // ── import_rollbacks ─────────────────────────────────────────
-        Schema::table('import_rollbacks', function (Blueprint $table) {
-            $table->uuid('import_batch_id')->nullable()->after('import_job_id');
-            $table->string('tenant_id')->nullable()->after('import_batch_id');
-            $table->string('requested_by_type')->nullable()->after('requested_by');  // tenant_admin|super_admin
-            $table->string('mode')->default('full_batch')->after('requested_by_type');
-            $table->jsonb('dry_run_summary')->nullable()->after('rollback_summary_json');
-            $table->jsonb('result_summary')->nullable()->after('dry_run_summary');
-            $table->jsonb('error_summary')->nullable()->after('result_summary');
-            $table->timestamp('started_at')->nullable()->after('completed_at');
-            $table->unsignedInteger('records_skipped')->default(0)->after('records_deleted');
-            $table->unsignedInteger('records_failed')->default(0)->after('records_skipped');
-            $table->unsignedInteger('records_conflict')->default(0)->after('records_failed');
-
-            $table->index('import_batch_id', 'idx_rollbacks_batch');
-        });
+        if (Schema::hasTable('import_rollbacks')) {
+            Schema::table('import_rollbacks', function (Blueprint $table) use ($isPgsql) {
+                if (!Schema::hasColumn('import_rollbacks', 'import_batch_id')) {
+                    $table->uuid('import_batch_id')->nullable()->after('import_job_id');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'tenant_id')) {
+                    $table->string('tenant_id')->nullable()->after('import_batch_id');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'requested_by_type')) {
+                    $table->string('requested_by_type')->nullable()->after('requested_by');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'mode')) {
+                    $table->string('mode')->default('full_batch')->after('requested_by_type');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'dry_run_summary')) {
+                    $isPgsql ? $table->jsonb('dry_run_summary')->nullable()->after('rollback_summary_json')
+                             : $table->json('dry_run_summary')->nullable()->after('rollback_summary_json');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'result_summary')) {
+                    $isPgsql ? $table->jsonb('result_summary')->nullable()->after('dry_run_summary')
+                             : $table->json('result_summary')->nullable()->after('dry_run_summary');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'error_summary')) {
+                    $isPgsql ? $table->jsonb('error_summary')->nullable()->after('result_summary')
+                             : $table->json('error_summary')->nullable()->after('result_summary');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'started_at')) {
+                    $table->timestamp('started_at')->nullable()->after('completed_at');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'records_skipped')) {
+                    $table->unsignedInteger('records_skipped')->default(0)->after('records_deleted');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'records_failed')) {
+                    $table->unsignedInteger('records_failed')->default(0)->after('records_skipped');
+                }
+                if (!Schema::hasColumn('import_rollbacks', 'records_conflict')) {
+                    $table->unsignedInteger('records_conflict')->default(0)->after('records_failed');
+                }
+                try { $table->index('import_batch_id', 'idx_rollbacks_batch'); } catch (\Throwable) {}
+            });
+        }
 
         // ── import_batches ────────────────────────────────────────────
-        Schema::table('import_batches', function (Blueprint $table) {
-            $table->string('rollback_status')->default('none')->after('template_adoption_status');
-            // none|eligible|processing|completed|completed_with_warnings|failed|not_available
-            $table->uuid('rollback_id')->nullable()->after('rollback_status');
-        });
+        if (Schema::hasTable('import_batches')) {
+            Schema::table('import_batches', function (Blueprint $table) {
+                if (!Schema::hasColumn('import_batches', 'rollback_status')) {
+                    $table->string('rollback_status')->default('none')->after('template_adoption_status');
+                }
+                if (!Schema::hasColumn('import_batches', 'rollback_id')) {
+                    $table->uuid('rollback_id')->nullable()->after('rollback_status');
+                }
+            });
+        }
 
         // ── import_batch_rows — track snapshot ID per row ─────────────
-        Schema::table('import_batch_rows', function (Blueprint $table) {
-            $table->uuid('snapshot_id')->nullable()->after('created_contact_id');
-        });
+        if (Schema::hasTable('import_batch_rows')) {
+            Schema::table('import_batch_rows', function (Blueprint $table) {
+                if (!Schema::hasColumn('import_batch_rows', 'snapshot_id')) {
+                    $table->uuid('snapshot_id')->nullable()->after('created_contact_id');
+                }
+            });
+        }
     }
 
     public function down(): void
