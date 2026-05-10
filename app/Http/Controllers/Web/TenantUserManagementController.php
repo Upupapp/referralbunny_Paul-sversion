@@ -413,15 +413,14 @@ class TenantUserManagementController extends Controller
         $membership->save();
 
         try {
-            $userName = $membership->tenantUser?->first_name
-                ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
-                : ($membership->tenantUser?->email ?? 'A team member');
+            $removedUser  = $membership->tenantUser;
+            $removedEmail = $removedUser?->email ?? 'A team member';
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'tenant_workspace',
+                category:     'info',
                 priority:     'normal',
                 title:        'Team member removed',
-                body:         "{$userName} has been removed from this workspace.",
+                body:         "{$removedEmail} has been removed from this workspace.",
                 actionUrl:    route('tenant.users', $tenantId),
                 actionLabel:  'View Users',
                 dedupeSuffix: "remove_user:{$membership->id}",
