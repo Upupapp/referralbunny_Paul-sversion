@@ -106,23 +106,32 @@ class DealMentionSearchController extends Controller
             ];
         }
 
-        // Contacts linked to this deal (via deal_contacts join)
+        // All tenant contacts — not limited to deal-linked ones so users can tag any contact
         if (in_array($role, ['tenant_admin', 'super_admin'])) {
             $contactQuery = DB::table('contacts as c')
-                ->join('deal_contacts as dc', 'c.id', '=', 'dc.contact_id')
-                ->where('dc.deal_id', $dealId)
                 ->where('c.tenant_id', $tenantId)
-                ->select('c.id', 'c.first_name', 'c.last_name', 'c.email', 'c.job_title');
+                ->where(function ($sub) {
+                    $sub->whereNull('c.status')
+                        ->orWhere('c.status', '!=', 'archived');
+                })
+                ->select('c.id', 'c.first_name', 'c.last_name', 'c.email', 'c.job_title', 'c.nickname');
 
             if ($q !== '') {
                 $contactQuery->where(function ($sub) use ($q) {
-                    $sub->whereRaw("lower(concat(c.first_name, ' ', c.last_name)) like ?", ['%' . strtolower($q) . '%'])
-                        ->orWhereRaw("lower(c.email) like ?", ['%' . strtolower($q) . '%']);
+                    $term = '%' . strtolower($q) . '%';
+                    $sub->whereRaw("lower(coalesce(c.first_name,'') || ' ' || coalesce(c.last_name,'')) like ?", [$term])
+                        ->orWhereRaw("lower(coalesce(c.email,'')) like ?", [$term])
+                        ->orWhereRaw("lower(coalesce(c.nickname,'')) like ?", [$term]);
                 });
+            } else {
+                // When no query, show recently created contacts as suggestions
+                $contactQuery->orderByDesc('c.created_at');
             }
 
-            foreach ($contactQuery->limit(5)->get() as $c) {
-                $name = trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')) ?: $c->email;
+            foreach ($contactQuery->limit(8)->get() as $c) {
+                $name = $c->nickname
+                    ?? trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? ''))
+                    ?: ($c->email ?? '—');
                 $results[] = [
                     'id'    => $c->id,
                     'type'  => 'contact',

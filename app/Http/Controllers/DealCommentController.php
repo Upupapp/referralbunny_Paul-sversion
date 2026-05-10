@@ -101,6 +101,7 @@ class DealCommentController extends Controller
             'mentions'          => 'nullable|string', // JSON-encoded array
             'files'             => 'nullable|array|max:5',
             'files.*'           => 'nullable|file|max:10240', // 10MB each
+            'client_request_id' => 'nullable|string|max:64',
         ]);
 
         // Require either body or at least one file
@@ -108,6 +109,21 @@ class DealCommentController extends Controller
         $hasFiles = !empty($request->file('files'));
         if (!$hasBody && !$hasFiles) {
             return response()->json(['error' => 'Please add a note or attach a file.'], 422);
+        }
+
+        // ── Idempotency: return existing note if same client_request_id within 30s ──
+        $clientRequestId = $data['client_request_id'] ?? null;
+        if ($clientRequestId) {
+            $existing = DealComment::where('tenant_id', $tenantId)
+                ->where('deal_id', $dealId)
+                ->where('author_user_id', $actorId)
+                ->where('client_request_id', $clientRequestId)
+                ->where('created_at', '>=', now()->subSeconds(30))
+                ->first();
+            if ($existing) {
+                try { $existing->load(['attachments', 'mentions']); } catch (\Throwable) {}
+                return response()->json($this->formatComment($existing, $role, $dealId), 200);
+            }
         }
 
         // Only admins/managers can post internal notes
@@ -124,6 +140,7 @@ class DealCommentController extends Controller
             'body'              => $hasBody ? strip_tags($data['body']) : '',
             'visibility'        => $visibility,
             'parent_comment_id' => $data['parent_comment_id'] ?? null,
+            'client_request_id' => $clientRequestId,
         ]);
 
         // ── Save mentions ──────────────────────────────────────────────────
@@ -166,8 +183,10 @@ class DealCommentController extends Controller
         // Audit log
         $this->auditLog($tenantId, $dealId, $actorId, 'deal_comment_created');
 
-        // Reload with relations
-        $comment->load(['attachments', 'mentions']);
+        // Reload with relations — wrapped so a missing table never 500s the response
+        try {
+            $comment->load(['attachments', 'mentions']);
+        } catch (\Throwable) {}
 
         return response()->json($this->formatComment($comment, $role, $dealId), 201);
     }
@@ -247,22 +266,32 @@ class DealCommentController extends Controller
             };
         } catch (\Throwable) {}
 
-        // Format attachments
-        $attachments = $c->attachments->map(fn($a) => [
-            'id'                => $a->id,
-            'original_filename' => $a->original_filename,
-            'mime_type'         => $a->mime_type,
-            'file_size'         => $a->file_size,
-            'file_type_group'   => $a->file_type_group,
-            'download_url'      => "/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}",
-        ])->toArray();
+        // Format attachments — safe when relation not loaded (missing table)
+        $attachments = [];
+        try {
+            if ($c->relationLoaded('attachments')) {
+                $attachments = $c->attachments->map(fn($a) => [
+                    'id'                => $a->id,
+                    'original_filename' => $a->original_filename,
+                    'mime_type'         => $a->mime_type,
+                    'file_size'         => $a->file_size,
+                    'file_type_group'   => $a->file_type_group,
+                    'download_url'      => "/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}",
+                ])->toArray();
+            }
+        } catch (\Throwable) {}
 
-        // Format mentions
-        $mentions = $c->mentions->map(fn($m) => [
-            'id'   => $m->mentionable_id,
-            'type' => $m->mentionable_type,
-            'name' => $m->display_name_snapshot,
-        ])->toArray();
+        // Format mentions — safe when relation not loaded
+        $mentions = [];
+        try {
+            if ($c->relationLoaded('mentions')) {
+                $mentions = $c->mentions->map(fn($m) => [
+                    'id'   => $m->mentionable_id,
+                    'type' => $m->mentionable_type,
+                    'name' => $m->display_name_snapshot,
+                ])->toArray();
+            }
+        } catch (\Throwable) {}
 
         return [
             'id'                => $c->id,

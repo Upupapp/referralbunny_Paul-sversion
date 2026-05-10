@@ -1052,28 +1052,52 @@
                     </template>
                 </div>
 
+                {{-- Inline success banner --}}
+                <div x-show="noteSaved"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="display:none"
+                     class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    Note saved successfully.
+                </div>
+
+                {{-- Error banner --}}
+                <div x-show="commentError"
+                     style="display:none"
+                     class="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                    <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span x-text="commentError"></span>
+                </div>
+
                 {{-- Toolbar + actions --}}
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        {{-- Attach file --}}
-                        <label class="cursor-pointer flex items-center gap-1 text-xs text-gray-400 hover:text-purple-600 transition-colors"
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        {{-- Attach file — styled as a visible pill button --}}
+                        <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 text-xs text-gray-500 font-medium transition-colors"
                                title="Attach PDFs, documents, spreadsheets, or images (max 10 MB each, up to 5 files)">
-                            <input type="file" multiple class="hidden" x-ref="fileInput"
+                            <input type="file" multiple class="sr-only" x-ref="fileInput"
                                    @change="handleFiles($event)"
                                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
                             </svg>
-                            <span>Attach</span>
+                            Attach files
+                            <span x-show="selectedFiles.length > 0"
+                                  class="ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700"
+                                  x-text="selectedFiles.length"></span>
                         </label>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <p x-show="commentError" class="text-xs text-red-500 mr-1" x-text="commentError"></p>
-                        <button @click="postComment()"
-                                :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
-                                class="btn-primary text-xs py-1.5 px-3"
-                                x-text="posting ? 'Saving…' : 'Save Note'"></button>
-                    </div>
+                    <button @click="postComment()"
+                            :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
+                            class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg x-show="posting" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="posting ? 'Saving…' : 'Save Note'"></span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -1187,11 +1211,15 @@ function dealComments(dealId, tenantId) {
         // ── State ────────────────────────────────────────────────────────────
         comments: [], loadingComments: true, posting: false,
         newBody: '', newVisibility: 'shared', commentError: '',
+        noteSaved: false,          // inline success banner
         editingId: null, editBody: '',
-        canPostInternal: true, // Tenant admin default; API enforces actual permission
+        canPostInternal: true,     // tenant admin default; API enforces actual permission
+
+        // Idempotency — generated once per component, rotated after each save
+        clientRequestId: crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36)),
 
         // @Mention state
-        mentions: [],          // confirmed mentions for current note [{id, type, name, badge}]
+        mentions: [],
         mentionQuery: '',
         mentionResults: [],
         mentionOpen: false,
@@ -1203,6 +1231,11 @@ function dealComments(dealId, tenantId) {
         // File attachment state
         selectedFiles: [],
 
+        // ── Helpers ───────────────────────────────────────────────────────────
+        csrf() {
+            return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        },
+
         // ── Load notes ───────────────────────────────────────────────────────
         async loadComments() {
             this.loadingComments = true;
@@ -1211,63 +1244,97 @@ function dealComments(dealId, tenantId) {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) throw new Error('load failed');
                 const data = await res.json();
                 this.comments = Array.isArray(data) ? data : [];
             } catch(e) { this.comments = []; }
             this.loadingComments = false;
         },
 
-        // ── Post note (FormData to support file uploads) ──────────────────────
+        // ── Post note ────────────────────────────────────────────────────────
         async postComment() {
+            // ① Hard duplicate guard — must be the very first check
+            if (this.posting) return;
             if (!this.newBody.trim() && this.selectedFiles.length === 0) return;
-            this.posting = true;
+
+            this.posting     = true;
             this.commentError = '';
+            this.noteSaved   = false;
+
             try {
-                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const fd   = new FormData();
-                fd.append('body',       this.newBody);
-                fd.append('visibility', this.newVisibility);
-                fd.append('mentions',   JSON.stringify(this.mentions));
+                const fd = new FormData();
+                fd.append('body',              this.newBody);
+                fd.append('visibility',        this.newVisibility);
+                fd.append('mentions',          JSON.stringify(this.mentions));
+                fd.append('client_request_id', this.clientRequestId);
                 this.selectedFiles.forEach((f, i) => fd.append(`files[${i}]`, f));
 
                 const res = await fetch(`/api/deals/${dealId}/comments`, {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'X-CSRF-TOKEN': this.csrf(), 'X-Requested-With': 'XMLHttpRequest' },
                     body: fd,
                 });
-                const data = await res.json();
-                if (data.id) {
-                    this.comments.unshift(data);
-                    this.newBody      = '';
-                    this.mentions     = [];
+
+                let data = null;
+                try { data = await res.json(); } catch(e) { data = null; }
+
+                if (res.status === 419) {
+                    this.commentError = 'Your session expired. Please refresh the page and try again.';
+                } else if (res.status === 403) {
+                    this.commentError = 'You do not have permission to add notes to this deal.';
+                } else if (res.status === 422) {
+                    this.commentError = (data?.error) || (data?.message) || 'Please review and correct the note.';
+                } else if (!res.ok) {
+                    this.commentError = data?.error || 'Unable to save note. Please try again.';
+                } else if (data?.id) {
+                    // ② Prevent duplicate in list — only add if not already present
+                    if (!this.comments.find(c => c.id === data.id)) {
+                        this.comments.unshift(data);
+                    }
+                    // ③ Clear form
+                    this.newBody       = '';
+                    this.mentions      = [];
                     this.selectedFiles = [];
-                    this.mentionOpen  = false;
+                    this.mentionOpen   = false;
                     if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+                    // ④ Rotate idempotency key for next note
+                    this.clientRequestId = crypto.randomUUID ? crypto.randomUUID()
+                        : (Date.now().toString(36) + Math.random().toString(36));
+                    // ⑤ Show both inline banner + toast
+                    this.noteSaved = true;
+                    setTimeout(() => { this.noteSaved = false; }, 4000);
                     this.$dispatch('show-toast', { type: 'success', message: 'Note saved.' });
                 } else {
-                    this.commentError = data.error || 'Unable to save note. Please try again.';
+                    this.commentError = data?.error || 'Unable to save note. Please try again.';
                 }
-            } catch(e) { this.commentError = 'Network error. Please try again.'; }
-            this.posting = false;
+            } catch(e) {
+                this.commentError = 'Network error. Please check your connection and try again.';
+            } finally {
+                this.posting = false;
+            }
         },
 
         // ── Edit ──────────────────────────────────────────────────────────────
         startEdit(c) { this.editingId = c.id; this.editBody = c.body; },
 
         async saveEdit(c) {
-            if (!this.editBody.trim()) return;
+            if (!this.editBody.trim() || this.posting) return;
             this.posting = true;
             try {
-                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const res  = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
+                const res = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
                     method: 'PATCH',
                     credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ body: this.editBody }),
                 });
                 const data = await res.json();
-                if (data.id) {
+                if (data?.id) {
                     const idx = this.comments.findIndex(x => x.id === c.id);
                     if (idx !== -1) this.comments.splice(idx, 1, data);
                     this.editingId = null;
@@ -1281,11 +1348,10 @@ function dealComments(dealId, tenantId) {
         async deleteComment(c) {
             if (!confirm('Delete this note?')) return;
             try {
-                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
                     method: 'DELETE',
                     credentials: 'same-origin',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'X-CSRF-TOKEN': this.csrf(), 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 const idx = this.comments.findIndex(x => x.id === c.id);
                 if (idx !== -1) this.comments[idx].is_deleted = true;
@@ -1295,25 +1361,21 @@ function dealComments(dealId, tenantId) {
 
         // ── @Mention picker ───────────────────────────────────────────────────
         handleBodyInput(e) {
-            const ta    = e.target;
-            const value = ta.value;
-            const pos   = ta.selectionStart;
-            const before = value.substring(0, pos);
+            const ta     = e.target;
+            const before = ta.value.substring(0, ta.selectionStart);
             const atIdx  = before.lastIndexOf('@');
 
             if (atIdx !== -1) {
                 const q = before.substring(atIdx + 1);
-                // Only trigger if no space after @
                 if (!q.includes(' ') && q.length <= 40) {
                     this.mentionCursorStart = atIdx;
                     this.mentionQuery       = q;
                     this.mentionFocusIdx    = 0;
-
                     clearTimeout(this.mentionDebounceTimer);
                     this.mentionDebounceTimer = setTimeout(() => {
                         this.mentionOpen = true;
                         this.fetchMentions(q);
-                    }, 200);
+                    }, 250);
                     return;
                 }
             }
@@ -1327,55 +1389,65 @@ function dealComments(dealId, tenantId) {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                this.mentionResults = await res.json();
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                this.mentionResults = Array.isArray(data) ? data : [];
             } catch(e) { this.mentionResults = []; }
             this.mentionLoading = false;
         },
 
         selectMention(m) {
             const ta     = this.$refs.noteTextarea;
-            const before = ta.value.substring(0, this.mentionCursorStart);
-            const after  = ta.value.substring(ta.selectionStart);
+            const value  = ta.value;
+            const before = value.substring(0, this.mentionCursorStart);
+            const after  = value.substring(ta.selectionStart);
             this.newBody = before + '@' + m.name + ' ' + after;
 
-            // Record mention (deduplicate)
             if (!this.mentions.find(x => x.id === m.id && x.type === m.type)) {
                 this.mentions.push(m);
             }
             this.mentionOpen     = false;
             this.mentionResults  = [];
             this.mentionFocusIdx = -1;
-            this.$nextTick(() => ta.focus());
+            this.$nextTick(() => { if (ta) { ta.focus(); const end = this.newBody.length; ta.setSelectionRange(end, end); } });
         },
 
-        // ── File attachment ───────────────────────────────────────────────────
+        // ── File attachments ──────────────────────────────────────────────────
         handleFiles(e) {
-            const files = Array.from(e.target.files || []);
+            const files   = Array.from(e.target.files || []);
             const maxSize = 10 * 1024 * 1024;
             const allowed = ['jpg','jpeg','png','webp','pdf','doc','docx','xls','xlsx','csv','txt'];
 
             for (const f of files) {
-                if (this.selectedFiles.length >= 5) break;
+                if (this.selectedFiles.length >= 5) {
+                    this.$dispatch('show-toast', { type: 'error', message: 'Maximum 5 files per note.' });
+                    break;
+                }
                 const ext = f.name.split('.').pop().toLowerCase();
                 if (!allowed.includes(ext)) {
                     this.$dispatch('show-toast', { type: 'error', message: `${f.name}: file type not allowed.` });
                     continue;
                 }
                 if (f.size > maxSize) {
-                    this.$dispatch('show-toast', { type: 'error', message: `${f.name}: exceeds 10 MB limit.` });
+                    this.$dispatch('show-toast', { type: 'error', message: `${f.name}: exceeds the 10 MB limit.` });
                     continue;
                 }
-                this.selectedFiles.push(f);
+                // Prevent duplicate selection
+                if (!this.selectedFiles.find(x => x.name === f.name && x.size === f.size)) {
+                    this.selectedFiles.push(f);
+                }
             }
+            // Reset input so the same file can be re-selected after removal
+            e.target.value = '';
         },
 
         removeFile(i) { this.selectedFiles.splice(i, 1); },
 
         formatFileSize(bytes) {
             if (!bytes) return '';
-            if (bytes < 1024)       return bytes + ' B';
-            if (bytes < 1024*1024)  return (bytes/1024).toFixed(1) + ' KB';
-            return (bytes/(1024*1024)).toFixed(1) + ' MB';
+            if (bytes < 1024)      return bytes + ' B';
+            if (bytes < 1048576)   return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
         },
     };
 }

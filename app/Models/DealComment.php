@@ -16,6 +16,7 @@ class DealComment extends Model
     protected $fillable = [
         'tenant_id', 'deal_id', 'author_user_id', 'author_role',
         'body', 'visibility', 'parent_comment_id', 'edited_at', 'deleted_at',
+        'client_request_id',
     ];
 
     protected $casts = [
