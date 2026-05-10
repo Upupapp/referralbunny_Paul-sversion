@@ -324,8 +324,11 @@ class RequestFormController extends Controller
         $dateTo    = $request->query('date_to', '');
 
         try {
-            $submissionsQuery = RequestFormSubmission::where('tenant_id', $tenantId)
-                ->where('request_form_id', $formId)
+            // Query by request_form_id only — the form is already tenant-verified above,
+            // so any submission to this form implicitly belongs to the correct tenant.
+            // Filtering by tenant_id here causes a count mismatch when submissions were
+            // stored without tenant_id (e.g. via the public form before migration ran).
+            $submissionsQuery = RequestFormSubmission::where('request_form_id', $formId)
                 ->with(['submissionRecipients']);
 
             // Only add tasks count if the tasks table exists
