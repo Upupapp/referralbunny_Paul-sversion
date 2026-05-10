@@ -170,12 +170,12 @@ class DealActivityService
                 'category'   => 'financial',
                 'actor_role' => $actorRole,
                 'old_values' => array_merge($old, [
-                    'company_share'   => round($oldAa * 0.30, 2),
-                    'commission_pool' => round($oldAa * 0.70, 2),
+                    'company_share'   => round($oldAa * \App\Services\CommissionCalculationService::COMPANY_SHARE_RATE, 2),
+                    'commission_pool' => round($oldAa * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2),
                 ]),
                 'new_values' => array_merge($new, [
-                    'company_share'   => round($newAa * 0.30, 2),
-                    'commission_pool' => round($newAa * 0.70, 2),
+                    'company_share'   => round($newAa * \App\Services\CommissionCalculationService::COMPANY_SHARE_RATE, 2),
+                    'commission_pool' => round($newAa * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2),
                 ]),
             ]
         );

@@ -141,12 +141,14 @@ class AnalyticsService
             'paid'    => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
         ];
 
+        $calc = app(\App\Services\CommissionCalculationService::class);
+
         foreach ($leads as $lead) {
-            $aa       = (float) ($lead->added_amount > 0 ? $lead->added_amount : $lead->deal_value);
-            $base     = (float) ($lead->base_cost ?? 0);
-            $contract = ($base + $aa) > 0 ? ($base + $aa) : (float) $lead->deal_value;
-            $company  = $aa * 0.30;
-            $pool     = $aa * 0.70;
+            $b        = $calc->breakdownFromLead($lead);
+            $aa       = $b['added_amount'];
+            $contract = $b['deal_value'];
+            $company  = $b['company_share'];
+            $pool     = $b['commission_pool'];
             $status   = array_key_exists($lead->commission_status ?? '', $breakdown)
                 ? ($lead->commission_status ?? 'pending')
                 : 'pending';

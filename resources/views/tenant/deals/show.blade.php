@@ -331,14 +331,16 @@
                 </button>
             </div>
 
-            {{-- Ã¢"â‚¬Ã¢"â‚¬ View mode (PHP-rendered â€" no Alpine x-text dependency) Ã¢"â‚¬Ã¢"â‚¬ --}}
+            {{-- View mode (PHP-rendered for instant SSR, no Alpine x-text flash) --}}
             @php
+                $calc = app(\App\Services\CommissionCalculationService::class);
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
                 $dv = (float)($ssrLead['deal_value']   ?? 0);
                 $cv = ($bc + $aa) ?: $dv;
-                $co = $aa * 0.30;
-                $cp = $aa * 0.70;
+                $co = $calc->companyShare($aa);
+                $cp = $calc->commissionPool($aa);
+                $commStatus = $ssrLead['commission_status'] ?? 'pending';
             @endphp
             <div x-show="!editFinance" class="space-y-4">
 
@@ -377,36 +379,85 @@
                     </div>
                 </div>
 
-                {{-- Commission distribution (Alpine-driven â€" only shows when splits exist) --}}
-                @if(!empty($ssrLead['commission_splits']))
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commission Distribution</p>
-                        <span class="badge badge-gray"
-                              x-text="lead?.commission_status ? lead.commission_status.charAt(0).toUpperCase()+lead.commission_status.slice(1) : 'Pending'">
-                            {{ ucfirst($ssrLead['commission_status'] ?? 'pending') }}</span>
+                {{-- Commission Distribution — Referrer splits (Alpine-driven) --}}
+                <div x-show="(lead?.commission_splits||[]).length > 0 || lead?.added_amount > 0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                        <p style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase">Referrer Commission Distribution</p>
+                        {{-- Commission status badge --}}
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:600"
+                              :style="lead?.commission_status === 'paid'   ? 'background:#dcfce7;color:#15803d'
+                                    : lead?.commission_status === 'locked' ? 'background:#fef3c7;color:#d97706'
+                                    : 'background:#ede9fe;color:#7B61FF'"
+                              x-text="lead?.commission_status === 'paid'   ? 'Paid'
+                                    : lead?.commission_status === 'locked' ? 'Locked'
+                                    : 'Pending'">{{ ucfirst($commStatus) }}</span>
                     </div>
+
+                    {{-- Referrer split rows --}}
                     <div class="space-y-1.5">
                         <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
-                            <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                         :class="split.role==='primary' ? 'bg-emerald-100 text-emerald-700' : split.role==='secondary' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'"
+                            <div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border-radius:12px;padding:10px 12px">
+                                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                                    <div style="width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0"
+                                         :style="split.role==='primary' ? 'background:#dcfce7;color:#16a34a'
+                                               : split.role==='secondary' ? 'background:#dbeafe;color:#2563eb'
+                                               : 'background:#f3f4f6;color:#6b7280'"
                                          x-text="(split.reseller_name||'?').slice(0,2).toUpperCase()"></div>
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="split.reseller_name"></p>
-                                        <p class="text-xs text-gray-400 capitalize" x-text="split.role"></p>
+                                    <div style="min-width:0">
+                                        <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="split.reseller_name"></p>
+                                        <p style="font-size:11px;color:#9ca3af;text-transform:capitalize" x-text="split.role + ' referrer'"></p>
                                     </div>
                                 </div>
-                                <div class="text-right shrink-0 ml-3">
-                                    <p class="text-sm font-bold text-emerald-700 tabular-nums" x-text="fmt(commPool() * split.percentage / 100)"></p>
-                                    <p class="text-xs text-gray-400" x-text="split.percentage + '% of pool'"></p>
+                                <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                                    <p style="font-size:13px;font-weight:700;color:#16a34a" x-text="fmt(commPool() * split.percentage / 100)"></p>
+                                    <p style="font-size:11px;color:#9ca3af" x-text="split.percentage + '% of pool'"></p>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- No splits message --}}
+                        <template x-if="(lead?.commission_splits||[]).length === 0 && (lead?.added_amount||0) > 0">
+                            <div style="padding:10px 12px;background:#fffbeb;border:1.5px dashed #fcd34d;border-radius:12px;font-size:12px;color:#d97706">
+                                Commission pool unallocated — no referrer split assigned.
+                            </div>
+                        </template>
+
+                        {{-- Unallocated amount warning --}}
+                        <template x-if="(lead?.commission_splits||[]).length > 0">
+                            <div>
+                                @php
+                                    $totalAllocatedPct = collect($ssrLead['commission_splits'] ?? [])->sum('percentage');
+                                @endphp
+                                <div x-data="{
+                                    get totalPct() { return (this.$root.closest('[x-data]').__x?.$data?.lead?.commission_splits||[]).reduce((s,r) => s + parseFloat(r.percentage||0), 0); }
+                                }">
+                                    <div x-show="totalPct < 100" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af;padding:6px 0 0">
+                                        <span>Unallocated pool</span>
+                                        <span style="color:#d97706;font-weight:600" x-text="fmt(commPool() * (100 - totalPct) / 100)"></span>
+                                    </div>
                                 </div>
                             </div>
                         </template>
                     </div>
+
+                    {{-- Locked/Paid notice --}}
+                    <template x-if="lead?.commission_status === 'locked'">
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px">
+                            <svg style="width:13px;height:13px;color:#d97706;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                            <p style="font-size:11px;color:#d97706;font-weight:600">Commission locked. Contact admin to make changes.</p>
+                        </div>
+                    </template>
+                    <template x-if="lead?.commission_status === 'paid'">
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px">
+                            <svg style="width:13px;height:13px;color:#16a34a;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                            </svg>
+                            <p style="font-size:11px;color:#16a34a;font-weight:600">Commission paid.</p>
+                        </div>
+                    </template>
                 </div>
-                @endif
 
                 {{-- No financial data notice --}}
                 @if(!$aa)

@@ -193,6 +193,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/tasks',           [TenantAdminController::class, 'tasks'])->name('tasks');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
+    Route::get('/commission',      [\App\Http\Controllers\Web\TenantCommissionController::class, 'index'])->name('commission');
+    Route::get('/commission/export', [\App\Http\Controllers\Web\TenantCommissionController::class, 'export'])->name('commission.export');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
     Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');

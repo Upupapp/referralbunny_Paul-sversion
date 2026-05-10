@@ -111,13 +111,14 @@ class ResellerPortalController extends Controller
             ->keyBy('lead_id');
 
         // Attach computed commission amounts to each lead
-        $leads = $leads->map(function ($lead) use ($splits) {
-            $aa         = (float) ($lead->added_amount ?? 0);
-            $pool       = $aa * 0.70;
+        $calc  = app(\App\Services\CommissionCalculationService::class);
+        $leads = $leads->map(function ($lead) use ($splits, $calc) {
+            $breakdown  = $calc->breakdownFromLead($lead);
+            $pool       = $breakdown['commission_pool'];
             $splitRow   = $splits->get($lead->id);
             $pct        = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
-            $lead->commission_pool  = round($pool, 2);
-            $lead->my_commission    = round($pool * $pct / 100, 2);
+            $lead->commission_pool  = $pool;
+            $lead->my_commission    = $calc->referrerShare($pool, $pct);
             $lead->split_percentage = $pct;
             return $lead;
         });

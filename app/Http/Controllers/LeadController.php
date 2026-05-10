@@ -336,8 +336,24 @@ class LeadController extends Controller
 
         // Auto-recompute deal_value whenever financial fields change
         if (isset($data['base_cost']) || isset($data['added_amount'])) {
-            $data['deal_value'] = ((float)($data['base_cost'] ?? $lead->base_cost))
-                                + ((float)($data['added_amount'] ?? $lead->added_amount));
+            $newBc = (float)($data['base_cost']    ?? $lead->base_cost);
+            $newAa = (float)($data['added_amount'] ?? $lead->added_amount);
+            $data['deal_value'] = $newBc + $newAa;
+        }
+
+        // Backend formula guard: if all three values are supplied, verify consistency
+        if (isset($data['deal_value'], $data['base_cost'], $data['added_amount'])) {
+            $calc = app(\App\Services\CommissionCalculationService::class);
+            if (!$calc->formulaIsValid(
+                (float) $data['deal_value'],
+                (float) $data['base_cost'],
+                (float) $data['added_amount']
+            )) {
+                return response()->json([
+                    'message' => 'Financial formula mismatch: Base Cost + Added Amount must equal Deal Value.',
+                    'expected_deal_value' => round((float)$data['base_cost'] + (float)$data['added_amount'], 2),
+                ], 422);
+            }
         }
 
         // ── LGU IDS: reset days_left when stage advances ──────────────
@@ -449,7 +465,8 @@ class LeadController extends Controller
 
         DB::transaction(function () use ($lead, $updates, $targetStage, $capturedStage, $isLocking, $isPaid, $note, $actorNameStage, $actorRoleStage) {
             $lead->update($updates);
-            $commPool = round((float) $lead->added_amount * 0.70, 2);
+            $commPool = app(\App\Services\CommissionCalculationService::class)
+                ->commissionPool((float) $lead->added_amount);
 
             $activity = app(\App\Services\DealActivityService::class);
 
