@@ -128,7 +128,14 @@ class CommissionCalculationService
      */
     public function breakdownFromLead(object|array $lead): array
     {
-        $data = is_array($lead) ? $lead : $lead->toArray();
+        // Handle Eloquent models, stdClass (DB::table() results), and plain arrays
+        if (is_array($lead)) {
+            $data = $lead;
+        } elseif ($lead instanceof \Illuminate\Database\Eloquent\Model) {
+            $data = $lead->getAttributes();
+        } else {
+            $data = (array) $lead; // stdClass from raw DB queries
+        }
 
         $dv  = (float) ($data['deal_value']   ?? 0);
         $bc  = (float) ($data['base_cost']    ?? 0);

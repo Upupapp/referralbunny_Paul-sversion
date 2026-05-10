@@ -333,13 +333,13 @@
 
             {{-- View mode (PHP-rendered for instant SSR, no Alpine x-text flash) --}}
             @php
-                $calc = app(\App\Services\CommissionCalculationService::class);
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
                 $dv = (float)($ssrLead['deal_value']   ?? 0);
                 $cv = ($bc + $aa) ?: $dv;
-                $co = $calc->companyShare($aa);
-                $cp = $calc->commissionPool($aa);
+                // Formula: Company Share = 30%, Commission Pool = 70% of Added Amount
+                $co = round($aa * 0.30, 2);
+                $cp = round($aa * 0.70, 2);
                 $commStatus = $ssrLead['commission_status'] ?? 'pending';
             @endphp
             <div x-show="!editFinance" class="space-y-4">
@@ -422,18 +422,16 @@
                             </div>
                         </template>
 
-                        {{-- Unallocated amount warning --}}
+                        {{-- Unallocated amount warning (uses dealDetail scope directly) --}}
                         <template x-if="(lead?.commission_splits||[]).length > 0">
                             <div>
-                                @php
-                                    $totalAllocatedPct = collect($ssrLead['commission_splits'] ?? [])->sum('percentage');
-                                @endphp
-                                <div x-data="{
-                                    get totalPct() { return (this.$root.closest('[x-data]').__x?.$data?.lead?.commission_splits||[]).reduce((s,r) => s + parseFloat(r.percentage||0), 0); }
-                                }">
-                                    <div x-show="totalPct < 100" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af;padding:6px 0 0">
+                                <div>
+                                    {{-- totalAllocatedPct computed inline in Alpine using dealDetail data --}}
+                                    <div x-show="(lead?.commission_splits||[]).reduce((s,r) => s + parseFloat(r.percentage||0), 0) < 99.9"
+                                         style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9ca3af;padding:6px 0 0">
                                         <span>Unallocated pool</span>
-                                        <span style="color:#d97706;font-weight:600" x-text="fmt(commPool() * (100 - totalPct) / 100)"></span>
+                                        <span style="color:#d97706;font-weight:600"
+                                              x-text="fmt(commPool() * (100 - (lead?.commission_splits||[]).reduce((s,r) => s + parseFloat(r.percentage||0), 0)) / 100)"></span>
                                     </div>
                                 </div>
                             </div>
