@@ -23,6 +23,13 @@
             <span class="hidden sm:inline">Import Deals</span>
         </a>
     @endif
+    <button onclick="window.dispatchEvent(new CustomEvent('toggle-deal-select'))"
+            class="btn-secondary" title="Select deals to delete">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        <span class="hidden sm:inline">Delete Deals</span>
+    </button>
     <button x-data @click="$dispatch('open-add-deal')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>
@@ -156,6 +163,12 @@
                             ['key'=>'status',     'label'=>'Status',     'tip'=>'Sort by deal status',                    'hidden'=>''],
                         ];
                         @endphp
+                        <th x-show="selectMode" class="w-10">
+                            <input type="checkbox"
+                                   class="rounded border-gray-300 text-red-500 cursor-pointer"
+                                   :checked="selectedDeals.length > 0 && selectedDeals.length === sortedFiltered().length"
+                                   @change="toggleSelectAll()">
+                        </th>
                         @foreach($sortCols as $col)
                         <th class="cursor-pointer select-none hover:bg-gray-100 transition-colors {{ $col['hidden'] }}"
                             @click="sort('{{ $col['key'] }}')"
@@ -193,7 +206,15 @@
                         </tr>
                     </template>
                     <template x-for="lead in sortedFiltered()" :key="lead.id">
-                        <tr class="table-row cursor-pointer" @click="viewDeal(lead.id)">
+                        <tr class="table-row cursor-pointer transition-colors"
+                            :class="selectMode && selectedDeals.includes(lead.id) ? 'bg-red-50 border-l-2 border-l-red-400' : ''"
+                            @click="viewDeal(lead.id)">
+                            <td x-show="selectMode" class="w-10" @click.stop="toggleDeal(lead.id)">
+                                <input type="checkbox"
+                                       class="rounded border-gray-300 text-red-500 cursor-pointer"
+                                       :checked="selectedDeals.includes(lead.id)"
+                                       @change.stop="toggleDeal(lead.id)">
+                            </td>
                             <td>
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-xl flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
@@ -629,6 +650,63 @@
         </div>
     </div>
 
+    {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
+    <div x-show="selectMode"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border border-red-200"
+         style="background:white;min-width:280px">
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-[#1E1B4B]" x-text="selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '') + ' selected'"></p>
+            <p class="text-xs text-gray-400">Click deals to select or deselect</p>
+        </div>
+        <button @click="selectMode=false;selectedDeals=[]"
+                class="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            Cancel
+        </button>
+        <button @click="if(selectedDeals.length>0) showDeleteConfirm=true"
+                :disabled="selectedDeals.length === 0"
+                :class="selectedDeals.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-700'"
+                class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold text-white bg-red-600 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete <span x-text="selectedDeals.length > 0 ? '(' + selectedDeals.length + ')' : ''"></span>
+        </button>
+    </div>
+
+    {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
+    <div x-show="showDeleteConfirm" x-cloak
+         class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+            <div class="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2">Delete Deals?</h3>
+            <p class="text-gray-500 text-sm mb-1">You are about to permanently delete</p>
+            <p class="text-red-600 font-bold text-lg mb-4" x-text="selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '')"></p>
+            <p class="text-gray-400 text-xs mb-6">This action cannot be undone. All deal history and commission data will be removed.</p>
+            <div class="flex gap-3">
+                <button @click="showDeleteConfirm=false"
+                        class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button @click="deleteSelected()"
+                        :disabled="deleting"
+                        class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
+                    <svg x-show="deleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span x-text="deleting ? 'Deleting…' : 'Yes, Delete'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -654,6 +732,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         showSuccessState: false, createdDeal: null,
+        selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false,
         municipalityOptions: [],
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
@@ -669,6 +748,11 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         ],
 
         async init() {
+            window.addEventListener('toggle-deal-select', () => {
+                this.selectMode   = !this.selectMode;
+                this.selectedDeals = [];
+            });
+
             // Pre-filter from URL params (e.g. from expiry alert notifications)
             const urlParams    = new URLSearchParams(window.location.search);
             const preStatus    = urlParams.get('status');
@@ -809,7 +893,42 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             return n > 0 ? '₱' + n.toLocaleString('en') : '—';
         },
 
-        viewDeal(id) { window.location.href = `/tenant/${tenantId}/deals/${id}`; },
+        toggleDeal(id) {
+            const idx = this.selectedDeals.indexOf(id);
+            if (idx === -1) this.selectedDeals.push(id);
+            else            this.selectedDeals.splice(idx, 1);
+        },
+
+        toggleSelectAll() {
+            const ids = this.sortedFiltered().map(l => l.id);
+            this.selectedDeals = this.selectedDeals.length === ids.length ? [] : ids;
+        },
+
+        async deleteSelected() {
+            if (!this.selectedDeals.length || this.deleting) return;
+            this.deleting = true;
+            const csrf = document.querySelector('meta[name=csrf-token]').content;
+            let failed = 0;
+            for (const id of this.selectedDeals) {
+                try {
+                    await fetch(`/api/leads/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                    });
+                } catch { failed++; }
+            }
+            this.leads = this.leads.filter(l => !this.selectedDeals.includes(l.id));
+            this.selectedDeals = [];
+            this.selectMode     = false;
+            this.showDeleteConfirm = false;
+            this.deleting       = false;
+            this.applyFilters();
+            if (failed > 0) this.$dispatch('show-toast', { type: 'error', message: `${failed} deal(s) could not be deleted.` });
+            else            this.$dispatch('show-toast', { type: 'success', message: 'Selected deals deleted.' });
+        },
+
+        viewDeal(id) { if (this.selectMode) { this.toggleDeal(id); return; } window.location.href = `/tenant/${tenantId}/deals/${id}`; },
 
         // ── Referrer combobox ─────────────────────────────────────────────────
 
