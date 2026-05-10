@@ -142,6 +142,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('analytics/monthly-report',               [TenantMetricController::class, 'monthlyReport']);
     Route::get('metrics',                                [TenantMetricController::class, 'index']);
     Route::get('metrics/{tenantId}',                     [TenantMetricController::class, 'show']);
+    Route::get('metrics/{tenantId}/financial',           [TenantMetricController::class, 'financialSummary']);
     Route::post('metrics/{tenantId}/recalculate',        [TenantMetricController::class, 'recalculate']);
 
     // Legacy platform exports (super-admin only, direct download)

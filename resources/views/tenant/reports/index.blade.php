@@ -7,6 +7,34 @@
 @section('content')
 <div class="space-y-6" x-data="reportsPage('{{ $tenant->id }}')" x-init="init()">
 
+    {{-- Loading state --}}
+    <template x-if="loading">
+        <div class="flex items-center justify-center py-20">
+            <svg class="w-6 h-6 animate-spin text-purple-500 mr-3" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+            </svg>
+            <span class="text-gray-500 text-sm">Loading report data…</span>
+        </div>
+    </template>
+
+    {{-- Error state --}}
+    <template x-if="!loading && error">
+        <div class="card flex items-start gap-3 bg-red-50 border border-red-200">
+            <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1">
+                <p class="font-semibold text-red-800 text-sm">Unable to load report data</p>
+                <p class="text-xs text-red-700 mt-0.5">Please check your connection and try again.</p>
+            </div>
+            <button @click="init()" class="btn-secondary text-xs shrink-0">Retry</button>
+        </div>
+    </template>
+
+    <template x-if="!loading && !error">
+    <div class="space-y-6">
+
     {{-- Financial Summary --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="kpi-card">
@@ -106,7 +134,7 @@
                     <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Referrers</span>
                     <x-info-tip text="Referrers registered for this tenant. They introduce leads and earn commission on closed deals." position="left" />
                 </div>
-                <p class="text-2xl font-bold text-[#1E1B4B]" x-text="resellers.length"></p>
+                <p class="text-2xl font-bold text-[#1E1B4B]" x-text="stats.total_resellers ?? '—'"></p>
             </div>
             <div class="kpi-icon bg-orange-100 ml-3 shrink-0"><svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
         </div>
@@ -167,63 +195,57 @@
     <div class="card">
         <h3 class="font-semibold text-[#1E1B4B] mb-3">Export Data</h3>
         <div class="flex flex-wrap gap-3">
-            <a href="/api/export/leads?tenant_id={{ $tenant->id }}" class="btn-secondary text-sm">
+            <a href="/api/export/leads" class="btn-secondary text-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 Export Deals CSV
             </a>
         </div>
     </div>
+
+    </div>{{-- end !loading && !error template --}}
+    </template>
 </div>
 
 <script>
 function reportsPage(tenantId) {
     return {
-        stats: {}, funnel: [], resellers: [], leads: [], maxCount: 1,
+        stats: {}, funnel: [], resellers: [], financial: null, maxCount: 1,
+        loading: true, error: false,
 
         async init() {
-            const [metricsRes, funnelRes, resellersRes, leadsRes] = await Promise.all([
-                fetch(`/api/metrics/${tenantId}`),
-                fetch(`/api/analytics/funnel?tenant_id=${tenantId}`),
-                fetch(`/api/resellers?tenant_id=${tenantId}`),
-                fetch(`/api/leads?tenant_id=${tenantId}`),
-            ]);
-            const metricsData = await metricsRes.json();
-            this.stats     = metricsData.detail ?? {};
-            this.funnel    = await funnelRes.json();
-            const res      = await resellersRes.json();
-            this.resellers = Array.isArray(res) ? res : (res.data || []);
-            const ldata    = await leadsRes.json();
-            this.leads     = Array.isArray(ldata) ? ldata : (ldata.data || []);
-            this.maxCount  = Math.max(...this.funnel.map(f => f.count), 1);
+            this.loading = true;
+            this.error   = false;
+            try {
+                const [metricsRes, funnelRes, resellersRes, financialRes] = await Promise.all([
+                    fetch(`/api/metrics/${tenantId}`),
+                    fetch(`/api/analytics/funnel?tenant_id=${tenantId}`),
+                    fetch(`/api/resellers?tenant_id=${tenantId}&per_page=5`),
+                    fetch(`/api/metrics/${tenantId}/financial`),
+                ]);
+
+                if (!metricsRes.ok || !funnelRes.ok || !resellersRes.ok || !financialRes.ok) {
+                    throw new Error('Failed to load report data.');
+                }
+
+                const metricsData  = await metricsRes.json();
+                this.stats         = metricsData.detail ?? {};
+                this.funnel        = await funnelRes.json();
+                const res          = await resellersRes.json();
+                this.resellers     = Array.isArray(res) ? res : (res.data || []);
+                this.financial     = await financialRes.json();
+                this.maxCount      = Math.max(...(this.funnel.map(f => f.count)), 1);
+            } catch (e) {
+                this.error = true;
+            } finally {
+                this.loading = false;
+            }
         },
 
-        // Financial computations using the base_cost / added_amount model
-        _addedAmount(l) {
-            // Use added_amount if set; fall back to deal_value for legacy records
-            const aa = Number(l.added_amount || 0);
-            return aa > 0 ? aa : Number(l.deal_value || 0);
-        },
-        _contract(l) { return Number(l.base_cost||0) + this._addedAmount(l) || Number(l.deal_value||0); },
-        _company(l)  { return this._addedAmount(l) * 0.30; },
-        _pool(l)     { return this._addedAmount(l) * 0.70; },
-
-        totalContractValue() { return this.leads.reduce((s,l) => s + this._contract(l), 0); },
-        totalCompanyShare()  { return this.leads.reduce((s,l) => s + this._company(l), 0); },
-        totalCommPool()      { return this.leads.reduce((s,l) => s + this._pool(l), 0); },
-        paidCommPool()       { return this.leads.filter(l=>l.commission_status==='paid').reduce((s,l)=>s+this._pool(l),0); },
-
-        commissionBreakdown() {
-            return ['pending','locked','paid'].map(status => {
-                const group = this.leads.filter(l => (l.commission_status||'pending') === status);
-                return {
-                    status,
-                    count:    group.length,
-                    contract: group.reduce((s,l)=>s+this._contract(l),0),
-                    company:  group.reduce((s,l)=>s+this._company(l),0),
-                    pool:     group.reduce((s,l)=>s+this._pool(l),0),
-                };
-            });
-        },
+        totalContractValue() { return this.financial?.total_contract_value ?? 0; },
+        totalCompanyShare()  { return this.financial?.total_company_share ?? 0; },
+        totalCommPool()      { return this.financial?.total_comm_pool ?? 0; },
+        paidCommPool()       { return this.financial?.paid_comm_pool ?? 0; },
+        commissionBreakdown() { return this.financial?.commission_breakdown ?? []; },
 
         fmtM(v) {
             const n = Math.round(Number(v) || 0);

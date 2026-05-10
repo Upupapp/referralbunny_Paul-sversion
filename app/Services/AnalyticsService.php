@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\TenantMetric;
 use App\Models\Lead;
 use App\Models\Notification;
+use App\Models\Reseller;
 use Carbon\Carbon;
 
 class AnalyticsService
@@ -109,6 +110,7 @@ class AnalyticsService
             'health_score'     => $metric?->health_score ?? 0,
             'health_level'     => $metric?->health_level ?? 'at_risk',
             'setup_completion' => $metric?->setup_completion_percentage ?? 0,
+            'total_leads'      => $leads->count(),
             'leads_total'      => $leads->count(),
             'leads_active'     => $byStatus['active']   ?? 0,
             'leads_expired'    => $byStatus['expired']  ?? 0,
@@ -117,6 +119,56 @@ class AnalyticsService
             'closed_value'     => $leads->where('stage', 'paid')->sum('deal_value'),
             'by_stage'         => $byStage,
             'by_status'        => $byStatus,
+            'total_resellers'  => Reseller::where('tenant_id', $tenant->id)->count(),
+        ];
+    }
+
+    // ── Tenant financial summary (server-side, avoids pagination gaps) ──
+
+    public function tenantFinancialSummary(string $tenantId): array
+    {
+        $leads = Lead::where('tenant_id', $tenantId)
+            ->get(['base_cost', 'added_amount', 'deal_value', 'commission_status']);
+
+        $totalContract = 0.0;
+        $totalCompany  = 0.0;
+        $totalPool     = 0.0;
+        $paidPool      = 0.0;
+
+        $breakdown = [
+            'pending' => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
+            'locked'  => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
+            'paid'    => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
+        ];
+
+        foreach ($leads as $lead) {
+            $aa       = (float) ($lead->added_amount > 0 ? $lead->added_amount : $lead->deal_value);
+            $base     = (float) ($lead->base_cost ?? 0);
+            $contract = ($base + $aa) > 0 ? ($base + $aa) : (float) $lead->deal_value;
+            $company  = $aa * 0.30;
+            $pool     = $aa * 0.70;
+            $status   = array_key_exists($lead->commission_status ?? '', $breakdown)
+                ? ($lead->commission_status ?? 'pending')
+                : 'pending';
+
+            $totalContract += $contract;
+            $totalCompany  += $company;
+            $totalPool     += $pool;
+
+            if ($status === 'paid') $paidPool += $pool;
+
+            $breakdown[$status]['count']    += 1;
+            $breakdown[$status]['contract'] += $contract;
+            $breakdown[$status]['company']  += $company;
+            $breakdown[$status]['pool']     += $pool;
+        }
+
+        return [
+            'total_contract_value' => round($totalContract, 2),
+            'total_company_share'  => round($totalCompany, 2),
+            'total_comm_pool'      => round($totalPool, 2),
+            'paid_comm_pool'       => round($paidPool, 2),
+            'commission_breakdown' => array_values($breakdown),
         ];
     }
 

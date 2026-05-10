@@ -7,6 +7,7 @@ use App\Models\TenantMetric;
 use App\Services\HealthScoreService;
 use App\Services\AnalyticsService;
 use App\Services\ExportService;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -43,11 +44,13 @@ class TenantMetricController extends Controller
 
     public function platformSummary(AnalyticsService $analytics): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json($analytics->platformSummary());
     }
 
     public function growth(AnalyticsService $analytics): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json([
             'by_month'   => $analytics->tenantGrowthByMonth(),
             'industries' => $analytics->industryDistribution(),
@@ -56,23 +59,39 @@ class TenantMetricController extends Controller
 
     public function funnel(Request $request, AnalyticsService $analytics): JsonResponse
     {
-        return response()->json($analytics->leadFunnel($request->tenant_id ?? null));
+        // SA can filter by any tenant; everyone else is locked to their own tenant
+        $tenantId = TenantContext::isSuperAdmin()
+            ? ($request->tenant_id ?? null)
+            : TenantContext::requireId();
+
+        return response()->json($analytics->leadFunnel($tenantId));
     }
 
     public function weeklyDigest(AnalyticsService $analytics): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json($analytics->weeklyDigest());
     }
 
     public function monthlyReport(AnalyticsService $analytics): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json($analytics->monthlyReport());
+    }
+
+    public function financialSummary(string $tenantId, AnalyticsService $analytics): JsonResponse
+    {
+        if (!TenantContext::isSuperAdmin() && TenantContext::id() !== $tenantId) {
+            abort(403, 'Access denied.');
+        }
+        return response()->json($analytics->tenantFinancialSummary($tenantId));
     }
 
     // ── Exports ───────────────────────────────────────────────
 
     public function exportHealth(Request $request, ExportService $export): StreamedResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         $csv      = $export->tenantHealthCsv($request->industry, $request->health_level);
         $filename = $export->filename('tenant_health');
         return $this->csvResponse($csv, $filename);
@@ -80,6 +99,7 @@ class TenantMetricController extends Controller
 
     public function exportNotifications(Request $request, ExportService $export): StreamedResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         $csv      = $export->notificationsCsv($request->priority, $request->category, $request->from, $request->to);
         $filename = $export->filename('notifications');
         return $this->csvResponse($csv, $filename);
@@ -87,7 +107,12 @@ class TenantMetricController extends Controller
 
     public function exportLeads(Request $request, ExportService $export): StreamedResponse
     {
-        $csv      = $export->leadsCsv($request->tenant_id, $request->stage, $request->status);
+        // SA can export any tenant; tenant admins are locked to their own tenant
+        $tenantId = TenantContext::isSuperAdmin()
+            ? ($request->tenant_id ?? null)
+            : TenantContext::requireId();
+
+        $csv      = $export->leadsCsv($tenantId, $request->stage, $request->status);
         $filename = $export->filename('leads');
         return $this->csvResponse($csv, $filename);
     }
