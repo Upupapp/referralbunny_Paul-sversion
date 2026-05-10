@@ -680,7 +680,7 @@ class LguIdsImportService
                         changedFields: array_keys($changes), operationType: 'overwritten',
                         batchRowId: $row->id, row: $row,
                     );
-                    LeadHistory::create(['lead_id' => $row->existing_deal_id, 'action' => 'Deal updated via LGU IDS import (batch: ' . $batch->id . ')', 'type' => 'import', 'date' => now()->toDateString()]);
+                    LeadHistory::create(['lead_id' => $row->existing_deal_id, 'tenant_id' => self::TENANT_ID, 'action' => 'Deal updated via LGU IDS import', 'type' => 'import', 'category' => 'import', 'actor_name' => 'Admin (Import)', 'actor_role' => $executorRole, 'new_values' => ['batch_id' => $batch->id, 'file' => $batch->file_name], 'date' => now()->toDateString()]);
                     $row->update(['created_deal_id' => $row->existing_deal_id]);
                     $updated++;
                 } elseif ($row->row_action === 'merge' && $row->existing_deal_id) {
@@ -701,7 +701,7 @@ class LguIdsImportService
                                 batchRowId: $row->id, row: $row,
                             );
                         }
-                        LeadHistory::create(['lead_id' => $existing->id, 'action' => 'Deal merged via LGU IDS import (batch: ' . $batch->id . ')', 'type' => 'import', 'date' => now()->toDateString()]);
+                        LeadHistory::create(['lead_id' => $existing->id, 'tenant_id' => self::TENANT_ID, 'action' => 'Deal merged via LGU IDS import', 'type' => 'import', 'category' => 'import', 'actor_name' => 'Admin (Import)', 'actor_role' => $executorRole, 'new_values' => ['batch_id' => $batch->id, 'file' => $batch->file_name], 'date' => now()->toDateString()]);
                     }
                     $row->update(['created_deal_id' => $row->existing_deal_id]);
                     $updated++;
@@ -728,11 +728,40 @@ class LguIdsImportService
                         ],
                     ]);
                     LeadHistory::create([
-                        'lead_id' => $newLead->id,
-                        'action'  => 'Deal created via LGU IDS import (batch: ' . $batch->id . ')',
-                        'type'    => 'import',
-                        'date'    => now()->toDateString(),
+                        'lead_id'    => $newLead->id,
+                        'tenant_id'  => self::TENANT_ID,
+                        'action'     => 'Deal created via LGU IDS import',
+                        'type'       => 'import',
+                        'category'   => 'import',
+                        'actor_name' => $executorRole === 'reseller' ? ($resellerName ?? 'Referrer') : 'Admin (Import)',
+                        'actor_role' => $executorRole,
+                        'new_values' => [
+                            'deal_name'   => $dealName,
+                            'stage'       => $stage,
+                            'deal_value'  => $dealValue,
+                            'batch_id'    => $batch->id,
+                            'file'        => $batch->file_name,
+                        ],
+                        'date'       => now()->toDateString(),
                     ]);
+
+                    // Notify referrer about their new deal
+                    if ($reseller) {
+                        try {
+                            $this->notifications->dispatchToReseller(
+                                resellerId:   (string) $reseller->id,
+                                tenantId:     self::TENANT_ID,
+                                category:     'deal_assigned',
+                                priority:     'normal',
+                                title:        'New Deal: ' . $dealName,
+                                body:         "A new deal has been assigned to you: {$dealName} in {$stage} stage.",
+                                actionUrl:    '/reseller/' . self::TENANT_ID . '/deals',
+                                actionLabel:  'View Deal',
+                                dedupeSuffix: $newLead->id . ':import_assigned',
+                            );
+                        } catch (\Throwable) {}
+                    }
+
                     $this->snapshots->recordCreated(
                         batchId: $batch->id, tenantId: self::TENANT_ID,
                         entityType: 'lead', entityId: $newLead->id,

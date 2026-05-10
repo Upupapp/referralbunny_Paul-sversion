@@ -1779,13 +1779,11 @@ function dealActivityHistory(initialHistory) {
             } catch { return ts; }
         },
         async refreshHistory() {
-            // Called via window events (finance-updated, stage-updated)
-            // Re-fetches just to get the latest history array
+            // Uses window.rbLead set by dealDetail.init() — no Alpine internals needed
             try {
-                const dealId = document.querySelector('[x-data*="dealDetail"]')
-                    ?.__x?.$data?.lead?.id;
-                if (!dealId) return;
-                const res = await fetch(`/api/leads/${dealId}`, { credentials: 'same-origin' });
+                const lead = window.rbLead;
+                if (!lead || !lead.id) return;
+                const res = await fetch(`/api/leads/${lead.id}`, { credentials: 'same-origin' });
                 if (res.ok) {
                     const data = await res.json();
                     this.history = Array.isArray(data.history) ? data.history : [];
