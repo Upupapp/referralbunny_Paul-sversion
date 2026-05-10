@@ -101,7 +101,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     {{-- Move Stage button — always rendered; disabled only when paid or no lead --}}
-                    <button @click="showMoveStage = true"
+                    <button @click="$dispatch('open-move-stage-deal')"
                             :disabled="lead?.stage === 'paid' || !lead"
                             style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:12px;font-weight:600;color:white;cursor:pointer;border:none;transition:opacity .15s,transform .1s;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3)"
                             :style="lead?.stage === 'paid' || !lead ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
@@ -122,10 +122,10 @@
 
                             {{-- Stage card — clickable for future/next stages --}}
                             <div class="relative flex flex-col items-center justify-between gap-2 py-4 px-2 rounded-2xl flex-1 min-w-0 transition-all duration-200"
-                                 :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : '')"
+                                 :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
                                  :aria-current="s.key === lead?.stage ? 'step' : null"
-                                 :title="!isStageDone(s.key) && s.key !== lead?.stage ? 'Click to move stage to ' + s.label : null"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) showMoveStage = true">
+                                 :title="!isStageDone(s.key) && s.key !== lead?.stage ? 'Click to advance to ' + s.label : null"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) $dispatch('open-move-stage-deal')">
 
                                 {{-- Status label (top) --}}
                                 <div style="height:14px;display:flex;align-items:center;justify-content:center">
@@ -185,8 +185,8 @@
                         {{-- Timeline: dot + connector line --}}
                         <div style="width:34px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
                             <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
-                                 :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : '')"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) showMoveStage = true">
+                                 :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) $dispatch('open-move-stage-deal')">
                                 <template x-if="isStageDone(s.key)">
                                     <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
