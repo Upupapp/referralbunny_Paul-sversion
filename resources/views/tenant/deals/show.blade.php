@@ -94,34 +94,35 @@
                     <h3 class="font-bold text-[#1E1B4B]" style="font-size:15px">Deal Progress</h3>
                     <p class="text-xs text-gray-400 mt-0.5">Track this deal from introduction to payment.</p>
                 </div>
-                <div class="flex items-center gap-2.5 flex-wrap">
-                    {{-- Completed badge --}}
-                    <span x-show="lead?.stage === 'paid'"
-                          style="display:none;background:#dcfce7;color:#15803d"
-                          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold">
-                        <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        Deal Completed
-                    </span>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    {{-- Completed badge — shown only when paid --}}
+                    <template x-if="lead?.stage === 'paid'">
+                        <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9999px;background:#dcfce7;color:#15803d;font-size:12px;font-weight:600">
+                            <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            Deal Completed
+                        </span>
+                    </template>
                     {{-- Days left badge --}}
-                    <div x-show="lead?.days_left !== undefined && lead?.days_left !== null && lead?.stage !== 'paid'"
-                         :style="(lead?.days_left ?? 99) <= 5
-                             ? 'background:#fef2f2;color:#dc2626'
-                             : (lead?.days_left ?? 99) <= 10
-                                 ? 'background:#fffbeb;color:#d97706'
-                                 : 'background:#f5f3ff;color:#7B61FF'"
-                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold">
-                        <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span x-text="(lead?.days_left ?? 0) + 'd left'"></span>
-                    </div>
-                    {{-- Move Stage button --}}
+                    <template x-if="(lead?.days_left ?? null) !== null && lead?.stage !== 'paid'">
+                        <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:600"
+                             :style="(lead?.days_left ?? 99) <= 5
+                                 ? 'background:#fef2f2;color:#dc2626'
+                                 : (lead?.days_left ?? 99) <= 10
+                                     ? 'background:#fffbeb;color:#d97706'
+                                     : 'background:#f5f3ff;color:#7B61FF'">
+                            <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="(lead?.days_left ?? 0) + 'd left'"></span>
+                        </div>
+                    </template>
+                    {{-- Move Stage button — always rendered; disabled only when paid or no lead --}}
                     <button @click="showMoveStage = true"
-                            x-show="lead?.stage !== 'paid'"
-                            style="display:none;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3);color:white"
-                            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1"
+                            :disabled="lead?.stage === 'paid' || !lead"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:12px;font-weight:600;color:white;cursor:pointer;border:none;transition:opacity .15s,transform .1s;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3)"
+                            :style="lead?.stage === 'paid' || !lead ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
                             aria-label="Move this deal to the next stage">
-                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
                         Move Stage
@@ -135,10 +136,12 @@
                     <template x-for="(s, i) in allStages" :key="s.key">
                         <div class="flex items-center flex-1 min-w-0">
 
-                            {{-- Stage card --}}
+                            {{-- Stage card — clickable for future/next stages --}}
                             <div class="relative flex flex-col items-center justify-between gap-2 py-4 px-2 rounded-2xl flex-1 min-w-0 transition-all duration-200"
-                                 :style="stageCardStyle(s.key)"
-                                 :aria-current="s.key === lead?.stage ? 'step' : null">
+                                 :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : '')"
+                                 :aria-current="s.key === lead?.stage ? 'step' : null"
+                                 :title="!isStageDone(s.key) && s.key !== lead?.stage ? 'Click to move stage to ' + s.label : null"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) showMoveStage = true">
 
                                 {{-- Status label (top) --}}
                                 <div style="height:14px;display:flex;align-items:center;justify-content:center">
@@ -198,7 +201,8 @@
                         {{-- Timeline: dot + connector line --}}
                         <div style="width:34px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
                             <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
-                                 :style="stageMobileCircleStyle(s.key)">
+                                 :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : '')"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) showMoveStage = true">
                                 <template x-if="isStageDone(s.key)">
                                     <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -540,9 +544,15 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-3">
-                    <button @click="cancelEditFinance()" class="btn-secondary">Cancel</button>
-                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
+                <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+                    <button @click="cancelEditFinance()"
+                            style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s"
+                            @mouseenter="$event.currentTarget.style.background='#f9fafb'"
+                            @mouseleave="$event.currentTarget.style.background='white'">Cancel</button>
+                    <button @click="saveFinance()" :disabled="saving"
+                            style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s"
+                            :style="saving ? 'opacity:0.6;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
+                            x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
                 </div>
             </div>
         </div>
@@ -1174,25 +1184,42 @@
                            placeholder="Search contacts...">
                 </div>
                 <div class="max-h-72 overflow-y-auto space-y-1">
-                    <template x-if="allTenantContacts.length === 0">
-                        <p class="text-center text-gray-400 text-sm py-6">Click the search icon or start typing to load contacts.</p>
+                    {{-- Loading state --}}
+                    <template x-if="loadingAllContacts">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:24px;color:#9ca3af;font-size:13px">
+                            <svg class="animate-spin" style="width:16px;height:16px;flex-shrink:0" fill="none" viewBox="0 0 24 24">
+                                <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            Loading contacts...
+                        </div>
                     </template>
-                    <template x-if="allTenantContacts.length > 0 && linkableContacts().length === 0">
-                        <p class="text-center text-gray-400 text-sm py-6">
-                            <span x-text="'No matching contacts.'"></span>
+                    {{-- Empty — not loading --}}
+                    <template x-if="!loadingAllContacts && allTenantContacts.length === 0">
+                        <p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 12px">
+                            No contacts found. <a href="{{ route('tenant.contacts', $tenant->id) }}" style="color:#7B61FF;text-decoration:underline">Add contacts</a> first.
                         </p>
                     </template>
+                    {{-- No match for search --}}
+                    <template x-if="!loadingAllContacts && allTenantContacts.length > 0 && linkableContacts().length === 0">
+                        <p style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 12px">No contacts match your search.</p>
+                    </template>
+                    {{-- Contact list --}}
                     <template x-for="c in linkableContacts()" :key="c.id">
                         <button @click="linkContact(c)"
                                 :disabled="linkSaving"
-                                class="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left group">
-                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
+                                style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:12px;text-align:left;background:white;border:none;cursor:pointer;transition:background .15s"
+                                @mouseenter="$event.currentTarget.style.background='#F0EFFA'"
+                                @mouseleave="$event.currentTarget.style.background='white'">
+                            <div style="width:34px;height:34px;border-radius:9999px;background:#ede9fe;display:flex;align-items:center;justify-content:center;color:#7B61FF;font-size:12px;font-weight:700;flex-shrink:0"
                                  x-text="contactInitials(c)"></div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-[#1E1B4B] truncate" x-text="contactFullName(c)"></p>
-                                <p class="text-xs text-gray-400 truncate" x-text="[c.job_title, c.org_name].filter(Boolean).join(' Â· ') || c.email || ''"></p>
+                            <div style="flex:1;min-width:0">
+                                <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="contactFullName(c)"></p>
+                                <p style="font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="[c.job_title, c.org_name].filter(Boolean).join(' · ') || c.email || ''"></p>
                             </div>
-                            <svg class="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <svg style="width:14px;height:14px;color:#7B61FF;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
                         </button>
                     </template>
                 </div>
@@ -1333,12 +1360,18 @@
                 This resets the stage to Introduction, restarts the pipeline timer, and transfers 100% of the commission pool to the new referrer.
             </div>
             <div>
-                <label class="form-label">New Referrer Name *</label>
-                <input type="text" x-model="reassignName" class="form-input" placeholder="Referrer full name">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">New Referrer Name *</label>
+                <input type="text" x-model="reassignName"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                       placeholder="Referrer full name">
             </div>
-            <div class="flex justify-end gap-3">
-                <button @click="showReassign = false; reassignName = ''" class="btn-secondary">Cancel</button>
-                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+                <button @click="showReassign = false; reassignName = ''"
+                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+                <button @click="reassign()" :disabled="!reassignName || saving"
+                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#FF5733;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s"
+                        :style="(!reassignName || saving) ? 'opacity:0.5;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
+                        x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
             </div>
         </div>
     </div>
@@ -1606,7 +1639,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         // Contacts
         dealContacts: [], loadingContacts: true,
         allTenantContacts: [],
-        showLinkContact: false, linkSearch: '', linkSaving: false,
+        showLinkContact: false, linkSearch: '', linkSaving: false, loadingAllContacts: false,
 
         allStages: [
             { key: 'introduction',  label: 'Introduction',  icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
@@ -1918,6 +1951,8 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
 
         async fetchAllContacts() {
+            if (this.loadingAllContacts) return;
+            this.loadingAllContacts = true;
             try {
                 const res = await fetch(`/api/contacts?tenant_id=${tenantId}`, {
                     credentials: 'same-origin',
@@ -1926,6 +1961,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                 const data = await res.json();
                 this.allTenantContacts = Array.isArray(data) ? data : [];
             } catch(e) { this.allTenantContacts = []; }
+            this.loadingAllContacts = false;
         },
 
         openLinkContact() {
