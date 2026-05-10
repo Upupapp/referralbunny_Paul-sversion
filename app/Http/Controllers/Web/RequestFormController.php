@@ -94,7 +94,7 @@ class RequestFormController extends Controller
 
         [$actorType, $actorId] = $this->resolveActor();
 
-        DB::transaction(function () use ($data, $tenantId, $actorType, $actorId) {
+        $form = DB::transaction(function () use ($data, $tenantId, $actorType, $actorId, $request) {
             $form = RequestForm::create([
                 'tenant_id'                 => $tenantId,
                 'created_by_type'           => $actorType,
@@ -157,8 +157,9 @@ class RequestFormController extends Controller
             return $form;
         });
 
-        return redirect()->route('tenant.request-forms', $tenantId)
-            ->with('success', 'Request form created. Publish it when ready.');
+        return redirect()->route('tenant.request-forms.edit', [$tenantId, $form->id])
+            ->with('form_created', true)
+            ->with('success', 'Form created and saved as draft.');
     }
 
     // ── Edit / Update ─────────────────────────────────────────────────────────

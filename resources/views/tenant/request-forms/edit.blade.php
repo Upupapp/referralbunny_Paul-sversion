@@ -10,7 +10,42 @@
         <h1 style="font-size:20px;font-weight:700;color:#1E1B4B;margin-top:8px">Edit: {{ $form->title }}</h1>
     </div>
 
-    @if(session('success'))
+    @if(session('form_created'))
+    {{-- Success modal shown only on first arrival after creation --}}
+    <div x-data="{ open: true }" x-show="open" x-cloak
+         style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div style="background:white;border-radius:20px;padding:32px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.15);text-align:center"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+            <div style="width:56px;height:56px;border-radius:16px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <svg style="width:28px;height:28px;color:#10B981" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#10B981;margin-bottom:6px">Form Created</p>
+            <h2 style="font-size:18px;font-weight:700;color:#1E1B4B;margin-bottom:6px">{{ $form->title }}</h2>
+            <p style="font-size:13px;color:#9ca3af;margin-bottom:24px">Saved as draft. Publish it when you're ready so people can start submitting requests.</p>
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <button @click="open=false; publishForm()"
+                        id="created-publish-btn"
+                        style="padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.25)">
+                    Publish Now
+                </button>
+                <button @click="open=false"
+                        style="padding:11px 24px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                    Keep as Draft
+                </button>
+            </div>
+        </div>
+    </div>
+    @elseif(session('success'))
     <div style="padding:12px 16px;background:#dcfce7;border:1px solid #86efac;border-radius:12px;color:#15803d;font-size:13px;font-weight:600">
         {{ session('success') }}
     </div>
@@ -105,4 +140,26 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+async function publishForm() {
+    const btn = document.getElementById('created-publish-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Publishing…'; }
+    try {
+        const csrf = document.querySelector('meta[name=csrf-token]').content;
+        const res  = await fetch('{{ route('tenant.request-forms.publish', [$tenant->id, $form->id]) }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.status === 'published') {
+            window.location.reload();
+        }
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Publish Now'; }
+    }
+}
+</script>
+@endpush
 @endsection
