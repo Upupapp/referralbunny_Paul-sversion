@@ -34,10 +34,10 @@ class HandleResellerJoined
             tenantId:     $event->tenantId,
             category:     'reseller_referrer',
             priority:     'normal',
-            title:        "New reseller joined: {$event->resellerName}",
-            body:         "A new reseller has joined your workspace.",
+            title:        "New Referrer joined: {$event->resellerName}",
+            body:         "A new Referrer has joined your workspace.",
             actionUrl:    url("/tenant/{$event->tenantId}/referrers"),
-            actionLabel:  'View Reseller',
+            actionLabel:  'View Referrer',
             dedupeSuffix: $event->resellerId,
             metadata:     ['reseller_id' => $event->resellerId],
         );

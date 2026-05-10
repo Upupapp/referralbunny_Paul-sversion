@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Events\InviteAcceptedEvent;
 use App\Http\Controllers\Controller;
 use App\Mail\TenantInvitationAcceptedMail;
 use App\Models\TenantInvitation;
@@ -119,17 +120,20 @@ class TenantInvitationController extends Controller
             }
         } catch (\Throwable) {}
 
-        // Notify tenant admins (non-critical)
+        // Fire unified invite-accepted event (ActivityLog + AuditLog + in-app notifications)
         try {
-            $this->notifications->dispatchToTenantAdmins(
-                tenantId:    $invitation->tenant_id,
-                category:    'info',
-                priority:    'normal',
-                title:       'Invitation Accepted',
-                body:        "{$user->first_name} {$user->last_name} ({$email}) joined as " . ucfirst($invitation->role) . ".",
-                actionUrl:   route('tenant.users', $invitation->tenant_id),
-                actionLabel: 'View Users',
-                dedupeSuffix: "accepted:{$invitation->id}",
+            InviteAcceptedEvent::dispatch(
+                tenantId:          $invitation->tenant_id,
+                inviteType:        'tenant_user',
+                acceptedUserId:    $user->id,
+                acceptedUserName:  trim("{$user->first_name} {$user->last_name}"),
+                acceptedUserEmail: $email,
+                acceptedRole:      $invitation->role,
+                invitedById:       $invitation->invited_by,
+                inviteId:          $invitation->id,
+                relatedDealId:     null,
+                relatedDealName:   null,
+                acceptedAt:        now(),
             );
         } catch (\Throwable) {}
 

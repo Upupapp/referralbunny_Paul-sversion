@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\InviteAcceptedEvent;
 use App\Events\ResellerJoined;
 use App\Mail\ResellerInvitation;
 use App\Mail\ResellerPasswordReset;
@@ -173,9 +174,7 @@ class ResellerPortalAuthController extends Controller
         $reseller = $reseller->fresh();
         Auth::guard('reseller')->login($reseller);
 
-        // Fire event → sends welcome email + notifies tenant admins.
-        // Wrapped in try-catch so a listener failure never causes a 500 —
-        // the account is already activated and the user is logged in at this point.
+        // Fire ResellerJoined → welcome email + admin in-app notification.
         try {
             ResellerJoined::dispatch(
                 resellerId:    $reseller->id,
@@ -189,7 +188,26 @@ class ResellerPortalAuthController extends Controller
                 'tenant_id'   => $reseller->tenant_id,
                 'step'        => 'post_setup_event_dispatch',
             ]);
-            // Do not rethrow — account is active and user is authenticated.
+        }
+
+        // Fire InviteAcceptedEvent → ActivityLog + AuditLog + inviter notification.
+        // Admin notification is skipped for inviteType='reseller' (HandleResellerJoined already sent it).
+        try {
+            InviteAcceptedEvent::dispatch(
+                tenantId:          $reseller->tenant_id,
+                inviteType:        'reseller',
+                acceptedUserId:    $reseller->id,
+                acceptedUserName:  $reseller->name,
+                acceptedUserEmail: $reseller->email,
+                acceptedRole:      'referrer',
+                invitedById:       $reseller->linked_tenant_user_id,
+                inviteId:          null,
+                relatedDealId:     null,
+                relatedDealName:   null,
+                acceptedAt:        now(),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('InviteAcceptedEvent dispatch failed for reseller: ' . $e->getMessage());
         }
 
         return redirect()->route('reseller.dashboard', $reseller->tenant_id);

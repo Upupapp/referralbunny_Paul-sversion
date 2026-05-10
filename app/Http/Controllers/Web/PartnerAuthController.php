@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Events\InviteAcceptedEvent;
 use App\Http\Controllers\Controller;
 use App\Mail\PartnerPasswordReset;
 use App\Models\DealPartner;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -108,7 +110,36 @@ class PartnerAuthController extends Controller
                 'accepted_at' => now(),
             ]);
 
+        // Fetch a related deal (if any) for the notification
+        $relatedDealPartner = DealPartner::where('partner_user_id', $partner->id)
+            ->where('status', 'active')
+            ->first();
+
+        $relatedDealName = null;
+        if ($relatedDealPartner?->deal_id) {
+            $relatedDealName = DB::table('deals')->where('id', $relatedDealPartner->deal_id)->value('name');
+        }
+
         Auth::guard('partner')->login($partner);
+
+        // Fire unified invite-accepted event (ActivityLog + AuditLog + in-app notifications)
+        try {
+            InviteAcceptedEvent::dispatch(
+                tenantId:          $partner->tenant_id,
+                inviteType:        'partner',
+                acceptedUserId:    $partner->id,
+                acceptedUserName:  $partner->full_name ?: $partner->email,
+                acceptedUserEmail: $partner->email,
+                acceptedRole:      'partner',
+                invitedById:       ($partner->invited_by_type === 'tenant_user') ? $partner->invited_by_id : null,
+                inviteId:          null,
+                relatedDealId:     $relatedDealPartner?->deal_id,
+                relatedDealName:   $relatedDealName,
+                acceptedAt:        now(),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('InviteAcceptedEvent dispatch failed for partner: ' . $e->getMessage());
+        }
 
         return redirect()->route('partner.dashboard');
     }

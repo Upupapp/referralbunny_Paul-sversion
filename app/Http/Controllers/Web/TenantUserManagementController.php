@@ -200,7 +200,7 @@ class TenantUserManagementController extends Controller
         try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:    $tenantId,
-                category:    'info',
+                category:    'tenant_workspace',
                 priority:    'normal',
                 title:       'New Team Invitation Sent',
                 body:        "An invitation was sent to {$email} for the role of " . ucfirst($invitedRole) . ".",
@@ -417,7 +417,7 @@ class TenantUserManagementController extends Controller
             $removedEmail = $removedUser?->email ?? 'A team member';
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'info',
+                category:     'tenant_workspace',
                 priority:     'normal',
                 title:        'Team member removed',
                 body:         "{$removedEmail} has been removed from this workspace.",
