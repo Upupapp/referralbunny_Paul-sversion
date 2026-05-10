@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 @section('title', 'Deal Detail')
 @section('nav') @include('tenant._nav') @endsection
 
@@ -16,7 +16,7 @@
 @section('content')
 <script>var __dealSsrLead = @json($ssrLead ?? null);</script>
 <style>
-/* Financial breakdown layout â€” guaranteed, no Tailwind compile dependency */
+/* Financial breakdown layout â€" guaranteed, no Tailwind compile dependency */
 .fin-row{display:flex!important;justify-content:space-between;align-items:center}
 .fin-grid-3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
 </style>
@@ -126,7 +126,7 @@
                     </div>
                     <h3 class="font-semibold text-[#1E1B4B]">Financial Breakdown</h3>
 
-                    {{-- â“˜ Formula explainer (orange, always visible) --}}
+                    {{-- â"˜ Formula explainer (orange, always visible) --}}
                     <div class="relative" x-data="{ open: false }">
                         <button type="button"
                                 @click="open = !open"
@@ -160,7 +160,7 @@
                             </div>
 
                             <p class="text-xs text-gray-600 leading-relaxed mb-3">
-                                ReferralBunny.ai separates the total contract value into the actual base cost and the added amount (your margin). The <span class="font-semibold text-blue-600">company share</span> is 30% of the added amount, while the <span class="font-semibold text-emerald-600">referrer commission pool</span> is 70% of the added amount. This lets everyone see exactly how the contract value, company share, and commission pool are calculated â€” before commissions are locked or paid.
+                                ReferralBunny.ai separates the total contract value into the actual base cost and the added amount (your margin). The <span class="font-semibold text-blue-600">company share</span> is 30% of the added amount, while the <span class="font-semibold text-emerald-600">referrer commission pool</span> is 70% of the added amount. This lets everyone see exactly how the contract value, company share, and commission pool are calculated â€" before commissions are locked or paid.
                             </p>
 
                             {{-- Formula --}}
@@ -219,7 +219,7 @@
                 </button>
             </div>
 
-            {{-- Ã¢"â‚¬Ã¢"â‚¬ View mode (PHP-rendered â€” no Alpine x-text dependency) Ã¢"â‚¬Ã¢"â‚¬ --}}
+            {{-- Ã¢"â‚¬Ã¢"â‚¬ View mode (PHP-rendered â€" no Alpine x-text dependency) Ã¢"â‚¬Ã¢"â‚¬ --}}
             @php
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
@@ -265,7 +265,7 @@
                     </div>
                 </div>
 
-                {{-- Commission distribution (Alpine-driven â€” only shows when splits exist) --}}
+                {{-- Commission distribution (Alpine-driven â€" only shows when splits exist) --}}
                 @if(!empty($ssrLead['commission_splits']))
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -306,72 +306,72 @@
             </div>
 
             {{-- Edit mode --}}
-            <div x-show=”editFinance” style=”display:none” class=”space-y-5”>
+            <div x-show="editFinance" style="display:none" class="space-y-5">
 
                 @if($showLocation ?? false)
                 {{-- LGU IDS: deal-value-first with auto-locked base cost --}}
-                <div class=”flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl”>
-                    <svg class=”w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5” fill=”currentColor” viewBox=”0 0 20 20”><path fill-rule=”evenodd” d=”M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z” clip-rule=”evenodd”/></svg>
-                    <p class=”text-xs text-purple-700 leading-relaxed”>Enter the total contract value first. Base cost is auto-locked by the LGU IDS pricing tier. Adjust the added amount (margin) if needed — the deal value will update to stay consistent.</p>
+                <div class="flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
+                    <svg class="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                    <p class="text-xs text-purple-700 leading-relaxed">Enter the total contract value first. Base cost is auto-locked by the LGU IDS pricing tier. Adjust the added amount (margin) if needed — the deal value will update to stay consistent.</p>
                 </div>
 
                 {{-- Deal Value (primary input) --}}
                 <div>
-                    <label style=”display:block;font-size:13px;font-weight:600;color:#1E1B4B;margin-bottom:4px”>
-                        Deal Value (₱) <span style=”font-weight:400;color:#9ca3af;font-size:11px”>— total contract amount</span>
+                    <label style="display:block;font-size:13px;font-weight:600;color:#1E1B4B;margin-bottom:4px">
+                        Deal Value (₱) <span style="font-weight:400;color:#9ca3af;font-size:11px">— total contract amount</span>
                     </label>
-                    <input type=”number” x-model.number=”financeForm.deal_value”
-                           x-on:input=”onDealValueChange()”
-                           style=”display:block;width:100%;padding:10px 14px;border:2px solid #7B61FF;border-radius:12px;font-size:16px;font-weight:600;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
-                           placeholder=”4000000” min=”0” step=”100”>
-                    <p style=”font-size:10px;color:#7B61FF;margin-top:4px”>LGU IDS default: ₱4,000,000</p>
+                    <input type="number" x-model.number="financeForm.deal_value"
+                           x-on:input="onDealValueChange()"
+                           style="display:block;width:100%;padding:10px 14px;border:2px solid #7B61FF;border-radius:12px;font-size:16px;font-weight:600;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                           placeholder="4000000" min="0" step="100">
+                    <p style="font-size:10px;color:#7B61FF;margin-top:4px">LGU IDS default: ₱4,000,000</p>
                 </div>
 
                 {{-- Base Cost (locked) + Added Amount (editable) --}}
-                <div style=”display:grid;grid-template-columns:1fr 1fr;gap:16px”>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                     <div>
-                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
-                            Base Cost (₱) <span style=”font-weight:400;color:#9ca3af”>— LGU IDS tier</span>
+                        <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">
+                            Base Cost (₱) <span style="font-weight:400;color:#9ca3af">— LGU IDS tier</span>
                         </label>
-                        <div style=”display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;cursor:not-allowed;user-select:none”>
-                            <span style=”font-size:14px;font-weight:600;color:#374151;font-variant-numeric:tabular-nums” x-text=”fmt(financeForm.base_cost)”></span>
-                            <span style=”font-size:10px;font-weight:700;color:#7B61FF;background:#ede9fe;border-radius:20px;padding:2px 8px;white-space:nowrap;margin-left:8px”
-                                  x-text=”tierLabel(financeForm.deal_value)”></span>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;cursor:not-allowed;user-select:none">
+                            <span style="font-size:14px;font-weight:600;color:#374151;font-variant-numeric:tabular-nums" x-text="fmt(financeForm.base_cost)"></span>
+                            <span style="font-size:10px;font-weight:700;color:#7B61FF;background:#ede9fe;border-radius:20px;padding:2px 8px;white-space:nowrap;margin-left:8px"
+                                  x-text="tierLabel(financeForm.deal_value)"></span>
                         </div>
-                        <p style=”font-size:10px;color:#9ca3af;margin-top:4px”>Auto-locked · not editable</p>
+                        <p style="font-size:10px;color:#9ca3af;margin-top:4px">Auto-locked · not editable</p>
                     </div>
                     <div>
-                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
-                            Added Amount (₱) <span style=”font-weight:400;color:#9ca3af”>— margin</span>
+                        <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">
+                            Added Amount (₱) <span style="font-weight:400;color:#9ca3af">— margin</span>
                         </label>
-                        <input type=”number” x-model.number=”financeForm.added_amount”
-                               x-on:input=”onAddedAmountChange()”
-                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
-                               placeholder=”0” min=”0” step=”100”>
-                        <p style=”font-size:10px;color:#9ca3af;margin-top:4px”>Edit to adjust — deal value updates</p>
+                        <input type="number" x-model.number="financeForm.added_amount"
+                               x-on:input="onAddedAmountChange()"
+                               style="display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                               placeholder="0" min="0" step="100">
+                        <p style="font-size:10px;color:#9ca3af;margin-top:4px">Edit to adjust — deal value updates</p>
                     </div>
                 </div>
 
                 @else
                 {{-- Generic tenant: manual base cost + added amount --}}
-                <p style=”font-size:12px;color:#6b7280”>Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
+                <p style="font-size:12px;color:#6b7280">Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
 
-                <div style=”display:grid;grid-template-columns:1fr 1fr;gap:16px”>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                     <div>
-                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
-                            Base Cost (₱) <span style=”font-weight:400;color:#9ca3af”>— actual delivery cost</span>
+                        <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">
+                            Base Cost (₱) <span style="font-weight:400;color:#9ca3af">— actual delivery cost</span>
                         </label>
-                        <input type=”number” x-model.number=”financeForm.base_cost” x-on:input=”recalc()”
-                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
-                               placeholder=”0” min=”0” step=”100”>
+                        <input type="number" x-model.number="financeForm.base_cost" x-on:input="recalc()"
+                               style="display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                               placeholder="0" min="0" step="100">
                     </div>
                     <div>
-                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
-                            Added Amount (₱) <span style=”font-weight:400;color:#9ca3af”>— your margin</span>
+                        <label style="display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px">
+                            Added Amount (₱) <span style="font-weight:400;color:#9ca3af">— your margin</span>
                         </label>
-                        <input type=”number” x-model.number=”financeForm.added_amount” x-on:input=”recalc()”
-                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
-                               placeholder=”0” min=”0” step=”100”>
+                        <input type="number" x-model.number="financeForm.added_amount" x-on:input="recalc()"
+                               style="display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                               placeholder="0" min="0" step="100">
                     </div>
                 </div>
                 @endif
@@ -418,7 +418,7 @@
             </div>
         </div>
         <script>
-        // Apply financial layout â€” JS setProperty bypasses ALL CSS blocking
+        // Apply financial layout â€" JS setProperty bypasses ALL CSS blocking
         (function applyFin(){
             ['.fin-row','.fin-grid-3'].forEach(function(sel){
                 document.querySelectorAll(sel).forEach(function(el){
@@ -457,16 +457,16 @@
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Deal Details</h3>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Referrer</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'â€”'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'â€"'"></span>
                     </div>
                     @if($showLocation ?? false)
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Province</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || 'â€”'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || 'â€"'"></span>
                     </div>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Municipality</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || 'â€”'"></span>
+                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || 'â€"'"></span>
                     </div>
                     @endif
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
@@ -584,14 +584,14 @@
                                         <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xs font-bold shrink-0"
                                              x-text="([c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || '?').slice(0,2).toUpperCase()"></div>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="[c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || 'â€”'"></p>
+                                            <p class="text-xs font-medium text-[#1E1B4B] truncate" x-text="[c.first_name, c.last_name].filter(Boolean).join(' ') || c.name || 'â€"'"></p>
                                             <p class="text-[10px] text-gray-400 truncate" x-text="c.email || c.job_title || ''"></p>
                                         </div>
                                     </button>
                                 </template>
                                 <div x-show="contactOptions.length === 0 && !loadingContacts && !contactLoadError"
                                      class="px-3 py-4 text-center text-xs text-gray-400"
-                                     x-text="contactQuery ? 'No matching contacts.' : 'Click ðŸ” or type to search contacts.'"></div>
+                                     x-text="contactQuery ? 'No matching contacts.' : 'Click ðŸ" or type to search contacts.'"></div>
                             </div>
                         </div>
                     </div>
@@ -601,7 +601,7 @@
                         <div class="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 text-[10px] font-bold shrink-0"
                              x-text="([contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || '?').slice(0,2).toUpperCase()"></div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="[contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || 'â€”'"></p>
+                            <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="[contactSelected?.first_name, contactSelected?.last_name].filter(Boolean).join(' ') || contactSelected?.name || 'â€"'"></p>
                             <p class="text-[10px] text-gray-400 truncate" x-text="contactSelected?.email || ''"></p>
                         </div>
                         <button type="button" @click="clearContact()" class="text-gray-400 hover:text-gray-600 shrink-0">
@@ -823,7 +823,7 @@
                                           @keydown.enter.prevent="if(mentionOpen && mentionResults[mentionFocusIdx]) selectMention(mentionResults[mentionFocusIdx])"
                                           rows="3"
                                           class="form-input text-sm resize-none"
-                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note â€” only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
+                                          :placeholder="newVisibility === 'internal_admin' ? 'Internal note â€" only visible to Tenant Admins and Managers. Type @ to tag someone…' : 'Write a note about this deal. Type @ to tag a teammate, Referrer, Partner, or Contact…'"></textarea>
 
                                 {{-- @Mention dropdown --}}
                                 <div x-show="mentionOpen" style="display:none"
@@ -1040,7 +1040,7 @@
                     </svg>
                     <input type="text" x-model="linkSearch"
                            @input.debounce.200ms="if(!allTenantContacts.length) fetchAllContacts()"
-                           placeholder="Click ðŸ” or type to search contacts…">
+                           placeholder="Click ðŸ" or type to search contacts…">
                 </div>
                 <div class="max-h-72 overflow-y-auto space-y-1">
                     <template x-if="allTenantContacts.length === 0">
@@ -1075,7 +1075,7 @@
     </div>
     </template>
 
-    {{-- â”€â”€ Move Stage Modal â”€â”€ --}}
+    {{-- â"€â"€ Move Stage Modal â"€â"€ --}}
     <template x-teleport="body">
     <div x-show="showMoveStage" style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
@@ -1154,14 +1154,14 @@
 <script>
 function dealComments(dealId, tenantId) {
     return {
-        // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ State â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         comments: [], loadingComments: true, posting: false,
         newBody: '', newVisibility: 'shared', commentError: '',
         noteSaved: false,          // inline success banner
         editingId: null, editBody: '',
         canPostInternal: true,     // tenant admin default; API enforces actual permission
 
-        // Idempotency â€” generated once per component, rotated after each save
+        // Idempotency â€" generated once per component, rotated after each save
         clientRequestId: crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36)),
 
         // @Mention state
@@ -1177,12 +1177,12 @@ function dealComments(dealId, tenantId) {
         // File attachment state
         selectedFiles: [],
 
-        // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         csrf() {
             return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
         },
 
-        // â”€â”€ Load notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Load notes â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async loadComments() {
             this.loadingComments = true;
             try {
@@ -1197,9 +1197,9 @@ function dealComments(dealId, tenantId) {
             this.loadingComments = false;
         },
 
-        // â”€â”€ Post note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Post note â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async postComment() {
-            // â‘  Hard duplicate guard â€” must be the very first check
+            // â‘  Hard duplicate guard â€" must be the very first check
             if (this.posting) return;
             if (!this.newBody.trim() && this.selectedFiles.length === 0) return;
 
@@ -1234,7 +1234,7 @@ function dealComments(dealId, tenantId) {
                 } else if (!res.ok) {
                     this.commentError = data?.error || 'Unable to save note. Please try again.';
                 } else if (data?.id) {
-                    // â‘¡ Prevent duplicate in list â€” only add if not already present
+                    // â‘¡ Prevent duplicate in list â€" only add if not already present
                     if (!this.comments.find(c => c.id === data.id)) {
                         this.comments.unshift(data);
                     }
@@ -1261,7 +1261,7 @@ function dealComments(dealId, tenantId) {
             }
         },
 
-        // â”€â”€ Edit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Edit â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         startEdit(c) { this.editingId = c.id; this.editBody = c.body; },
 
         async saveEdit(c) {
@@ -1290,7 +1290,7 @@ function dealComments(dealId, tenantId) {
             this.posting = false;
         },
 
-        // â”€â”€ Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ Delete â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async deleteComment(c) {
             if (!confirm('Delete this note?')) return;
             try {
@@ -1305,7 +1305,7 @@ function dealComments(dealId, tenantId) {
             } catch(e) {}
         },
 
-        // â”€â”€ @Mention picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ @Mention picker â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         handleBodyInput(e) {
             const ta     = e.target;
             const before = ta.value.substring(0, ta.selectionStart);
@@ -1358,7 +1358,7 @@ function dealComments(dealId, tenantId) {
             this.$nextTick(() => { if (ta) { ta.focus(); const end = this.newBody.length; ta.setSelectionRange(end, end); } });
         },
 
-        // â”€â”€ File attachments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ File attachments â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         handleFiles(e) {
             const files   = Array.from(e.target.files || []);
             const maxSize = 10 * 1024 * 1024;
@@ -1423,7 +1423,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         async init() {
             this.fetchContacts();
             if (this.lead) {
-                // SSR data already present â€” page is instantly visible.
+                // SSR data already present â€" page is instantly visible.
                 // Refresh silently in background so any stale fields update.
                 fetch(`/api/leads/${leadId}`, { credentials: 'same-origin' })
                     .then(r => r.ok ? r.json() : null)
@@ -1559,7 +1559,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
         stageLabel(s) {
             const m = { introduction:'Introduction', presentation:'Presentation', contract_sent:'Contract Sent', signed:'Signed', paid:'Paid' };
-            return m[s] || (s || 'â€”');
+            return m[s] || (s || 'â€"');
         },
         stageBadge(s) {
             const m = { introduction:'badge badge-gray', presentation:'badge badge-blue', contract_sent:'badge badge-orange', signed:'badge badge-purple', paid:'badge badge-green' };
@@ -1655,8 +1655,8 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } finally { this.saving = false; }
         },
 
-        // â”€â”€ Contact helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        contactFullName(c) { return [c.first_name, c.last_name].filter(Boolean).join(' ') || 'â€”'; },
+        // â"€â"€ Contact helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+        contactFullName(c) { return [c.first_name, c.last_name].filter(Boolean).join(' ') || 'â€"'; },
         contactInitials(c) {
             const p = [c.first_name, c.last_name].filter(Boolean);
             return p.length ? p.map(n => n[0]).join('').toUpperCase() : '?';
@@ -1740,7 +1740,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
     }
 }
 
-// â”€â”€ Partner Split Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Partner Split Section â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 function partnerSplitSection(dealId, tenantId) {
     return {
         splits: [], loading: true, showAdd: false, saving: false, formError: '',
@@ -1861,7 +1861,7 @@ function partnerSplitSection(dealId, tenantId) {
     };
 }
 
-// â”€â”€ Extension Request Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Extension Request Section â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 function extensionRequestSection(dealId, tenantId) {
     return {
         requests: [], loading: true, saving: false, actionError: null,
