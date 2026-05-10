@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ManualTaskAssignedMail;
 use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\Tenant;
@@ -11,9 +12,153 @@ use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class TaskController extends Controller
 {
+    // ── Eligible Assignees (JSON API for modal) ───────────────────────────────
+
+    public function eligibleAssignees(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+
+        $members = DB::table('tenant_users as tu')
+            ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, tm.role")
+            ->orderBy('tm.role')
+            ->orderBy('tu.first_name')
+            ->get();
+
+        return response()->json($members);
+    }
+
+    // ── Store (manual task creation) ──────────────────────────────────────────
+
+    public function store(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+
+        $data = $request->validate([
+            'title'           => 'required|string|max:200',
+            'description'     => 'nullable|string|max:2000',
+            'priority'        => 'required|in:low,medium,high,urgent',
+            'due_at'          => 'nullable|date',
+            'assignee_ids'    => 'required|array|min:1|max:10',
+            'assignee_ids.*'  => 'required|string|uuid',
+            'source_type'     => 'nullable|in:deal,lead,contact,referrer,partner',
+            'source_id'       => 'nullable|string|uuid',
+        ]);
+
+        [$actorType, $actorId, $actorName] = $this->resolveActorFull();
+
+        // Verify all assignees belong to this tenant
+        $assigneeIds = collect($data['assignee_ids'])->unique()->values();
+        $validAssignees = DB::table('tenant_users as tu')
+            ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->whereIn('tu.id', $assigneeIds->toArray())
+            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email")
+            ->get()
+            ->keyBy('id');
+
+        if ($validAssignees->isEmpty()) {
+            return response()->json(['error' => 'No valid assignees found.'], 422);
+        }
+
+        $createdTasks = [];
+
+        DB::transaction(function () use (
+            $data, $tenantId, $actorType, $actorId, $actorName,
+            $assigneeIds, $validAssignees, &$createdTasks
+        ) {
+            foreach ($assigneeIds as $assigneeId) {
+                $assignee = $validAssignees->get($assigneeId);
+                if (!$assignee) continue;
+
+                $task = Task::create([
+                    'tenant_id'         => $tenantId,
+                    'title'             => $data['title'],
+                    'description'       => $data['description'] ?? null,
+                    'status'            => 'open',
+                    'priority'          => $data['priority'],
+                    'category'          => 'manual',
+                    'assigned_to_type'  => 'tenant_user',
+                    'assigned_to_id'    => $assigneeId,
+                    'assigned_by_type'  => $actorType,
+                    'assigned_by_id'    => $actorId,
+                    'created_by_type'   => $actorType,
+                    'created_by_id'     => $actorId,
+                    'source_type'       => $data['source_type'] ?? null,
+                    'source_id'         => $data['source_id'] ?? null,
+                    'due_at'            => !empty($data['due_at']) ? $data['due_at'] : null,
+                    'visibility'        => 'tenant',
+                ]);
+
+                TaskActivity::create([
+                    'tenant_id'   => $tenantId,
+                    'task_id'     => $task->id,
+                    'actor_type'  => $actorType,
+                    'actor_id'    => $actorId,
+                    'actor_name'  => $actorName,
+                    'action_type' => 'task_created',
+                    'new_values'  => [
+                        'title'    => $task->title,
+                        'priority' => $task->priority,
+                        'assignee' => $assignee->name,
+                        'due_at'   => $task->due_at?->toDateString(),
+                    ],
+                ]);
+
+                $createdTasks[] = $task;
+
+                // In-app notification to assignee
+                try {
+                    app(\App\Services\NotificationDispatchService::class)->dispatch(
+                        category:         'task',
+                        priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
+                        title:            'New Task: ' . $task->title,
+                        body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
+                        notifiableType:   'tenant_user',
+                        notifiableId:     $assigneeId,
+                        tenantId:         $tenantId,
+                        actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                        actionLabel:      'View Task',
+                        deduplicationKey: "task_assigned_{$task->id}",
+                    );
+                } catch (\Throwable) {}
+            }
+        });
+
+        // After commit: send email notifications
+        foreach ($createdTasks as $task) {
+            $assignee = $validAssignees->get($task->assigned_to_id);
+            if (!$assignee || !$assignee->email) continue;
+
+            try {
+                Mail::to($assignee->email)
+                    ->queue(new ManualTaskAssignedMail(
+                        assigneeName: $assignee->name,
+                        senderName:   $actorName,
+                        taskTitle:    $task->title,
+                        taskPriority: $task->priority,
+                        dueAt:        $task->due_at?->format('M j, Y'),
+                        taskUrl:      url("/tenant/{$tenantId}/tasks/{$task->id}"),
+                    ));
+            } catch (\Throwable) {}
+        }
+
+        return response()->json([
+            'created' => count($createdTasks),
+            'task_ids' => collect($createdTasks)->pluck('id'),
+            'message'  => count($createdTasks) === 1
+                ? 'Task created and assignee notified.'
+                : count($createdTasks) . ' tasks created and assignees notified.',
+        ]);
+    }
+
     // ── List ─────────────────────────────────────────────────────────────────
 
     public function index(Request $request, string $tenantId): \Illuminate\View\View
@@ -156,6 +301,15 @@ class TaskController extends Controller
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function authorizeAdmin(string $tenantId): void
+    {
+        $ctxId = TenantContext::id();
+        if ($ctxId && $ctxId !== $tenantId) abort(403);
+        $isAdmin = Auth::guard('web')->check()
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        if (!$isAdmin) abort(403);
+    }
 
     private function resolveActor(): array
     {

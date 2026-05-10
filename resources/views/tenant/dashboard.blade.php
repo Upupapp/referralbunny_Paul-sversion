@@ -15,6 +15,11 @@
                 :class="$store.dashView.mode==='full' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-500'"
                 class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Full View</button>
     </div>
+    <a href="{{ route('tenant.tasks', [$tenant->id]) }}"
+       style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;text-decoration:none">
+        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 000 4h6a2 2 0 000-4"/></svg>
+        <span class="hidden sm:inline">Tasks</span>
+    </a>
     <button x-data @click="$dispatch('open-add-deal')" class="btn-primary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>

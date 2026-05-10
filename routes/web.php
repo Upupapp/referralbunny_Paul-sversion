@@ -192,6 +192,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/referrers/{referrerId}',  [TenantAdminController::class, 'referrerDetail'])->name('referrers.show');
     // Tasks
     Route::get('/tasks',                  [\App\Http\Controllers\Web\TaskController::class, 'index'])->name('tasks');
+    Route::post('/tasks',                 [\App\Http\Controllers\Web\TaskController::class, 'store'])->name('tasks.store');
+    Route::get('/tasks/eligible-assignees', [\App\Http\Controllers\Web\TaskController::class, 'eligibleAssignees'])->name('tasks.eligible-assignees');
     Route::get('/tasks/{taskId}',         [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tasks.show');
     Route::post('/tasks/{taskId}/complete',               [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tasks.complete');
     Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tasks.complete-response');
@@ -324,6 +326,8 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::get('/organizations',[TenantAdminController::class, 'organizations'])->name('tenant.sub.organizations');
         Route::get('/referrers',   [TenantAdminController::class, 'referrers'])->name('tenant.sub.referrers');
         Route::get('/tasks',                     [\App\Http\Controllers\Web\TaskController::class, 'index'])->name('tenant.sub.tasks');
+        Route::post('/tasks',                    [\App\Http\Controllers\Web\TaskController::class, 'store'])->name('tenant.sub.tasks.store');
+        Route::get('/tasks/eligible-assignees',  [\App\Http\Controllers\Web\TaskController::class, 'eligibleAssignees'])->name('tenant.sub.tasks.eligible-assignees');
         Route::get('/tasks/{taskId}',            [\App\Http\Controllers\Web\TaskController::class, 'show'])->name('tenant.sub.tasks.show');
         Route::post('/tasks/{taskId}/complete',  [\App\Http\Controllers\Web\TaskController::class, 'complete'])->name('tenant.sub.tasks.complete');
         Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tenant.sub.tasks.complete-response');

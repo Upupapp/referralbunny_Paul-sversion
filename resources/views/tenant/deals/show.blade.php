@@ -3,6 +3,11 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
+    <a href="{{ route('tenant.tasks', [$tenant->id]) }}?create=1&source_type=deal&source_id={{ $dealId }}"
+       class="btn-secondary text-sm" style="text-decoration:none;display:flex;align-items:center;gap:6px">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        <span class="hidden sm:inline">New Task</span>
+    </a>
     <button x-data @click="$dispatch('open-move-stage-deal')" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
@@ -666,7 +671,7 @@
                         Add Partner
                     </button>
                 </div>
-                <p class="text-[11px] text-gray-400">The referrer holds the full commission pool. Partner splits are deducted from the referrer's share.</p>
+                <p class="text-[11px] text-gray-400">The referrer holds the full commission pool. Partners receive a share from the referrer's pool.</p>
 
                 {{-- Loading --}}
                 <div x-show="loading" class="flex items-center gap-2 text-gray-400 text-xs py-2">
@@ -687,7 +692,7 @@
                                    x-text="referrerName || 'Referrer'"></p>
                                 <span style="font-size:9px;font-weight:700;color:#7B61FF;background:#ede9fe;padding:1px 7px;border-radius:9999px;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0">Referrer</span>
                             </div>
-                            <p style="font-size:11px;color:#7B61FF;margin-top:1px">Full commission pool — net after partner deductions</p>
+                            <p style="font-size:11px;color:#7B61FF;margin-top:1px">Full commission pool — net after partner allocations</p>
                         </div>
                         <div style="text-align:right;flex-shrink:0">
                             {{-- Gross (full pool) --}}
@@ -702,19 +707,17 @@
                         </div>
                     </div>
 
-                    {{-- Partner split rows (each is a deduction from referrer's pool) --}}
+                    {{-- Partner split rows --}}
                     <template x-if="splits.length > 0">
                         <div>
-                            {{-- Deduction label --}}
                             <p style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;padding:8px 4px 4px">
-                                Partner Deductions
+                                Partner Allocations
                             </p>
                             <template x-for="s in splits" :key="s.id">
-                                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#f9fafb;border-radius:12px;border:1px solid #f3f4f6;margin-bottom:6px">
-                                    {{-- Deduct icon --}}
-                                    <div style="width:28px;height:28px;border-radius:9999px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ef4444;flex-shrink:0">
-                                        −
-                                    </div>
+                                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8f7ff;border-radius:12px;border:1.5px solid #e9e5ff;margin-bottom:6px">
+                                    {{-- Avatar initials --}}
+                                    <div style="width:32px;height:32px;border-radius:9999px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#7B61FF;flex-shrink:0"
+                                         x-text="(s.partner_name||'P').slice(0,2).toUpperCase()"></div>
                                     <div style="flex:1;min-width:0">
                                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                                             <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
@@ -728,14 +731,14 @@
                                         <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="s.partner_email"></p>
                                     </div>
                                     <div style="text-align:right;flex-shrink:0">
-                                        <p style="font-size:13px;font-weight:700;color:#ef4444"
-                                           x-text="'−₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
+                                        <p style="font-size:14px;font-weight:700;color:#7B61FF"
+                                           x-text="'₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
                                         <p style="font-size:10px;color:#9ca3af;margin-top:1px"
                                            x-text="s.split_share_type === 'percentage'
                                                ? parseFloat(s.split_share_value) + '% of pool'
                                                : 'fixed'"></p>
                                         <button @click="removeSplit(s.id)"
-                                                style="font-size:10px;color:#f87171;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto">Remove</button>
+                                                style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:0">Remove</button>
                                     </div>
                                 </div>
                             </template>
