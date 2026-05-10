@@ -859,7 +859,7 @@ class LguIdsImportService
     {
         $headers = [
             'Municipality or City', 'Province', 'Deal Amount', 'Referrer Email',
-            'Base Cost', 'Added Amount', 'Deal Start Date', 'Stage', 'Status',
+            'Deal Start Date', 'Stage', 'Status',
             'Referrer Name', 'Partner Emails', 'Partner Names', 'Notes', 'Source',
             'Contact Person', 'Contact Email', 'Contact Phone', 'Office / Department',
             'Last Activity Date', 'Next Follow-up Date', 'Supporting Document URL',
@@ -867,7 +867,7 @@ class LguIdsImportService
         ];
         $sampleRow = [
             'Quezon City', 'Metro Manila', '4000000', 'referrer@email.com',
-            '2400000', '1600000', date('Y-m-d'), 'introduction', 'active',
+            date('Y-m-d'), 'introduction', 'active',
             'Juan dela Cruz', 'partner@email.com', 'Jose Santos', 'Notes here', 'referral',
             'Maria Reyes', 'maria@lgu.gov.ph', '+63 9XX XXX XXXX', 'IT Department',
             date('Y-m-d'), '', '', 'tagA,tagB', 'REF-001',
