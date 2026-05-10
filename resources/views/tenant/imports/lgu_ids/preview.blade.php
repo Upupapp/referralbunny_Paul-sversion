@@ -6,6 +6,18 @@
 @endsection
 
 @section('content')
+@php
+    $cnt = [
+        'all'              => $rows->count(),
+        'ready'            => $grouped->get('ready',            collect())->count(),
+        'duplicate'        => $grouped->get('duplicate',        collect())->count(),
+        'unknown_referrer' => $grouped->get('unknown_referrer', collect())->count(),
+        'pricing_issue'    => $grouped->get('pricing_issue',    collect())->count(),
+        'unknown_lgu'      => $grouped->get('unknown_lgu',      collect())->count(),
+        'failed'           => $grouped->get('failed',           collect())->count(),
+        'blocked'          => $grouped->get('blocked',          collect())->count(),
+    ];
+@endphp
 <div x-data="lguImportPreview()" x-init="init()" class="space-y-5">
 
     {{-- ── Upload success banner ───────────────────────────── --}}
@@ -30,35 +42,35 @@
                 <button @click="activeTab = 'ready'" :class="activeTab === 'ready' ? 'ring-2 ring-emerald-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Ready <span class="font-bold">{{ $grouped['ready']->count() }}</span>
+                    Ready <span class="font-bold">{{ $cnt['ready'] }}</span>
                 </button>
                 <button @click="activeTab = 'duplicate'" :class="activeTab === 'duplicate' ? 'ring-2 ring-amber-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    Duplicates <span class="font-bold">{{ $grouped['duplicate']->count() }}</span>
+                    Duplicates <span class="font-bold">{{ $cnt['duplicate'] }}</span>
                 </button>
                 <button @click="activeTab = 'unknown_referrer'" :class="activeTab === 'unknown_referrer' ? 'ring-2 ring-yellow-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
-                    Unknown Referrers <span class="font-bold">{{ $grouped['unknown_referrer']->count() }}</span>
+                    Unknown Referrers <span class="font-bold">{{ $cnt['unknown_referrer'] }}</span>
                 </button>
                 <button @click="activeTab = 'pricing_issue'" :class="activeTab === 'pricing_issue' ? 'ring-2 ring-red-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                    Pricing Issues <span class="font-bold">{{ $grouped['pricing_issue']->count() }}</span>
+                    Pricing Issues <span class="font-bold">{{ $cnt['pricing_issue'] }}</span>
                 </button>
-                @if($grouped['failed']->count() > 0)
+                @if($cnt['failed'] > 0)
                 <button @click="activeTab = 'failed'" :class="activeTab === 'failed' ? 'ring-2 ring-red-600' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                    Failed <span class="font-bold">{{ $grouped['failed']->count() }}</span>
+                    Failed <span class="font-bold">{{ $cnt['failed'] }}</span>
                 </button>
                 @endif
-                @if($grouped['blocked']->count() > 0)
+                @if($cnt['blocked'] > 0)
                 <button @click="activeTab = 'blocked'" :class="activeTab === 'blocked' ? 'ring-2 ring-gray-500' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                    Blocked <span class="font-bold">{{ $grouped['blocked']->count() }}</span>
+                    Blocked <span class="font-bold">{{ $cnt['blocked'] }}</span>
                 </button>
                 @endif
             </div>
@@ -67,17 +79,19 @@
             <div class="flex items-center gap-2 shrink-0">
                 <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
                    class="btn-secondary text-sm">Cancel</a>
-                <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST" id="confirm-import-form">
+                <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST" id="confirm-import-form"
+                      x-data="{ importing: false }" @submit="importing = true">
                     @csrf
                     <button type="submit"
-                            :disabled="unresolvedDuplicates > 0"
-                            :class="unresolvedDuplicates > 0 ? 'opacity-50 cursor-not-allowed' : ''"
+                            :disabled="unresolvedDuplicates > 0 || importing"
+                            :class="(unresolvedDuplicates > 0 || importing) ? 'opacity-60 cursor-not-allowed' : ''"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
                             style="background: #10B981;" onmouseover="if(!this.disabled) this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg x-show="importing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        <svg x-show="!importing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        Confirm & Import
+                        <span x-text="importing ? 'Importing…' : 'Confirm & Import'"></span>
                     </button>
                 </form>
             </div>
@@ -94,14 +108,14 @@
         <div class="filter-bar">
             @php
                 $tabs = [
-                    ['key' => 'all',              'label' => 'All',                'count' => collect($grouped)->flatten(1)->count()],
-                    ['key' => 'ready',            'label' => 'Ready',              'count' => $grouped['ready']->count()],
-                    ['key' => 'duplicate',        'label' => 'Duplicate',          'count' => $grouped['duplicate']->count()],
-                    ['key' => 'unknown_referrer', 'label' => 'Unknown Referrer',   'count' => $grouped['unknown_referrer']->count()],
-                    ['key' => 'pricing_issue',    'label' => 'Pricing Issue',      'count' => $grouped['pricing_issue']->count()],
-                    ['key' => 'unknown_lgu',      'label' => 'Unknown LGU',        'count' => $grouped['unknown_lgu']->count()],
-                    ['key' => 'failed',           'label' => 'Failed',             'count' => $grouped['failed']->count()],
-                    ['key' => 'blocked',          'label' => 'Blocked',            'count' => $grouped['blocked']->count()],
+                    ['key' => 'all',              'label' => 'All',                'count' => $cnt['all']],
+                    ['key' => 'ready',            'label' => 'Ready',              'count' => $cnt['ready']],
+                    ['key' => 'duplicate',        'label' => 'Duplicate',          'count' => $cnt['duplicate']],
+                    ['key' => 'unknown_referrer', 'label' => 'Unknown Referrer',   'count' => $cnt['unknown_referrer']],
+                    ['key' => 'pricing_issue',    'label' => 'Pricing Issue',      'count' => $cnt['pricing_issue']],
+                    ['key' => 'unknown_lgu',      'label' => 'Unknown LGU',        'count' => $cnt['unknown_lgu']],
+                    ['key' => 'failed',           'label' => 'Failed',             'count' => $cnt['failed']],
+                    ['key' => 'blocked',          'label' => 'Blocked',            'count' => $cnt['blocked']],
                 ];
             @endphp
             @foreach($tabs as $tab)
@@ -121,7 +135,7 @@
     </div>
 
     {{-- ── Bulk Actions (Duplicates) ─────────────────────────── --}}
-    <div x-show="activeTab === 'duplicate' && {{ $grouped['duplicate']->count() }} > 0"
+    <div x-show="activeTab === 'duplicate' && {{ $cnt['duplicate'] }} > 0"
          class="card py-3">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
             <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -196,8 +210,8 @@
                             @if($statusKey === 'duplicate')
                             <input type="checkbox"
                                    class="rounded border-gray-300 text-[#7B61FF] row-checkbox"
-                                   :checked="selectedRows.includes({{ $row->id }})"
-                                   @change="toggleRow({{ $row->id }}, $event.target.checked)">
+                                   :checked="selectedRows.includes('{{ $row->id }}')"
+                                   @change="toggleRow('{{ $row->id }}', $event.target.checked)">
                             @endif
                         </td>
 
@@ -301,26 +315,27 @@
                         {{-- Action --}}
                         <td>
                             @if($statusKey === 'duplicate')
-                            <div x-data="{ open: false, action: rowActions[{{ $row->id }}] ?? 'skip', busy: false }"
+                            <div x-data="{ open: false, action: rowActions['{{ $row->id }}'] ?? 'skip', busy: false }"
                                  class="relative"
                                  @click.outside="open = false">
-                                <button @click="open = !open"
+                                <button @click="open = !open" :disabled="busy"
                                         class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-[#7B61FF] hover:text-[#7B61FF] transition-colors"
                                         :class="action === 'skip' ? 'text-gray-500' : action === 'merge' ? 'text-blue-600 border-blue-200' : 'text-amber-600 border-amber-200'">
-                                    <span x-text="action === 'skip' ? 'Skip' : action === 'merge' ? 'Merge' : 'Overwrite'"></span>
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    <svg x-show="busy" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                                    <span x-show="!busy" x-text="action === 'skip' ? 'Skip' : action === 'merge' ? 'Merge' : 'Overwrite'"></span>
+                                    <svg x-show="!busy" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                 </button>
                                 <div x-show="open" x-cloak
                                      class="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-gray-100 shadow-lg z-10 overflow-hidden py-1">
-                                    <button @click="setRowAction({{ $row->id }}, 'skip'); open = false"
+                                    <button @click="busy=true; action='skip'; open=false; setRowAction('{{ $row->id }}', 'skip').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 text-gray-600 transition-colors">
                                         Skip this row
                                     </button>
-                                    <button @click="setRowAction({{ $row->id }}, 'merge'); open = false"
+                                    <button @click="busy=true; action='merge'; open=false; setRowAction('{{ $row->id }}', 'merge').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-blue-700 transition-colors">
                                         Merge Missing Fields
                                     </button>
-                                    <button @click="setRowAction({{ $row->id }}, 'overwrite'); open = false"
+                                    <button @click="busy=true; action='overwrite'; open=false; setRowAction('{{ $row->id }}', 'overwrite').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 text-amber-700 transition-colors">
                                         Overwrite All
                                     </button>
@@ -388,12 +403,12 @@
             <div>
                 <h3 class="text-[#1E1B4B] font-semibold text-base mb-1">Ready to Import?</h3>
                 <p class="text-sm text-gray-500">
-                    <span class="text-emerald-600 font-semibold">{{ $grouped['ready']->count() }} rows ready</span>
-                    @if($grouped['duplicate']->count() > 0)
-                    · <span class="text-amber-600 font-semibold">{{ $grouped['duplicate']->count() }} duplicates to resolve</span>
+                    <span class="text-emerald-600 font-semibold">{{ $cnt['ready'] }} rows ready</span>
+                    @if($cnt['duplicate'] > 0)
+                    · <span class="text-amber-600 font-semibold">{{ $cnt['duplicate'] }} duplicates to resolve</span>
                     @endif
-                    @if($grouped['failed']->count() > 0 || $grouped['blocked']->count() > 0)
-                    · <span class="text-gray-500">{{ $grouped['failed']->count() + $grouped['blocked']->count() }} will be skipped</span>
+                    @if($cnt['failed'] > 0 || $cnt['blocked'] > 0)
+                    · <span class="text-gray-500">{{ $cnt['failed'] + $cnt['blocked'] }} will be skipped</span>
                     @endif
                 </p>
                 <p x-show="unresolvedDuplicates > 0" class="text-xs text-amber-600 mt-1.5">
@@ -402,11 +417,14 @@
             </div>
             <div class="flex flex-col sm:flex-row gap-2 shrink-0">
                 {{-- Import Approved Rows Only --}}
-                <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST">
+                <form action="{{ route('tenant.imports.lgu-ids.execute', [$tenant->id, $batch->id]) }}" method="POST"
+                      x-data="{ importing: false }" @submit="importing = true">
                     @csrf
                     <input type="hidden" name="approved_only" value="1">
-                    <button type="submit" class="btn-secondary text-sm w-full sm:w-auto">
-                        Import Approved Rows Only
+                    <button type="submit" :disabled="importing"
+                            class="btn-secondary text-sm w-full sm:w-auto inline-flex items-center gap-1.5">
+                        <svg x-show="importing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        <span x-text="importing ? 'Importing…' : 'Import Approved Rows Only'"></span>
                     </button>
                 </form>
                 {{-- Import Now (all resolved) --}}
@@ -435,12 +453,11 @@ function lguImportPreview() {
         selectedRows: [],
         bulkAction: '',
         rowActions: {},
-        unresolvedDuplicates: {{ $grouped['duplicate']->count() }},
+        unresolvedDuplicates: {{ $cnt['duplicate'] }},
 
         init() {
-            // Default all duplicates to 'skip'
-            @foreach($grouped['duplicate'] as $row)
-            this.rowActions[{{ $row->id }}] = 'skip';
+            @foreach($grouped->get('duplicate', collect()) as $row)
+            this.rowActions['{{ $row->id }}'] = '{{ $row->row_action ?? 'skip' }}';
             @endforeach
         },
 
@@ -450,8 +467,8 @@ function lguImportPreview() {
             checkboxes.forEach(cb => {
                 cb.checked = checked;
                 if (checked) {
-                    const id = parseInt(cb.closest('tr').dataset.rowId);
-                    if (!isNaN(id)) this.selectedRows.push(id);
+                    const id = cb.closest('tr').dataset.rowId;
+                    if (id) this.selectedRows.push(id);
                 }
             });
         },
@@ -469,7 +486,7 @@ function lguImportPreview() {
             const csrf = document.querySelector('meta[name=csrf-token]').content;
             try {
                 const res = await fetch('{{ route('tenant.imports.lgu-ids.approve-row', [$tenant->id, $batch->id, '__ROW__']) }}'.replace('__ROW__', rowId), {
-                    method: 'PATCH',
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrf,

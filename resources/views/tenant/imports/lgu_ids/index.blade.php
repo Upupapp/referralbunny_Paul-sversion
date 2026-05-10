@@ -159,7 +159,7 @@
                 <tbody>
                     @foreach($batches as $batch)
                     @php
-                        $batchUrl = in_array($batch->status, ['previewed', 'needs_review'])
+                        $batchUrl = in_array($batch->status, ['previewed', 'needs_review', 'previewing'])
                             ? route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id])
                             : route('tenant.imports.lgu-ids.show', [$tenant->id, $batch->id]);
                     @endphp
@@ -193,6 +193,7 @@
                                     'needs_review'            => ['badge-orange', 'Needs Review'],
                                     'failed'                  => ['badge-red',    'Failed'],
                                     'previewed'               => ['badge-blue',   'Previewed'],
+                                    'previewing'              => ['badge-blue',   'Previewing'],
                                     'processing'              => ['badge-blue',   'Processing'],
                                     default                   => ['badge-gray',   ucfirst($batch->status)],
                                 };
@@ -201,7 +202,7 @@
                         </td>
                         <td>
                             <div class="flex items-center gap-2">
-                                @if(in_array($batch->status, ['previewed', 'needs_review']))
+                                @if(in_array($batch->status, ['previewed', 'needs_review', 'previewing']))
                                     <a href="{{ route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id]) }}"
                                        class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors">
                                         Review
@@ -284,7 +285,8 @@
             <form action="{{ route('tenant.imports.lgu-ids.upload', $tenant->id) }}"
                   method="POST"
                   enctype="multipart/form-data"
-                  x-data="{ dragging: false, fileName: null }">
+                  x-data="{ dragging: false, fileName: null, uploading: false }"
+                  @submit="uploading = true">
                 @csrf
                 <div class="p-6 space-y-4">
 
@@ -327,12 +329,15 @@
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
                     <button type="button" @click="showUpload = false" class="btn-secondary">Cancel</button>
                     <button type="submit"
+                            :disabled="uploading || !fileName"
+                            :class="(uploading || !fileName) ? 'opacity-60 cursor-not-allowed' : ''"
                             class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-colors"
-                            style="background: #10B981;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            style="background: #10B981;" onmouseover="if(!this.disabled)this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
+                        <svg x-show="uploading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        <svg x-show="!uploading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
-                        Upload & Preview
+                        <span x-text="uploading ? 'Uploading…' : 'Upload & Preview'"></span>
                     </button>
                 </div>
             </form>

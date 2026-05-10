@@ -267,33 +267,51 @@ class CriticalActionService
     {
         $rows = DB::table('import_batches')
             ->where('tenant_id', $tenantId)
-            ->whereIn('status', ['completed_with_warnings', 'failed', 'completed'])
+            ->whereIn('status', ['completed_with_warnings', 'failed', 'completed', 'previewed', 'previewing'])
             ->where('created_at', '>', now()->subDays(14))
-            ->select('id', 'status', 'file_name', 'import_type', 'failed_rows', 'failed_rows as fr',
-                     'successful_rows', 'total_rows', 'imported_by_id', 'imported_by_role', 'created_at', 'completed_at')
+            ->select('id', 'status', 'file_name', 'import_type', 'failed_rows',
+                     'successful_rows', 'total_rows', 'unknown_referrer_rows',
+                     'imported_by_id', 'imported_by_role', 'created_at', 'completed_at')
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
 
-        return $rows->map(fn($r) => $this->make([
-            'type'          => 'import_' . $r->status,
-            'category'      => 'import',
-            'severity'      => $r->status === 'failed' ? 'high' : ($r->failed_rows > 0 ? 'medium' : 'info'),
-            'summary'       => match($r->status) {
-                'failed'                  => "Import failed: {$r->file_name}",
-                'completed_with_warnings' => "Import completed with warnings: {$r->file_name}",
-                default                   => "Import completed: {$r->file_name}",
-            },
-            'actor_name'    => ucfirst($r->imported_by_role ?? 'Admin'),
-            'actor_role'    => ucfirst($r->imported_by_role ?? 'Admin'),
-            'related_label' => $r->file_name,
-            'related_type'  => 'import',
-            'related_id'    => $r->id,
-            'occurred_at'   => $r->completed_at ?? $r->created_at ?? now(),
-            'action_url'    => "/tenant/{$tenantId}/imports",
-            'action_needed' => in_array($r->status, ['failed', 'completed_with_warnings']),
-            'source'        => 'import_batches',
-        ]))->toArray();
+        return $rows->map(function ($r) use ($tenantId) {
+            $isLguIds  = $r->import_type === 'lgu_ids_deals';
+            $batchBase = $isLguIds
+                ? "/tenant/{$tenantId}/imports/lgu-ids/{$r->id}"
+                : "/tenant/{$tenantId}/imports/deals/{$r->id}";
+
+            [$severity, $summary, $actionUrl, $actionLabel, $actionNeeded] = match ($r->status) {
+                'previewed'               => ['high',   "Import ready to confirm: {$r->file_name}",       $batchBase,           'Confirm Import', true],
+                'previewing'             => ['medium', "Import upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',  true],
+                'failed'                  => ['high',   "Import failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',   true],
+                'completed_with_warnings' => ['medium', "Import with warnings: {$r->file_name}",          "{$batchBase}/report", 'View Report',   true],
+                default                   => ['info',   "Import completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',   false],
+            };
+
+            if (($r->unknown_referrer_rows ?? 0) > 0 && in_array($r->status, ['completed', 'completed_with_warnings'])) {
+                $summary     .= " — {$r->unknown_referrer_rows} referrers need inviting";
+                $actionNeeded = true;
+            }
+
+            return $this->make([
+                'type'          => 'import_' . $r->status,
+                'category'      => 'import',
+                'severity'      => $severity,
+                'summary'       => $summary,
+                'actor_name'    => ucfirst($r->imported_by_role ?? 'Admin'),
+                'actor_role'    => ucfirst($r->imported_by_role ?? 'Admin'),
+                'related_label' => $r->file_name,
+                'related_type'  => 'import',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->completed_at ?? $r->created_at ?? now(),
+                'action_url'    => $actionUrl,
+                'action_label'  => $actionLabel,
+                'action_needed' => $actionNeeded,
+                'source'        => 'import_batches',
+            ]);
+        })->toArray();
     }
 
     private function pendingInvites(string $tenantId): array
