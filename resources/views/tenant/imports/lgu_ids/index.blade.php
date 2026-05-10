@@ -158,15 +158,25 @@
                 </thead>
                 <tbody>
                     @foreach($batches as $batch)
-                    <tr class="table-row">
+                    @php
+                        $batchUrl = in_array($batch->status, ['previewed', 'needs_review'])
+                            ? route('tenant.imports.lgu-ids.preview', [$tenant->id, $batch->id])
+                            : route('tenant.imports.lgu-ids.show', [$tenant->id, $batch->id]);
+                    @endphp
+                    <tr class="table-row cursor-pointer hover:bg-purple-50 transition-colors"
+                        onclick="window.location='{{ $batchUrl }}'">
                         <td class="whitespace-nowrap">
                             <span class="text-xs text-gray-500">{{ $batch->created_at->format('M d, Y') }}</span>
                             <span class="block text-[10px] text-gray-400">{{ $batch->created_at->format('h:i A') }}</span>
                         </td>
                         <td class="max-w-[180px]">
-                            <span class="text-sm text-[#1E1B4B] font-medium truncate block" title="{{ $batch->file_name }}">
-                                {{ Str::limit($batch->file_name, 30) }}
-                            </span>
+                            <a href="{{ $batchUrl }}"
+                               class="text-sm font-semibold text-[#7B61FF] hover:text-purple-800 hover:underline truncate block transition-colors"
+                               title="{{ $batch->file_name }}"
+                               onclick="event.stopPropagation()">
+                                <svg class="inline-block w-3.5 h-3.5 mr-1 shrink-0 -mt-0.5 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                {{ Str::limit($batch->file_name, 28) }}
+                            </a>
                         </td>
                         <td class="tabular-nums text-gray-700">{{ number_format($batch->total_rows) }}</td>
                         <td class="tabular-nums font-medium text-emerald-600">{{ number_format($batch->successful_rows) }}</td>
