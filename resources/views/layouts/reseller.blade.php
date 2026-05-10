@@ -108,8 +108,15 @@
                 @if(isset($tenant))
                 <a href="{{ route('reseller.notifications', $tenant->id) }}"
                    class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
-                   x-data="{ count: 0 }"
-                   x-init="fetch('/api/notifications/mine/unread-count',{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content??''}}).then(r=>r.json()).then(d=>count=d.count??0).catch(()=>{})"
+                   x-data="{ count: 0, _timer: null }"
+                   x-init="
+                       const hdrs = {'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content??''};
+                       const load = () => fetch('/api/notifications/mine/unread-count',{credentials:'same-origin',headers:hdrs}).then(r=>r.json()).then(d=>count=d.count??0).catch(()=>{});
+                       load();
+                       _timer = setInterval(load, 90000);
+                       document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+                   "
+                   :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
                    title="Notifications">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -130,11 +137,14 @@
 
 {{-- Toast --}}
 <div x-data="{ toasts: [] }"
-     @show-toast.window="toasts.push($event.detail); setTimeout(() => toasts.shift(), 4000)"
+     @show-toast.window="toasts.push({...$event.detail, _id: Date.now()}); setTimeout(() => toasts.shift(), 4000)"
+     aria-live="polite"
+     aria-atomic="true"
      class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
-    <template x-for="(t, i) in toasts" :key="i">
+    <template x-for="(t, i) in toasts" :key="t._id ?? i">
         <div class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium pointer-events-auto"
-             :class="t.type === 'success' ? 'bg-[#0D9488] text-white' : 'bg-red-500 text-white'"
+             role="alert"
+             :class="t.type === 'success' ? 'bg-[#0D9488] text-white' : (t.type === 'warning' ? 'bg-orange-500 text-white' : 'bg-red-500 text-white')"
              x-text="t.message"></div>
     </template>
 </div>

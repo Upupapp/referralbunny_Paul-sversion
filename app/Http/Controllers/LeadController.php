@@ -10,6 +10,8 @@ use App\Models\Lead;
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
 use App\Models\CommissionSplit;
+use App\Models\Reseller;
+use App\Services\NotificationDispatchService;
 use App\Services\ReferrerInvitationDeduplicationService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
@@ -419,9 +421,10 @@ class LeadController extends Controller
             return response()->json(['message' => 'Deal is already at this stage.'], 422);
         }
 
-        $isLocking = $targetStage === 'signed';
-        $isPaid    = $targetStage === 'paid';
-        $note      = trim((string) $request->input('note', ''));
+        $isLocking    = $targetStage === 'signed';
+        $isPaid       = $targetStage === 'paid';
+        $note         = trim((string) $request->input('note', ''));
+        $capturedStage = $lead->stage;
 
         $updates = [
             'stage'             => $targetStage,
@@ -475,6 +478,44 @@ class LeadController extends Controller
             }
         });
 
+        // Notify tenant admins and assigned referrer about stage movement
+        try {
+            $stageName  = ucwords(str_replace('_', ' ', $targetStage));
+            $fromName   = ucwords(str_replace('_', ' ', $capturedStage));
+            $priority   = ($isPaid || $isLocking) ? 'high' : 'normal';
+            $minute     = now()->format('YmdHi');
+
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $lead->tenant_id,
+                category:     'deal_pipeline',
+                priority:     $priority,
+                title:        "Deal moved to {$stageName}",
+                body:         "\"{$lead->name}\" was moved from {$fromName} to {$stageName}.",
+                actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
+                actionLabel:  'View Deal',
+                dedupeSuffix: "{$lead->id}:stage:{$targetStage}:{$minute}",
+            );
+
+            if ($lead->reseller_name) {
+                $reseller = Reseller::where('tenant_id', $lead->tenant_id)
+                    ->where('name', $lead->reseller_name)
+                    ->first();
+                if ($reseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   (string) $reseller->id,
+                        tenantId:     $lead->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     $priority,
+                        title:        "Your deal moved to {$stageName}",
+                        body:         "\"{$lead->name}\" has been moved to {$stageName}.",
+                        actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: "{$lead->id}:stage:{$targetStage}:r:{$minute}",
+                    );
+                }
+            }
+        } catch (\Throwable) {}
+
         return response()->json($lead->fresh(['commissionSplits', 'history']));
     }
 
@@ -525,6 +566,37 @@ class LeadController extends Controller
             'reseller'=> $data['reseller_name'],
             'date'    => now()->toDateString(),
         ]);
+
+        // Notify tenant admins and new referrer about reassignment
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $lead->tenant_id,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Deal reassigned',
+                body:         "\"{$lead->name}\" has been reassigned to {$data['reseller_name']}.",
+                actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
+                actionLabel:  'View Deal',
+                dedupeSuffix: "{$lead->id}:reassign:" . now()->format('YmdHi'),
+            );
+
+            $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
+                ->where('name', $data['reseller_name'])
+                ->first();
+            if ($newReseller) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $newReseller->id,
+                    tenantId:     $lead->tenant_id,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        'New deal assigned to you',
+                    body:         "You have been assigned to \"{$lead->name}\".",
+                    actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "{$lead->id}:reassign:r:" . now()->format('YmdHi'),
+                );
+            }
+        } catch (\Throwable) {}
 
         return response()->json($lead->fresh(['commissionSplits', 'history']));
     }

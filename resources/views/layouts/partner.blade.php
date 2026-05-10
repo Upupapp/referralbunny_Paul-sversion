@@ -115,11 +115,14 @@
 
 {{-- Toast --}}
 <div x-data="{ toasts: [] }"
-     @show-toast.window="toasts.push($event.detail); setTimeout(() => toasts.shift(), 4000)"
+     @show-toast.window="toasts.push({...$event.detail, _id: Date.now()}); setTimeout(() => toasts.shift(), 4000)"
+     aria-live="polite"
+     aria-atomic="true"
      class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
-    <template x-for="(t, i) in toasts" :key="i">
+    <template x-for="(t, i) in toasts" :key="t._id ?? i">
         <div class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium pointer-events-auto"
-             :class="t.type === 'success' ? 'text-white' : 'bg-red-500 text-white'"
+             role="alert"
+             :class="t.type === 'success' ? 'text-white' : (t.type === 'warning' ? 'bg-orange-500 text-white' : 'bg-red-500 text-white')"
              :style="t.type === 'success' ? 'background:#2563EB' : ''"
              x-text="t.message"></div>
     </template>

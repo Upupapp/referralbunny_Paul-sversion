@@ -6,6 +6,7 @@ use App\Mail\ResellerInvitation;
 use App\Models\ActivityLog;
 use App\Models\Reseller;
 use App\Services\DealReferrerAssignmentService;
+use App\Services\NotificationDispatchService;
 use App\Services\ReferrerInvitationDeduplicationService;
 use App\Services\TenantRoleService;
 use Illuminate\Http\Request;
@@ -275,6 +276,22 @@ class ResellerController extends Controller
             'total_deals_count'   => $totalDealsCount,
             'double_auth_verified'=> true,
         ]);
+
+        // ── Notify tenant admins ───────────────────────────────────────────
+        try {
+            $needsReview = $activeDealsCount > 0;
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'reseller_referrer',
+                priority:     $needsReview ? 'high' : 'normal',
+                title:        'Referrer deactivated',
+                body:         "{$reseller->name} has been deactivated."
+                              . ($needsReview ? " {$activeDealsCount} active deal(s) may need reassignment." : ''),
+                actionUrl:    "/tenant/{$tenantId}/referrers",
+                actionLabel:  'View Referrers',
+                dedupeSuffix: "deactivate:{$reseller->id}",
+            );
+        } catch (\Throwable) {}
 
         return response()->json([
             'success'            => true,

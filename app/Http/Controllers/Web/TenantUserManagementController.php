@@ -273,6 +273,19 @@ class TenantUserManagementController extends Controller
             // silent
         }
 
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'tenant_workspace',
+                priority:     'low',
+                title:        'Invitation revoked',
+                body:         "The invitation sent to {$invitation->email} has been revoked.",
+                actionUrl:    route('tenant.users', $tenantId),
+                actionLabel:  'View Users',
+                dedupeSuffix: "revoke_invite:{$invitation->id}",
+            );
+        } catch (\Throwable) {}
+
         return back()->with('success', "Invitation for {$invitation->email} has been revoked.");
     }
 
@@ -352,6 +365,22 @@ class TenantUserManagementController extends Controller
         $membership->status = 'suspended';
         $membership->save();
 
+        try {
+            $userName = $membership->tenantUser?->first_name
+                ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
+                : ($membership->tenantUser?->email ?? 'A team member');
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'tenant_workspace',
+                priority:     'normal',
+                title:        'Team member deactivated',
+                body:         "{$userName} has been deactivated from this workspace.",
+                actionUrl:    route('tenant.users', $tenantId),
+                actionLabel:  'View Users',
+                dedupeSuffix: "deactivate_user:{$membership->id}",
+            );
+        } catch (\Throwable) {}
+
         return back()->with('success', 'User has been deactivated.');
     }
 
@@ -378,6 +407,22 @@ class TenantUserManagementController extends Controller
 
         $membership->status = 'removed';
         $membership->save();
+
+        try {
+            $userName = $membership->tenantUser?->first_name
+                ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
+                : ($membership->tenantUser?->email ?? 'A team member');
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'tenant_workspace',
+                priority:     'normal',
+                title:        'Team member removed',
+                body:         "{$userName} has been removed from this workspace.",
+                actionUrl:    route('tenant.users', $tenantId),
+                actionLabel:  'View Users',
+                dedupeSuffix: "remove_user:{$membership->id}",
+            );
+        } catch (\Throwable) {}
 
         return back()->with('success', 'User has been removed from this workspace.');
     }

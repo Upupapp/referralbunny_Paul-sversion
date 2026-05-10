@@ -140,11 +140,13 @@ class NotificationController extends Controller
 
     public function show(Notification $notification): JsonResponse
     {
+        $this->authorizeNotificationAccess($notification);
         return response()->json($notification);
     }
 
     public function update(Request $request, Notification $notification): JsonResponse
     {
+        $this->authorizeNotificationAccess($notification);
         if ($request->has('is_read'))      $notification->update(['is_read'      => $request->boolean('is_read')]);
         if ($request->has('is_dismissed')) $notification->update(['is_dismissed' => $request->boolean('is_dismissed')]);
         if ($request->has('archived_at'))  $notification->update(['archived_at'  => $request->input('archived_at') ? now() : null]);
@@ -153,8 +155,21 @@ class NotificationController extends Controller
 
     public function destroy(Notification $notification): JsonResponse
     {
+        $this->authorizeNotificationAccess($notification);
         $notification->delete();
         return response()->json(['message' => 'Deleted.']);
+    }
+
+    private function authorizeNotificationAccess(Notification $notification): void
+    {
+        [$type, $id] = $this->resolveCurrentUser();
+        // SA can access all; others can only access their own notifications
+        if (!TenantContext::isSuperAdmin()) {
+            if ((string) $notification->notifiable_id !== (string) $id
+                || $notification->notifiable_type !== $type) {
+                abort(403, 'You do not have access to this notification.');
+            }
+        }
     }
 
     /** Mark a single notification as read — called from web routes (tenant/reseller portals). */
