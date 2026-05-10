@@ -228,7 +228,7 @@
                 $co = $aa * 0.30;
                 $cp = $aa * 0.70;
             @endphp
-            <div :style="editFinance ? 'display:none!important' : ''" class="space-y-4">
+            <div x-show="!editFinance" class="space-y-4">
 
                 {{-- Formula rows --}}
                 <div>
@@ -306,7 +306,7 @@
             </div>
 
             {{-- Edit mode --}}
-            <div :style=”!editFinance ? 'display:none!important' : ''” class=”space-y-5”>
+            <div x-show=”editFinance” style=”display:none” class=”space-y-5”>
 
                 @if($showLocation ?? false)
                 {{-- LGU IDS: deal-value-first with auto-locked base cost --}}
@@ -1455,16 +1455,16 @@ function dealDetail(leadId, tenantId, ssrLead) {
         // ── LGU IDS pricing tier helpers ──
         lguBaseCost(dv) {
             dv = Math.round(Number(dv) || 0);
-            if (dv <= 6_000_000)  return Math.round(dv * 0.60);
-            if (dv <= 12_000_000) return Math.round(dv * 0.58);
-            if (dv <= 15_000_000) return Math.round(dv * 0.48);
+            if (dv <= 6000000)  return Math.round(dv * 0.60);
+            if (dv <= 12000000) return Math.round(dv * 0.58);
+            if (dv <= 15000000) return Math.round(dv * 0.48);
             return Math.round(dv * 0.41);
         },
         tierLabel(dv) {
             dv = Number(dv) || 0;
-            if (dv <= 6_000_000)  return '60% base';
-            if (dv <= 12_000_000) return '58% base';
-            if (dv <= 15_000_000) return '48% base';
+            if (dv <= 6000000)  return '60% base';
+            if (dv <= 12000000) return '58% base';
+            if (dv <= 15000000) return '48% base';
             return '41% base';
         },
 
