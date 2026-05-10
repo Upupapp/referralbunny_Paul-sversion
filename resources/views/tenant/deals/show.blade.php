@@ -658,16 +658,19 @@
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Deal Details</h3>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Referrer</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.reseller_name || 'â€"'"></span>
+                        <span class="font-medium text-gray-700"
+                              x-text="lead?.reseller_name || '—'">{{ $ssrLead['reseller_name'] ?? '—' }}</span>
                     </div>
                     @if($showLocation ?? false)
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Province</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.province || 'â€"'"></span>
+                        <span class="font-medium text-gray-700"
+                              x-text="(lead?.data?.province) || (lead?.province) || '—'">{{ $ssrLead['data']['province'] ?? ($ssrLead['province'] ?? '—') }}</span>
                     </div>
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
                         <span class="text-gray-400">Municipality</span>
-                        <span class="font-medium text-gray-700" x-text="lead?.data?.municipality || 'â€"'"></span>
+                        <span class="font-medium text-gray-700"
+                              x-text="(lead?.data?.municipality) || (lead?.municipality) || '—'">{{ $ssrLead['data']['municipality'] ?? ($ssrLead['municipality'] ?? '—') }}</span>
                     </div>
                     @endif
                     <div class="flex justify-between text-sm py-1.5 border-b border-gray-50">
