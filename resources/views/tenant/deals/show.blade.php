@@ -611,18 +611,19 @@
 
                     {{-- Share amount row --}}
                     <div class="space-y-1.5">
-                        <div class="flex gap-2">
-                            <div class="relative flex-1">
+                        <div style="display:flex;gap:8px;align-items:stretch">
+                            <div style="position:relative;flex:1">
                                 <input type="number"
                                        x-model.number="form.split_share_value"
-                                       class="form-input text-sm pr-8"
+                                       style="display:block;width:100%;padding:9px 36px 9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;-moz-appearance:textfield"
                                        placeholder="0"
                                        min="0"
                                        :max="form.split_share_type === 'percentage' ? 100 : null">
-                                <span class="absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-gray-400 pointer-events-none"
+                                <span style="position:absolute;inset-y:0;right:10px;display:flex;align-items:center;font-size:11px;font-weight:700;color:#9ca3af;pointer-events:none"
                                       x-text="form.split_share_type === 'percentage' ? '%' : '₱'"></span>
                             </div>
-                            <select x-model="form.split_share_type" class="form-input text-xs w-32 shrink-0">
+                            <select x-model="form.split_share_type"
+                                    style="padding:9px 10px;border:1px solid #d1d5db;border-radius:10px;font-size:12px;color:#1E1B4B;background:white;width:130px;flex-shrink:0;cursor:pointer">
                                 <option value="percentage">Percentage</option>
                                 <option value="fixed_amount">Fixed Amount</option>
                             </select>
@@ -1032,15 +1033,16 @@
                 </button>
             </div>
             <div class="p-5 space-y-3">
-                <div class="search-group">
-                    <svg @click="if(!allTenantContacts.length) fetchAllContacts()"
-                         class="cursor-pointer hover:text-purple-600 transition-colors"
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;background:white">
+                    <svg @click="fetchAllContacts()"
+                         style="width:16px;height:16px;color:#9ca3af;cursor:pointer;flex-shrink:0"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                     <input type="text" x-model="linkSearch"
-                           @input.debounce.200ms="if(!allTenantContacts.length) fetchAllContacts()"
-                           placeholder="Click ðŸ" or type to search contacts…">
+                           @input.debounce.200ms="fetchAllContacts()"
+                           style="flex:1;border:none;outline:none;font-size:14px;color:#1E1B4B;background:transparent"
+                           placeholder="Search contacts...">
                 </div>
                 <div class="max-h-72 overflow-y-auto space-y-1">
                     <template x-if="allTenantContacts.length === 0">
@@ -1689,6 +1691,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         openLinkContact() {
             this.linkSearch = '';
             this.showLinkContact = true;
+            if (!this.allTenantContacts.length) this.fetchAllContacts();
         },
 
         linkableContacts() {
