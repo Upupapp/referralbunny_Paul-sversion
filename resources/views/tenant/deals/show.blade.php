@@ -305,22 +305,63 @@
 
             </div>
 
-            {{-- Ã¢"â‚¬Ã¢"â‚¬ Edit mode Ã¢"â‚¬Ã¢"â‚¬ --}}
-            <div x-show="editFinance" style="display:none" class="space-y-5">
-                <p class="text-xs text-gray-500">Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
+            {{-- Edit mode --}}
+            <div x-show=”editFinance” style=”display:none” class=”space-y-5”>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @if($showLocation ?? false)
+                {{-- LGU IDS: deal-value-first with auto-locked base cost --}}
+                <div class=”flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl”>
+                    <svg class=”w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5” fill=”currentColor” viewBox=”0 0 20 20”><path fill-rule=”evenodd” d=”M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z” clip-rule=”evenodd”/></svg>
+                    <p class=”text-xs text-purple-700 leading-relaxed”>Enter the total contract value first. Base cost is auto-locked by the LGU IDS pricing tier. Adjust the added amount (margin) if needed — the deal value will update to stay consistent.</p>
+                </div>
+
+                {{-- Deal Value (primary input) --}}
+                <div>
+                    <label class=”form-label text-[#1E1B4B] font-semibold”>Deal Value (₱) <span class=”text-gray-400 font-normal text-xs”>— total contract amount</span></label>
+                    <input type=”number” x-model.number=”financeForm.deal_value”
+                           @input=”onDealValueChange()”
+                           class=”form-input text-base font-semibold” placeholder=”4000000” min=”0” step=”100”>
+                    <p class=”text-[10px] text-purple-500 mt-1”>LGU IDS default: ₱4,000,000</p>
+                </div>
+
+                {{-- Base Cost (locked) + Added Amount (editable) --}}
+                <div class=”grid grid-cols-1 sm:grid-cols-2 gap-4”>
                     <div>
-                        <label class="form-label">Base Cost (₱) <span class="text-gray-400 font-normal">â€” actual delivery cost</span></label>
-                        <input type="number" x-model.number="financeForm.base_cost" @input="recalc()"
-                               class="form-input" placeholder="0" min="0" step="100">
+                        <label class=”form-label”>Base Cost (₱) <span class=”text-gray-400 font-normal”>— LGU IDS tier</span></label>
+                        <div class=”form-input bg-gray-50 flex items-center justify-between cursor-not-allowed select-none”
+                             style=”padding-top:0.6rem;padding-bottom:0.6rem”>
+                            <span class=”text-gray-700 font-semibold tabular-nums” x-text=”fmt(financeForm.base_cost)”></span>
+                            <span class=”text-[10px] font-bold text-purple-500 bg-purple-100 rounded-full px-2 py-0.5 ml-2 shrink-0”
+                                  x-text=”tierLabel(financeForm.deal_value)”></span>
+                        </div>
+                        <p class=”text-[10px] text-gray-400 mt-0.5”>Auto-locked · not editable</p>
                     </div>
                     <div>
-                        <label class="form-label">Added Amount (₱) <span class="text-gray-400 font-normal">â€” your margin</span></label>
-                        <input type="number" x-model.number="financeForm.added_amount" @input="recalc()"
-                               class="form-input" placeholder="0" min="0" step="100">
+                        <label class=”form-label”>Added Amount (₱) <span class=”text-gray-400 font-normal”>— margin</span></label>
+                        <input type=”number” x-model.number=”financeForm.added_amount”
+                               @input=”onAddedAmountChange()”
+                               class=”form-input” placeholder=”0” min=”0” step=”100”>
+                        <p class=”text-[10px] text-gray-400 mt-0.5”>Edit to adjust — deal value updates</p>
                     </div>
                 </div>
+
+                @else
+                {{-- Generic tenant: manual base cost + added amount --}}
+                <p class=”text-xs text-gray-500”>Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
+
+                <div class=”grid grid-cols-1 sm:grid-cols-2 gap-4”>
+                    <div>
+                        <label class=”form-label”>Base Cost (₱) <span class=”text-gray-400 font-normal”>— actual delivery cost</span></label>
+                        <input type=”number” x-model.number=”financeForm.base_cost” @input=”recalc()”
+                               class=”form-input” placeholder=”0” min=”0” step=”100”>
+                    </div>
+                    <div>
+                        <label class=”form-label”>Added Amount (₱) <span class=”text-gray-400 font-normal”>— your margin</span></label>
+                        <input type=”number” x-model.number=”financeForm.added_amount” @input=”recalc()”
+                               class=”form-input” placeholder=”0” min=”0” step=”100”>
+                    </div>
+                </div>
+                @endif
 
                 {{-- Live preview --}}
                 <div class="p-4 rounded-2xl space-y-3" style="background:linear-gradient(135deg,#F5F3FF,#F0FDF4)">
@@ -1351,7 +1392,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         noteText: '', noteAuthor: '', saving: false, reassignName: '',
         moveStageNote: '',
         editFinance: false,
-        financeForm: { base_cost: 0, added_amount: 0 },
+        financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
 
         // Contacts
         dealContacts: [], loadingContacts: true,
@@ -1398,6 +1439,44 @@ function dealDetail(leadId, tenantId, ssrLead) {
         previewCommPool()     { return (Number(this.financeForm.added_amount)||0) * 0.70; },
         recalc() { /* reactivity happens automatically via x-model.number */ },
 
+        // ── LGU IDS pricing tier helpers ──
+        lguBaseCost(dv) {
+            dv = Math.round(Number(dv) || 0);
+            if (dv <= 6_000_000)  return Math.round(dv * 0.60);
+            if (dv <= 12_000_000) return Math.round(dv * 0.58);
+            if (dv <= 15_000_000) return Math.round(dv * 0.48);
+            return Math.round(dv * 0.41);
+        },
+        tierLabel(dv) {
+            dv = Number(dv) || 0;
+            if (dv <= 6_000_000)  return '60% base';
+            if (dv <= 12_000_000) return '58% base';
+            if (dv <= 15_000_000) return '48% base';
+            return '41% base';
+        },
+
+        // Called when Deal Value input changes — recalculate base_cost and added_amount
+        onDealValueChange() {
+            const dv = Math.round(Number(this.financeForm.deal_value) || 0);
+            const bc = this.lguBaseCost(dv);
+            this.financeForm.base_cost    = bc;
+            this.financeForm.added_amount = Math.max(0, dv - bc);
+        },
+
+        // Called when Added Amount input changes — update deal_value and recalculate base_cost
+        onAddedAmountChange() {
+            const aa    = Math.round(Number(this.financeForm.added_amount) || 0);
+            const bc    = this.financeForm.base_cost;
+            const newDv = bc + aa;
+            const newBc = this.lguBaseCost(newDv);
+            this.financeForm.deal_value = newDv;
+            this.financeForm.base_cost  = newBc;
+            // If the new deal_value crossed a tier boundary, adjust added_amount to remain consistent
+            if (newBc !== bc) {
+                this.financeForm.added_amount = Math.max(0, newDv - newBc);
+            }
+        },
+
         fmt(v) {
             // null/undefined/empty = not set → show dash; explicit 0 → show ₱0
             if (v === null || v === undefined || v === '') return '—';
@@ -1406,10 +1485,10 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
 
         startEditFinance() {
-            this.financeForm = {
-                base_cost:    Number(this.lead?.base_cost    || 0),
-                added_amount: Number(this.lead?.added_amount || 0),
-            };
+            const bc = Number(this.lead?.base_cost    || 0);
+            const aa = Number(this.lead?.added_amount || 0);
+            const dv = (bc + aa) || Number(this.lead?.deal_value || 0);
+            this.financeForm = { deal_value: dv, base_cost: bc, added_amount: aa };
             this.editFinance = true;
         },
 
@@ -1418,8 +1497,8 @@ function dealDetail(leadId, tenantId, ssrLead) {
         async saveFinance() {
             this.saving = true;
             try {
-                const bc   = Number(this.financeForm.base_cost)    || 0;
-                const aa   = Number(this.financeForm.added_amount) || 0;
+                const bc   = Math.round(Number(this.financeForm.base_cost)    || 0);
+                const aa   = Math.round(Number(this.financeForm.added_amount) || 0);
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const res  = await fetch(`/api/leads/${this.lead.id}`, {
                     method: 'PATCH',
