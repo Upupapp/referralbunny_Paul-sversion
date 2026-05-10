@@ -94,7 +94,7 @@ class RequestFormController extends Controller
 
         [$actorType, $actorId] = $this->resolveActor();
 
-        $form = DB::transaction(function () use ($data, $tenantId, $actorType, $actorId, $request) {
+        try { $form = DB::transaction(function () use ($data, $tenantId, $actorType, $actorId, $request) {
             $form = RequestForm::create([
                 'tenant_id'                 => $tenantId,
                 'created_by_type'           => $actorType,
@@ -156,7 +156,15 @@ class RequestFormController extends Controller
             }
 
             return $form;
-        });
+        }); } catch (\Throwable $e) {
+            \Log::error('RequestForm::store failed: ' . $e->getMessage(), [
+                'file' => $e->getFile(), 'line' => $e->getLine(),
+            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 500);
+            }
+            throw $e;
+        }
 
         // AJAX callers (create page fetch) get JSON back
         if ($request->expectsJson()) {
