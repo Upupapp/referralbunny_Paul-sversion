@@ -208,13 +208,13 @@
                     </template>
                     <template x-for="lead in sortedFiltered()" :key="lead.id">
                         <tr class="table-row cursor-pointer transition-colors"
-                            :class="selectMode && selectedDeals.includes(lead.id) ? 'bg-red-50 border-l-2 border-l-red-400' : ''"
+                            :class="selectMode && selectedDeals.includes(lead.id) ? 'bg-red-50' : ''"
                             @click="viewDeal(lead.id)">
-                            <td x-show="selectMode" class="w-10" @click.stop="toggleDeal(lead.id)">
+                            <td x-show="selectMode" class="w-10 pl-3" @click.stop>
                                 <input type="checkbox"
-                                       class="rounded border-gray-300 text-red-500 cursor-pointer"
+                                       style="width:18px;height:18px;cursor:pointer;accent-color:#dc2626"
                                        :checked="selectedDeals.includes(lead.id)"
-                                       @change.stop="toggleDeal(lead.id)">
+                                       @click.stop="toggleDeal(lead.id)">
                             </td>
                             <td>
                                 <div class="flex items-center gap-3">
@@ -686,31 +686,34 @@
 
     {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
     <div x-show="selectMode"
-         x-cloak
+         style="display:none"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9000]"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border border-red-200"
-         style="background:white;min-width:280px">
-        <div class="flex-1">
-            <p class="text-sm font-semibold text-[#1E1B4B]" x-text="selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '') + ' selected'"></p>
-            <p class="text-xs text-gray-400">Click deals to select or deselect</p>
+         x-transition:enter-end="opacity-100 translate-y-0">
+        <div class="flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border border-gray-200"
+             style="background:white;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+            <div class="flex-1">
+                <p class="text-sm font-semibold text-[#1E1B4B]"
+                   x-text="selectedDeals.length === 0 ? 'Tap a deal to select it' : selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '') + ' selected'"></p>
+                <p class="text-xs text-gray-400">Tap again to deselect</p>
+            </div>
+            <button @click="selectMode=false; selectedDeals=[]"
+                    class="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0">
+                Cancel
+            </button>
+            <button @click="if(selectedDeals.length > 0) showDeleteConfirm = true"
+                    :class="selectedDeals.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span x-text="selectedDeals.length > 0 ? 'Delete (' + selectedDeals.length + ')' : 'Delete'"></span>
+            </button>
         </div>
-        <button @click="selectMode=false;selectedDeals=[]"
-                class="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            Cancel
-        </button>
-        <button @click="if(selectedDeals.length>0) showDeleteConfirm=true"
-                :disabled="selectedDeals.length === 0"
-                :class="selectedDeals.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-700'"
-                class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold text-white bg-red-600 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            Delete <span x-text="selectedDeals.length > 0 ? '(' + selectedDeals.length + ')' : ''"></span>
-        </button>
     </div>
 
     {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
-    <div x-show="showDeleteConfirm" x-cloak
+    <div x-show="showDeleteConfirm"
+         style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
          x-transition:enter="transition ease-out duration-150"
          x-transition:enter-start="opacity-0"
