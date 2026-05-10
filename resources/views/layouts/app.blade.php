@@ -338,7 +338,7 @@
                 <div class="w-px h-5 bg-gray-200 mx-1.5"></div>
 
                 {{-- Notifications --}}
-                <div x-data="notifPanel()" x-init="load()" class="relative">
+                <div x-data="notifPanel()" x-init="init()" class="relative">
                     <button @click="open = !open"
                             class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -569,17 +569,36 @@ function notifPanel() {
         open: false,
         notifs: [],
         count: 0,
+        _pollTimer: null,
+
         async load() {
             try {
                 const res  = await fetch('/api/notifications/mine?unread=true&limit=6', {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
+                if (!res.ok) return;
                 const data = await res.json();
                 this.notifs = Array.isArray(data.items) ? data.items : [];
                 this.count  = data.unread_count ?? this.notifs.length;
-            } catch(e) { this.notifs = []; this.count = 0; }
+            } catch(e) { /* silent — badge stays at last known count */ }
         },
+
+        // Poll for new notifications every 90 seconds so the badge stays fresh
+        startPolling() {
+            this._pollTimer = setInterval(() => {
+                if (!document.hidden) this.load();
+            }, 90_000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this.load();
+            }, { once: false });
+        },
+
+        init() {
+            this.load();
+            this.startPolling();
+        },
+
         async markAllRead() {
             try {
                 await fetch('/api/notifications/mine/mark-all-read', {

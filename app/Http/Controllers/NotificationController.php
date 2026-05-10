@@ -203,6 +203,10 @@ class NotificationController extends Controller
             $user = Auth::guard('reseller')->user();
             return ['reseller', (string) $user->id, $user->tenant_id];
         }
+        if (Auth::guard('partner')->check()) {
+            $user = Auth::guard('partner')->user();
+            return ['partner', (string) $user->id, $user->tenant_id];
+        }
         return [null, null, null];
     }
 }
