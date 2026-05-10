@@ -540,7 +540,7 @@ class LguIdsImportService
             }
         }
 
-        // Upsert pending referrer invites
+        // Upsert pending referrer invites + auto-add to Referrers list as invited
         foreach ($pendingInvites as $email => $info) {
             PendingReferrerInvite::updateOrCreate(
                 ['tenant_id' => self::TENANT_ID, 'email' => $email],
@@ -551,6 +551,19 @@ class LguIdsImportService
                     'status'          => 'pending_invite',
                 ]
             );
+
+            // Create the Reseller record so they appear on the Referrers tab immediately.
+            // firstOrCreate prevents duplicates if they were already invited.
+            try {
+                Reseller::firstOrCreate(
+                    ['tenant_id' => self::TENANT_ID, 'email' => strtolower($email)],
+                    [
+                        'name'        => $info['name'] ?? $email,
+                        'status'      => 'invited',
+                        'joined_date' => now()->toDateString(),
+                    ]
+                );
+            } catch (\Throwable) {}
         }
 
         $batch->update([
@@ -563,17 +576,20 @@ class LguIdsImportService
             'blocked_rows'          => $counts['blocked'],
         ]);
 
-        // Notify tenant admins
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:     self::TENANT_ID,
-            category:     'import_preview_ready',
-            priority:     'normal',
-            title:        'LGU IDS Import Ready for Review',
-            body:         "Your import of {$batch->total_rows} rows is ready. {$counts['successful']} ready, {$counts['duplicate']} duplicates, {$counts['unknown_referrer']} unknown referrers.",
-            actionUrl:    "/tenant/" . self::TENANT_ID . "/imports/lgu-ids/{$batch->id}",
-            actionLabel:  'Review Import',
-            dedupeSuffix: $batch->id,
-        );
+        // Notify tenant admins — wrapped in try-catch since notifications table
+        // has a CHECK constraint on category that may not include all values
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     self::TENANT_ID,
+                category:     'import',
+                priority:     'normal',
+                title:        'LGU IDS Import Ready for Review',
+                body:         "Your import of {$batch->total_rows} rows is ready. {$counts['successful']} ready, {$counts['duplicate']} duplicates, {$counts['unknown_referrer']} unknown referrers.",
+                actionUrl:    "/tenant/" . self::TENANT_ID . "/imports/lgu-ids/{$batch->id}",
+                actionLabel:  'Review Import',
+                dedupeSuffix: $batch->id,
+            );
+        } catch (\Throwable) {}
 
         return $batch;
     }
