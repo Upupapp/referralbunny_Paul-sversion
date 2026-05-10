@@ -169,13 +169,13 @@
                                     @endif
                                 </a>
 
-                                @if($form->status === 'published')
+                                @if($form->status === 'published' && $form->public_token)
                                 <button type="button"
-                                        onclick="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>{window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'success',message:'Public link copied to clipboard'}}));}).catch(()=>alert('{{ $form->publicUrl() }}'))"
+                                        onclick="rbCopyLink(this,'{{ $form->publicUrl() }}')"
                                         style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
                                         onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                                    Copy Public Link
+                                    <span class="rb-copy-label">Copy Public Link</span>
                                 </button>
                                 @endif
 
@@ -253,4 +253,20 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+function rbCopyLink(btn, url) {
+    const label = btn.querySelector('.rb-copy-label');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (label) { label.textContent = '✓ Copied!'; btn.style.color = '#15803d'; }
+            setTimeout(() => { if (label) { label.textContent = 'Copy Public Link'; btn.style.color = '#374151'; } }, 2000);
+        }).catch(() => { prompt('Copy this link:', url); });
+    } else {
+        prompt('Copy this link:', url);
+    }
+}
+</script>
+@endpush
 @endsection

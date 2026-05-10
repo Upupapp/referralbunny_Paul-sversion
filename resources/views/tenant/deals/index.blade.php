@@ -652,11 +652,8 @@
     </div>
 
     {{-- ── Delete Instructions Modal ─────────────────────────────── --}}
-    <div x-show="showDeleteInstructions" x-cloak
-         class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100">
+    <div :style="showDeleteInstructions ? 'display:flex' : 'display:none'"
+         class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
@@ -685,12 +682,8 @@
     </div>
 
     {{-- ── Floating Delete Bar (select mode) ──────────────────────── --}}
-    <div x-show="selectMode"
-         style="display:none"
-         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9000]"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0">
+    <div :style="selectMode ? 'display:block' : 'display:none'"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9000]">
         <div class="flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border border-gray-200"
              style="background:white;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
             <div class="flex-1">
@@ -712,12 +705,8 @@
     </div>
 
     {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
-    <div x-show="showDeleteConfirm"
-         style="display:none"
-         class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
-         x-transition:enter="transition ease-out duration-150"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100">
+    <div :style="showDeleteConfirm ? 'display:flex' : 'display:none'"
+         class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
              x-transition:enter="transition ease-out duration-150"
              x-transition:enter-start="opacity-0 scale-95"
