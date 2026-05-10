@@ -228,7 +228,7 @@
                 $co = $aa * 0.30;
                 $cp = $aa * 0.70;
             @endphp
-            <div x-show="!editFinance" class="space-y-4">
+            <div :style="editFinance ? 'display:none!important' : ''" class="space-y-4">
 
                 {{-- Formula rows --}}
                 <div>
@@ -306,7 +306,7 @@
             </div>
 
             {{-- Edit mode --}}
-            <div x-show=”editFinance” x-cloak class=”space-y-5”>
+            <div :style=”!editFinance ? 'display:none!important' : ''” class=”space-y-5”>
 
                 @if($showLocation ?? false)
                 {{-- LGU IDS: deal-value-first with auto-locked base cost --}}
@@ -317,48 +317,61 @@
 
                 {{-- Deal Value (primary input) --}}
                 <div>
-                    <label class=”form-label text-[#1E1B4B] font-semibold”>Deal Value (₱) <span class=”text-gray-400 font-normal text-xs”>— total contract amount</span></label>
+                    <label style=”display:block;font-size:13px;font-weight:600;color:#1E1B4B;margin-bottom:4px”>
+                        Deal Value (₱) <span style=”font-weight:400;color:#9ca3af;font-size:11px”>— total contract amount</span>
+                    </label>
                     <input type=”number” x-model.number=”financeForm.deal_value”
-                           @input=”onDealValueChange()”
-                           class=”form-input text-base font-semibold” placeholder=”4000000” min=”0” step=”100”>
-                    <p class=”text-[10px] text-purple-500 mt-1”>LGU IDS default: ₱4,000,000</p>
+                           x-on:input=”onDealValueChange()”
+                           style=”display:block;width:100%;padding:10px 14px;border:2px solid #7B61FF;border-radius:12px;font-size:16px;font-weight:600;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
+                           placeholder=”4000000” min=”0” step=”100”>
+                    <p style=”font-size:10px;color:#7B61FF;margin-top:4px”>LGU IDS default: ₱4,000,000</p>
                 </div>
 
                 {{-- Base Cost (locked) + Added Amount (editable) --}}
-                <div class=”grid grid-cols-1 sm:grid-cols-2 gap-4”>
+                <div style=”display:grid;grid-template-columns:1fr 1fr;gap:16px”>
                     <div>
-                        <label class=”form-label”>Base Cost (₱) <span class=”text-gray-400 font-normal”>— LGU IDS tier</span></label>
-                        <div class=”form-input bg-gray-50 flex items-center justify-between cursor-not-allowed select-none”
-                             style=”padding-top:0.6rem;padding-bottom:0.6rem”>
-                            <span class=”text-gray-700 font-semibold tabular-nums” x-text=”fmt(financeForm.base_cost)”></span>
-                            <span class=”text-[10px] font-bold text-purple-500 bg-purple-100 rounded-full px-2 py-0.5 ml-2 shrink-0”
+                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
+                            Base Cost (₱) <span style=”font-weight:400;color:#9ca3af”>— LGU IDS tier</span>
+                        </label>
+                        <div style=”display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;cursor:not-allowed;user-select:none”>
+                            <span style=”font-size:14px;font-weight:600;color:#374151;font-variant-numeric:tabular-nums” x-text=”fmt(financeForm.base_cost)”></span>
+                            <span style=”font-size:10px;font-weight:700;color:#7B61FF;background:#ede9fe;border-radius:20px;padding:2px 8px;white-space:nowrap;margin-left:8px”
                                   x-text=”tierLabel(financeForm.deal_value)”></span>
                         </div>
-                        <p class=”text-[10px] text-gray-400 mt-0.5”>Auto-locked · not editable</p>
+                        <p style=”font-size:10px;color:#9ca3af;margin-top:4px”>Auto-locked · not editable</p>
                     </div>
                     <div>
-                        <label class=”form-label”>Added Amount (₱) <span class=”text-gray-400 font-normal”>— margin</span></label>
+                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
+                            Added Amount (₱) <span style=”font-weight:400;color:#9ca3af”>— margin</span>
+                        </label>
                         <input type=”number” x-model.number=”financeForm.added_amount”
-                               @input=”onAddedAmountChange()”
-                               class=”form-input” placeholder=”0” min=”0” step=”100”>
-                        <p class=”text-[10px] text-gray-400 mt-0.5”>Edit to adjust — deal value updates</p>
+                               x-on:input=”onAddedAmountChange()”
+                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
+                               placeholder=”0” min=”0” step=”100”>
+                        <p style=”font-size:10px;color:#9ca3af;margin-top:4px”>Edit to adjust — deal value updates</p>
                     </div>
                 </div>
 
                 @else
                 {{-- Generic tenant: manual base cost + added amount --}}
-                <p class=”text-xs text-gray-500”>Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
+                <p style=”font-size:12px;color:#6b7280”>Enter the deal financials. Contract Value, Company Share, and Commission Pool are calculated automatically.</p>
 
-                <div class=”grid grid-cols-1 sm:grid-cols-2 gap-4”>
+                <div style=”display:grid;grid-template-columns:1fr 1fr;gap:16px”>
                     <div>
-                        <label class=”form-label”>Base Cost (₱) <span class=”text-gray-400 font-normal”>— actual delivery cost</span></label>
-                        <input type=”number” x-model.number=”financeForm.base_cost” @input=”recalc()”
-                               class=”form-input” placeholder=”0” min=”0” step=”100”>
+                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
+                            Base Cost (₱) <span style=”font-weight:400;color:#9ca3af”>— actual delivery cost</span>
+                        </label>
+                        <input type=”number” x-model.number=”financeForm.base_cost” x-on:input=”recalc()”
+                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
+                               placeholder=”0” min=”0” step=”100”>
                     </div>
                     <div>
-                        <label class=”form-label”>Added Amount (₱) <span class=”text-gray-400 font-normal”>— your margin</span></label>
-                        <input type=”number” x-model.number=”financeForm.added_amount” @input=”recalc()”
-                               class=”form-input” placeholder=”0” min=”0” step=”100”>
+                        <label style=”display:block;font-size:13px;font-weight:500;color:#374151;margin-bottom:4px”>
+                            Added Amount (₱) <span style=”font-weight:400;color:#9ca3af”>— your margin</span>
+                        </label>
+                        <input type=”number” x-model.number=”financeForm.added_amount” x-on:input=”recalc()”
+                               style=”display:block;width:100%;padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box”
+                               placeholder=”0” min=”0” step=”100”>
                     </div>
                 </div>
                 @endif
