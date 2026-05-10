@@ -228,7 +228,7 @@
                 $co = $aa * 0.30;
                 $cp = $aa * 0.70;
             @endphp
-            <div :class="editFinance ? 'hidden' : ''" class="space-y-4">
+            <div x-show="!editFinance" class="space-y-4">
 
                 {{-- Formula rows --}}
                 <div>
@@ -306,7 +306,7 @@
             </div>
 
             {{-- Edit mode --}}
-            <div x-show=”editFinance” style=”display:none” class=”space-y-5”>
+            <div x-show=”editFinance” x-cloak class=”space-y-5”>
 
                 @if($showLocation ?? false)
                 {{-- LGU IDS: deal-value-first with auto-locked base cost --}}
