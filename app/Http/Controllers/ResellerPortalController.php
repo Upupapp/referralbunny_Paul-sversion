@@ -103,15 +103,6 @@ class ResellerPortalController extends Controller
             }
         } catch (\Throwable) {}
 
-        // ── Pipeline by stage ──────────────────────────────────────────────
-        $stageBreakdown = [];
-        try {
-            foreach (['introduction','presentation','contract_sent','signed','paid'] as $stage) {
-                $sl = $leads->where('stage', $stage);
-                $stageBreakdown[$stage] = ['count' => $sl->count(), 'value' => (int) $sl->sum('deal_value')];
-            }
-        } catch (\Throwable) {}
-
         // ── Unread messages count ──────────────────────────────────────────
         $unreadCount = 0;
         try {
@@ -129,8 +120,7 @@ class ResellerPortalController extends Controller
 
         return view('reseller.dashboard', compact(
             'reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity',
-            'commissionStats', 'totalCommission', 'unreadCount',
-            'partnerCount', 'stageBreakdown'
+            'commissionStats', 'totalCommission', 'unreadCount', 'partnerCount'
         ));
     }
 

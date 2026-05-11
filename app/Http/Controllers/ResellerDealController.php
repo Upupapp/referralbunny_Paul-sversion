@@ -454,15 +454,16 @@ class ResellerDealController extends Controller
         ]);
 
         try {
-            app(DealPartnerSplitService::class)->createOrUpdate(
-                tenantId:        $tenantId,
-                dealId:          $dealId,
-                partnerName:     $data['partner_name'],
-                partnerEmail:    $data['partner_email'],
-                splitValue:      $data['split_share_value'],
-                splitType:       $data['split_share_type'],
-                actorId:         (string) $reseller->id,
-                actorType:       'reseller',
+            app(DealPartnerSplitService::class)->upsert(
+                tenantId:    $tenantId,
+                dealId:      $dealId,
+                partnerName: $data['partner_name'],
+                partnerEmail:$data['partner_email'],
+                splitValue:  (float) $data['split_share_value'],
+                splitType:   $data['split_share_type'],
+                currency:    'PHP',
+                source:      'manual',
+                actorId:     (string) $reseller->id,
             );
 
             app(DealActivityService::class)->record($lead, 'Partner split added by referrer', 'partner', [

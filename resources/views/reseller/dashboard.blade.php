@@ -13,9 +13,7 @@
 
 @section('content')
 @php
-    $stageLabels = ['introduction'=>'Introduction','presentation'=>'Presentation','contract_sent'=>'Contract Sent','signed'=>'Signed','paid'=>'Paid'];
     $stageColors = ['introduction'=>'#9CA3AF','presentation'=>'#3B82F6','contract_sent'=>'#F59E0B','signed'=>'#8B5CF6','paid'=>'#10B981'];
-    $hasDeals    = $stats['total'] > 0;
     $actionItems = collect($recentActivity ?? [])->filter(fn($a) => ($a['action_needed'] ?? false))->take(5)->values();
     $hasActions  = $actionItems->isNotEmpty();
 @endphp
