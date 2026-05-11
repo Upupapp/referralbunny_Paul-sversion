@@ -325,7 +325,7 @@
                         </template>
                         <template x-for="note in (lead?.notes||[])" :key="note.id">
                             <div class="p-3 bg-gray-50 rounded-xl">
-                                <p class="text-sm text-gray-700" x-text="note.text"></p>
+                                <p class="text-sm text-gray-700 break-words" x-html="$rbLinkify(note.text)"></p>
                                 <p class="text-xs text-gray-400 mt-1.5">
                                     <span x-text="note.author || 'Unknown'"></span> ·
                                     <span x-text="note.created_at ? new Date(note.created_at).toLocaleDateString('en',{month:'short',day:'numeric'}) : ''"></span>

@@ -72,7 +72,7 @@
                     </div>
                     <template x-for="note in (lead.notes || [])" :key="note.id">
                         <div class="p-3 bg-[#F0EFFA] rounded-xl">
-                            <p class="text-sm text-gray-700" x-text="note.text"></p>
+                            <p class="text-sm text-gray-700 break-words" x-html="$rbLinkify(note.text)"></p>
                             <p class="text-xs text-gray-400 mt-1" x-text="note.author + ' · ' + new Date(note.created_at).toLocaleDateString()"></p>
                         </div>
                     </template>

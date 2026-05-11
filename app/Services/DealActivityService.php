@@ -149,13 +149,13 @@ class DealActivityService
 
         $parts = [];
         if (abs($newDv - $oldDv) > 0.01) {
-            $parts[] = 'Contract Value \u{20b1}' . number_format($oldDv, 0) . ' \u{2192} \u{20b1}' . number_format($newDv, 0);
+            $parts[] = "Contract Value ₱" . number_format($oldDv, 0) . " → ₱" . number_format($newDv, 0);
         }
         if (abs($newBc - $oldBc) > 0.01) {
-            $parts[] = 'Base Cost \u{20b1}' . number_format($oldBc, 0) . ' \u{2192} \u{20b1}' . number_format($newBc, 0);
+            $parts[] = "Base Cost ₱" . number_format($oldBc, 0) . " → ₱" . number_format($newBc, 0);
         }
         if (abs($newAa - $oldAa) > 0.01) {
-            $parts[] = 'Added Amount \u{20b1}' . number_format($oldAa, 0) . ' \u{2192} \u{20b1}' . number_format($newAa, 0);
+            $parts[] = "Added Amount ₱" . number_format($oldAa, 0) . " → ₱" . number_format($newAa, 0);
         }
 
         $action = empty($parts)
@@ -200,7 +200,7 @@ class DealActivityService
     {
         $this->record(
             $lead,
-            'Commission locked at \u{20b1}' . number_format($commPool, 2) . ' (deal moved to Signed)',
+            "Commission locked at ₱" . number_format($commPool, 2) . " (deal moved to Signed)",
             'commission',
             [
                 'category'   => 'commission',
@@ -213,7 +213,7 @@ class DealActivityService
     {
         $this->record(
             $lead,
-            'Commission marked as paid — pool \u{20b1}' . number_format($commPool, 2),
+            "Commission marked as paid — pool ₱" . number_format($commPool, 2),
             'commission',
             [
                 'category'   => 'commission',
@@ -272,7 +272,7 @@ class DealActivityService
         $t = $split['split_share_type'] ?? 'percentage';
         return $t === 'percentage'
             ? $v . '%'
-            : '\u{20b1}' . number_format($v, 2);
+            : '₱' . number_format($v, 2);
     }
 
     private function stageLabel(string $stage): string

@@ -631,7 +631,7 @@
                     <span class="text-xs font-semibold text-gray-700">{{ $note['author'] ?? 'Unknown' }}</span>
                     <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($note['created_at'])->diffForHumans() }}</span>
                 </div>
-                <p class="text-sm text-gray-600 leading-relaxed">{{ $note['text'] }}</p>
+                <p class="text-sm text-gray-600 leading-relaxed break-words">{!! preg_replace('~(https?://[^\s<>"\']+)~i','<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">$1</a>',e($note['text'] ?? '')) !!}</p>
             </div>
             @endforeach
         </div>

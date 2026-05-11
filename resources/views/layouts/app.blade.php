@@ -806,5 +806,18 @@ function toastSystem() {
 @endauth
 
 @stack('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.magic('rbLinkify', () => (text) => {
+        if (!text) return '';
+        const escaped = String(text)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return escaped.replace(
+            /(https?:\/\/[^\s<>"'&]+)/gi,
+            '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">$1</a>'
+        );
+    });
+});
+</script>
 </body>
 </html>
