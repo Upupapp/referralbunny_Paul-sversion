@@ -1,5 +1,6 @@
 @extends('layouts.reseller')
 @section('title', 'Messages')
+@section('nav') @include('reseller._nav') @endsection
 
 @section('content')
 <div x-data="resellerChat()" x-init="init()" class="flex flex-col" style="height:calc(100dvh - 88px); min-height:400px;">
