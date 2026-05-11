@@ -652,7 +652,36 @@ class LguIdsImportService
                     $dealValue             = 4_000_000.00;
                     $importAmountDefaulted = true;
                 }
-                $orgId         = $row->organization_id;
+                $orgId = $row->organization_id;
+                $city     = $norm['municipality_or_city'] ?? '';
+                $province = $norm['province'] ?? '';
+
+                // Auto-create organization when not found during validation.
+                // For LGU IDS: Organization = "Municipality, Province" (LOCKED RULE).
+                if (!$orgId && $city && $province) {
+                    $orgName = $city . ', ' . $province;
+                    $orgId   = DB::table('organizations')
+                        ->where('tenant_id', self::TENANT_ID)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($orgName)])
+                        ->value('id');
+
+                    if (!$orgId) {
+                        $orgId = (string) \Illuminate\Support\Str::uuid();
+                        DB::table('organizations')->insert([
+                            'id'         => $orgId,
+                            'tenant_id'  => self::TENANT_ID,
+                            'name'       => $orgName,
+                            'city'       => $city,
+                            'address'    => $province,
+                            'type'       => 'government',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        // Update the batch row so future steps reference the new org
+                        $row->update(['organization_id' => $orgId]);
+                    }
+                }
+
                 $referrerEmail = $norm['referrer_email'] ?? null;
                 $reseller      = $referrerEmail
                     ? Reseller::where('tenant_id', self::TENANT_ID)->where('email', $referrerEmail)->first()
@@ -660,8 +689,6 @@ class LguIdsImportService
                 $resellerName  = $reseller?->name ?? ($norm['referrer_name'] ?? $referrerEmail);
 
                 // Build LGU deal name from city + province
-                $city     = $norm['municipality_or_city'] ?? '';
-                $province = $norm['province'] ?? '';
                 $dealName = $city . ($province ? ', ' . $province : '');
 
                 // Get days_left from LGU IDS stage rules (LOCKED)
