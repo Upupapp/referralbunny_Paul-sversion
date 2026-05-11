@@ -325,7 +325,7 @@
                 };
             @endphp
             <a href="{{ route('reseller.deals.show', [$tenant->id, $lead->id]) }}"
-               class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+               class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
                 <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                      style="background:{{ $sc }}">
                     {{ strtoupper(substr($lead->name ?? '??', 0, 2)) }}
@@ -334,14 +334,25 @@
                     <p class="text-sm font-semibold truncate group-hover:underline" style="color:#1E1B4B">
                         {{ $lead->name ?? 'Unnamed Deal' }}
                     </p>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ ucfirst(str_replace('_', ' ', $lead->stage ?? 'unknown')) }}</p>
+                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span class="text-xs text-gray-400">{{ ucfirst(str_replace('_', ' ', $lead->stage ?? 'unknown')) }}</span>
+                        <span class="text-gray-200 text-xs">·</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                              style="background:{{ $sc2['bg'] }};color:{{ $sc2['text'] }}">
+                            {{ $lead->status ?? 'unknown' }}
+                        </span>
+                    </div>
                 </div>
                 <div class="text-right shrink-0">
+                    <p class="text-xs text-gray-400 mb-0.5">Deal Value</p>
                     <p class="text-sm font-bold" style="color:#1E1B4B">₱{{ number_format($lead->deal_value ?? 0) }}</p>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style="background:{{ $sc2['bg'] }};color:{{ $sc2['text'] }}">
-                        {{ $lead->status ?? 'unknown' }}
-                    </span>
+                    @if(($lead->my_commission ?? 0) > 0)
+                    <p class="text-xs font-semibold mt-1" style="color:#7B61FF">
+                        My Commission: ₱{{ number_format($lead->my_commission) }}
+                    </p>
+                    @else
+                    <p class="text-[10px] text-gray-300 mt-1">Commission TBD</p>
+                    @endif
                 </div>
             </a>
             @endforeach

@@ -49,10 +49,9 @@ class ResellerPortalController extends Controller
                 : 0,
         ];
 
-        $recentLeads = $leads->take(6);
-
-        // ── Actual referrer commission share (not raw deal_value) ──────────
-        $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+        // ── Per-lead commission + totals (one pass) ───────────────────────
+        $commissionStats  = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+        $leadCommissionMap = []; // lead_id → my_commission (int)
         try {
             $leadIds = $leads->pluck('id');
             $splits  = $leadIds->isNotEmpty()
@@ -64,12 +63,13 @@ class ResellerPortalController extends Controller
 
             $calc = app(\App\Services\CommissionCalculationService::class);
             foreach ($leads as $lead) {
-                $breakdown   = $calc->breakdownFromLead($lead);
-                $pool        = $breakdown['commission_pool'] ?? 0;
-                $split       = $splits->get($lead->id);
-                $pct         = $split ? (float) ($split->percentage ?? 100) : 100.0;
+                $breakdown    = $calc->breakdownFromLead($lead);
+                $pool         = $breakdown['commission_pool'] ?? 0;
+                $split        = $splits->get($lead->id);
+                $pct          = $split ? (float) ($split->percentage ?? 100) : 100.0;
                 $myCommission = (int) $calc->referrerShare($pool, $pct);
-                $status      = $lead->commission_status ?? 'pending';
+                $leadCommissionMap[$lead->id] = $myCommission;
+                $status = $lead->commission_status ?? 'pending';
                 if (array_key_exists($status, $commissionStats)) {
                     $commissionStats[$status] += $myCommission;
                 } else {
@@ -77,10 +77,17 @@ class ResellerPortalController extends Controller
                 }
             }
         } catch (\Throwable) {
-            $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+            $commissionStats  = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+            $leadCommissionMap = [];
         }
 
         $totalCommission = $commissionStats['pending'] + $commissionStats['locked'] + $commissionStats['paid'];
+
+        // Attach per-lead commission to recentLeads
+        $recentLeads = $leads->take(6)->map(function ($lead) use ($leadCommissionMap) {
+            $lead->my_commission = $leadCommissionMap[$lead->id] ?? 0;
+            return $lead;
+        });
 
         // ── Unique partner count across assigned deals ─────────────────────
         $partnerCount = 0;
