@@ -199,17 +199,15 @@
     {{-- Deal Summary Card ─────────────────────────────────────── --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
 
-        {{-- ── Top zone: Identity + Financial ─────────────────── --}}
-        <div class="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-6">
+        {{-- ── Row 1: Identity (left) + Deal Value (right) ────── --}}
+        <div class="flex items-start justify-between gap-4">
 
-            {{-- LEFT: Deal Identity ──────────────────────────── --}}
+            {{-- Deal Identity --}}
             <div class="flex items-start gap-4 flex-1 min-w-0">
-                {{-- Avatar --}}
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm"
                      style="background:{{ $stageColor }}">
                     {{ strtoupper(substr($lead->name ?? '??', 0, 2)) }}
                 </div>
-                {{-- Title + badges + location --}}
                 <div class="flex-1 min-w-0 pt-0.5">
                     <h1 class="text-xl sm:text-2xl font-bold text-[#1E1B4B] leading-tight break-words">{{ $lead->name }}</h1>
                     <div class="flex flex-wrap items-center gap-2 mt-2">
@@ -233,149 +231,87 @@
                 </div>
             </div>
 
-            {{-- RIGHT: Financial Block ───────────────────────── --}}
-            {{-- Desktop: right-aligned. Mobile: row of 3 mini-cards --}}
-            <div class="sm:shrink-0 sm:text-right">
-
-                {{-- Mobile: horizontal 3-card row --}}
-                <div class="grid grid-cols-3 gap-2 sm:hidden">
-                    {{-- Deal Value --}}
-                    <div class="bg-gray-50 rounded-xl p-3 text-center">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1 font-medium">Deal Value</p>
-                        <p class="text-base font-bold text-[#1E1B4B] leading-tight">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
-                    </div>
-                    {{-- My Commission --}}
-                    <div class="bg-teal-50 rounded-xl p-3 text-center relative">
-                        <div class="flex items-center justify-center gap-1 mb-1">
-                            <p class="text-[10px] text-teal-600 uppercase tracking-wide font-medium">My Commission</p>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                        class="w-3.5 h-3.5 flex items-center justify-center text-teal-400 hover:text-teal-600 transition-colors" aria-label="Info about My Commission">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </button>
-                                <div x-show="open" x-cloak x-transition
-                                     class="absolute left-1/2 -translate-x-1/2 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                    <strong class="text-gray-700 block mb-1">My Commission</strong>
-                                    Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to taxes and deductions.
-                                </div>
-                            </div>
+            {{-- Deal Value (top right) --}}
+            <div class="text-right shrink-0">
+                <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                    <p class="text-xs text-gray-400 font-medium">Deal Value</p>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info about Deal Value">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                             class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                            <strong class="text-gray-700 block mb-1">Deal Value</strong>
+                            The current deal or contract amount used for pipeline, financial breakdown, and commission calculations.
                         </div>
-                        <p class="text-base font-bold text-teal-700 leading-tight">₱{{ number_format($myCommission, 0) }}</p>
-                        <p class="text-[9px] text-teal-500 mt-0.5">
-                            @if($lead->commission_status === 'paid') Paid
-                            @elseif($lead->commission_status === 'locked') Locked
-                            @else Est.
-                            @endif
-                        </p>
-                    </div>
-                    {{-- Partners Commission --}}
-                    <div class="bg-purple-50 rounded-xl p-3 text-center relative">
-                        <div class="flex items-center justify-center gap-1 mb-1">
-                            <p class="text-[10px] text-purple-500 uppercase tracking-wide font-medium">Partners</p>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                        class="w-3.5 h-3.5 flex items-center justify-center text-purple-300 hover:text-purple-500 transition-colors" aria-label="Info about Partners Commission">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </button>
-                                <div x-show="open" x-cloak x-transition
-                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                    <strong class="text-gray-700 block mb-1">Partners Commission</strong>
-                                    The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-base font-bold text-purple-700 leading-tight">₱{{ number_format($partnersCommission, 0) }}</p>
-                        @if($lead->days_left !== null && $lead->stage !== 'paid')
-                        <p class="text-[9px] mt-0.5 font-medium {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
-                            {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
-                        </p>
-                        @endif
                     </div>
                 </div>
-
-                {{-- Desktop: stacked right-aligned column --}}
-                <div class="hidden sm:block sm:w-56 lg:w-64">
-
-                    {{-- Deal Value --}}
-                    <div class="mb-3 pb-3 border-b border-gray-100">
-                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
-                            <p class="text-xs text-gray-400 font-medium">Deal Value</p>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors rounded-full" aria-label="Info about Deal Value">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </button>
-                                <div x-show="open" x-cloak x-transition
-                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                    <strong class="text-gray-700 block mb-1">Deal Value</strong>
-                                    The current deal or contract amount used for pipeline, financial breakdown, and commission calculations.
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
-                    </div>
-
-                    {{-- My Commission --}}
-                    <div class="mb-3">
-                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
-                            <p class="text-xs font-semibold text-[#1E1B4B]">My Commission</p>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors rounded-full" aria-label="Info about My Commission">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </button>
-                                <div x-show="open" x-cloak x-transition
-                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                    <strong class="text-gray-700 block mb-1">My Commission</strong>
-                                    Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to applicable taxes and deductions.
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-xl font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold mt-1
-                            @if($lead->commission_status === 'paid') bg-green-100 text-green-700
-                            @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
-                            @else bg-teal-50 text-teal-600
-                            @endif">
-                            @if($lead->commission_status === 'paid') Paid
-                            @elseif($lead->commission_status === 'locked') Locked
-                            @else Estimated
-                            @endif
-                        </span>
-                    </div>
-
-                    {{-- Partners Commission --}}
-                    <div class="mb-3">
-                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
-                            <p class="text-xs font-medium text-gray-500">Partners Commission</p>
-                            <div x-data="{ open: false }" class="relative">
-                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-purple-500 transition-colors rounded-full" aria-label="Info about Partners Commission">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </button>
-                                <div x-show="open" x-cloak x-transition
-                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                    <strong class="text-gray-700 block mb-1">Partners Commission</strong>
-                                    The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
-                                </div>
-                            </div>
-                        </div>
-                        <p class="text-lg font-bold text-[#7B61FF] tabular-nums">₱{{ number_format($partnersCommission, 0) }}</p>
-                    </div>
-
-                    {{-- Days left badge --}}
-                    @if($lead->days_left !== null && $lead->stage !== 'paid')
-                    <div class="flex justify-end">
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-                            {{ $lead->days_left <= 3 ? 'bg-red-100 text-red-600' : ($lead->days_left <= 7 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500') }}">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
-                        </span>
-                    </div>
-                    @endif
-
+                <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                @if($lead->days_left !== null && $lead->stage !== 'paid')
+                <div class="flex justify-end mt-2">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                        {{ $lead->days_left <= 3 ? 'bg-red-100 text-red-600' : ($lead->days_left <= 7 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500') }}">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
+                    </span>
                 </div>
+                @endif
             </div>
+        </div>
+
+        {{-- ── Row 2: My Commission (left) | Partners Commission (right) ── --}}
+        <div class="mt-4 pt-4 border-t border-gray-100 flex items-start justify-between gap-4">
+
+            {{-- My Commission — LEFT --}}
+            <div>
+                <div class="flex items-center gap-1.5 mb-1">
+                    <p class="text-xs font-semibold text-[#1E1B4B]">My Commission</p>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors" aria-label="Info about My Commission">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                             class="absolute left-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                            <strong class="text-gray-700 block mb-1">My Commission</strong>
+                            Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to applicable taxes and deductions.
+                        </div>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold mt-1
+                    @if($lead->commission_status === 'paid') bg-green-100 text-green-700
+                    @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
+                    @else bg-teal-50 text-teal-600
+                    @endif">
+                    @if($lead->commission_status === 'paid') Paid
+                    @elseif($lead->commission_status === 'locked') Locked
+                    @else Estimated
+                    @endif
+                </span>
+            </div>
+
+            {{-- Partners Commission — RIGHT --}}
+            <div class="text-right">
+                <div class="flex items-center justify-end gap-1.5 mb-1">
+                    <p class="text-xs font-medium text-gray-500">Partners Commission</p>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-purple-500 transition-colors" aria-label="Info about Partners Commission">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                             class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                            <strong class="text-gray-700 block mb-1">Partners Commission</strong>
+                            The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
+                        </div>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-[#7B61FF] tabular-nums">₱{{ number_format($partnersCommission, 0) }}</p>
+                <p class="text-[10px] text-gray-400 mt-1">{{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }}</p>
+            </div>
+
         </div>
 
         {{-- ── Bottom zone: Action Bar ──────────────────────────── --}}
