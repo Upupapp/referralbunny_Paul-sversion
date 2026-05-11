@@ -172,48 +172,54 @@ document.addEventListener('alpine:init', () => {
             @endif
         </div>
 
-        {{-- Quick counts sidebar --}}
+        {{-- Quick counts sidebar — links gated by role --}}
+        @php
+        $dashRole    = \App\Services\TenantContext::role() ?? 'viewer';
+        $dashIsAdmin = in_array($dashRole, ['owner','admin','manager','super_admin']);
+        $quickCounts = array_filter([
+            [
+                'label'  => 'Deals Expiring Soon',
+                'value'  => $dashboardCounts['expiring_deals'],
+                'color'  => '#F97316',
+                'bg'     => '#FFF7ED',
+                'url'    => route('tenant.deals', $tenant->id) . '?status=expiring',
+                'tip'    => 'Deals currently in expiring status. Click to review.',
+                'icon'   => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                'show'   => true,
+            ],
+            [
+                'label'  => 'Pending Invitations',
+                'value'  => $dashboardCounts['pending_invites'],
+                'color'  => '#7B61FF',
+                'bg'     => '#EDE9FE',
+                'url'    => route('tenant.users', $tenant->id),
+                'tip'    => 'Team invitations waiting to be accepted.',
+                'icon'   => 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
+                'show'   => $dashIsAdmin,
+            ],
+            [
+                'label'  => 'Import Warnings',
+                'value'  => $dashboardCounts['import_warnings'],
+                'color'  => '#EF4444',
+                'bg'     => '#FEF2F2',
+                'url'    => route('tenant.imports', $tenant->id),
+                'tip'    => 'Imports completed with warnings in the last 14 days.',
+                'icon'   => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
+                'show'   => $dashIsAdmin,
+            ],
+            [
+                'label'  => 'Missing Referrer',
+                'value'  => $dashboardCounts['missing_referrer'],
+                'color'  => '#9CA3AF',
+                'bg'     => '#F3F4F6',
+                'url'    => route('tenant.deals', $tenant->id),
+                'tip'    => 'Active deals with no Referrer assigned.',
+                'icon'   => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+                'show'   => $dashIsAdmin,
+            ],
+        ], fn($qc) => $qc['show']);
+        @endphp
         <div class="space-y-3">
-            @php
-            $quickCounts = [
-                [
-                    'label'  => 'Deals Expiring Soon',
-                    'value'  => $dashboardCounts['expiring_deals'],
-                    'color'  => '#F97316',
-                    'bg'     => '#FFF7ED',
-                    'url'    => route('tenant.deals', $tenant->id) . '?status=expiring',
-                    'tip'    => 'Deals currently in expiring status. Click to review.',
-                    'icon'   => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-                ],
-                [
-                    'label'  => 'Pending Invitations',
-                    'value'  => $dashboardCounts['pending_invites'],
-                    'color'  => '#7B61FF',
-                    'bg'     => '#EDE9FE',
-                    'url'    => route('tenant.users', $tenant->id),
-                    'tip'    => 'Team invitations waiting to be accepted.',
-                    'icon'   => 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
-                ],
-                [
-                    'label'  => 'Import Warnings',
-                    'value'  => $dashboardCounts['import_warnings'],
-                    'color'  => '#EF4444',
-                    'bg'     => '#FEF2F2',
-                    'url'    => route('tenant.imports', $tenant->id),
-                    'tip'    => 'Imports completed with warnings in the last 14 days that may need review.',
-                    'icon'   => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
-                ],
-                [
-                    'label'  => 'Missing Referrer',
-                    'value'  => $dashboardCounts['missing_referrer'],
-                    'color'  => '#9CA3AF',
-                    'bg'     => '#F3F4F6',
-                    'url'    => route('tenant.deals', $tenant->id),
-                    'tip'    => 'Active deals with no Referrer assigned. Commission cannot be finalised until a Referrer is linked.',
-                    'icon'   => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                ],
-            ];
-            @endphp
             @foreach($quickCounts as $qc)
             <a href="{{ $qc['url'] }}"
                class="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm hover:shadow-md hover:border-gray-200 transition-all">
@@ -238,7 +244,7 @@ document.addEventListener('alpine:init', () => {
     </div>
 
     {{-- ── CHARTS ROW ───────────────────────────────────────── --}}
-    <div style="display:grid;grid-template-columns:4fr 3fr 5fr;gap:1rem">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[4fr_3fr_5fr] gap-4">
 
         {{-- Bar Chart: Referral Pipeline --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" style="display:flex;flex-direction:column">

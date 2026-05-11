@@ -99,26 +99,43 @@ class AnalyticsService
 
     public function tenantDetail(Tenant $tenant): array
     {
-        $leads  = Lead::where('tenant_id', $tenant->id)->get();
         $metric = TenantMetric::where('tenant_id', $tenant->id)->first();
 
-        $byStage  = $leads->groupBy('stage')->map->count();
-        $byStatus = $leads->groupBy('status')->map->count();
+        // Aggregate queries — never loads all rows into memory
+        $stageCounts = \Illuminate\Support\Facades\DB::table('leads')
+            ->where('tenant_id', $tenant->id)->whereNull('deleted_at')
+            ->selectRaw('stage, count(*) as cnt')->groupBy('stage')
+            ->pluck('cnt', 'stage');
+
+        $statusCounts = \Illuminate\Support\Facades\DB::table('leads')
+            ->where('tenant_id', $tenant->id)->whereNull('deleted_at')
+            ->selectRaw('status, count(*) as cnt')->groupBy('status')
+            ->pluck('cnt', 'status');
+
+        $totals = \Illuminate\Support\Facades\DB::table('leads')
+            ->where('tenant_id', $tenant->id)->whereNull('deleted_at')
+            ->selectRaw('count(*) as total, coalesce(sum(deal_value),0) as pipeline_value')
+            ->first();
+
+        $closedValue = \Illuminate\Support\Facades\DB::table('leads')
+            ->where('tenant_id', $tenant->id)->whereNull('deleted_at')
+            ->where('stage', 'paid')
+            ->sum('deal_value');
 
         return [
             'tenant_id'        => $tenant->id,
             'health_score'     => $metric?->health_score ?? 0,
             'health_level'     => $metric?->health_level ?? 'at_risk',
             'setup_completion' => $metric?->setup_completion_percentage ?? 0,
-            'total_leads'      => $leads->count(),
-            'leads_total'      => $leads->count(),
-            'leads_active'     => $byStatus['active']   ?? 0,
-            'leads_expired'    => $byStatus['expired']  ?? 0,
-            'leads_paid'       => $byStage['paid']      ?? 0,
-            'pipeline_value'   => $leads->sum('deal_value'),
-            'closed_value'     => $leads->where('stage', 'paid')->sum('deal_value'),
-            'by_stage'         => $byStage,
-            'by_status'        => $byStatus,
+            'total_leads'      => (int) ($totals->total ?? 0),
+            'leads_total'      => (int) ($totals->total ?? 0),
+            'leads_active'     => (int) ($statusCounts['active']  ?? 0),
+            'leads_expired'    => (int) ($statusCounts['expired'] ?? 0),
+            'leads_paid'       => (int) ($stageCounts['paid']     ?? 0),
+            'pipeline_value'   => (float) ($totals->pipeline_value ?? 0),
+            'closed_value'     => (float) ($closedValue ?? 0),
+            'by_stage'         => $stageCounts,
+            'by_status'        => $statusCounts,
             'total_resellers'  => Reseller::where('tenant_id', $tenant->id)->count(),
         ];
     }
