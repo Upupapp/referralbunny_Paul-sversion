@@ -899,9 +899,6 @@ class GenericDealImportService
         $lines = [
             implode(',', array_map(fn ($h) => '"' . $h . '"', $headers)),
             implode(',', array_map(fn ($v) => '"' . $v . '"', $sampleRow)),
-            '',
-            '# Required fields: ' . implode(', ', array_map(fn ($f) => ucwords(str_replace('_', ' ', $f)), $required)),
-            '# Optional fields may be left blank.',
         ];
 
         return implode("\n", $lines);

@@ -1122,12 +1122,6 @@ class ContactsImportService
         $lines = [
             implode(',', array_map(fn ($h) => '"' . $h . '"', $headers)),
             implode(',', array_map(fn ($v) => '"' . $v . '"', $sampleRow)),
-            '',
-            '# CONTACT TYPES: general_contact, organization_contact, deal_contact, admin_candidate, staff_candidate, referrer_candidate, partner_candidate',
-            '# INTENDED ROLES: none, tenant_admin, tenant_staff, referrer, partner, organization_contact, deal_contact',
-            '# VISIBILITY SCOPES: tenant, team, owner_only, referrer_private, deal_associated, organization_associated',
-            '# CONSENT STATUS: unknown, consented, not_consented, do_not_contact',
-            '# At least one of Email or Phone Number is required per row.',
         ];
 
         return implode("\n", $lines);
