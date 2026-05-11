@@ -340,7 +340,9 @@
                 <div class="w-px h-5 bg-gray-200 mx-1.5"></div>
 
                 {{-- Notifications --}}
-                <div x-data="notifPanel()" x-init="init()" class="relative">
+                <div x-data="notifPanel()" x-init="init()"
+                     x-effect="if(open && count > 0) markAllRead()"
+                     class="relative">
                     <button @click="open = !open"
                             aria-label="Notifications"
                             :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
@@ -617,23 +619,25 @@ function notifPanel() {
             });
         },
 
-        // Mark a single notification as read then navigate to its URL
-        markOneRead(n, url) {
+        // Mark a single notification as read, wait for server confirmation, then navigate.
+        // Previously this was fire-and-forget → navigation cancelled the fetch → count never updated.
+        async markOneRead(n, url) {
             this.open = false;
             if (!n.is_read) {
-                // Optimistic update
+                // Optimistic update immediately (feels instant to user)
                 n.is_read = true;
                 this.count = Math.max(0, this.count - 1);
                 window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
-                // Fire-and-forget — does not block navigation
-                fetch('/api/notifications/' + n.id, {
+
+                // Await the PATCH with a 600ms cap so navigation never waits long
+                const timeout = new Promise(res => setTimeout(res, 600));
+                const patch   = fetch('/api/notifications/' + n.id, {
                     method: 'PATCH',
                     credentials: 'same-origin',
                     headers: whrs(),
                     body: JSON.stringify({ is_read: true }),
                 }).then(r => {
                     if (!r.ok) {
-                        // Revert optimistic update on failure
                         n.is_read = false;
                         this.count = Math.min(this.count + 1, 99);
                         window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
@@ -643,6 +647,8 @@ function notifPanel() {
                     this.count = Math.min(this.count + 1, 99);
                     window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.count } }));
                 });
+
+                await Promise.race([patch, timeout]);
             }
             if (url && url !== '#') window.location.href = url;
         },

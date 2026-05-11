@@ -117,6 +117,12 @@
                        document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
                        window.addEventListener('notifications:updated', (e) => { if (typeof e.detail?.unreadCount === 'number') count = e.detail.unreadCount; });
                    "
+                   @click.prevent="
+                       count = 0;
+                       window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
+                       fetch('/api/notifications/mine/mark-all-read', { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '', 'X-Requested-With': 'XMLHttpRequest' } });
+                       setTimeout(() => { window.location.href = $el.href; }, 150);
+                   "
                    :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
                    title="Notifications">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
