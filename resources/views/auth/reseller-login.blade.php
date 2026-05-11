@@ -103,12 +103,7 @@
                         </p>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary"
-                        x-data="{ sub: false }"
-                        x-init="window.addEventListener('pageshow', e => { if (e.persisted) sub = false; })"
-                        @click="if (!$el.closest('form').checkValidity()) return; sub=true"
-                        :disabled="sub"
-                        x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
+                <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
             </form>
 
             <p class="help-text form-wrap">
@@ -143,14 +138,33 @@
 </div>
 
 <script>
-window.addEventListener('pageshow', function(e) {
-    if (!e.persisted) return;
-    var btn = document.querySelector('button[type="submit"].btn-primary');
-    if (!btn) return;
-    btn.disabled = false;
-    btn.textContent = 'Sign In';
-    if (btn._x_dataStack && btn._x_dataStack[0]) btn._x_dataStack[0].sub = false;
-});
+(function () {
+    var LABEL   = 'Sign In';
+    var LOADING = 'Signing in...';
+
+    function resetBtn() {
+        var btn = document.getElementById('login-btn');
+        if (!btn) return;
+        btn.disabled = false;
+        btn.textContent = LABEL;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.querySelector('form');
+        var btn  = document.getElementById('login-btn');
+        if (!form || !btn) return;
+
+        form.addEventListener('submit', function () {
+            if (!form.checkValidity()) return;
+            btn.disabled = true;
+            btn.textContent = LOADING;
+        });
+    });
+
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) resetBtn();
+    });
+})();
 </script>
 </body>
 </html>

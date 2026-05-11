@@ -108,12 +108,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary"
-                        x-data="{ sub: false }"
-                        x-init="window.addEventListener('pageshow', e => { if (e.persisted) sub = false; })"
-                        @click="if (!$el.closest('form').checkValidity()) return; sub=true"
-                        :disabled="sub"
-                        x-text="sub ? 'Activating...' : 'Activate My Account →'">Activate My Account →</button>
+                <button type="submit" id="setup-btn" class="btn-primary">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
                     Already set up? <a href="{{ route('reseller.login') }}" style="color:#0D9488;text-decoration:none">Sign in</a>
@@ -152,14 +147,34 @@
 </div>
 
 <script>
-window.addEventListener('pageshow', function(e) {
-    if (!e.persisted) return;
-    var btn = document.querySelector('button[type="submit"].btn-primary');
-    if (!btn) return;
-    btn.disabled = false;
-    btn.textContent = 'Activate My Account →';
-    if (btn._x_dataStack && btn._x_dataStack[0]) btn._x_dataStack[0].sub = false;
-});
+(function () {
+    var LABEL = 'Activate My Account →';
+    var LOADING = 'Activating...';
+
+    function resetBtn() {
+        var btn = document.getElementById('setup-btn');
+        if (!btn) return;
+        btn.disabled = false;
+        btn.textContent = LABEL;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.querySelector('form.form-wrap');
+        var btn  = document.getElementById('setup-btn');
+        if (!form || !btn) return;
+
+        form.addEventListener('submit', function () {
+            if (!form.checkValidity()) return;
+            btn.disabled = true;
+            btn.textContent = LOADING;
+        });
+    });
+
+    // Reset on bfcache restore so the button never stays stuck
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) resetBtn();
+    });
+})();
 </script>
 </body>
 </html>
