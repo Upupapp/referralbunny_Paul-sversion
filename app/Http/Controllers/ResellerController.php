@@ -246,6 +246,17 @@ class ResellerController extends Controller
 
     public function update(Request $request, Reseller $reseller): JsonResponse
     {
+        // Tenant isolation — reseller must belong to the caller's tenant
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if ($tenantId && $reseller->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Not found.'], 404);
+        }
+
+        // Anonymity toggle is admin-only
+        if ($request->has('is_anonymous') && !$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can change anonymity.'], 403);
+        }
+
         $data = $request->validate([
             'name'              => 'sometimes|string',
             'email'             => 'sometimes|email',

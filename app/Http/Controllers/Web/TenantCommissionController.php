@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Services\CommissionCalculationService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TenantCommissionController extends Controller
@@ -19,10 +20,20 @@ class TenantCommissionController extends Controller
      */
     public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
-        // Verify the requesting user belongs to this tenant
         $ctxId = TenantContext::id();
         if ($ctxId && $ctxId !== $tenantId) {
             abort(403);
+        }
+
+        // Partners see only their own earnings — redirect to partner-scoped view
+        if (TenantContext::isPartner()) {
+            return $this->partnerIndex($request, $tenantId);
+        }
+
+        // Only owner / admin / manager may view the full commission report
+        $role = TenantContext::role();
+        if (!in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
+            abort(403, 'You do not have permission to view the commission report.');
         }
 
         $tenant = Tenant::findOrFail($tenantId);
@@ -118,14 +129,54 @@ class TenantCommissionController extends Controller
     }
 
     /**
+     * Partner-only commission view — earnings on their specific deal splits only.
+     */
+    private function partnerIndex(Request $request, string $tenantId): \Illuminate\View\View
+    {
+        $tenant = Tenant::findOrFail($tenantId);
+        $user   = Auth::guard('tenant')->user();
+
+        // Match by email — deal_partner_splits stores partner_email at invite time
+        $splits = DB::table('deal_partner_splits as dps')
+            ->join('leads', 'leads.id', '=', 'dps.deal_id')
+            ->where('dps.tenant_id', $tenantId)
+            ->whereRaw('lower(dps.partner_email) = ?', [strtolower($user->email ?? '')])
+            ->whereNull('dps.deleted_at')
+            ->whereNull('leads.deleted_at')
+            ->select([
+                'dps.id as split_id',
+                'dps.partner_name',
+                'dps.split_share_value',
+                'dps.split_share_type',
+                'dps.status as split_status',
+                'leads.id as deal_id',
+                'leads.name as deal_name',
+                'leads.stage',
+                'leads.status as deal_status',
+                'leads.deal_value',
+                'leads.commission_status',
+                'leads.created_at',
+            ])
+            ->orderByDesc('leads.created_at')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('tenant.commission.partner', compact('tenant', 'splits', 'user'));
+    }
+
+    /**
      * GET /tenant/{tenantId}/commission/export
-     * CSV export of commission data.
+     * CSV export of commission data (admin/manager only).
      */
     public function export(Request $request, string $tenantId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $ctxId = TenantContext::id();
         if ($ctxId && $ctxId !== $tenantId) {
             abort(403);
+        }
+        // Partners and non-admin roles cannot export the full commission report
+        if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager', 'super_admin'])) {
+            abort(403, 'You do not have permission to export the commission report.');
         }
 
         $tenant = Tenant::findOrFail($tenantId);
