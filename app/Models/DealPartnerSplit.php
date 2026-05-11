@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class DealPartnerSplit extends Model
 {
+    use SoftDeletes;
+
     protected $table      = 'deal_partner_splits';
     public    $incrementing = false;
     protected $keyType    = 'string';
@@ -29,7 +32,7 @@ class DealPartnerSplit extends Model
         'split_share_value', 'split_share_type', 'currency',
         'status', 'source',
         'created_by_user_id', 'updated_by_user_id',
-        'accepted_at', 'removed_at', 'metadata', 'deleted_at',
+        'accepted_at', 'removed_at', 'metadata',
     ];
 
     protected $casts = [

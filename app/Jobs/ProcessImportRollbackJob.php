@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ImportBatch;
 use App\Models\ImportRollback;
 use App\Services\ImportRollbackService;
+use App\Services\NotificationDispatchService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -55,6 +56,7 @@ class ProcessImportRollbackJob implements ShouldQueue
         } catch (\Throwable $e) {
             $rollback->markFailed($e->getMessage());
             $batch->update(['rollback_status' => 'failed']);
+            $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
         }
     }
 
@@ -65,8 +67,29 @@ class ProcessImportRollbackJob implements ShouldQueue
             $rollback = ImportRollback::find($this->rollbackId);
             if ($rollback && !$rollback->isCompleted()) {
                 $rollback->markFailed('Job failed: ' . $e->getMessage());
-                ImportBatch::where('id', $this->batchId)->update(['rollback_status' => 'failed']);
+                $batch = ImportBatch::where('id', $this->batchId)->first();
+                if ($batch) {
+                    $batch->update(['rollback_status' => 'failed']);
+                    $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
+                }
             }
+        } catch (\Throwable) {}
+    }
+
+    private function notifyAdminsOfFailure(string $fileName, string $errorMessage): void
+    {
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $this->tenantId,
+                category:     'import_export',
+                priority:     'high',
+                title:        'Import rollback failed',
+                body:         "Rollback of \"{$fileName}\" could not be completed. Please review the import and try again.",
+                actionUrl:    "/tenant/{$this->tenantId}/imports",
+                actionLabel:  'View Imports',
+                dedupeSuffix: "rollback_failed:{$this->rollbackId}",
+                metadata:     ['rollback_id' => $this->rollbackId, 'batch_id' => $this->batchId, 'error' => $errorMessage],
+            );
         } catch (\Throwable) {}
     }
 }

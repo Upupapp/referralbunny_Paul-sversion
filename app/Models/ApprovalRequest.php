@@ -12,7 +12,7 @@ class ApprovalRequest extends Model
     const UPDATED_AT     = null;
 
     protected $fillable = [
-        'id', 'request_type', 'reference_id', 'reference_type',
+        'id', 'tenant_id', 'request_type', 'reference_id', 'reference_type',
         'requested_by', 'required_permission', 'status', 'notes',
         'request_data', 'reviewer_notes', 'approved_by', 'approved_at',
     ];
@@ -24,6 +24,11 @@ class ApprovalRequest extends Model
 
     public function requestedBy(): BelongsTo { return $this->belongsTo(User::class, 'requested_by'); }
     public function approvedBy(): BelongsTo  { return $this->belongsTo(User::class, 'approved_by'); }
+
+    public function scopeForTenant($query, string $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
 
     public function isPending(): bool  { return $this->status === 'pending'; }
     public function isApproved(): bool { return $this->status === 'approved'; }

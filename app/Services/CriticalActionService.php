@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -96,8 +97,8 @@ class CriticalActionService
         foreach ($sources as $source) {
             try {
                 $items = array_merge($items, $source());
-            } catch (\Throwable) {
-                // one failed source never breaks the reseller dashboard
+            } catch (\Throwable $e) {
+                Log::warning('[CriticalActionService] Reseller source failed', ['error' => $e->getMessage()]);
             }
         }
 
@@ -142,8 +143,8 @@ class CriticalActionService
         foreach ($sources as $source) {
             try {
                 $all = array_merge($all, $source());
-            } catch (\Throwable) {
-                // one failed source never breaks the whole widget
+            } catch (\Throwable $e) {
+                Log::warning('[CriticalActionService] Tenant source failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             }
         }
         return $all;
@@ -402,7 +403,8 @@ class CriticalActionService
                 'action_needed' => true,
                 'source'        => 'message_threads',
             ])];
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] unrepliedMessages failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -433,7 +435,8 @@ class CriticalActionService
                 'action_needed' => false,
                 'source'        => 'activity_logs',
             ]))->toArray();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] recentActivityLogs failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -558,7 +561,8 @@ class CriticalActionService
                 'source'        => 'export_requests',
                 'meta'          => ['is_sensitive' => (bool) $r->is_sensitive],
             ]))->toArray();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] pendingExportRequests failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -600,7 +604,8 @@ class CriticalActionService
                 'source'        => 'deal_assignment_extension_requests',
                 'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days],
             ]))->toArray();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] pendingExtensionRequests failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -642,7 +647,8 @@ class CriticalActionService
                 'source'        => 'import_rollbacks',
                 'meta'          => ['records_conflict' => $r->records_conflict, 'records_failed' => $r->records_failed],
             ]))->toArray();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] failedRollbacks failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -702,7 +708,8 @@ class CriticalActionService
             }
 
             return $actions;
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] billingIssues failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -741,7 +748,8 @@ class CriticalActionService
                 'source'        => 'deal_assignment_extension_requests',
                 'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days],
             ]))->toArray();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerExtensionRequests failed', ['error' => $e->getMessage()]);
             return [];
         }
     }
@@ -783,7 +791,8 @@ class CriticalActionService
                 'action_needed' => true,
                 'source'        => 'partner_threads',
             ])];
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerUnreadMessages failed', ['error' => $e->getMessage()]);
             return [];
         }
     }
@@ -807,7 +816,7 @@ class CriticalActionService
         return $tasks->map(fn($t) => $this->make([
             'type'          => 'overdue_task',
             'category'      => 'task',
-            'severity'      => $t->priority === 'urgent' ? 'critical' : ($t->priority === 'high' ? 'high' : 'medium'),
+            'severity'      => $t->priority === 'urgent' ? 'urgent' : ($t->priority === 'high' ? 'high' : 'medium'),
             'summary'       => "Overdue task: {$t->title}",
             'actor_name'    => 'System',
             'actor_role'    => 'System',

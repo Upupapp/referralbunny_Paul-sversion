@@ -28,7 +28,7 @@
         <td style="font-size:12px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;text-align:right">Value</td>
     </tr>
     <tr><td class="text" style="margin:0">Total Deals (all time)</td><td style="font-weight:700;color:#1E1B4B;text-align:right">{{ $totalDeals }}</td></tr>
-    <tr style="background:#F9FAFB"><td class="text" style="margin:0">New Resellers Today</td><td style="font-weight:700;color:#1E1B4B;text-align:right">{{ $newResellers }}</td></tr>
+    <tr style="background:#F9FAFB"><td class="text" style="margin:0">New Referrers Today</td><td style="font-weight:700;color:#1E1B4B;text-align:right">{{ $newResellers }}</td></tr>
 </table>
 
 <div class="cta-wrap">

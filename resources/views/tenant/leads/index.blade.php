@@ -42,7 +42,7 @@
     <div class="card p-0 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
-                <thead><tr class="table-head"><th>Lead</th><th>Stage</th><th>Reseller</th><th>Value</th><th>Status</th><th></th></tr></thead>
+                <thead><tr class="table-head"><th>Lead</th><th>Stage</th><th>Referrer</th><th>Value</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     <template x-if="loading"><tr><td colspan="6" class="py-10 text-center text-gray-400">Loading...</td></tr></template>
                     <template x-if="!loading && filtered.length === 0"><tr><td colspan="6" class="py-10 text-center text-gray-400">No leads found</td></tr></template>
