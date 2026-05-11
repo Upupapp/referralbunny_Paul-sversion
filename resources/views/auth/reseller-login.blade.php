@@ -103,7 +103,12 @@
                         </p>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="if (!$el.closest('form').checkValidity()) return; sub=true" :disabled="sub" x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
+                <button type="submit" class="btn-primary"
+                        x-data="{ sub: false }"
+                        x-init="window.addEventListener('pageshow', e => { if (e.persisted) sub = false; })"
+                        @click="if (!$el.closest('form').checkValidity()) return; sub=true"
+                        :disabled="sub"
+                        x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
             </form>
 
             <p class="help-text form-wrap">
