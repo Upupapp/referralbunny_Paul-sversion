@@ -103,32 +103,61 @@ class MessageController extends Controller
 
     public function threadMessages($tenantId, $threadId)
     {
-        $thread = MessageThread::where('tenant_id', $tenantId)
-            ->where('id', $threadId)
-            ->with('reseller:id,name,email')
-            ->firstOrFail();
+        try {
+            $thread = MessageThread::where('tenant_id', $tenantId)
+                ->where('id', $threadId)
+                ->with('reseller:id,name,email')
+                ->firstOrFail();
 
-        ThreadMessage::where('thread_id', $threadId)
-            ->where('sender_type', 'reseller')
-            ->where('is_read', false)
-            ->update(['is_read' => true, 'read_at' => now()]);
+            ThreadMessage::where('thread_id', $threadId)
+                ->where('sender_type', 'reseller')
+                ->where('is_read', false)
+                ->update(['is_read' => true, 'read_at' => now()]);
 
-        $thread->update(['admin_unread' => 0]);
+            $thread->update(['admin_unread' => 0]);
 
-        $messages = ThreadMessage::where('thread_id', $threadId)
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn($m) => $this->formatMessage($m));
+            $messages = ThreadMessage::where('thread_id', $threadId)
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn($m) => $this->formatMessage($m));
 
-        return response()->json([
-            'thread'   => [
-                'id'             => $thread->id,
-                'reseller_id'    => $thread->reseller_id,
-                'reseller_name'  => $thread->reseller?->name ?? 'Unknown',
-                'reseller_email' => $thread->reseller?->email ?? '',
-            ],
-            'messages' => $messages,
-        ]);
+            return response()->json([
+                'thread'   => [
+                    'id'             => $thread->id,
+                    'reseller_id'    => $thread->reseller_id,
+                    'reseller_name'  => $thread->reseller?->name ?? 'Unknown',
+                    'reseller_email' => $thread->reseller?->email ?? '',
+                ],
+                'messages' => $messages,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return response()->json(['message' => 'Conversation not found.'], 404);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('threadMessages error', [
+                'tenant_id' => $tenantId,
+                'thread_id' => $threadId,
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Failed to load messages.'], 500);
+        }
+    }
+
+    public function fetchMessages($tenantId, $threadId)
+    {
+        try {
+            $thread = MessageThread::where('tenant_id', $tenantId)
+                ->where('id', $threadId)
+                ->firstOrFail();
+
+            $messages = ThreadMessage::where('thread_id', $threadId)
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn($m) => $this->formatMessage($m));
+
+            return response()->json(['messages' => $messages]);
+        } catch (\Throwable) {
+            return response()->json(['messages' => []]);
+        }
     }
 
     public function sendMessage(Request $request, $tenantId, $threadId)
@@ -195,9 +224,16 @@ class MessageController extends Controller
 
     private function senderName(): string
     {
-        if (auth('reseller')->check()) return auth('reseller')->user()->name;
-        if (auth('tenant')->check())   return auth('tenant')->user()->name;
-        if (auth('web')->check())      return auth('web')->user()->name;
+        if (auth('reseller')->check()) {
+            return (string) (auth('reseller')->user()?->name ?? 'Referrer');
+        }
+        if (auth('tenant')->check()) {
+            $u = auth('tenant')->user();
+            return (string) ($u?->full_name ?: ($u?->first_name . ' ' . $u?->last_name) ?: 'Admin');
+        }
+        if (auth('web')->check()) {
+            return (string) (auth('web')->user()?->name ?? 'Admin');
+        }
         return 'Unknown';
     }
 
@@ -208,8 +244,8 @@ class MessageController extends Controller
             'sender_type'     => $m->sender_type,
             'sender_name'     => $m->sender_name,
             'body'            => $m->body,
-            'created_at'      => $m->created_at->diffForHumans(),
-            'created_at_full' => $m->created_at->format('M j, Y g:i A'),
+            'created_at'      => $m->created_at?->diffForHumans() ?? 'just now',
+            'created_at_full' => $m->created_at?->format('M j, Y g:i A') ?? '',
         ];
     }
 }

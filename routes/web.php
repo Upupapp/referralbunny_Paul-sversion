@@ -192,8 +192,9 @@ Route::middleware(['auth:tenant,reseller,web'])
     ->group(function () {
         Route::get('/threads',             [MessageController::class, 'threads'])->name('threads');
         Route::post('/threads',            [MessageController::class, 'startThread'])->name('start')->middleware('throttle:60,1');
-        Route::get('/threads/{threadId}',  [MessageController::class, 'threadMessages'])->name('thread');
-        Route::post('/threads/{threadId}', [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
+        Route::get('/threads/{threadId}',          [MessageController::class, 'threadMessages'])->name('thread');
+        Route::get('/threads/{threadId}/messages', [MessageController::class, 'fetchMessages'])->name('thread.messages');
+        Route::post('/threads/{threadId}',         [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
     });
 
 // ── Tenant app ────────────────────────────────────────────────

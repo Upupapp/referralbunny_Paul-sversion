@@ -166,9 +166,34 @@ function resellerChat() {
         body:        '',
         sending:     false,
         threadId:    THREAD_ID,
+        _knownIds:   serverMessages.map(m => m.id),
 
         init() {
             this.$nextTick(() => this.scrollToBottom());
+            if (THREAD_ID) {
+                setInterval(() => this.pollMessages(), 15000);
+            }
+        },
+
+        async pollMessages() {
+            if (!THREAD_ID) return;
+            try {
+                const r = await fetch(`${BASE}/threads/${THREAD_ID}/messages`, { headers: hdrs() });
+                if (!r.ok) return;
+                const d = await r.json();
+                const serverMsgs = d.messages ?? [];
+                const existingIds = new Set(this._knownIds);
+                let added = 0;
+                serverMsgs.forEach(msg => {
+                    if (!existingIds.has(msg.id)) {
+                        this._knownIds.push(msg.id);
+                        msg.created_ago = msg.created_at;
+                        this.newMessages.push(msg);
+                        added++;
+                    }
+                });
+                if (added > 0) this.$nextTick(() => this.scrollToBottom());
+            } catch(e) {}
         },
 
         sendError: '',
@@ -211,6 +236,7 @@ function resellerChat() {
                     newMsg.sender_type = 'reseller';
                     newMsg.created_ago = 'just now';
                     this.newMessages.push(newMsg);
+                    if (newMsg.id) this._knownIds.push(newMsg.id);
                 }
 
                 if (!this.threadId && data.thread_id) {
