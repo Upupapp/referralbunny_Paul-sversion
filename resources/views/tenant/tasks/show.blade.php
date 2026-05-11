@@ -63,17 +63,10 @@
                 @endif
 
                 @if($canComplete && $task->status !== 'completed')
-                @if($completionEmailEnabled && $task->requestor_email)
                 <button @click="showCompleteModal = true"
                         style="padding:9px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
-                    Mark Done
+                    Mark Complete
                 </button>
-                @else
-                <button @click="completeTask()"
-                        style="padding:9px 20px;border-radius:12px;background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
-                        :disabled="completing" x-text="completing ? 'Completing...' : 'Mark Complete'">
-                </button>
-                @endif
                 @endif
             </div>
         </div>
@@ -239,77 +232,162 @@
         </div>
     </div>
 
-    {{-- Complete Modal --}}
-    @if($completionEmailEnabled && $task->requestor_email)
-    <div x-show="showCompleteModal" style="display:none"
-         style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:16px"
+    {{-- ── MARK COMPLETE MODAL ──────────────────────────────────────── --}}
+    @if($canComplete && $task->status !== 'completed')
+    <div x-show="showCompleteModal"
+         x-cloak
+         style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
          @keydown.escape.window="showCompleteModal = false">
-        <div style="background:white;border-radius:20px;width:100%;max-width:500px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.18)" @click.stop>
 
-            <div style="padding:20px 24px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between">
-                <h3 style="font-size:16px;font-weight:700;color:#1E1B4B">Complete Task</h3>
-                <button @click="showCompleteModal = false" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:18px">&times;</button>
+        <div style="background:white;border-radius:20px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.22)"
+             @click.stop>
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:34px;height:34px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <svg style="width:16px;height:16px;color:#7B61FF" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0">Mark Complete</h3>
+                        <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Add a completion note and optional document</p>
+                    </div>
+                </div>
+                <button @click="showCompleteModal = false"
+                        style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:#9ca3af;border-radius:8px"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                    <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
 
-            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
 
-                {{-- Choice --}}
-                <div style="display:flex;flex-direction:column;gap:8px">
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:#f9fafb;border-radius:12px;cursor:pointer;border:1.5px solid"
-                           :style="responseMode === 'no_email' ? 'border-color:#7B61FF;background:#f5f3ff' : 'border-color:#e5e7eb'">
-                        <input type="radio" x-model="responseMode" value="no_email" style="margin-top:2px;accent-color:#7B61FF">
-                        <div>
-                            <p style="font-size:13px;font-weight:600;color:#1E1B4B">Complete task only</p>
-                            <p style="font-size:11px;color:#9ca3af">Mark done without sending a reply email</p>
-                        </div>
+                {{-- Title --}}
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">
+                        Title <span style="color:#dc2626">*</span>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:#f9fafb;border-radius:12px;cursor:pointer;border:1.5px solid"
-                           :style="responseMode === 'with_email' ? 'border-color:#7B61FF;background:#f5f3ff' : 'border-color:#e5e7eb'">
-                        <input type="radio" x-model="responseMode" value="with_email" style="margin-top:2px;accent-color:#7B61FF">
-                        <div>
-                            <p style="font-size:13px;font-weight:600;color:#1E1B4B">Complete and send response</p>
-                            <p style="font-size:11px;color:#9ca3af">Send a reply to <strong>{{ $task->requestor_email }}</strong></p>
-                        </div>
-                    </label>
+                    <input type="text"
+                           x-model="responseSubject"
+                           maxlength="150"
+                           :placeholder="'Re: {{ addslashes($task->title) }}'"
+                           style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;font-family:inherit"
+                           :style="responseError && !responseSubject.trim() ? 'border-color:#dc2626' : ''"
+                           @focus="this.style.borderColor='#7B61FF'" @blur="this.style.borderColor=responseError && !responseSubject.trim() ? '#dc2626' : '#e5e7eb'">
                 </div>
 
-                {{-- Response form --}}
-                <div x-show="responseMode === 'with_email'" style="display:none;flex-direction:column;gap:12px">
-                    <div>
-                        <label style="display:block;font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">To (fixed)</label>
-                        <input type="text" value="{{ $task->requestor_email }}" readonly
-                               style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#9ca3af;background:#f9fafb;box-sizing:border-box">
-                    </div>
-                    <div>
-                        <label style="display:block;font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Subject *</label>
-                        <input type="text" x-model="responseSubject" maxlength="150"
-                               style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
-                               :placeholder="'Re: ' + '{{ addslashes($task->title) }}'">
-                    </div>
-                    <div>
-                        <label style="display:block;font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Response *</label>
-                        <textarea x-model="responseBody" rows="5" maxlength="10000"
-                                  style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"
-                                  placeholder="Describe the outcome, next steps, or any information the requestor needs..."></textarea>
-                    </div>
-                    <p x-show="responseError" x-text="responseError" style="font-size:12px;color:#dc2626;font-weight:600"></p>
+                {{-- Body --}}
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">
+                        Message <span style="color:#dc2626">*</span>
+                    </label>
+                    <textarea x-model="responseBody"
+                              rows="5"
+                              maxlength="20000"
+                              placeholder="Describe the outcome, resolution, next steps, or any information relevant to this completion..."
+                              style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;line-height:1.5"
+                              :style="responseError && !responseBody.trim() ? 'border-color:#dc2626' : ''"
+                              @focus="this.style.borderColor='#7B61FF'" @blur="this.style.borderColor=responseError && !responseBody.trim() ? '#dc2626' : '#e5e7eb'">
+                    </textarea>
                 </div>
+
+                {{-- Attachment --}}
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">
+                        Attach Document <span style="font-weight:400;color:#9ca3af">(optional)</span>
+                    </label>
+
+                    {{-- Drop zone --}}
+                    <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 16px;border:2px dashed #d1d5db;border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s"
+                           onmouseover="this.style.borderColor='#7B61FF';this.style.background='#f5f3ff'"
+                           onmouseout="this.style.borderColor='#d1d5db';this.style.background='transparent'">
+                        <svg style="width:28px;height:28px;color:#9ca3af" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <div style="text-align:center">
+                            <p style="font-size:13px;font-weight:600;color:#374151;margin:0">Click to browse or drag files here</p>
+                            <p style="font-size:11px;color:#9ca3af;margin:3px 0 0">PDF, DOCX, XLSX, JPG, PNG &bull; Up to <strong>50 MB</strong> per file &bull; Max 5 files</p>
+                        </div>
+                        <input type="file"
+                               id="task-attach-input"
+                               multiple
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.webp,.txt"
+                               style="display:none"
+                               @change="handleFiles($event)">
+                    </label>
+
+                    {{-- Selected files list --}}
+                    <template x-if="attachedFiles.length > 0">
+                        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+                            <template x-for="(f, idx) in attachedFiles" :key="idx">
+                                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f9fafb;border-radius:9px;border:1px solid #e5e7eb">
+                                    <svg style="width:16px;height:16px;color:#7B61FF;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <div style="flex:1;min-width:0">
+                                        <p style="font-size:12px;font-weight:600;color:#1E1B4B;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="f.name"></p>
+                                        <p style="font-size:10px;color:#9ca3af;margin:1px 0 0" x-text="formatSize(f.size)"></p>
+                                    </div>
+                                    <button @click="removeFile(idx)" type="button"
+                                            style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:#9ca3af;border-radius:4px;flex-shrink:0"
+                                            onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9ca3af'">
+                                        <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    {{-- File error --}}
+                    <p x-show="fileError" x-text="fileError"
+                       style="font-size:11px;color:#dc2626;font-weight:600;margin-top:6px"></p>
+                </div>
+
+                {{-- Send email toggle (only when email is available) --}}
+                @if($completionEmailEnabled && $task->requestor_email)
+                <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:#f0fdf4;border-radius:12px;border:1.5px solid #bbf7d0;cursor:pointer">
+                    <input type="checkbox" x-model="sendEmailToRequestor"
+                           style="margin-top:1px;accent-color:#16a34a;width:15px;height:15px;flex-shrink:0">
+                    <div>
+                        <p style="font-size:13px;font-weight:600;color:#15803d;margin:0">Also email this response to requestor</p>
+                        <p style="font-size:11px;color:#16a34a;margin:2px 0 0">Will be sent to <strong>{{ $task->requestor_email }}</strong></p>
+                    </div>
+                </label>
+                @endif
+
+                {{-- Inline error --}}
+                <p x-show="responseError" x-text="responseError"
+                   style="font-size:12px;color:#dc2626;font-weight:600;padding:8px 12px;background:#fef2f2;border-radius:8px;margin:0"></p>
+
+                {{-- Success --}}
+                <p x-show="successMsg" x-text="successMsg"
+                   style="font-size:12px;color:#16a34a;font-weight:600;padding:8px 12px;background:#f0fdf4;border-radius:8px;text-align:center;margin:0"></p>
 
                 {{-- Actions --}}
-                <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px">
+                <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px">
                     <button @click="showCompleteModal = false"
-                            style="padding:9px 20px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                            :disabled="completing"
+                            style="padding:10px 20px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer"
+                            :style="completing ? 'opacity:.5;cursor:not-allowed' : ''">
                         Cancel
                     </button>
-                    <button @click="responseMode === 'with_email' ? sendResponse() : completeTask()"
+                    <button @click="sendResponse()"
                             :disabled="completing"
-                            style="padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
-                            :style="completing ? 'opacity:0.5;cursor:not-allowed' : ''"
-                            x-text="completing ? 'Processing...' : (responseMode === 'with_email' ? 'Send & Complete' : 'Complete Task')">
+                            style="padding:10px 22px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(123,97,255,.3)"
+                            :style="completing ? 'opacity:.5;cursor:not-allowed' : ''">
+                        <svg x-show="completing" style="width:14px;height:14px;animation:spin 1s linear infinite" fill="none" viewBox="0 0 24 24">
+                            <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span x-text="completing ? 'Completing…' : 'Mark Complete'"></span>
                     </button>
                 </div>
-
-                <p x-show="successMsg" x-text="successMsg" style="font-size:12px;color:#16a34a;font-weight:600;text-align:center"></p>
             </div>
         </div>
     </div>
@@ -318,18 +396,61 @@
 </div>
 
 @push('scripts')
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+[x-cloak] { display: none !important; }
+</style>
 <script>
 function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled, canAssignToSelf, isCurrentAssignee) {
     const csrf = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    const MAX_FILES = 5;
+
     return {
         showCompleteModal: false,
-        responseMode: 'no_email',
         responseSubject: '',
         responseBody: '',
         responseError: '',
+        fileError: '',
         successMsg: '',
         completing: false,
         assigning: false,
+        attachedFiles: [],        // Array of File objects
+        sendEmailToRequestor: true,
+
+        // ── File handling ──────────────────────────────────────────
+
+        handleFiles(event) {
+            this.fileError = '';
+            const incoming = Array.from(event.target.files || []);
+            const combined = [...this.attachedFiles, ...incoming];
+
+            if (combined.length > MAX_FILES) {
+                this.fileError = `Maximum ${MAX_FILES} files allowed.`;
+                event.target.value = '';
+                return;
+            }
+            for (const f of incoming) {
+                if (f.size > MAX_FILE_SIZE) {
+                    this.fileError = `"${f.name}" exceeds the 50 MB limit.`;
+                    event.target.value = '';
+                    return;
+                }
+            }
+            this.attachedFiles = combined;
+            event.target.value = ''; // reset so same file can be re-added after removal
+        },
+
+        removeFile(idx) {
+            this.attachedFiles.splice(idx, 1);
+        },
+
+        formatSize(bytes) {
+            if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / 1024).toFixed(0) + ' KB';
+        },
+
+        // ── Assign to self ─────────────────────────────────────────
 
         async assignToSelf() {
             if (!canAssignToSelf || this.assigning) return;
@@ -345,7 +466,7 @@ function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled, canAs
                     this.$dispatch('show-toast', { type: 'success', message: data.message || 'Task assigned to you.' });
                     setTimeout(() => location.reload(), 900);
                 } else {
-                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Unable to assign this task to you.' });
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Unable to assign this task.' });
                 }
             } catch {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
@@ -354,53 +475,45 @@ function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled, canAs
             }
         },
 
-        async completeTask() {
-            if (!canComplete) return;
-            this.completing = true;
-            try {
-                const res = await fetch(`/tenant/${tenantId}/tasks/${taskId}/complete`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    this.successMsg = data.message || 'Task completed.';
-                    this.showCompleteModal = false;
-                    setTimeout(() => location.reload(), 1200);
-                } else {
-                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Failed to complete task.' });
-                }
-            } finally { this.completing = false; }
-        },
+        // ── Mark Complete (always via completeWithResponse) ────────
 
         async sendResponse() {
             this.responseError = '';
-            if (!this.responseSubject.trim()) { this.responseError = 'Subject is required.'; return; }
-            if (!this.responseBody.trim())    { this.responseError = 'Response body is required.'; return; }
+            if (!this.responseSubject.trim()) { this.responseError = 'Title is required.'; return; }
+            if (!this.responseBody.trim())    { this.responseError = 'Message is required.'; return; }
+            if (this.fileError)               return;
 
             this.completing = true;
             try {
-                const body = new FormData();
-                body.append('_token', csrf);
-                body.append('subject', this.responseSubject);
-                body.append('body', this.responseBody);
-                body.append('client_request_id', 'cr_' + Date.now());
+                const formData = new FormData();
+                formData.append('_token', csrf);
+                formData.append('subject', this.responseSubject);
+                formData.append('body', this.responseBody);
+                formData.append('send_email', this.sendEmailToRequestor ? '1' : '0');
+                formData.append('client_request_id', 'cr_' + Date.now());
+
+                this.attachedFiles.forEach((f, i) => {
+                    formData.append(`attachments[${i}]`, f, f.name);
+                });
 
                 const res = await fetch(`/tenant/${tenantId}/tasks/${taskId}/complete-with-response`, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                    body,
+                    body: formData,
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    this.successMsg = data.message;
+                    this.successMsg = data.message || 'Task completed.';
                     setTimeout(() => location.reload(), 1500);
                 } else {
-                    this.responseError = data.error || 'Failed to send response.';
+                    this.responseError = data.error || 'Failed to complete task. Please try again.';
                 }
-            } finally { this.completing = false; }
+            } catch {
+                this.responseError = 'Network error. Please check your connection and try again.';
+            } finally {
+                this.completing = false;
+            }
         },
     };
 }

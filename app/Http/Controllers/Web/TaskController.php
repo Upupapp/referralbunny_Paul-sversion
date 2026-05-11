@@ -423,22 +423,20 @@ class TaskController extends Controller
             return response()->json(['error' => 'Task is already completed.'], 422);
         }
 
-        if (!$this->tenantCompletionEmailEnabled($tenantId)) {
-            return response()->json(['error' => 'Completion response emails are disabled for this tenant.'], 403);
-        }
-
-        $requestorEmail = $task->resolveRequestorEmail();
-        if (!$requestorEmail) {
-            return response()->json(['error' => 'No requestor email available for this task.'], 422);
-        }
-
         $data = $request->validate([
-            'subject'     => 'required|string|max:150',
-            'body'        => 'required|string|max:10000',
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*'=> 'file|max:10240|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
+            'subject'           => 'required|string|max:150',
+            'body'              => 'required|string|max:20000',
+            'send_email'        => 'nullable|boolean',
+            'attachments'       => 'nullable|array|max:5',
+            'attachments.*'     => 'file|max:51200|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
             'client_request_id' => 'nullable|string|max:64',
         ]);
+
+        // Determine whether to send the response email.
+        $wantsEmail     = filter_var($data['send_email'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $emailEnabled   = $this->tenantCompletionEmailEnabled($tenantId);
+        $requestorEmail = $task->resolveRequestorEmail();
+        $sendEmail      = $wantsEmail && $emailEnabled && !empty($requestorEmail);
 
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
@@ -456,11 +454,14 @@ class TaskController extends Controller
             body:            $data['body'],
             attachmentPaths: $attachmentPaths,
             clientRequestId: $data['client_request_id'] ?? null,
+            sendEmail:       $sendEmail,
         );
 
-        $msg = $result['email_status'] === 'sent'
-            ? 'Task completed and response sent to requestor.'
-            : 'Task completed. Response email could not be sent — you can retry from the task.';
+        $msg = match ($result['email_status']) {
+            'sent'    => 'Task completed and response sent to requestor.',
+            'skipped' => 'Task completed. Response saved.',
+            default   => 'Task completed. Response saved — email could not be sent.',
+        };
 
         return response()->json([
             'status'       => 'completed',

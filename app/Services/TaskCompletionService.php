@@ -52,7 +52,8 @@ class TaskCompletionService
         string $subject,
         string $body,
         array  $attachmentPaths = [],
-        ?string $clientRequestId = null
+        ?string $clientRequestId = null,
+        bool   $sendEmail = true,
     ): array {
         // Idempotency: prevent duplicate sends
         if ($clientRequestId) {
@@ -126,53 +127,58 @@ class TaskCompletionService
             ]);
         });
 
-        // After commit: queue the email (task is already completed regardless of this)
-        try {
-            Mail::to($requestorEmail)
-                ->queue(new TaskCompletionResponseMail(
-                    recipientName: $requestorName ?? $requestorEmail,
-                    senderName:    $actorName,
-                    subject:       $subject,
-                    body:          $body,
-                    attachments:   $attachmentPaths,
-                    taskTitle:     $task->title,
-                    tenantId:      $task->tenant_id,
-                ));
+        // After commit: send email only if requested and an address is available.
+        if ($sendEmail && $requestorEmail) {
+            try {
+                Mail::to($requestorEmail)
+                    ->queue(new TaskCompletionResponseMail(
+                        recipientName: $requestorName ?? $requestorEmail,
+                        senderName:    $actorName,
+                        subject:       $subject,
+                        body:          $body,
+                        attachments:   $attachmentPaths,
+                        taskTitle:     $task->title,
+                        tenantId:      $task->tenant_id,
+                    ));
 
-            $response->update(['status' => 'sent', 'sent_at' => now()]);
-            $emailQueued = true;
+                $response->update(['status' => 'sent', 'sent_at' => now()]);
+                $emailQueued = true;
 
-            TaskActivity::create([
-                'tenant_id'  => $task->tenant_id,
-                'task_id'    => $task->id,
-                'actor_type' => 'system',
-                'actor_id'   => 'system',
-                'actor_name' => 'System',
-                'action_type'=> 'completion_response_sent',
-                'new_values' => ['response_id' => $response->id, 'status' => 'sent'],
-            ]);
-        } catch (\Throwable $e) {
-            $response->update([
-                'status'         => 'failed',
-                'failed_at'      => now(),
-                'failure_reason' => $e->getMessage(),
-            ]);
+                TaskActivity::create([
+                    'tenant_id'  => $task->tenant_id,
+                    'task_id'    => $task->id,
+                    'actor_type' => 'system',
+                    'actor_id'   => 'system',
+                    'actor_name' => 'System',
+                    'action_type'=> 'completion_response_sent',
+                    'new_values' => ['response_id' => $response->id, 'status' => 'sent'],
+                ]);
+            } catch (\Throwable $e) {
+                $response->update([
+                    'status'         => 'failed',
+                    'failed_at'      => now(),
+                    'failure_reason' => $e->getMessage(),
+                ]);
 
-            TaskActivity::create([
-                'tenant_id'  => $task->tenant_id,
-                'task_id'    => $task->id,
-                'actor_type' => 'system',
-                'actor_id'   => 'system',
-                'actor_name' => 'System',
-                'action_type'=> 'completion_response_failed',
-                'new_values' => ['response_id' => $response->id, 'error' => $e->getMessage()],
-            ]);
+                TaskActivity::create([
+                    'tenant_id'  => $task->tenant_id,
+                    'task_id'    => $task->id,
+                    'actor_type' => 'system',
+                    'actor_id'   => 'system',
+                    'actor_name' => 'System',
+                    'action_type'=> 'completion_response_failed',
+                    'new_values' => ['response_id' => $response->id, 'error' => $e->getMessage()],
+                ]);
+            }
+        } else {
+            // No email requested or no address — response saved, mark as skipped.
+            $response->update(['status' => 'skipped']);
         }
 
         return [
             'task'         => $task->fresh(),
             'response'     => $response->fresh(),
-            'email_status' => $emailQueued ? 'sent' : 'failed',
+            'email_status' => $emailQueued ? 'sent' : ($sendEmail && $requestorEmail ? 'failed' : 'skipped'),
         ];
     }
 
