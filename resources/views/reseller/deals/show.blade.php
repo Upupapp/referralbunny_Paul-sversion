@@ -54,13 +54,6 @@
         archiveSaving:  false,
         archiveError:   '',
 
-        partnerName:    '',
-        partnerEmail:   '',
-        partnerSplit:   '',
-        partnerType:    'percentage',
-        partnerSaving:  false,
-        partnerError:   '',
-
         refName:        '',
         refSplit:       '',
         refSaving:      false,
@@ -139,20 +132,6 @@
             if (!ok) { this.archiveError = data.error || 'Could not submit request.'; return; }
             this.showArchive = false; this.archiveReason = '';
             this.showToast('Archive request submitted for Admin approval.');
-            setTimeout(() => window.location.reload(), 800);
-        },
-
-        async savePartner() {
-            if (!this.partnerName || !this.partnerEmail || !this.partnerSplit || this.partnerSaving) return;
-            this.partnerSaving = true; this.partnerError = '';
-            const { ok, data } = await this.post('{{ $BASE }}/partners', {
-                partner_name: this.partnerName, partner_email: this.partnerEmail,
-                split_share_value: parseFloat(this.partnerSplit), split_share_type: this.partnerType,
-            });
-            this.partnerSaving = false;
-            if (!ok) { this.partnerError = data.error || 'Could not add partner.'; return; }
-            this.showAddPartner = false; this.partnerName = ''; this.partnerEmail = ''; this.partnerSplit = '';
-            this.showToast('Partner added. Admins have been notified.');
             setTimeout(() => window.location.reload(), 800);
         },
 
@@ -305,27 +284,29 @@
             </div>
         </div>
 
-        {{-- ── Row 2: My Commission (left) | Partners Commission (right) ── --}}
-        <div class="mt-4 pt-4 border-t border-gray-100 flex items-start justify-between gap-4">
-
-            {{-- My Commission — LEFT --}}
-            <div>
-                <div class="flex items-center gap-1.5 mb-1">
-                    <p class="text-xs font-semibold text-[#1E1B4B]">My Commission</p>
+        {{-- ── Row 2: Commission Breakdown ── --}}
+        <div class="mt-4 pt-4 border-t border-gray-100">
+            {{-- Pool header --}}
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5">
+                    <p class="text-xs font-semibold text-[#1E1B4B]">Commission Breakdown</p>
                     <div x-data="{ open: false }" class="relative">
                         <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors" aria-label="Info about My Commission">
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </button>
                         <div x-show="open" x-cloak x-transition
-                             class="absolute left-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
-                            <strong class="text-gray-700 block mb-1">My Commission</strong>
-                            Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to applicable taxes and deductions.
+                             class="absolute left-0 top-6 z-40 w-72 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                            <strong class="text-gray-700 block mb-1">Commission Pool</strong>
+                            70% of the Added Amount (Contract Value minus Base Cost). Partner shares are deducted from this pool first — your net commission is what remains after all partner allocations.
                         </div>
                     </div>
                 </div>
-                <p class="text-2xl font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
-                <div class="flex items-center gap-1 mt-1">
+                {{-- Commission status badge --}}
+                <div class="flex items-center gap-1">
+                    @if($lead->commission_status === 'locked' || $lead->commission_status === 'paid')
+                    <svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                    @endif
                     <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold
                         @if($lead->commission_status === 'paid') bg-green-100 text-green-700
                         @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
@@ -336,47 +317,42 @@
                         @else Estimated
                         @endif
                     </span>
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors"
-                                aria-label="About commission status">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </button>
-                        <div x-show="open" x-cloak x-transition
-                             class="absolute left-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
-                            @if($lead->commission_status === 'paid')
-                                <strong class="block mb-1 text-gray-700">Paid</strong>
-                                Commission has been approved and released. This is a finalized amount.
-                            @elseif($lead->commission_status === 'locked')
-                                <strong class="block mb-1 text-gray-700">Locked</strong>
-                                Commission was locked when this deal reached the Signed stage. Confirmed and pending final payout. Will not change unless the deal is revised.
-                            @else
-                                <strong class="block mb-1 text-gray-700">Estimated</strong>
-                                This is an estimate based on the current deal amount, commission pool, and your split. It may change if the deal amount, stage, or allocations are updated.
-                            @endif
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            {{-- Partners Commission — RIGHT --}}
-            <div class="text-right">
-                <div class="flex items-center justify-end gap-1.5 mb-1">
-                    <p class="text-xs font-medium text-gray-500">Partners Commission</p>
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-purple-500 transition-colors" aria-label="Info about Partners Commission">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </button>
-                        <div x-show="open" x-cloak x-transition
-                             class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
-                            <strong class="text-gray-700 block mb-1">Partners Commission</strong>
-                            The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
-                        </div>
-                    </div>
+            {{-- Pool bar --}}
+            @php
+                $poolPct       = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
+                $myCommPct     = $commissionPool > 0 ? min(100 - $poolPct, round(($myCommission / $commissionPool) * 100)) : 0;
+            @endphp
+            <div class="w-full h-2 rounded-full bg-gray-100 overflow-hidden flex mb-3">
+                <div class="h-full rounded-l-full transition-all" style="width:{{ $poolPct }}%;background:#7B61FF"></div>
+                <div class="h-full transition-all" style="width:{{ $myCommPct }}%;background:#0D9488"></div>
+            </div>
+
+            {{-- Three-column breakdown --}}
+            <div class="grid grid-cols-3 gap-3">
+                {{-- Commission Pool --}}
+                <div class="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool (70%)</p>
+                    <p class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
                 </div>
-                <p class="text-2xl font-bold text-[#7B61FF] tabular-nums">₱{{ number_format($partnersCommission, 0) }}</p>
-                <p class="text-[10px] text-gray-400 mt-1">{{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }}</p>
+                {{-- Partners --}}
+                <div class="rounded-xl px-3 py-2.5 {{ $partnersCommission > 0 ? 'bg-purple-50' : 'bg-gray-50' }}">
+                    <p class="text-[10px] font-medium mb-0.5 {{ $partnersCommission > 0 ? 'text-purple-400' : 'text-gray-400' }}">
+                        Partners ({{ count($partnerSplits) }})
+                    </p>
+                    <p class="text-sm font-bold tabular-nums {{ $partnersCommission > 0 ? 'text-[#7B61FF]' : 'text-gray-300' }}">
+                        @if($partnersCommission > 0) −₱{{ number_format($partnersCommission, 0) }}
+                        @else ₱0
+                        @endif
+                    </p>
+                </div>
+                {{-- My Net --}}
+                <div class="bg-teal-50 rounded-xl px-3 py-2.5">
+                    <p class="text-[10px] text-teal-500 font-medium mb-0.5">My Share</p>
+                    <p class="text-sm font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
+                </div>
             </div>
 
         </div>
@@ -820,44 +796,149 @@
     </div>
 
     {{-- Add Partner modal --}}
-    <div x-show="showAddPartner" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    @php
+        $poolLocked       = in_array($lead->commission_status, ['locked', 'paid']);
+        $alreadyAllocated = $partnersCommission;
+        $poolRemaining    = max(0.0, $commissionPool - $alreadyAllocated);
+    @endphp
+    <div x-show="showAddPartner" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         x-data="{
+             partnerName: '', partnerEmail: '', partnerSplit: '', partnerType: 'percentage',
+             partnerSaving: false, partnerError: '',
+             pool: {{ $commissionPool }},
+             alreadyAllocated: {{ $alreadyAllocated }},
+             get remaining() { return Math.max(0, this.pool - this.alreadyAllocated); },
+             get previewAmount() {
+                 const v = parseFloat(this.partnerSplit) || 0;
+                 if (this.partnerType === 'fixed_amount') return Math.min(v, this.remaining);
+                 return Math.round(this.pool * Math.min(v, 100) / 100 * 100) / 100;
+             },
+             get partnerGets() { return Math.min(this.previewAmount, this.remaining); },
+             get youKeep() { return Math.max(0, this.remaining - this.partnerGets); },
+             get overCap() {
+                 return this.partnerGets > this.remaining + 0.05;
+             },
+             get maxInput() {
+                 if (this.partnerType === 'fixed_amount') return this.remaining;
+                 return this.remaining > 0 && this.pool > 0 ? Math.floor(this.remaining / this.pool * 10000) / 100 : 0;
+             },
+             async savePartner() {
+                 if (!this.partnerName || !this.partnerEmail || !this.partnerSplit || this.partnerSaving) return;
+                 if (this.overCap) { this.partnerError = 'Split exceeds remaining capacity of ₱' + Math.round(this.remaining).toLocaleString(); return; }
+                 this.partnerSaving = true; this.partnerError = '';
+                 const r = await fetch('{{ $BASE }}/partners', {
+                     method: 'POST', credentials: 'same-origin',
+                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                     body: JSON.stringify({ partner_name: this.partnerName, partner_email: this.partnerEmail, split_share_value: parseFloat(this.partnerSplit), split_share_type: this.partnerType }),
+                 });
+                 const d = await r.json().catch(() => ({}));
+                 this.partnerSaving = false;
+                 if (!r.ok) { this.partnerError = d.error || 'Could not add partner.'; return; }
+                 this.showAddPartner = false;
+                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Partner added. Admins have been notified.' } }));
+                 setTimeout(() => window.location.reload(), 800);
+             }
+         }">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-[#1E1B4B]">Add Partner</h3>
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]">Add Partner</h3>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Partner share comes out of the commission pool.</p>
+                </div>
                 <button @click="showAddPartner = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+
+            @if($poolLocked)
+            {{-- Locked notice --}}
+            <div class="mx-5 mt-4 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
+                <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                <p class="text-xs text-blue-700 font-medium">Commission is {{ $lead->commission_status }}. Partner splits are locked. Contact an admin to make changes.</p>
+            </div>
+            @endif
+
             <div class="px-5 py-4 space-y-3">
+                {{-- Pool context bar --}}
+                <div class="rounded-xl px-3 py-2.5 space-y-1.5" style="background:#F0FDFA;border:1px solid #99F6E4">
+                    <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-teal-600 font-semibold">Commission Pool</span>
+                        <span class="text-teal-700 font-bold tabular-nums">₱{{ number_format($commissionPool, 0) }}</span>
+                    </div>
+                    @if($alreadyAllocated > 0)
+                    <div class="flex items-center justify-between text-[10px]">
+                        <span class="text-purple-500">Already allocated ({{ count($partnerSplits) }} partner{{ count($partnerSplits) !== 1 ? 's' : '' }})</span>
+                        <span class="text-purple-600 font-semibold tabular-nums">−₱{{ number_format($alreadyAllocated, 0) }}</span>
+                    </div>
+                    @endif
+                    <div class="flex items-center justify-between text-[10px] border-t border-teal-100 pt-1">
+                        <span class="text-teal-700 font-semibold">Available capacity</span>
+                        <span class="font-bold tabular-nums" :class="remaining <= 0 ? 'text-red-500' : 'text-teal-700'">
+                            ₱{{ number_format($poolRemaining, 0) }}
+                        </span>
+                    </div>
+                </div>
+
+                @if($poolRemaining <= 0 && !$poolLocked)
+                <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+                    <p class="text-xs text-red-700 font-medium">The commission pool is fully allocated. Remove or reduce an existing partner split before adding another.</p>
+                </div>
+                @endif
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">Partner Name <span class="text-red-400">*</span></label>
-                        <input x-model="partnerName" type="text" class="form-input w-full text-sm" placeholder="Full name">
+                        <input x-model="partnerName" type="text" class="form-input w-full text-sm" placeholder="Full name" {{ $poolLocked ? 'disabled' : '' }}>
                     </div>
                     <div>
                         <label class="form-label">Partner Email <span class="text-red-400">*</span></label>
-                        <input x-model="partnerEmail" type="email" class="form-input w-full text-sm" placeholder="email@example.com">
+                        <input x-model="partnerEmail" type="email" class="form-input w-full text-sm" placeholder="email@example.com" {{ $poolLocked ? 'disabled' : '' }}>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="form-label">Split Amount <span class="text-red-400">*</span></label>
-                        <input x-model="partnerSplit" type="number" min="0.01" step="0.01" class="form-input w-full text-sm">
+                        <label class="form-label">Split Amount <span class="text-red-400">*</span>
+                            <span class="text-[10px] text-gray-400 font-normal ml-1" x-show="partnerType === 'percentage'">max <span x-text="maxInput + '%'"></span></span>
+                            <span class="text-[10px] text-gray-400 font-normal ml-1" x-show="partnerType === 'fixed_amount'">max ₱<span x-text="Math.round(maxInput).toLocaleString()"></span></span>
+                        </label>
+                        <input x-model="partnerSplit" type="number" min="0.01" step="0.01"
+                               :max="maxInput"
+                               :class="overCap ? 'border-red-400 focus:ring-red-400' : ''"
+                               class="form-input w-full text-sm" {{ $poolLocked ? 'disabled' : '' }}>
                     </div>
                     <div>
                         <label class="form-label">Split Type</label>
-                        <select x-model="partnerType" class="form-input w-full text-sm">
+                        <select x-model="partnerType" class="form-input w-full text-sm" {{ $poolLocked ? 'disabled' : '' }}>
                             <option value="percentage">Percentage (%)</option>
                             <option value="fixed_amount">Fixed Amount (₱)</option>
                         </select>
                     </div>
                 </div>
+
+                {{-- Live preview --}}
+                <template x-if="partnerSplit && parseFloat(partnerSplit) > 0">
+                    <div class="rounded-xl px-3 py-2.5 space-y-1" :class="overCap ? 'bg-red-50 border border-red-100' : 'bg-gray-50'">
+                        <p class="text-[10px] font-semibold text-gray-500 mb-1">Preview</p>
+                        <div class="flex items-center justify-between text-[10px]">
+                            <span class="text-purple-500">Partner gets</span>
+                            <span class="font-bold text-[#7B61FF] tabular-nums" x-text="'₱' + Math.round(partnerGets).toLocaleString()"></span>
+                        </div>
+                        <div class="flex items-center justify-between text-[10px]">
+                            <span class="text-teal-600">Your remaining share</span>
+                            <span class="font-bold text-[#0D9488] tabular-nums" x-text="'₱' + Math.round(youKeep).toLocaleString()"></span>
+                        </div>
+                        <p x-show="overCap" class="text-[10px] text-red-600 font-semibold mt-1">Exceeds capacity — reduce the split amount.</p>
+                    </div>
+                </template>
+
                 <div x-show="partnerError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="partnerError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
                 <button @click="showAddPartner = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="savePartner()" :disabled="!partnerName || !partnerEmail || !partnerSplit || partnerSaving"
-                        class="rs-btn-primary text-sm" x-text="partnerSaving ? 'Saving…' : 'Add Partner'"></button>
+                <button @click="savePartner()"
+                        :disabled="!partnerName || !partnerEmail || !partnerSplit || partnerSaving || overCap {{ $poolLocked ? '|| true' : '' }}"
+                        class="rs-btn-primary text-sm"
+                        x-text="partnerSaving ? 'Saving…' : 'Add Partner'"></button>
             </div>
         </div>
     </div>

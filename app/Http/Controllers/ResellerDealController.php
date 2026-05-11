@@ -132,19 +132,10 @@ class ResellerDealController extends Controller
 
         $commissionPool = (float) ($breakdown['commission_pool'] ?? 0);
 
-        // My Commission — use logged-in referrer's split % if they are a co-referrer,
-        // otherwise assume 100% of pool (primary referrer with no explicit split record).
-        $myCommission = 0;
-        try {
-            $mySplitRecord = $splits->firstWhere('reseller_name', $reseller->name);
-            $myPct         = $mySplitRecord ? (float) ($mySplitRecord->percentage ?? 100.0) : 100.0;
-            $myCommission  = $calc->referrerShare($commissionPool, $myPct);
-        } catch (\Throwable) {}
-
-        // Partners Commission — sum of all active partner split allocations.
-        $partnersCommission = 0;
+        // Partners Commission — computed FIRST so we can deduct from referrer's net.
+        $partnersCommission = 0.0;
         $partnerSplits = collect($partnerSplits)->map(function ($ps) use ($calc, $commissionPool) {
-            $estimated = 0;
+            $estimated = 0.0;
             try {
                 $estimated = $calc->partnerShare(
                     $commissionPool,
@@ -168,11 +159,24 @@ class ResellerDealController extends Controller
             $partnersCommission = round(array_sum(array_column($partnerSplits, 'estimated_commission')), 2);
         } catch (\Throwable) {}
 
+        // Pool remaining after partner deductions — this is what referrers share.
+        $remainingPool = max(0.0, round($commissionPool - $partnersCommission, 2));
+
+        // My Commission — applied against the remaining pool, not the gross pool.
+        $myCommission = 0.0;
+        $myPct        = 100.0;
+        try {
+            $mySplitRecord = $splits->firstWhere('reseller_name', $reseller->name);
+            $myPct         = $mySplitRecord ? (float) ($mySplitRecord->percentage ?? 100.0) : 100.0;
+            $myCommission  = $calc->referrerShare($remainingPool, $myPct);
+        } catch (\Throwable) {}
+
         return view('reseller.deals.show', compact(
             'reseller', 'tenant', 'lead', 'tenantId',
             'pendingApprovals', 'notes', 'splits', 'partnerSplits',
             'attachments', 'history', 'breakdown',
-            'myCommission', 'partnersCommission'
+            'myCommission', 'partnersCommission',
+            'commissionPool', 'remainingPool'
         ));
     }
 
@@ -505,6 +509,33 @@ class ResellerDealController extends Controller
             'split_share_value'  => 'required|numeric|min:0.01',
             'split_share_type'   => 'required|in:percentage,fixed_amount',
         ]);
+
+        // ── Commission pool cap enforcement ───────────────────────────────────
+        // Partner splits cannot exceed the commission pool (70% of added amount).
+        // This applies regardless of default or explicit deal amounts.
+        $calcSvc  = app(CommissionCalculationService::class);
+        $poolData = $calcSvc->breakdownFromLead($lead);
+        $pool     = (float) ($poolData['commission_pool'] ?? 0);
+
+        $existingRows = DB::table('deal_partner_splits')
+            ->where('deal_id', $dealId)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
+            ->get();
+
+        $existingTotal = $existingRows->sum(
+            fn ($ps) => $calcSvc->partnerShare($pool, (float) $ps->split_share_value, $ps->split_share_type ?? 'percentage')
+        );
+        $newAmount = $calcSvc->partnerShare($pool, (float) $data['split_share_value'], $data['split_share_type']);
+        $remaining = $pool - $existingTotal;
+
+        if ($newAmount > $remaining + 0.05) {
+            return response()->json([
+                'error'           => 'This split exceeds the commission pool. Maximum you can allocate: ₱' . number_format(max(0, $remaining), 0) . '.',
+                'max_allowed'     => max(0.0, round($remaining, 2)),
+                'commission_pool' => $pool,
+            ], 422);
+        }
 
         try {
             app(DealPartnerSplitService::class)->upsert(

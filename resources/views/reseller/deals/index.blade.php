@@ -101,13 +101,14 @@
                                 </div>
                             </div>
                         </th>
+                        <th class="hidden sm:table-cell text-right">My Commission</th>
                         <th>Status</th>
                         <th>Days Left</th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-if="filtered.length === 0 && !loading">
-                        <tr><td colspan="7" class="py-14 text-center">
+                        <tr><td colspan="8" class="py-14 text-center">
                             <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
                             <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                             <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
@@ -154,6 +155,22 @@
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
                                       :class="{'bg-violet-100 text-violet-700': d.commission_status==='pending','bg-amber-100 text-amber-700': d.commission_status==='locked','bg-emerald-100 text-emerald-700': d.commission_status==='paid'}"
                                       x-text="d.commission_status || 'pending'"></span>
+                            </td>
+                            {{-- My Commission (net of partner shares) --}}
+                            <td class="hidden sm:table-cell text-right">
+                                <template x-if="(d.referrer_pool_remaining ?? d.commission_pool ?? 0) > 0">
+                                    <div>
+                                        <p class="text-sm font-bold tabular-nums" style="color:#0D9488"
+                                           x-text="'₱' + Math.round(d.referrer_pool_remaining ?? d.commission_pool ?? 0).toLocaleString()"></p>
+                                        <template x-if="(d.partner_commission_total ?? 0) > 0">
+                                            <p class="text-[10px] text-purple-400 tabular-nums"
+                                               x-text="'−₱' + Math.round(d.partner_commission_total).toLocaleString() + ' partners'"></p>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="!(d.referrer_pool_remaining ?? d.commission_pool ?? 0)">
+                                    <span class="text-xs text-gray-300">—</span>
+                                </template>
                             </td>
                             <td>
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize"

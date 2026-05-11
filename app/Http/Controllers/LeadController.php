@@ -64,8 +64,20 @@ class LeadController extends Controller
 
         if ($includePartners) {
             // Map partner data into a clean `partners` array on each lead.
-            // Only active DealPartner records are included.
-            $leads = $leads->map(function (Lead $lead) {
+            // Also attach commission_pool and partner_commission_total for net commission display.
+            $calc = app(\App\Services\CommissionCalculationService::class);
+
+            // Batch-load partner splits for all leads in one query to avoid N+1.
+            $leadIds = $leads->pluck('id')->all();
+            $partnerSplitsByDeal = DB::table('deal_partner_splits')
+                ->whereIn('deal_id', $leadIds)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->select('deal_id', 'split_share_value', 'split_share_type')
+                ->get()
+                ->groupBy('deal_id');
+
+            $leads = $leads->map(function (Lead $lead) use ($calc, $partnerSplitsByDeal) {
                 $data = $lead->toArray();
                 $data['partners'] = $lead->dealPartners
                     ->where('status', 'active')
@@ -77,6 +89,21 @@ class LeadController extends Controller
                     ])
                     ->values()
                     ->toArray();
+
+                // Commission pool from stored fields (same formula as CommissionCalculationService)
+                $breakdown = $calc->breakdownFromLead($lead);
+                $pool      = (float) ($breakdown['commission_pool'] ?? 0);
+
+                // Sum partner splits for this deal
+                $splits = $partnerSplitsByDeal->get($lead->id, collect());
+                $partnerTotal = $splits->sum(
+                    fn ($ps) => $calc->partnerShare($pool, (float) $ps->split_share_value, $ps->split_share_type ?? 'percentage')
+                );
+
+                $data['commission_pool']           = round($pool, 2);
+                $data['partner_commission_total']  = round($partnerTotal, 2);
+                $data['referrer_pool_remaining']   = max(0.0, round($pool - $partnerTotal, 2));
+
                 return $data;
             });
         }
