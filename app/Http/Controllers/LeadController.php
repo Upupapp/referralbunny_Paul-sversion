@@ -287,7 +287,7 @@ class LeadController extends Controller
     {
         if (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('tenant')->user();
-            return [$u->id ?? 'unknown', 'Tenant Admin', $u->name ?? $u->email ?? 'Admin'];
+            return [$u->id ?? 'unknown', 'Tenant Admin', $u->full_name ?? $u->email ?? 'Admin'];
         }
         if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('web')->user();
@@ -298,6 +298,31 @@ class LeadController extends Controller
             return [$u->id ?? 'unknown', 'Referrer', $u->name ?? 'Referrer'];
         }
         return ['system', 'System', 'System'];
+    }
+
+    /**
+     * Notify the Referrer assigned to a deal. Never throws — best-effort only.
+     */
+    private function notifyAssignedReferrer(Lead $lead, string $title, string $body, string $dedupSuffix): void
+    {
+        try {
+            if (!$lead->reseller_name) return;
+            $reseller = Reseller::where('tenant_id', $lead->tenant_id)
+                ->where('name', $lead->reseller_name)
+                ->first();
+            if (!$reseller) return;
+            app(NotificationDispatchService::class)->dispatchToReseller(
+                resellerId:   (string) $reseller->id,
+                tenantId:     $lead->tenant_id,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        $title,
+                body:         $body,
+                actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
+                actionLabel:  'View Deal',
+                dedupeSuffix: $dedupSuffix,
+            );
+        } catch (\Throwable) {}
     }
 
     public function show(Lead $lead): JsonResponse
@@ -396,13 +421,23 @@ class LeadController extends Controller
                          || abs($newAddedAmount - $oldAddedAmount) > 0.01;
 
         if ($financialChanged) {
-            [$actorId, $actorRole] = $this->resolveActor();
+            [$actorId, $actorRole, $actorName] = $this->resolveActor();
             app(\App\Services\DealActivityService::class)->financialBreakdownChanged(
                 $lead,
                 ['deal_value' => $oldDealValue,   'base_cost' => $oldBaseCost,   'added_amount' => $oldAddedAmount],
                 ['deal_value' => $newDealValue,    'base_cost' => $newBaseCost,   'added_amount' => $newAddedAmount],
                 $actorRole,
             );
+
+            // Notify assigned referrer when admin/manager changes the deal amount
+            if (!$isReferrer && !$isPartner) {
+                $this->notifyAssignedReferrer(
+                    $lead,
+                    'Deal amount updated',
+                    ($actorName ?? 'Admin') . ' updated the contract value of "' . $lead->name . '" to ₱' . number_format($newDealValue, 0) . '.',
+                    $lead->id . ':amount:' . now()->format('YmdHi'),
+                );
+            }
         }
 
         return response()->json($lead->fresh(['commissionSplits', 'notes', 'history']));

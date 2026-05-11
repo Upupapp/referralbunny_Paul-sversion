@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Models\Reseller;
 use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
+use App\Services\NotificationDispatchService;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,6 +79,14 @@ class DealPartnerSplitController extends Controller
                 'split_share_type'  => $data['split_share_type'] ?? 'percentage',
             ]);
 
+            // Notify assigned referrer
+            $this->notifyAssignedReferrer(
+                $lead,
+                'Partner added to your deal',
+                $data['partner_name'] . ' was added as a Partner to "' . $lead->name . '" with a ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . ' split.',
+                $lead->id . ':partner_added:' . md5($data['partner_email']),
+            );
+
             return response()->json($split, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -139,6 +149,14 @@ class DealPartnerSplitController extends Controller
                 );
             }
 
+            // Notify assigned referrer
+            $this->notifyAssignedReferrer(
+                $lead,
+                'Partner split updated',
+                'The split for ' . $data['partner_name'] . ' on "' . $lead->name . '" was updated to ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . '.',
+                $lead->id . ':partner_updated:' . $splitId . ':' . now()->format('YmdHi'),
+            );
+
             return response()->json($split);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -172,6 +190,14 @@ class DealPartnerSplitController extends Controller
                     'split_share_value' => $oldSplit->split_share_value,
                     'split_share_type'  => $oldSplit->split_share_type,
                 ]);
+
+                // Notify assigned referrer
+                $this->notifyAssignedReferrer(
+                    $lead,
+                    'Partner removed from your deal',
+                    ($oldSplit->partner_name ?? 'A Partner') . ' was removed from "' . $lead->name . '".',
+                    $lead->id . ':partner_removed:' . $splitId,
+                );
             }
 
             return response()->json(['success' => true, 'message' => 'Partner split removed.']);
@@ -186,5 +212,28 @@ class DealPartnerSplitController extends Controller
             ?? Auth::guard('web')->user()?->id
             ?? Auth::guard('reseller')->user()?->id
             ?? 'system';
+    }
+
+    /** Notify the Referrer assigned to a deal. Never throws — best-effort only. */
+    private function notifyAssignedReferrer(Lead $lead, string $title, string $body, string $dedupSuffix): void
+    {
+        try {
+            if (!$lead->reseller_name) return;
+            $reseller = Reseller::where('tenant_id', $lead->tenant_id)
+                ->where('name', $lead->reseller_name)
+                ->first();
+            if (!$reseller) return;
+            app(NotificationDispatchService::class)->dispatchToReseller(
+                resellerId:   (string) $reseller->id,
+                tenantId:     $lead->tenant_id,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        $title,
+                body:         $body,
+                actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
+                actionLabel:  'View Deal',
+                dedupeSuffix: $dedupSuffix,
+            );
+        } catch (\Throwable) {}
     }
 }
