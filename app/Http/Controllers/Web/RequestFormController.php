@@ -323,17 +323,22 @@ class RequestFormController extends Controller
         $dateFrom  = $request->query('date_from', '');
         $dateTo    = $request->query('date_to', '');
 
+        $submissionsError = null;
+
         try {
-            // Query by request_form_id only — the form is already tenant-verified above,
-            // so any submission to this form implicitly belongs to the correct tenant.
-            // Filtering by tenant_id here causes a count mismatch when submissions were
-            // stored without tenant_id (e.g. via the public form before migration ran).
+            // Build base query scoped to this form (form already verified to belong to tenant above).
             $submissionsQuery = RequestFormSubmission::where('request_form_id', $formId)
                 ->with(['submissionRecipients']);
 
-            // Only add tasks count if the tasks table exists
-            if (\Illuminate\Support\Facades\Schema::hasTable('tasks')) {
-                $submissionsQuery->withCount(['tasks' => fn($q) => $q->whereNull('deleted_at')]);
+            // Add tasks count using a raw subquery to avoid Eloquent withCount issues with
+            // relationship-level where constraints on PostgreSQL.
+            if (\Illuminate\Support\Facades\Schema::hasTable('tasks') &&
+                \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'source_type')) {
+                $submissionsQuery->withCount([
+                    'tasks' => fn($q) => $q
+                        ->where('source_type', 'request_form_submission')
+                        ->whereNull('deleted_at'),
+                ]);
             }
 
             $submissions = $submissionsQuery
@@ -349,12 +354,19 @@ class RequestFormController extends Controller
                 ->paginate(25)
                 ->withQueryString();
         } catch (\Throwable $e) {
-            \Log::error('submissions() failed: ' . $e->getMessage());
+            \Log::error('submissions() query failed', [
+                'form_id'   => $formId,
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+            ]);
+            $submissionsError = 'Could not load responses: ' . $e->getMessage();
             $submissions = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
         }
 
         return view('tenant.request-forms.submissions', compact(
-            'tenant', 'form', 'submissions', 'search', 'dateFrom', 'dateTo'
+            'tenant', 'form', 'submissions', 'search', 'dateFrom', 'dateTo', 'submissionsError'
         ));
     }
 

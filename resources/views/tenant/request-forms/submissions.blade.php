@@ -29,12 +29,20 @@
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 @if($form->status === 'published')
-                <button type="button"
-                        onclick="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'success',message:'Public link copied'}}))).catch(()=>alert('{{ $form->publicUrl() }}'))"
-                        style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:#ede9fe;color:#7B61FF;border:none;font-size:13px;font-weight:600;cursor:pointer">
-                    <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    Copy Link
-                </button>
+                <div x-data="{ copied: false }" style="display:inline-flex">
+                    <button type="button"
+                            @click="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>{ copied=true; setTimeout(()=>copied=false,2000); }).catch(()=>alert('{{ $form->publicUrl() }}'))"
+                            style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s"
+                            :style="copied ? 'background:#dcfce7;color:#15803d' : 'background:#ede9fe;color:#7B61FF'">
+                        <template x-if="!copied">
+                            <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        </template>
+                        <template x-if="copied">
+                            <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </template>
+                        <span x-text="copied ? 'Copied!' : 'Copy Link'"></span>
+                    </button>
+                </div>
                 @endif
                 <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $form->id]) }}"
                    style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:white;border:1.5px solid #e5e7eb;color:#374151;font-size:13px;font-weight:600;text-decoration:none">
@@ -44,6 +52,19 @@
             </div>
         </div>
     </div>
+
+    {{-- Error banner (shown when query failed) --}}
+    @if(!empty($submissionsError))
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px">
+        <svg style="width:16px;height:16px;color:#dc2626;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            <p style="font-size:13px;font-weight:600;color:#dc2626">Could not load responses</p>
+            <p style="font-size:12px;color:#b91c1c;margin-top:2px">{{ $submissionsError }}</p>
+        </div>
+    </div>
+    @endif
 
     {{-- Search + Filters --}}
     <form method="GET" action="{{ route('tenant.request-forms.submissions', [$tenant->id, $form->id]) }}"
@@ -79,11 +100,13 @@
                 Once people submit this public form, their responses will appear here.
             </p>
             @if($form->status === 'published')
-            <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap" x-data="{ copied: false }">
                 <code style="font-size:12px;color:#7B61FF;background:#ede9fe;padding:6px 14px;border-radius:8px">{{ $form->publicUrl() }}</code>
                 <button type="button"
-                        onclick="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'success',message:'Link copied'}}))).catch(()=>alert('{{ $form->publicUrl() }}'))"
-                        style="font-size:12px;font-weight:600;color:#7B61FF;background:#ede9fe;border:none;padding:6px 14px;border-radius:8px;cursor:pointer">Copy Link</button>
+                        @click="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>{ copied=true; setTimeout(()=>copied=false,2000); }).catch(()=>alert('{{ $form->publicUrl() }}'))"
+                        style="font-size:12px;font-weight:600;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:all .2s"
+                        :style="copied ? 'background:#dcfce7;color:#15803d' : 'background:#ede9fe;color:#7B61FF'"
+                        x-text="copied ? 'Copied ✓' : 'Copy Link'"></button>
             </div>
             @else
             <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $form->id]) }}"

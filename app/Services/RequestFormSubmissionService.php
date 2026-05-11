@@ -145,42 +145,74 @@ class RequestFormSubmissionService
             return $submission;
         });
 
-        // After transaction: send in-app notifications + email (fail silently)
+        // After transaction: send in-app notifications + emails (fail silently each)
         $notifService = app(NotificationDispatchService::class);
-        $minute = now()->format('YmdHi');
 
+        $recipientNames  = $allowedRecipients->pluck('display_name')->implode(', ');
+        $recipientCount  = $allowedRecipients->count();
+        $requestLabel    = $requestFor ?: 'General';
+
+        // ── 1. Notify each assigned recipient (in-app + email) ──────────────
         foreach ($allowedRecipients as $recipient) {
-            // In-app notification to the assigned recipient (if they're an internal user)
             if ($recipient->recipient_id) {
                 try {
                     $notifService->dispatch(
                         category:         'request_form',
-                        priority:         'normal',
+                        priority:         'high',
                         title:            'New request assigned to you',
-                        body:             "\"{$submitterName}\" submitted a " . ($requestFor ?: 'General') . " request via \"{$form->title}\".",
+                        body:             "\"{$submitterName}\" submitted a {$requestLabel} request via \"{$form->title}\".",
                         notifiableType:   'tenant_user',
                         notifiableId:     $recipient->recipient_id,
                         tenantId:         $tenantId,
                         actionUrl:        "/tenant/{$tenantId}/tasks",
                         actionLabel:      'View Task',
-                        deduplicationKey: "req-form:{$submission->id}:{$recipient->id}:{$minute}",
+                        deduplicationKey: "req-form-assignee:{$submission->id}:{$recipient->recipient_id}",
                     );
                 } catch (\Throwable) {}
             }
 
-            // Email notification
             try {
                 Mail::to($recipient->email)
                     ->queue(new TaskAssignedMail(
                         recipientName: $recipient->display_name,
                         submitterName: $submitterName,
-                        requestFor:    $requestFor ?? 'General',
+                        requestFor:    $requestLabel,
                         formTitle:     $form->title,
                         notes:         $notes,
-                        tenantId:      $form->tenant_id,
+                        tenantId:      $tenantId,
                     ));
             } catch (\Throwable) {}
         }
+
+        // ── 2. Notify tenant admins (consolidated — one notification per submission) ─
+        // Skip admins who are already a recipient (they get the assignee notification above).
+        $assignedRecipientIds = $allowedRecipients->pluck('recipient_id')->filter()->values()->toArray();
+
+        $body = $recipientCount > 0
+            ? "\"{$submitterName}\" submitted a {$requestLabel} request. Assigned to: {$recipientNames}."
+            : "\"{$submitterName}\" submitted a {$requestLabel} request via \"{$form->title}\". No assignee was selected.";
+
+        try {
+            $notifService->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'request_form',
+                priority:     'normal',
+                title:        "New form response: {$form->title}",
+                body:         $body,
+                actionUrl:    "/tenant/{$tenantId}/request-forms/{$form->id}/submissions",
+                actionLabel:  'View Responses',
+                dedupeSuffix: "req-form-admin:{$submission->id}",
+                metadata:     [
+                    'submission_id'    => $submission->id,
+                    'form_id'          => $form->id,
+                    'form_title'       => $form->title,
+                    'submitter_name'   => $submitterName,
+                    'submitter_email'  => $submitterEmail,
+                    'request_for'      => $requestLabel,
+                    'recipient_count'  => $recipientCount,
+                ],
+            );
+        } catch (\Throwable) {}
 
         return $submission;
     }

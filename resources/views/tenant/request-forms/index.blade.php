@@ -112,11 +112,13 @@
                                 <p style="font-size:11px;color:#9ca3af;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ Str::limit($form->description, 55) }}</p>
                                 @endif
                                 @if($form->status === 'published')
-                                <div style="display:flex;align-items:center;gap:5px;margin-top:5px">
+                                <div style="display:flex;align-items:center;gap:5px;margin-top:5px" x-data="{ copied: false }">
                                     <code style="font-size:10px;color:#7B61FF;background:#ede9fe;padding:2px 7px;border-radius:5px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block">{{ $form->publicUrl() }}</code>
                                     <button type="button"
-                                            onclick="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'success',message:'Public link copied to clipboard'}}))).catch(()=>alert('{{ $form->publicUrl() }}'))"
-                                            style="font-size:10px;color:#7B61FF;background:#ede9fe;border:none;cursor:pointer;padding:2px 8px;border-radius:5px;flex-shrink:0;font-weight:600">Copy</button>
+                                            @click="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>{ copied=true; setTimeout(()=>copied=false,2000); }).catch(()=>alert('{{ $form->publicUrl() }}'))"
+                                            style="font-size:10px;border:none;cursor:pointer;padding:2px 8px;border-radius:5px;flex-shrink:0;font-weight:600;transition:all .2s"
+                                            :style="copied ? 'color:#15803d;background:#dcfce7' : 'color:#7B61FF;background:#ede9fe'"
+                                            x-text="copied ? '✓ Copied' : 'Copy'"></button>
                                 </div>
                                 @endif
                             </div>
