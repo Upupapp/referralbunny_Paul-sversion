@@ -1,0 +1,412 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CommissionSplit;
+use App\Models\DealPartnerSplit;
+use App\Models\Lead;
+use App\Models\Reseller;
+use App\Models\Tenant;
+use App\Services\CommissionCalculationService;
+use App\Services\DealActivityService;
+use App\Services\DealPartnerSplitService;
+use App\Services\NotificationDispatchService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class ReferrerPartnerController extends Controller
+{
+    // ── Auth helpers ──────────────────────────────────────────────────────────
+
+    private function reseller(): Reseller
+    {
+        $r = Auth::guard('reseller')->user();
+        if ($r instanceof Reseller) return $r;
+        abort(403, 'Reseller authentication required.');
+    }
+
+    /** Returns all Lead IDs assigned to this reseller in this tenant. */
+    private function getMyLeadIds(string $tenantId, Reseller $reseller): array
+    {
+        // Primary: reseller is main referrer
+        $primary = Lead::where('tenant_id', $tenantId)
+            ->where('reseller_name', $reseller->name)
+            ->pluck('id')
+            ->toArray();
+
+        // Secondary: reseller is a co-referrer via commission_splits
+        $allTenantLeadIds = Lead::where('tenant_id', $tenantId)->pluck('id')->toArray();
+        $secondary = CommissionSplit::where('reseller_name', $reseller->name)
+            ->whereIn('lead_id', $allTenantLeadIds)
+            ->pluck('lead_id')
+            ->toArray();
+
+        return array_values(array_unique(array_merge($primary, $secondary)));
+    }
+
+    /** Verify reseller can access a specific deal. */
+    private function resellerCanAccessDeal(Reseller $reseller, Lead $lead): bool
+    {
+        if ($reseller->name === $lead->reseller_name) return true;
+        return CommissionSplit::where('lead_id', $lead->id)
+            ->where('reseller_name', $reseller->name)
+            ->exists();
+    }
+
+    // ── My Partners List ──────────────────────────────────────────────────────
+
+    public function index(string $tenantId)
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+        $leadIds  = $this->getMyLeadIds($tenantId, $reseller);
+        $calc     = app(CommissionCalculationService::class);
+
+        // All active partner splits across my deals
+        $splits = [];
+        try {
+            $splits = DealPartnerSplit::where('tenant_id', $tenantId)
+                ->whereIn('deal_id', $leadIds ?: ['__none__'])
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->with('lead:id,name,stage,deal_value,base_cost,added_amount,commission_status')
+                ->orderByDesc('created_at')
+                ->get();
+        } catch (\Throwable) {
+            $splits = collect();
+        }
+
+        // Group by partner_email for unique partners list
+        $partners = collect($splits)->groupBy('partner_email')->map(function ($partnerSplits, $email) use ($calc) {
+            $first = $partnerSplits->first();
+
+            $totalCommission = $partnerSplits->sum(function ($split) use ($calc) {
+                if (!$split->lead) return 0;
+                try {
+                    $bd = $calc->breakdownFromLead($split->lead);
+                    return $calc->partnerShare(
+                        (float) ($bd['commission_pool'] ?? 0),
+                        (float) $split->split_share_value,
+                        $split->split_share_type
+                    );
+                } catch (\Throwable) {
+                    return 0;
+                }
+            });
+
+            // Best status: active > pending_invite > provisional
+            $bestStatus = 'provisional';
+            foreach ($partnerSplits as $s) {
+                if ($s->status === 'active') { $bestStatus = 'active'; break; }
+                if ($s->status === 'pending_invite') $bestStatus = 'pending_invite';
+            }
+
+            $latestDeal = $partnerSplits->first()?->lead?->name;
+            $addedAt    = $partnerSplits->min('created_at');
+
+            return [
+                'email'            => $email,
+                'name'             => $first->partner_name,
+                'status'           => $bestStatus,
+                'deal_count'       => $partnerSplits->count(),
+                'total_commission' => round($totalCommission, 2),
+                'latest_deal'      => $latestDeal,
+                'added_at'         => $addedAt,
+                'partner_user_id'  => $first->partner_user_id,
+                'splits'           => $partnerSplits,
+            ];
+        })->values();
+
+        // KPI cards
+        $totalPartners   = $partners->count();
+        $activePartners  = $partners->where('status', 'active')->count();
+        $pendingInvites  = $partners->where('status', 'pending_invite')->count();
+        $totalCommission = round($partners->sum('total_commission'), 2);
+
+        // My deals for deal selector in Add Partner modal
+        $myDeals = [];
+        try {
+            $myDeals = Lead::where('tenant_id', $tenantId)
+                ->whereIn('id', $leadIds ?: ['__none__'])
+                ->whereNotIn('status', ['archived'])
+                ->select('id', 'name', 'stage', 'commission_status')
+                ->orderBy('name')
+                ->get();
+        } catch (\Throwable) {
+            $myDeals = collect();
+        }
+
+        return view('reseller.partners.index', compact(
+            'reseller', 'tenant', 'tenantId',
+            'partners', 'totalPartners', 'activePartners', 'pendingInvites', 'totalCommission',
+            'myDeals'
+        ));
+    }
+
+    // ── Partner Detail ────────────────────────────────────────────────────────
+
+    public function show(string $tenantId, string $partnerSlug)
+    {
+        $reseller  = $this->reseller();
+        $tenant    = Tenant::findOrFail($tenantId);
+        $leadIds   = $this->getMyLeadIds($tenantId, $reseller);
+        $calc      = app(CommissionCalculationService::class);
+
+        // Decode slug → email
+        $email = strtolower(trim(base64_decode($partnerSlug) ?: ''));
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) abort(404);
+
+        // Get splits for this partner across MY deals only
+        $splits = collect();
+        try {
+            $splits = DealPartnerSplit::where('tenant_id', $tenantId)
+                ->where('partner_email', $email)
+                ->whereIn('deal_id', $leadIds ?: ['__none__'])
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->with('lead:id,name,stage,deal_value,base_cost,added_amount,commission_status,data')
+                ->orderByDesc('created_at')
+                ->get();
+        } catch (\Throwable) {}
+
+        if ($splits->isEmpty()) abort(404, 'Partner not found on your deals.');
+
+        $first = $splits->first();
+
+        // Per-deal data with commission
+        $sharedDeals = $splits->map(function ($split) use ($calc) {
+            $bd            = [];
+            $partnerComm   = 0;
+            $commissionPool = 0;
+            try {
+                if ($split->lead) {
+                    $bd             = $calc->breakdownFromLead($split->lead);
+                    $commissionPool = (float) ($bd['commission_pool'] ?? 0);
+                    $partnerComm    = $calc->partnerShare(
+                        $commissionPool,
+                        (float) $split->split_share_value,
+                        $split->split_share_type
+                    );
+                }
+            } catch (\Throwable) {}
+
+            return [
+                'split'              => $split,
+                'lead'               => $split->lead,
+                'partner_commission' => $partnerComm,
+                'commission_pool'    => $commissionPool,
+            ];
+        });
+
+        // Commission summary
+        $totalCommission   = round($sharedDeals->sum('partner_commission'), 2);
+        $pendingCommission = round($sharedDeals->filter(fn($d) => ($d['lead']?->commission_status ?? '') === 'pending')->sum('partner_commission'), 2);
+        $lockedCommission  = round($sharedDeals->filter(fn($d) => ($d['lead']?->commission_status ?? '') === 'locked')->sum('partner_commission'), 2);
+        $paidCommission    = round($sharedDeals->filter(fn($d) => ($d['lead']?->commission_status ?? '') === 'paid')->sum('partner_commission'), 2);
+
+        // Best status
+        $status = 'provisional';
+        foreach ($splits as $s) {
+            if ($s->status === 'active') { $status = 'active'; break; }
+            if ($s->status === 'pending_invite') $status = 'pending_invite';
+        }
+
+        // Activity from lead_history for shared deals
+        $activity = [];
+        try {
+            $dealIds  = $splits->pluck('deal_id')->filter()->unique()->toArray();
+            $activity = DB::table('lead_history')
+                ->whereIn('lead_id', $dealIds ?: ['__none__'])
+                ->where(function ($q) use ($email, $first) {
+                    $q->where('type', 'partner')
+                      ->orWhere('action', 'like', '%partner%')
+                      ->orWhereRaw("metadata::text ILIKE ?", ['%' . $first->partner_name . '%']);
+                })
+                ->orderByDesc('created_at')
+                ->limit(30)
+                ->get()
+                ->toArray();
+        } catch (\Throwable) {}
+
+        // My other deals (for "Add to another deal" selector)
+        $myDeals = [];
+        try {
+            $alreadyOnDeals = $splits->pluck('deal_id')->toArray();
+            $myDeals = Lead::where('tenant_id', $tenantId)
+                ->whereIn('id', $leadIds ?: ['__none__'])
+                ->whereNotIn('status', ['archived'])
+                ->select('id', 'name', 'stage', 'commission_status')
+                ->orderBy('name')
+                ->get();
+        } catch (\Throwable) {
+            $myDeals = collect();
+        }
+
+        return view('reseller.partners.show', compact(
+            'reseller', 'tenant', 'tenantId',
+            'first', 'email', 'partnerSlug', 'status', 'splits',
+            'sharedDeals', 'totalCommission', 'pendingCommission', 'lockedCommission', 'paidCommission',
+            'activity', 'myDeals'
+        ));
+    }
+
+    // ── Add Partner to Deal ───────────────────────────────────────────────────
+
+    public function store(Request $request, string $tenantId): JsonResponse
+    {
+        $reseller = $this->reseller();
+
+        $data = $request->validate([
+            'deal_id'           => 'required|string',
+            'partner_name'      => 'required|string|max:150',
+            'partner_email'     => 'required|email|max:200',
+            'split_share_value' => 'required|numeric|min:0.01',
+            'split_share_type'  => 'required|in:percentage,fixed_amount',
+        ]);
+
+        // Verify deal belongs to tenant and is assigned to referrer
+        $lead = Lead::where('id', $data['deal_id'])
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        if (!$lead) {
+            return response()->json(['error' => 'Deal not found.'], 404);
+        }
+
+        if (!$this->resellerCanAccessDeal($reseller, $lead)) {
+            return response()->json(['error' => 'You can only add Partners to deals assigned to you.'], 403);
+        }
+
+        if ($lead->commission_status === 'paid') {
+            return response()->json(['error' => 'Commission on this deal is already paid. Contact your admin to add a Partner.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            app(DealPartnerSplitService::class)->upsert(
+                tenantId:    $tenantId,
+                dealId:      $data['deal_id'],
+                partnerName: $data['partner_name'],
+                partnerEmail:$data['partner_email'],
+                splitValue:  (float) $data['split_share_value'],
+                splitType:   $data['split_share_type'],
+                currency:    'PHP',
+                source:      'manual',
+                actorId:     (string) $reseller->id,
+            );
+
+            app(DealActivityService::class)->record($lead, 'Partner added by Referrer', 'partner', [
+                'category'   => 'partner',
+                'reseller'   => $reseller->name,
+                'actor_name' => $reseller->name,
+                'actor_role' => 'referrer',
+                'new_values' => [
+                    'partner_name'  => $data['partner_name'],
+                    'split_value'   => $data['split_share_value'],
+                    'split_type'    => $data['split_share_type'],
+                ],
+            ]);
+
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Partner added by Referrer',
+                body:         $reseller->name . ' added ' . $data['partner_name'] . ' as a Partner to "' . $lead->name . '".',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
+                actionLabel:  'Review Deal',
+                dedupeSuffix: $lead->id . ':partner:' . md5(strtolower($data['partner_email'])),
+            );
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ReferrerPartnerController::store failed', [
+                'tenant_id' => $tenantId,
+                'deal_id'   => $data['deal_id'],
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Could not add Partner. Please try again.'], 500);
+        }
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Partner added. Admins have been notified.',
+            'redirect' => route('reseller.partners', $tenantId),
+        ]);
+    }
+
+    // ── Remove Partner from Deal ──────────────────────────────────────────────
+
+    public function removeFromDeal(Request $request, string $tenantId, string $splitId): JsonResponse
+    {
+        $reseller = $this->reseller();
+
+        $split = DealPartnerSplit::where('id', $splitId)
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
+            ->first();
+
+        if (!$split) {
+            return response()->json(['error' => 'Partner split not found.'], 404);
+        }
+
+        $lead = Lead::where('id', $split->deal_id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        if (!$lead || !$this->resellerCanAccessDeal($reseller, $lead)) {
+            return response()->json(['error' => 'You do not have access to this deal.'], 403);
+        }
+
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Commission on this deal is locked or paid. Contact your admin to remove a Partner.'], 422);
+        }
+
+        $reason = $request->input('reason', '');
+
+        DB::beginTransaction();
+        try {
+            app(DealPartnerSplitService::class)->remove($tenantId, $splitId, (string) $reseller->id);
+
+            app(DealActivityService::class)->record($lead, 'Partner removed by Referrer', 'partner', [
+                'category'   => 'partner',
+                'reseller'   => $reseller->name,
+                'actor_name' => $reseller->name,
+                'actor_role' => 'referrer',
+                'old_values' => [
+                    'partner_name'  => $split->partner_name,
+                    'split_value'   => $split->split_share_value,
+                    'split_type'    => $split->split_share_type,
+                ],
+                'metadata'   => $reason ? ['reason' => $reason] : [],
+            ]);
+
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Partner removed from deal',
+                body:         $reseller->name . ' removed ' . $split->partner_name . ' from "' . $lead->name . '".',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
+                actionLabel:  'Review Deal',
+                dedupeSuffix: $lead->id . ':partner_removed:' . $splitId,
+            );
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ReferrerPartnerController::removeFromDeal failed', [
+                'split_id' => $splitId,
+                'error'    => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Could not remove Partner. Please try again.'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Partner removed from deal.']);
+    }
+}
