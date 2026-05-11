@@ -90,7 +90,7 @@ Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'sh
 Route::post('/reseller/reset-password',[ResellerPortalAuthController::class, 'resetPassword'])->name('reseller.reset-password.post');
 
 // ── Reseller Portal ────────────────────────────────────────────
-Route::middleware(['auth:reseller,web', 'reseller.access'])
+Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
     ->prefix('reseller/{tenantId}')
     ->name('reseller.')
     ->group(function () {
@@ -164,7 +164,7 @@ Route::get('/partner/reset-password',   [PartnerAuthController::class, 'showRese
 Route::post('/partner/reset-password',  [PartnerAuthController::class, 'resetPassword'])->name('partner.reset-password.post');
 
 // ── Partner Portal ────────────────────────────────────────────
-Route::middleware(['auth:partner', 'partner.access'])
+Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
     ->prefix('partner')
     ->name('partner.')
     ->group(function () {
@@ -217,7 +217,7 @@ Route::middleware(['auth:tenant,reseller,web'])
 
 // ── Tenant app ────────────────────────────────────────────────
 use App\Http\Controllers\Web\TenantUserManagementController;
-Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
+Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/critical-actions', [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');

@@ -208,7 +208,7 @@ class TenantLegalAgreementController extends Controller
         $data = $request->validate([
             'agreement_ids'   => 'required|array|min:1',
             'agreement_ids.*' => 'required|string',
-            'user_type'       => 'required|in:tenant_user,reseller',
+            'user_type'       => 'required|in:tenant_user,reseller,partner',
             'user_id'         => 'required|string',
             'user_role'       => 'nullable|string',
         ]);
@@ -242,19 +242,23 @@ class TenantLegalAgreementController extends Controller
 
     private function loadPending(string $tenantId, string $userType, string $userId, string $role)
     {
-        $accepted = TenantLegalAgreementAcceptance::where('tenant_id', $tenantId)
-            ->where('user_type', $userType)
-            ->where('user_id', $userId)
-            ->pluck('tenant_legal_agreement_id')
+        // Only count acceptances made AFTER the agreement was last updated (handles re-prompting on edits)
+        $freshAcceptedIds = DB::table('tenant_legal_agreement_acceptances as a')
+            ->join('tenant_legal_agreements as ag', 'a.tenant_legal_agreement_id', '=', 'ag.id')
+            ->where('a.tenant_id', $tenantId)
+            ->where('a.user_type', $userType)
+            ->where('a.user_id', $userId)
+            ->whereRaw('a.accepted_at >= ag.updated_at')
+            ->pluck('a.tenant_legal_agreement_id')
             ->toArray();
 
         return TenantLegalAgreement::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->where('is_required', true)
-            ->when(!empty($accepted), fn($q) => $q->whereNotIn('id', $accepted))
+            ->when(!empty($freshAcceptedIds), fn ($q) => $q->whereNotIn('id', $freshAcceptedIds))
             ->orderBy('display_order')
             ->get()
-            ->filter(fn($a) => $a->appliesToRole($role))
+            ->filter(fn ($a) => $a->appliesToRole($role))
             ->values();
     }
 
@@ -271,19 +275,32 @@ class TenantLegalAgreementController extends Controller
         if ($reseller = Auth::guard('reseller')->user()) {
             return ['reseller', (string) $reseller->id, 'referrer'];
         }
+        if ($partner = Auth::guard('partner')->user()) {
+            return ['partner', (string) $partner->id, 'partner'];
+        }
         return ['', '', ''];
     }
 
     private function afterAcceptRedirect(string $tenantId, string $userType)
     {
-        if ($userType === 'reseller') {
-            if ($reseller = Auth::guard('reseller')->user()) {
-                return redirect()->route('reseller.dashboard', $reseller->tenant_id)
-                    ->with('success', 'Thank you for accepting the agreements.');
-            }
+        $msg = 'Thank you for accepting the agreements. You may now continue.';
+
+        // Return to where the user was trying to go before the middleware intercepted
+        if ($intendedUrl = session()->pull('legal_agreements.intended_url')) {
+            return redirect()->to($intendedUrl)->with('success', $msg);
         }
-        return redirect()->route('tenant.dashboard', $tenantId)
-            ->with('success', 'Agreements accepted. Welcome aboard!');
+
+        if ($userType === 'reseller') {
+            $reseller = Auth::guard('reseller')->user();
+            return redirect()->route('reseller.dashboard', $reseller?->tenant_id ?? $tenantId)
+                ->with('success', $msg);
+        }
+
+        if ($userType === 'partner') {
+            return redirect()->route('partner.dashboard')->with('success', $msg);
+        }
+
+        return redirect()->route('tenant.dashboard', $tenantId)->with('success', $msg);
     }
 
     private function authorizeAdminAccess(?string $tenantId): void
@@ -305,21 +322,24 @@ class TenantLegalAgreementController extends Controller
     public static function hasPending(string $tenantId, string $userType, string $userId, string $role): bool
     {
         try {
-            $accepted = TenantLegalAgreementAcceptance::where('tenant_id', $tenantId)
-                ->where('user_type', $userType)
-                ->where('user_id', $userId)
-                ->pluck('tenant_legal_agreement_id')
+            $freshAcceptedIds = DB::table('tenant_legal_agreement_acceptances as a')
+                ->join('tenant_legal_agreements as ag', 'a.tenant_legal_agreement_id', '=', 'ag.id')
+                ->where('a.tenant_id', $tenantId)
+                ->where('a.user_type', $userType)
+                ->where('a.user_id', $userId)
+                ->whereRaw('a.accepted_at >= ag.updated_at')
+                ->pluck('a.tenant_legal_agreement_id')
                 ->toArray();
 
             return TenantLegalAgreement::where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->where('is_required', true)
-                ->when(!empty($accepted), fn($q) => $q->whereNotIn('id', $accepted))
+                ->when(!empty($freshAcceptedIds), fn ($q) => $q->whereNotIn('id', $freshAcceptedIds))
                 ->get()
-                ->filter(fn($a) => $a->appliesToRole($role))
+                ->filter(fn ($a) => $a->appliesToRole($role))
                 ->isNotEmpty();
         } catch (\Throwable) {
-            return false; // Never block login on DB error
+            return false; // Never block access on DB error
         }
     }
 }

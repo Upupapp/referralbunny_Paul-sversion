@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.confirm'   => \Illuminate\Auth\Middleware\RequirePassword::class,
             'tenant.subdomain'   => \App\Http\Middleware\DetectTenantSubdomain::class,
             'api.tenant'         => \App\Http\Middleware\SetApiTenantContext::class,
+            'legal.agreements'   => \App\Http\Middleware\EnsureLegalAgreementsAccepted::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
