@@ -169,8 +169,204 @@ class ResellerPortalController extends Controller
 
     public function notifications($tenantId)
     {
+        // Kept for backwards-compat links — redirect to activity log
+        return redirect()->route('reseller.activity', $tenantId);
+    }
+
+    public function activityLog($tenantId)
+    {
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
-        return view('reseller.notifications', compact('reseller', 'tenant'));
+        $filter   = request('filter', 'all'); // all | deals | commission | system
+        $perPage  = 25;
+        $page     = max(1, (int) request('page', 1));
+        $offset   = ($page - 1) * $perPage;
+
+        // Get all lead IDs belonging to this reseller
+        $leadIds = [];
+        try {
+            $leadIds = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('reseller_name', $reseller->name)
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->toArray();
+        } catch (\Throwable) {}
+
+        // Build activity from two sources then merge
+        $items = collect();
+
+        // ── Source 1: lead_history (stage changes, status updates) ────────
+        if (in_array($filter, ['all', 'deals']) && count($leadIds) > 0) {
+            try {
+                $rows = DB::table('lead_history')
+                    ->leftJoin('leads', 'lead_history.lead_id', '=', 'leads.id')
+                    ->where('lead_history.tenant_id', $tenantId)
+                    ->whereIn('lead_history.lead_id', $leadIds)
+                    ->select(
+                        'lead_history.id',
+                        'lead_history.lead_id',
+                        'lead_history.action',
+                        'lead_history.category',
+                        'lead_history.actor_name',
+                        'lead_history.actor_role',
+                        'lead_history.old_values',
+                        'lead_history.new_values',
+                        'lead_history.created_at',
+                        'leads.name as lead_name',
+                        'leads.deal_value',
+                    )
+                    ->orderByDesc('lead_history.created_at')
+                    ->limit(300)
+                    ->get();
+
+                foreach ($rows as $r) {
+                    $old = is_string($r->old_values) ? json_decode($r->old_values, true) : (array)($r->old_values ?? []);
+                    $new = is_string($r->new_values) ? json_decode($r->new_values, true) : (array)($r->new_values ?? []);
+
+                    [$title, $detail] = $this->formatLeadHistoryItem($r->action, $r->category, $old, $new, $r->actor_name, $r->actor_role);
+
+                    $items->push([
+                        'id'         => 'lh_' . $r->id,
+                        'icon_type'  => $this->leadHistoryIconType($r->category, $r->action),
+                        'title'      => $title,
+                        'detail'     => $detail,
+                        'deal_name'  => $r->lead_name ?? 'Deal',
+                        'lead_id'    => $r->lead_id,
+                        'created_at' => $r->created_at,
+                        'category'   => $this->friendlyCategory($r->category, $r->action),
+                    ]);
+                }
+            } catch (\Throwable) {}
+        }
+
+        // ── Source 2: activity_logs (comments, commission, extensions) ────
+        $actActions = match($filter) {
+            'deals'      => ['deal_comment_created','deal_comment_edited','deal_comment_deleted',
+                             'deal_extension_requested','deal_extension_approved','deal_extension_rejected','deal_extension_clarification_requested'],
+            'commission' => ['partner_split_created','partner_split_removed'],
+            'system'     => ['invite_accepted','invite.accepted','referrer_deactivated','referrer_double_auth_failed'],
+            default      => [], // all — no action filter
+        };
+
+        try {
+            $query = DB::table('activity_logs')
+                ->where('tenant_id', $tenantId)
+                ->where(function ($q) use ($reseller, $leadIds) {
+                    $q->where(fn($q2) => $q2->where('entity', 'reseller')->where('entity_id', (string) $reseller->id));
+                    if (count($leadIds) > 0) {
+                        $q->orWhere(fn($q2) => $q2->where('entity', 'lead')->whereIn('entity_id', $leadIds));
+                    }
+                })
+                ->when($actActions, fn($q) => $q->whereIn('action', $actActions))
+                ->orderByDesc('created_at')
+                ->limit(300)
+                ->get();
+
+            // Cache lead names for activity_logs
+            $leadNames = count($leadIds) > 0
+                ? DB::table('leads')->whereIn('id', $leadIds)->pluck('name', 'id')->all()
+                : [];
+
+            foreach ($query as $r) {
+                $meta = is_string($r->metadata) ? json_decode($r->metadata, true) : (array)($r->metadata ?? []);
+                [$title, $detail, $iconType, $cat] = $this->formatActivityLogItem($r->action, $meta, $r->entity, $r->entity_id, $leadNames, $reseller->name);
+
+                $items->push([
+                    'id'         => 'al_' . $r->id,
+                    'icon_type'  => $iconType,
+                    'title'      => $title,
+                    'detail'     => $detail,
+                    'deal_name'  => ($r->entity === 'lead' ? ($leadNames[$r->entity_id] ?? null) : null),
+                    'lead_id'    => ($r->entity === 'lead' ? $r->entity_id : null),
+                    'created_at' => $r->created_at,
+                    'category'   => $cat,
+                ]);
+            }
+        } catch (\Throwable) {}
+
+        // Sort merged items by created_at desc, paginate in PHP
+        $sorted = $items->sortByDesc('created_at')->values();
+        $total  = $sorted->count();
+        $paged  = $sorted->slice($offset, $perPage)->values();
+        $pages  = (int) ceil($total / $perPage);
+
+        // Humanise timestamps
+        $paged = $paged->map(function ($item) {
+            try {
+                $item['time_ago'] = \Carbon\Carbon::parse($item['created_at'])->diffForHumans();
+            } catch (\Throwable) {
+                $item['time_ago'] = '—';
+            }
+            return $item;
+        });
+
+        return view('reseller.activity', compact(
+            'reseller', 'tenant', 'paged', 'total', 'page', 'pages', 'filter'
+        ));
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private function formatLeadHistoryItem(string $action, ?string $category, array $old, array $new, ?string $actor, ?string $role): array
+    {
+        $actor = $actor ?: 'System';
+        $role  = $role  ? " ({$role})" : '';
+
+        if (isset($new['stage']) && isset($old['stage']) && $new['stage'] !== $old['stage']) {
+            $from = ucfirst(str_replace('_', ' ', $old['stage']));
+            $to   = ucfirst(str_replace('_', ' ', $new['stage']));
+            return ["Stage advanced to {$to}", "From {$from} · by {$actor}{$role}"];
+        }
+        if (isset($new['status']) && isset($old['status']) && $new['status'] !== $old['status']) {
+            $status = ucfirst($new['status']);
+            return ["Status changed to {$status}", "By {$actor}{$role}"];
+        }
+        if (str_contains($action, 'comment')) {
+            return ['Comment added on deal', "By {$actor}{$role}"];
+        }
+        if (str_contains($action, 'extension')) {
+            return ['Deal extension ' . str_replace('_', ' ', $action), "By {$actor}{$role}"];
+        }
+        $label = ucfirst(str_replace(['_', '.'], ' ', $action));
+        return [$label, "By {$actor}{$role}"];
+    }
+
+    private function leadHistoryIconType(?string $category, string $action): string
+    {
+        if (str_contains($action, 'stage') || str_contains((string)$category, 'stage')) return 'stage';
+        if (str_contains($action, 'status'))                                              return 'status';
+        if (str_contains($action, 'comment'))                                             return 'comment';
+        if (str_contains($action, 'extension'))                                           return 'extension';
+        return 'deal';
+    }
+
+    private function friendlyCategory(?string $category, string $action): string
+    {
+        if ($category) return ucfirst(str_replace('_', ' ', $category));
+        if (str_contains($action, 'comment'))   return 'Comment';
+        if (str_contains($action, 'extension')) return 'Extension';
+        if (str_contains($action, 'stage'))     return 'Stage Change';
+        return 'Deal Update';
+    }
+
+    private function formatActivityLogItem(string $action, array $meta, ?string $entity, ?string $entityId, array $leadNames, string $resellerName): array
+    {
+        $leadName = ($entity === 'lead' && $entityId) ? ($leadNames[$entityId] ?? 'a deal') : 'a deal';
+
+        return match(true) {
+            $action === 'deal_comment_created'   => ["Comment added on "{$leadName}"", $meta['comment_preview'] ?? null, 'comment', 'Comment'],
+            $action === 'deal_comment_edited'    => ["Comment edited on "{$leadName}"", null, 'comment', 'Comment'],
+            $action === 'deal_comment_deleted'   => ["Comment removed on "{$leadName}"", null, 'comment', 'Comment'],
+            $action === 'deal_extension_requested'   => ["Extension requested for "{$leadName}"", $meta['reason'] ?? null, 'extension', 'Extension'],
+            $action === 'deal_extension_approved'    => ["Extension approved for "{$leadName}"", null, 'extension', 'Extension'],
+            $action === 'deal_extension_rejected'    => ["Extension rejected for "{$leadName}"", $meta['reason'] ?? null, 'extension', 'Extension'],
+            $action === 'deal_extension_clarification_requested' => ["Clarification requested for "{$leadName}"", null, 'extension', 'Extension'],
+            $action === 'partner_split_created'  => ["Commission split recorded", ($meta['deal_name'] ?? null) ? 'On deal ' . $meta['deal_name'] : null, 'commission', 'Commission'],
+            $action === 'partner_split_removed'  => ["Commission split removed", null, 'commission', 'Commission'],
+            in_array($action, ['invite_accepted','invite.accepted']) => ["You joined as a referrer", "Welcome to {$meta['tenant_name'] ?? 'the workspace'}!", 'system', 'System'],
+            str_contains($action, 'referrer_')   => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'system', 'System'],
+            default                              => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'deal', 'Activity'],
+        };
     }
 }
