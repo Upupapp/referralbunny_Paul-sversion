@@ -122,6 +122,7 @@ class CriticalActionService
             fn() => $this->expiringDeals($tenantId),
             fn() => $this->expiredDeals($tenantId),
             fn() => $this->missingReferrerDeals($tenantId),
+            fn() => $this->pendingArchiveRequests($tenantId),
             fn() => $this->pendingExtensionRequests($tenantId),
             fn() => $this->failedRollbacks($tenantId),
             fn() => $this->recentLeadHistory($tenantId, $limitPer, $since),
@@ -569,6 +570,52 @@ class CriticalActionService
     }
 
     // ── New source: extension requests (admin view) ────────────────
+
+    private function pendingArchiveRequests(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('deal_approval_requests as r')
+                ->join('leads as l', 'l.id', '=', 'r.deal_id')
+                ->where('r.tenant_id', $tenantId)
+                ->where('r.type', 'deal_archive')
+                ->where('r.status', 'pending')
+                ->select(
+                    'r.id', 'r.reason', 'r.created_at', 'r.requested_by_id',
+                    'r.request_payload',
+                    'l.id as lead_id', 'l.name as lead_name', 'l.reseller_name', 'l.stage'
+                )
+                ->orderBy('r.created_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(function ($r) use ($tenantId) {
+                $payload = is_string($r->request_payload) ? json_decode($r->request_payload, true) : (array) ($r->request_payload ?? []);
+                $referrerName = $payload['referrer_name'] ?? $r->reseller_name ?? 'Referrer';
+                $reason = \Illuminate\Support\Str::limit($r->reason ?? '', 80);
+
+                return $this->make([
+                    'type'          => 'archive_request_pending',
+                    'category'      => 'deal',
+                    'severity'      => 'high',
+                    'summary'       => "Archive request pending: {$r->lead_name}",
+                    'actor_name'    => $referrerName,
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $r->lead_name,
+                    'related_type'  => 'deal',
+                    'related_id'    => $r->lead_id,
+                    'occurred_at'   => $r->created_at ?? now(),
+                    'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}",
+                    'action_label'  => 'Review Archive Request',
+                    'action_needed' => true,
+                    'source'        => 'deal_approval_requests',
+                    'meta'          => ['reason' => $reason, 'stage' => $r->stage, 'approval_id' => $r->id],
+                ]);
+            })->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] pendingArchiveRequests failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
 
     private function pendingExtensionRequests(string $tenantId): array
     {

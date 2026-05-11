@@ -51,6 +51,7 @@
         stageError:     '',
 
         archiveReason:  '',
+        archiveDetail:  '',
         archiveSaving:  false,
         archiveError:   '',
 
@@ -127,12 +128,15 @@
         async submitArchive() {
             if (!this.archiveReason.trim() || this.archiveSaving) return;
             this.archiveSaving = true; this.archiveError = '';
-            const { ok, data } = await this.post('{{ $BASE }}/archive-request', { reason: this.archiveReason });
+            const fullReason = this.archiveDetail.trim()
+                ? this.archiveReason + ' — ' + this.archiveDetail.trim()
+                : this.archiveReason;
+            const { ok, data } = await this.post('{{ $BASE }}/archive-request', { reason: fullReason });
             this.archiveSaving = false;
             if (!ok) { this.archiveError = data.error || 'Could not submit request.'; return; }
-            this.showArchive = false; this.archiveReason = '';
-            this.showToast('Archive request submitted for Admin approval.');
-            setTimeout(() => window.location.reload(), 800);
+            this.showArchive = false; this.archiveReason = ''; this.archiveDetail = '';
+            this.showToast('Archive request submitted. Admins have been notified and will review shortly.');
+            setTimeout(() => window.location.reload(), 1000);
         },
 
         async saveReferrer() {
@@ -771,34 +775,57 @@
     <div x-show="showArchive" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-[#1E1B4B]">Request Deal Archive</h3>
-                <button @click="showArchive = false" class="text-gray-400 hover:text-gray-600">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]">Request Deal Archive</h3>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Requires Admin or Manager approval before taking effect.</p>
+                </div>
+                <button @click="showArchive = false; archiveError = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="px-5 py-4 space-y-3">
-                <div class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                    Archiving this deal requires Admin or Manager approval. The deal will remain active until approved.
+                {{-- TEST — block paid deals --}}
+                @if($lead->stage === 'paid')
+                <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    <p class="text-xs text-amber-700 font-medium">Paid deals cannot be archived. Contact an admin if this is a mistake.</p>
+                </div>
+                @else
+                <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100">
+                    <svg class="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                    <p class="text-xs text-red-700">The deal stays active until an Admin or Manager approves this request. You'll receive a notification with their decision.</p>
                 </div>
                 <div>
                     <label class="form-label">Reason for archiving <span class="text-red-400">*</span></label>
-                    <select x-model="archiveReason" class="form-input w-full mb-2">
+                    <select x-model="archiveReason" class="form-input w-full">
                         <option value="">Select a reason…</option>
                         <option>LGU no longer interested</option>
                         <option>Duplicate deal</option>
                         <option>Wrong LGU / contact</option>
-                        <option>Deal inactive</option>
+                        <option>Deal inactive for too long</option>
                         <option>Replaced by another deal</option>
                         <option>Other</option>
                     </select>
                 </div>
+                {{-- NOTIFY — allow free-text detail when "Other" or always --}}
+                <div>
+                    <label class="form-label">Additional details <span class="text-gray-300 font-normal">(optional)</span></label>
+                    <textarea x-model="archiveDetail" rows="2" class="form-input w-full text-sm resize-none"
+                              placeholder="Any extra context for the admin reviewing this request…"></textarea>
+                </div>
+                @endif
                 <div x-show="archiveError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="archiveError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showArchive = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="submitArchive()" :disabled="!archiveReason || archiveSaving"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
-                        x-text="archiveSaving ? 'Submitting…' : 'Submit Archive Request'"></button>
+                <button @click="showArchive = false; archiveError = ''" class="btn-secondary text-sm">Cancel</button>
+                @if($lead->stage !== 'paid')
+                <button @click="submitArchive()"
+                        :disabled="!archiveReason || archiveSaving"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50">
+                    <svg x-show="archiveSaving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span x-text="archiveSaving ? 'Submitting…' : 'Submit Archive Request'"></span>
+                </button>
+                @endif
             </div>
         </div>
     </div>

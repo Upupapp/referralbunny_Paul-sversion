@@ -435,6 +435,14 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        // TEST — block archive on finalized deal statuses
+        if (in_array($lead->status, ['expired', 'declined'])) {
+            return response()->json(['error' => 'This deal has already been closed and cannot be archived again.'], 422);
+        }
+        if ($lead->stage === 'paid') {
+            return response()->json(['error' => 'Paid deals cannot be archived. Contact an admin if this is a mistake.'], 422);
+        }
+
         $data = $request->validate([
             'reason' => 'required|string|max:2000',
         ]);
@@ -460,6 +468,7 @@ class ResellerDealController extends Controller
                 'requested_by_id'   => (string) $reseller->id,
                 'status'            => 'pending',
                 'reason'            => $data['reason'],
+                'expires_at'        => now()->addDays(30),
                 'request_payload'   => [
                     'deal_name'     => $lead->name,
                     'deal_stage'    => $lead->stage,
@@ -467,7 +476,7 @@ class ResellerDealController extends Controller
                 ],
             ]);
 
-            app(DealActivityService::class)->record($lead, 'Archive request submitted by referrer', 'archive', [
+            app(DealActivityService::class)->record($lead, 'Archive request submitted by referrer — reason: ' . \Illuminate\Support\Str::limit($data['reason'], 100), 'archive', [
                 'category'   => 'archive',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
@@ -479,8 +488,8 @@ class ResellerDealController extends Controller
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'high',
-                title:        'Deal archive approval needed',
-                body:         $reseller->name . ' requested to archive "' . $lead->name . '". Reason: ' . $data['reason'],
+                title:        '⚠️ Archive approval needed: ' . $lead->name,
+                body:         $reseller->name . ' wants to archive "' . $lead->name . '". Reason: ' . \Illuminate\Support\Str::limit($data['reason'], 120),
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'Review & Decide',
                 dedupeSuffix: $dealId . ':archive:' . $approval->id,
@@ -687,6 +696,18 @@ class ResellerDealController extends Controller
                 'approved_at'  => now(),
             ]);
 
+            // SWEEP — capture reviewer identity for audit trail
+            $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+            $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
+
+            $approval->update([
+                'status'        => 'approved',
+                'reviewer_note' => $data['reviewer_note'] ?? null,
+                'approved_at'   => now(),
+                'reviewer_type' => Auth::guard('tenant')->check() ? 'tenant_user' : 'super_admin',
+                'reviewer_id'   => (string) ($reviewerUser?->id ?? ''),
+            ]);
+
             // Execute the approved action
             if ($approval->type === 'deal_stage_move' && $lead) {
                 $targetStage = $approval->request_payload['target_stage'] ?? null;
@@ -696,32 +717,43 @@ class ResellerDealController extends Controller
 
                     app(DealActivityService::class)->record($lead, 'Stage move approved by admin', 'stage', [
                         'category'   => 'stage',
-                        'actor_name' => Auth::guard('tenant')->user()?->name ?? 'Admin',
+                        'actor_name' => $reviewerName,
                         'actor_role' => 'admin',
                         'old_values' => ['stage' => $oldStage],
                         'new_values' => ['stage' => $targetStage],
                     ]);
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {
-                $lead->update(['status' => 'expired']); // use expired as archive proxy until archived_at column added
+                // TEST — use archived_at + archive_reason instead of conflating with 'expired' status
+                $archiveReason = $approval->reason ?? ($approval->request_payload['reason'] ?? null);
+                $updateData = [
+                    'status'         => 'declined',
+                    'archive_reason' => $archiveReason,
+                ];
+                // archived_at column added in migration_v44; fall back gracefully if not yet migrated
+                try {
+                    $updateData['archived_at'] = now();
+                } catch (\Throwable) {}
+                $lead->update($updateData);
 
-                app(DealActivityService::class)->record($lead, 'Deal archive approved', 'archive', [
+                app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
                     'category'   => 'archive',
-                    'actor_name' => Auth::guard('tenant')->user()?->name ?? 'Admin',
+                    'actor_name' => $reviewerName,
                     'actor_role' => 'admin',
+                    'new_values' => ['archive_reason' => $archiveReason],
                 ]);
             }
 
-            // Notify the requesting reseller
-            $referrerId = $approval->requested_by_id;
+            // NOTIFY — tell the requesting reseller clearly what happened
             if ($approval->requested_by_type === 'reseller') {
+                $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
                 app(NotificationDispatchService::class)->dispatchToReseller(
-                    resellerId:   $referrerId,
+                    resellerId:   $approval->requested_by_id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
-                    priority:     'normal',
-                    title:        'Your request was approved',
-                    body:         'Your ' . str_replace('_', ' ', $approval->type) . ' request for "' . ($lead?->name ?? 'a deal') . '" was approved.',
+                    priority:     'high',
+                    title:        '✅ Archive request approved — ' . $dealName,
+                    body:         'Your archive request for "' . $dealName . '" was approved. The deal has been closed.',
                     actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
                     actionLabel:  'View Deal',
                     dedupeSuffix: $approvalId . ':approved',
@@ -753,31 +785,39 @@ class ResellerDealController extends Controller
 
         $lead = Lead::find($approval->deal_id);
 
+        // SWEEP — capture reviewer identity
+        $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
+
         DB::beginTransaction();
         try {
             $approval->update([
                 'status'        => 'rejected',
                 'reviewer_note' => $data['reviewer_note'],
                 'rejected_at'   => now(),
+                'reviewer_type' => Auth::guard('tenant')->check() ? 'tenant_user' : 'super_admin',
+                'reviewer_id'   => (string) ($reviewerUser?->id ?? ''),
             ]);
 
             if ($lead) {
-                app(DealActivityService::class)->record($lead, 'Request rejected by admin', 'approval', [
-                    'category'   => 'approval',
-                    'actor_name' => Auth::guard('tenant')->user()?->name ?? 'Admin',
+                app(DealActivityService::class)->record($lead, 'Archive request rejected by ' . $reviewerName . ' — reason: ' . \Illuminate\Support\Str::limit($data['reviewer_note'], 100), 'archive', [
+                    'category'   => 'archive',
+                    'actor_name' => $reviewerName,
                     'actor_role' => 'admin',
-                    'new_values' => ['reason' => $data['reviewer_note']],
+                    'new_values' => ['rejection_reason' => $data['reviewer_note']],
                 ]);
             }
 
+            // NOTIFY — tell referrer clearly, include deal link and rejection reason
             if ($approval->requested_by_type === 'reseller') {
+                $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   $approval->requested_by_id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
-                    priority:     'normal',
-                    title:        'Your request was not approved',
-                    body:         'Your request for "' . ($lead?->name ?? 'a deal') . '" was not approved. Reason: ' . $data['reviewer_note'],
+                    priority:     'high',
+                    title:        '❌ Archive request declined — ' . $dealName,
+                    body:         'Your archive request for "' . $dealName . '" was not approved. Admin note: ' . $data['reviewer_note'],
                     actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
                     actionLabel:  'View Deal',
                     dedupeSuffix: $approvalId . ':rejected',
@@ -787,6 +827,7 @@ class ResellerDealController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
         }
 
