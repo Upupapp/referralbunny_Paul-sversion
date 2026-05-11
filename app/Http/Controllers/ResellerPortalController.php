@@ -51,12 +51,32 @@ class ResellerPortalController extends Controller
 
         $recentLeads = $leads->take(6);
 
-        // Commission summary — safe fallback if commission_status column missing
+        // Commission summary — compute actual referrer share (not raw deal_value)
         try {
+            $leadIds = $leads->pluck('id');
+            $splits  = $leadIds->isNotEmpty()
+                ? DB::table('commission_splits')
+                    ->whereIn('lead_id', $leadIds)
+                    ->where('reseller_name', $reseller->name)
+                    ->get()->keyBy('lead_id')
+                : collect();
+
+            $calc   = app(\App\Services\CommissionCalculationService::class);
+            $mapped = $leads->map(function ($lead) use ($splits, $calc) {
+                $breakdown = $calc->breakdownFromLead($lead);
+                $pool      = $breakdown['commission_pool'] ?? 0;
+                $split     = $splits->get($lead->id);
+                $pct       = $split ? (float) ($split->percentage ?? 100) : 100.0;
+                return [
+                    'status' => $lead->commission_status ?? 'pending',
+                    'amount' => $calc->referrerShare($pool, $pct),
+                ];
+            });
+
             $commissionStats = [
-                'pending' => $leads->where('commission_status', 'pending')->sum('deal_value'),
-                'locked'  => $leads->where('commission_status', 'locked')->sum('deal_value'),
-                'paid'    => $leads->where('commission_status', 'paid')->sum('deal_value'),
+                'pending' => (int) $mapped->where('status', 'pending')->sum('amount'),
+                'locked'  => (int) $mapped->where('status', 'locked')->sum('amount'),
+                'paid'    => (int) $mapped->where('status', 'paid')->sum('amount'),
             ];
         } catch (\Throwable) {
             $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];

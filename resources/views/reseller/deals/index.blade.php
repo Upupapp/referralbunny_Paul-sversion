@@ -136,15 +136,20 @@
                                       x-text="d.status || 'active'"></span>
                             </td>
                             <td x-show="d.stage !== 'paid'">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                                      :class="{
-                                          'bg-red-100 text-red-700':    (d.days_left ?? 99) <= 3,
-                                          'bg-amber-100 text-amber-700': (d.days_left ?? 99) > 3 && (d.days_left ?? 99) <= 7,
-                                          'bg-blue-50 text-blue-600':   (d.days_left ?? 99) > 7,
-                                      }">
-                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    <span x-text="(d.days_left ?? 0) <= 0 ? 'Overdue' : (d.days_left + 'd')"></span>
-                                </span>
+                                <template x-if="d.days_left !== null && d.days_left !== undefined">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                                          :class="{
+                                              'bg-red-100 text-red-700':     d.days_left <= 3,
+                                              'bg-amber-100 text-amber-700': d.days_left > 3 && d.days_left <= 7,
+                                              'bg-blue-50 text-blue-600':    d.days_left > 7,
+                                          }">
+                                        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span x-text="d.days_left <= 0 ? 'Overdue' : (d.days_left + 'd')"></span>
+                                    </span>
+                                </template>
+                                <template x-if="d.days_left === null || d.days_left === undefined">
+                                    <span class="text-xs text-gray-400">—</span>
+                                </template>
                             </td>
                         </tr>
                     </template>

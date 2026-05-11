@@ -155,6 +155,23 @@
 {{-- R Bunny Unified Assistant — bottom-left --}}
 <x-brand.r-bunny-assistant />
 
+{{-- Flash → Toast bridge (converts Laravel session flash to Alpine toast) --}}
+@if(session('success') || session('error') || session('warning'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        @if(session('success'))
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: @js(session('success')) } }));
+        @endif
+        @if(session('error'))
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: @js(session('error')) } }));
+        @endif
+        @if(session('warning'))
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'warning', message: @js(session('warning')) } }));
+        @endif
+    });
+</script>
+@endif
+
 @stack('scripts')
 </body>
 </html>

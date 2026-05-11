@@ -20,15 +20,13 @@
 
     {{-- Completion --}}
     @if($completion < 100)
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-        <div class="flex-1">
-            <div class="flex items-center justify-between mb-1.5">
-                <p class="text-sm font-semibold text-[#1E1B4B]">Profile {{ $completion }}% complete</p>
-                <a href="#" class="text-xs text-teal-600">Complete profile</a>
-            </div>
-            <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div class="h-2 rounded-full transition-all" style="width:{{ $completion }}%;background:linear-gradient(90deg,#0D9488,#14B8A6)"></div>
-            </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-sm font-semibold text-[#1E1B4B]">Profile {{ $completion }}% complete</p>
+            <span class="text-xs text-gray-400">Fill in the fields below to reach 100%</span>
+        </div>
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-2 rounded-full transition-all" style="width:{{ $completion }}%;background:linear-gradient(90deg,#0D9488,#14B8A6)"></div>
         </div>
     </div>
     @endif

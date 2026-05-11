@@ -270,26 +270,54 @@ class TenantAdminController extends Controller
                 ->forReseller($tenantId, $reseller->name, 8);
         } catch (\Throwable) {}
 
-        // Agreements + acknowledgment status for this reseller
+        // Agreements — try new tenant_legal_agreements system first, fall back to legacy
         $agreements = collect();
         try {
-            $agreements = DB::table('reseller_agreement_files as af')
-                ->leftJoin('reseller_agreement_acknowledgments as ack', function ($join) use ($reseller) {
-                    $join->on('af.id', '=', 'ack.agreement_file_id')
-                         ->where('ack.reseller_id', '=', $reseller->id);
+            $agreements = DB::table('tenant_legal_agreements as ag')
+                ->leftJoin('tenant_legal_agreement_acceptances as acc', function ($join) use ($reseller) {
+                    $join->on('ag.id', '=', 'acc.tenant_legal_agreement_id')
+                         ->where('acc.user_type', '=', 'reseller')
+                         ->where('acc.user_id', '=', (string) $reseller->id);
                 })
-                ->where('af.tenant_id', $tenantId)
-                ->where('af.is_active', true)
-                ->select('af.id', 'af.label', 'af.description', 'af.is_required',
-                         'af.file_url', 'af.version', 'af.display_order',
-                         'ack.agreed_at', 'ack.agreed_by_name')
-                ->orderBy('af.display_order')
-                ->orderBy('af.created_at')
+                ->where('ag.tenant_id', $tenantId)
+                ->where('ag.is_active', true)
+                ->select(
+                    'ag.id',
+                    DB::raw("ag.title as label"),
+                    DB::raw("NULL as description"),
+                    'ag.is_required',
+                    DB::raw("NULL as file_url"),
+                    'ag.version',
+                    'ag.display_order',
+                    DB::raw("acc.accepted_at as agreed_at"),
+                    DB::raw("NULL as agreed_by_name")
+                )
+                ->orderBy('ag.display_order')
+                ->orderBy('ag.created_at')
                 ->get();
         } catch (\Throwable) {}
 
-        $requiredTotal  = $agreements->where('is_required', true)->count();
-        $signedRequired = $agreements->where('is_required', true)->whereNotNull('agreed_at')->count();
+        // If no new-system agreements, try legacy reseller_agreement_files table
+        if ($agreements->isEmpty()) {
+            try {
+                $agreements = DB::table('reseller_agreement_files as af')
+                    ->leftJoin('reseller_agreement_acknowledgments as ack', function ($join) use ($reseller) {
+                        $join->on('af.id', '=', 'ack.agreement_file_id')
+                             ->where('ack.reseller_id', '=', $reseller->id);
+                    })
+                    ->where('af.tenant_id', $tenantId)
+                    ->where('af.is_active', true)
+                    ->select('af.id', 'af.label', 'af.description', 'af.is_required',
+                             'af.file_url', 'af.version', 'af.display_order',
+                             'ack.agreed_at', 'ack.agreed_by_name')
+                    ->orderBy('af.display_order')
+                    ->orderBy('af.created_at')
+                    ->get();
+            } catch (\Throwable) {}
+        }
+
+        $requiredTotal      = $agreements->where('is_required', true)->count();
+        $signedRequired     = $agreements->where('is_required', true)->whereNotNull('agreed_at')->count();
         $agreementCompliant = $requiredTotal === 0 || $signedRequired >= $requiredTotal;
 
         return view('tenant.referrers.show', array_merge(
