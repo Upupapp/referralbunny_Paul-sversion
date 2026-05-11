@@ -286,23 +286,16 @@
 
         {{-- ── Row 2: Commission Breakdown ── --}}
         <div class="mt-4 pt-4 border-t border-gray-100">
-            {{-- Pool header --}}
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-1.5">
-                    <p class="text-xs font-semibold text-[#1E1B4B]">Commission Breakdown</p>
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        </button>
-                        <div x-show="open" x-cloak x-transition
-                             class="absolute left-0 top-6 z-40 w-72 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
-                            <strong class="text-gray-700 block mb-1">Commission Pool</strong>
-                            70% of the Added Amount (Contract Value minus Base Cost). Partner shares are deducted from this pool first — your net commission is what remains after all partner allocations.
-                        </div>
-                    </div>
-                </div>
-                {{-- Commission status badge --}}
+            @php
+                $bdv  = (float) ($breakdown['deal_value']   ?? $lead->deal_value ?? 0);
+                $bbc  = (float) ($breakdown['base_cost']    ?? 0);
+                $baa  = (float) ($breakdown['added_amount'] ?? 0);
+                $basePct = $bdv > 0 ? round($bbc / $bdv * 100) : 0;
+            @endphp
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-semibold text-[#1E1B4B]">Commission Breakdown</p>
                 <div class="flex items-center gap-1">
                     @if($lead->commission_status === 'locked' || $lead->commission_status === 'paid')
                     <svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
@@ -320,27 +313,43 @@
                 </div>
             </div>
 
-            {{-- Pool bar --}}
-            @php
-                $poolPct       = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
-                $myCommPct     = $commissionPool > 0 ? min(100 - $poolPct, round(($myCommission / $commissionPool) * 100)) : 0;
-            @endphp
-            <div class="w-full h-2 rounded-full bg-gray-100 overflow-hidden flex mb-3">
-                <div class="h-full rounded-l-full transition-all" style="width:{{ $poolPct }}%;background:#7B61FF"></div>
-                <div class="h-full transition-all" style="width:{{ $myCommPct }}%;background:#0D9488"></div>
+            {{-- Financial breakdown: Deal Value → Base Cost → Added Amount --}}
+            <div class="rounded-xl overflow-hidden border border-gray-100 mb-3">
+                <div class="grid grid-cols-3 divide-x divide-gray-100">
+                    <div class="px-3 py-2.5 bg-gray-50">
+                        <p class="text-[10px] text-gray-400 font-medium">Contract Value</p>
+                        <p class="text-xs font-bold text-[#1E1B4B] tabular-nums mt-0.5">₱{{ number_format($bdv, 0) }}</p>
+                    </div>
+                    <div class="px-3 py-2.5 bg-gray-50">
+                        <p class="text-[10px] text-gray-400 font-medium">Base Cost <span class="text-gray-300">({{ $basePct }}%)</span></p>
+                        <p class="text-xs font-bold text-gray-500 tabular-nums mt-0.5">₱{{ number_format($bbc, 0) }}</p>
+                    </div>
+                    <div class="px-3 py-2.5 bg-blue-50">
+                        <p class="text-[10px] text-blue-400 font-medium">Added Amount</p>
+                        <p class="text-xs font-bold text-blue-700 tabular-nums mt-0.5">₱{{ number_format($baa, 0) }}</p>
+                    </div>
+                </div>
             </div>
 
-            {{-- Three-column breakdown --}}
-            <div class="grid grid-cols-3 gap-3">
-                {{-- Commission Pool --}}
+            {{-- Pool bar (partner vs referrer within the pool) --}}
+            @php
+                $poolPct   = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
+                $myCommPct = $commissionPool > 0 ? min(100 - $poolPct, round(($myCommission / $commissionPool) * 100)) : 0;
+            @endphp
+            <div class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden flex mb-3">
+                <div class="h-full rounded-l-full" style="width:{{ $poolPct }}%;background:#7B61FF"></div>
+                <div class="h-full" style="width:{{ $myCommPct }}%;background:#0D9488"></div>
+            </div>
+
+            {{-- Commission pool split --}}
+            <div class="grid grid-cols-3 gap-2">
                 <div class="bg-gray-50 rounded-xl px-3 py-2.5">
-                    <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool (70%)</p>
+                    <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool <span class="text-gray-300">(70%)</span></p>
                     <p class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
                 </div>
-                {{-- Partners --}}
                 <div class="rounded-xl px-3 py-2.5 {{ $partnersCommission > 0 ? 'bg-purple-50' : 'bg-gray-50' }}">
                     <p class="text-[10px] font-medium mb-0.5 {{ $partnersCommission > 0 ? 'text-purple-400' : 'text-gray-400' }}">
-                        Partners ({{ count($partnerSplits) }})
+                        Partners <span class="font-normal">({{ count($partnerSplits) }})</span>
                     </p>
                     <p class="text-sm font-bold tabular-nums {{ $partnersCommission > 0 ? 'text-[#7B61FF]' : 'text-gray-300' }}">
                         @if($partnersCommission > 0) −₱{{ number_format($partnersCommission, 0) }}
@@ -348,7 +357,6 @@
                         @endif
                     </p>
                 </div>
-                {{-- My Net --}}
                 <div class="bg-teal-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-teal-500 font-medium mb-0.5">My Share</p>
                     <p class="text-sm font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>

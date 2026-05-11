@@ -137,14 +137,23 @@ class CommissionCalculationService
             $data = (array) $lead; // stdClass from raw DB queries
         }
 
-        $dv  = (float) ($data['deal_value']   ?? 0);
-        $bc  = (float) ($data['base_cost']    ?? 0);
-        $aa  = (float) ($data['added_amount'] ?? 0);
+        $dv       = (float) ($data['deal_value']   ?? 0);
+        $bc       = (float) ($data['base_cost']    ?? 0);
+        $aa       = (float) ($data['added_amount'] ?? 0);
+        $tenantId = $data['tenant_id'] ?? null;
 
-        // For deals where only deal_value was set (legacy), treat full amount as margin
-        if ($aa <= 0 && $dv > 0) {
-            $aa = $dv;
-            $bc = 0;
+        // When base_cost and added_amount are both zero but deal_value is set,
+        // compute them from the appropriate pricing tier rather than treating
+        // the full deal value as margin (which inflates the commission pool).
+        if ($aa <= 0 && $bc <= 0 && $dv > 0) {
+            if ($tenantId === 'lgu-ids') {
+                $bc = \App\Services\LguIds\LguIdsPricingService::lookupBaseCost($dv);
+                $aa = $dv - $bc;
+            } else {
+                // Generic legacy fallback: treat full amount as margin
+                $aa = $dv;
+                $bc = 0;
+            }
         }
 
         return $this->breakdown($dv > 0 ? $dv : ($bc + $aa), $bc);

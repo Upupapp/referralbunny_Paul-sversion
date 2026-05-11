@@ -210,11 +210,14 @@ class LeadController extends Controller
         }
 
         // ── LGU IDS: default editable deal value ₱4,000,000 ─────────────
-        // ADDITIVE RULE — does not change base_cost/added_amount computation.
-        // Only applied when deal_value is still 0 after the base+added calculation.
+        // LOCKED RULE — applied when deal_value is still 0 after financial derivation.
+        // base_cost and added_amount are computed immediately from the default amount
+        // so that commission pool is 70% of added_amount (not 70% of full deal value).
         $amountWasDefaulted = false;
         if ($tenantId === 'lgu-ids' && $dealValue == 0) {
             $dealValue          = 4_000_000.00;
+            $baseCost           = \App\Services\LguIds\LguIdsPricingService::lookupBaseCost($dealValue);
+            $addedAmount        = $dealValue - $baseCost;
             $amountWasDefaulted = true;
         }
 
