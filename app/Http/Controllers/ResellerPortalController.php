@@ -51,37 +51,79 @@ class ResellerPortalController extends Controller
 
         $recentLeads = $leads->take(6);
 
-        // Commission summary
+        // ── Actual referrer commission share (not raw deal_value) ──────────
+        $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
         try {
-            $commissionStats = [
-                'pending' => $leads->where('commission_status', 'pending')->sum('deal_value'),
-                'locked'  => $leads->where('commission_status', 'locked')->sum('deal_value'),
-                'paid'    => $leads->where('commission_status', 'paid')->sum('deal_value'),
-            ];
+            $leadIds = $leads->pluck('id');
+            $splits  = $leadIds->isNotEmpty()
+                ? DB::table('commission_splits')
+                    ->whereIn('lead_id', $leadIds)
+                    ->where('reseller_name', $reseller->name)
+                    ->get()->keyBy('lead_id')
+                : collect();
+
+            $calc = app(\App\Services\CommissionCalculationService::class);
+            foreach ($leads as $lead) {
+                $breakdown   = $calc->breakdownFromLead($lead);
+                $pool        = $breakdown['commission_pool'] ?? 0;
+                $split       = $splits->get($lead->id);
+                $pct         = $split ? (float) ($split->percentage ?? 100) : 100.0;
+                $myCommission = (int) $calc->referrerShare($pool, $pct);
+                $status      = $lead->commission_status ?? 'pending';
+                if (array_key_exists($status, $commissionStats)) {
+                    $commissionStats[$status] += $myCommission;
+                } else {
+                    $commissionStats['pending'] += $myCommission;
+                }
+            }
         } catch (\Throwable) {
             $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
         }
 
-        // Unread messages count
+        $totalCommission = $commissionStats['pending'] + $commissionStats['locked'] + $commissionStats['paid'];
+
+        // ── Unique partner count across assigned deals ─────────────────────
+        $partnerCount = 0;
+        try {
+            $leadIds = $leads->pluck('id');
+            if ($leadIds->isNotEmpty()) {
+                $partnerCount = DB::table('deal_partner_splits')
+                    ->whereIn('deal_id', $leadIds)
+                    ->whereNull('deleted_at')
+                    ->where('status', '!=', 'removed')
+                    ->distinct()
+                    ->count('partner_email');
+            }
+        } catch (\Throwable) {}
+
+        // ── Pipeline by stage ──────────────────────────────────────────────
+        $stageBreakdown = [];
+        try {
+            foreach (['introduction','presentation','contract_sent','signed','paid'] as $stage) {
+                $sl = $leads->where('stage', $stage);
+                $stageBreakdown[$stage] = ['count' => $sl->count(), 'value' => (int) $sl->sum('deal_value')];
+            }
+        } catch (\Throwable) {}
+
+        // ── Unread messages count ──────────────────────────────────────────
+        $unreadCount = 0;
         try {
             $thread      = \App\Models\MessageThread::where('tenant_id', $tenantId)
                 ->where('reseller_id', $reseller->id)->first();
             $unreadCount = $thread ? (int) $thread->reseller_unread : 0;
-        } catch (\Throwable) {
-            $unreadCount = 0;
-        }
+        } catch (\Throwable) {}
 
-        // Recent activity — wrapped so any DB issue never crashes the dashboard
+        // ── Recent activity (Critical Actions for this referrer) ───────────
+        $recentActivity = [];
         try {
             $recentActivity = app(CriticalActionService::class)
-                ->forReseller($tenantId, $reseller->name, 6);
-        } catch (\Throwable) {
-            $recentActivity = [];
-        }
+                ->forReseller($tenantId, $reseller->name, 8);
+        } catch (\Throwable) {}
 
         return view('reseller.dashboard', compact(
-            'reseller', 'tenant', 'stats', 'recentLeads',
-            'recentActivity', 'commissionStats', 'unreadCount'
+            'reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity',
+            'commissionStats', 'totalCommission', 'unreadCount',
+            'partnerCount', 'stageBreakdown'
         ));
     }
 
