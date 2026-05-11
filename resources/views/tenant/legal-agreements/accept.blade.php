@@ -88,7 +88,7 @@
                             {{ $agreement->is_required ? '• Required' : '• Optional' }}
                         </span>
                     </div>
-                    <h2 class="font-semibold text-[#1E1B4B] text-base">{{ $agreement->title }}</h2>
+                    <p class="font-bold text-sm mt-1" style="color:#1E1B4B; font-size:0.9rem; line-height:1.4">{{ $agreement->title }}</p>
                 </div>
                 <div x-show="agreed" class="shrink-0">
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
