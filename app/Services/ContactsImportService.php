@@ -1020,7 +1020,7 @@ class ContactsImportService
                     'owner_role'              => $executorRole,
                     'owner_referrer_id'       => $executorResellerId,
                     'imported_from_batch_id'  => $batch->id,
-                    'created_by_user_id'      => $executorId,
+                    'created_by_user_id'      => $executorRole !== 'reseller' ? $executorId : null,
                     'do_not_contact'          => $norm['do_not_contact'] ?? false,
                     'consent_status'          => $norm['consent_status'] ?? null,
                     'data'                    => json_encode([]),
