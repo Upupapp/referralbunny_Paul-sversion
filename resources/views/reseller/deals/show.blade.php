@@ -314,6 +314,9 @@
 
         </div>
 
+        {{-- Tax disclaimer --}}
+        <p class="text-[10px] text-gray-400 mt-3">* All amounts shown are estimates and subject to appropriate taxes and deductions.</p>
+
         {{-- ── Bottom zone: Action Bar ──────────────────────────── --}}
         <div class="mt-5 pt-4 border-t border-gray-100">
 
@@ -562,6 +565,9 @@
         <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
             <p class="text-xs text-gray-400">{{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }} · Total estimated</p>
             <p class="text-sm font-bold text-[#0D9488]">₱{{ number_format($partnersCommission, 0) }}</p>
+        </div>
+        <div class="px-5 py-2 border-t border-gray-50">
+            <p class="text-[10px] text-gray-400">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
         </div>
         @endif
     </div>

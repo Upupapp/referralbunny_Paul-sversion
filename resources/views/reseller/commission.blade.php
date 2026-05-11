@@ -20,6 +20,7 @@
         </div>
         @endforeach
     </div>
+    <p class="text-[10px] text-gray-400 -mt-2">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
 
     {{-- Deal Commission List --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">

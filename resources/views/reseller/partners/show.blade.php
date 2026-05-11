@@ -152,6 +152,7 @@
                     <p class="text-base font-bold text-green-600">₱{{ number_format($paidCommission, 0) }}</p>
                 </div>
             </div>
+            <p class="text-[10px] text-gray-400 mt-3">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
         </div>
 
     </div>
@@ -327,6 +328,7 @@
                 </div>
                 @endforeach
             </div>
+            <p class="text-[10px] text-gray-400 mt-4">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
         </div>
     </div>
 

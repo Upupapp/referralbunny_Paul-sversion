@@ -95,8 +95,9 @@
                     <span class="font-semibold text-emerald-600">₱{{ number_format($commissionStats['paid'] ?? 0) }}</span>
                 </div>
             </div>
+            <p class="text-[10px] text-gray-400 mt-2">* Subject to applicable taxes and deductions.</p>
             <a href="{{ route('reseller.commission', $tenant->id) }}"
-               class="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold" style="color:#0D9488">
+               class="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold" style="color:#0D9488">
                 View Commission →
             </a>
         </div>

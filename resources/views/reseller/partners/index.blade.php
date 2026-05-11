@@ -99,6 +99,7 @@
         </div>
 
     </div>
+    <p class="text-[10px] text-gray-400 -mt-2">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
 
     {{-- ── Search + Filter ────────────────────────────────────── --}}
     @if($partners->isNotEmpty())
