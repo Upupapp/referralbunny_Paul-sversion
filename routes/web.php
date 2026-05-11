@@ -95,7 +95,17 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
     ->name('reseller.')
     ->group(function () {
         Route::get('/dashboard',  [ResellerPortalController::class, 'dashboard'])->name('dashboard');
-        Route::get('/deals',      [ResellerPortalController::class, 'deals'])->name('deals');
+        Route::get('/deals',                                       [ResellerPortalController::class, 'deals'])->name('deals');
+        Route::get('/deals/{dealId}',                              [\App\Http\Controllers\ResellerDealController::class, 'show'])->name('deals.show');
+        Route::post('/deals/{dealId}/notes',                       [\App\Http\Controllers\ResellerDealController::class, 'addNote'])->name('deals.notes');
+        Route::patch('/deals/{dealId}/amount',                     [\App\Http\Controllers\ResellerDealController::class, 'updateAmount'])->name('deals.amount');
+        Route::post('/deals/{dealId}/move-stage',                  [\App\Http\Controllers\ResellerDealController::class, 'moveStage'])->name('deals.move-stage');
+        Route::post('/deals/{dealId}/stage-approval',              [\App\Http\Controllers\ResellerDealController::class, 'requestStageApproval'])->name('deals.stage-approval');
+        Route::post('/deals/{dealId}/archive-request',             [\App\Http\Controllers\ResellerDealController::class, 'requestArchive'])->name('deals.archive-request');
+        Route::post('/deals/{dealId}/partners',                    [\App\Http\Controllers\ResellerDealController::class, 'addPartnerSplit'])->name('deals.partners');
+        Route::post('/deals/{dealId}/referrers',                   [\App\Http\Controllers\ResellerDealController::class, 'addReferrer'])->name('deals.referrers');
+        Route::post('/approvals/{approvalId}/approve',             [\App\Http\Controllers\ResellerDealController::class, 'approveRequest'])->name('approvals.approve');
+        Route::post('/approvals/{approvalId}/reject',              [\App\Http\Controllers\ResellerDealController::class, 'rejectRequest'])->name('approvals.reject');
         Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
         Route::get('/profile',           [ResellerProfileController::class, 'show'])->name('profile');
         Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');

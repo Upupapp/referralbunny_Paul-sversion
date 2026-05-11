@@ -1,0 +1,586 @@
+@extends('layouts.reseller')
+@section('title', $lead->name ?? 'Deal Detail')
+@section('nav') @include('reseller._nav') @endsection
+
+@section('topbar-actions')
+    <a href="{{ route('reseller.deals', $tenantId) }}" class="rs-btn-primary text-sm py-1.5 px-3">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        <span class="hidden sm:inline">My Deals</span>
+    </a>
+@endsection
+
+@section('content')
+@php
+    $BASE    = url("reseller/{$tenantId}/deals/{$lead->id}");
+    $CSRF    = csrf_token();
+
+    $stageLabels = ['introduction' => 'Introduction','presentation' => 'Presentation','contract_sent' => 'Contract Sent','signed' => 'Signed','paid' => 'Paid'];
+    $stageOrder  = ['introduction','presentation','contract_sent','signed','paid'];
+    $currentIdx  = array_search($lead->stage, $stageOrder);
+
+    $pendingStageMoveRequest  = collect($pendingApprovals)->where('type', 'deal_stage_move')->first();
+    $pendingArchiveRequest    = collect($pendingApprovals)->where('type', 'deal_archive')->first();
+
+    $stageColors = ['introduction'=>'#9CA3AF','presentation'=>'#3B82F6','contract_sent'=>'#F59E0B','signed'=>'#8B5CF6','paid'=>'#10B981'];
+    $stageColor  = $stageColors[$lead->stage] ?? '#9CA3AF';
+@endphp
+
+<div x-data="{
+        showAddNote:      false,
+        showUpdateAmount: false,
+        showMoveStage:    false,
+        showArchive:      false,
+        showAddPartner:   false,
+        showAddReferrer:  false,
+
+        noteBody:    '',
+        noteSaving:  false,
+        noteError:   '',
+
+        newAmount:    '{{ number_format((float)($lead->deal_value ?? 0), 2, '.', '') }}',
+        amountReason: '',
+        amountSaving: false,
+        amountError:  '',
+
+        targetStage:    '',
+        stageReason:    '',
+        stageApproval:  false,
+        stageSaving:    false,
+        stageError:     '',
+
+        archiveReason:  '',
+        archiveSaving:  false,
+        archiveError:   '',
+
+        partnerName:    '',
+        partnerEmail:   '',
+        partnerSplit:   '',
+        partnerType:    'percentage',
+        partnerSaving:  false,
+        partnerError:   '',
+
+        refName:        '',
+        refSplit:       '',
+        refSaving:      false,
+        refError:       '',
+
+        toast: '',
+
+        showToast(msg) {
+            this.toast = msg;
+            setTimeout(() => this.toast = '', 4000);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: msg } }));
+        },
+
+        async post(url, body) {
+            const r = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(body),
+            });
+            return { ok: r.ok, data: await r.json().catch(() => ({})) };
+        },
+
+        async patch(url, body) {
+            const r = await fetch(url, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(body),
+            });
+            return { ok: r.ok, data: await r.json().catch(() => ({})) };
+        },
+
+        async saveNote() {
+            if (!this.noteBody.trim() || this.noteSaving) return;
+            this.noteSaving = true; this.noteError = '';
+            const { ok, data } = await this.post('{{ $BASE }}/notes', { body: this.noteBody });
+            this.noteSaving = false;
+            if (!ok) { this.noteError = data.error || 'Could not save note.'; return; }
+            this.showAddNote = false; this.noteBody = '';
+            this.showToast('Note added.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async saveAmount() {
+            if (!this.newAmount || this.amountSaving) return;
+            this.amountSaving = true; this.amountError = '';
+            const { ok, data } = await this.patch('{{ $BASE }}/amount', { deal_value: parseFloat(this.newAmount.replace(/,/g,'')), reason: this.amountReason });
+            this.amountSaving = false;
+            if (!ok) { this.amountError = data.error || 'Could not update amount.'; return; }
+            this.showUpdateAmount = false;
+            this.showToast('Deal amount updated. Admins have been notified.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async moveStage() {
+            if (!this.targetStage || this.stageSaving) return;
+            this.stageSaving = true; this.stageError = '';
+            const url    = this.stageApproval ? '{{ $BASE }}/stage-approval' : '{{ $BASE }}/move-stage';
+            const payload = this.stageApproval
+                ? { target_stage: this.targetStage, reason: this.stageReason }
+                : { stage: this.targetStage, reason: this.stageReason };
+            const { ok, data } = await this.post(url, payload);
+            this.stageSaving = false;
+            if (!ok) { this.stageError = data.error || 'Could not process stage action.'; return; }
+            this.showMoveStage = false;
+            this.showToast(this.stageApproval ? 'Stage approval request submitted.' : 'Stage moved successfully.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async submitArchive() {
+            if (!this.archiveReason.trim() || this.archiveSaving) return;
+            this.archiveSaving = true; this.archiveError = '';
+            const { ok, data } = await this.post('{{ $BASE }}/archive-request', { reason: this.archiveReason });
+            this.archiveSaving = false;
+            if (!ok) { this.archiveError = data.error || 'Could not submit request.'; return; }
+            this.showArchive = false; this.archiveReason = '';
+            this.showToast('Archive request submitted for Admin approval.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async savePartner() {
+            if (!this.partnerName || !this.partnerEmail || !this.partnerSplit || this.partnerSaving) return;
+            this.partnerSaving = true; this.partnerError = '';
+            const { ok, data } = await this.post('{{ $BASE }}/partners', {
+                partner_name: this.partnerName, partner_email: this.partnerEmail,
+                split_share_value: parseFloat(this.partnerSplit), split_share_type: this.partnerType,
+            });
+            this.partnerSaving = false;
+            if (!ok) { this.partnerError = data.error || 'Could not add partner.'; return; }
+            this.showAddPartner = false; this.partnerName = ''; this.partnerEmail = ''; this.partnerSplit = '';
+            this.showToast('Partner added. Admins have been notified.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async saveReferrer() {
+            if (!this.refName || !this.refSplit || this.refSaving) return;
+            this.refSaving = true; this.refError = '';
+            const { ok, data } = await this.post('{{ $BASE }}/referrers', { reseller_name: this.refName, percentage: parseFloat(this.refSplit) });
+            this.refSaving = false;
+            if (!ok) { this.refError = data.error || 'Could not add referrer.'; return; }
+            this.showAddReferrer = false; this.refName = ''; this.refSplit = '';
+            this.showToast('Co-referrer added. Admins have been notified.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+    }" class="space-y-5 max-w-3xl mx-auto">
+
+    {{-- Pending approval banners ──────────────────────────────── --}}
+    @if($pendingStageMoveRequest)
+    <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+        <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div>
+            <p class="text-sm font-semibold text-amber-700">Stage change requested — Pending Admin approval</p>
+            <p class="text-xs text-amber-600 mt-0.5">
+                You requested to move this deal to <strong>{{ ucfirst(str_replace('_', ' ', $pendingStageMoveRequest['request_payload']['target_stage'] ?? '')) }}</strong>.
+                An Admin or Manager will review your request.
+            </p>
+        </div>
+    </div>
+    @endif
+
+    @if($pendingArchiveRequest)
+    <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-red-50 border border-red-200">
+        <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/>
+        </svg>
+        <div>
+            <p class="text-sm font-semibold text-red-700">Archive requested — Pending Admin approval</p>
+            <p class="text-xs text-red-600 mt-0.5">Reason: {{ $pendingArchiveRequest['reason'] ?? '—' }}</p>
+        </div>
+    </div>
+    @endif
+
+    {{-- Deal Summary card ─────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-base font-bold shrink-0"
+                 style="background:{{ $stageColor }}">
+                {{ strtoupper(substr($lead->name ?? '??', 0, 2)) }}
+            </div>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-lg font-bold text-[#1E1B4B] truncate">{{ $lead->name }}</h1>
+                <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white"
+                          style="background:{{ $stageColor }}">
+                        {{ $stageLabels[$lead->stage] ?? ucfirst($lead->stage) }}
+                    </span>
+                    @if($lead->status === 'expiring')
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Expiring</span>
+                    @endif
+                    @if($lead->status === 'expired')
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Expired</span>
+                    @endif
+                </div>
+                @if($lead->data['province'] ?? null)
+                <p class="text-xs text-gray-400 mt-1">{{ $lead->data['province'] }}{{ ($lead->data['municipality'] ?? null) ? ' · ' . $lead->data['municipality'] : '' }}</p>
+                @endif
+            </div>
+            <div class="text-right shrink-0">
+                <p class="text-xl font-bold text-[#1E1B4B]">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">Deal Value</p>
+                @if($lead->days_left !== null && $lead->stage !== 'paid')
+                <p class="text-xs font-medium mt-1 {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
+                    {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
+                </p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Action buttons --}}
+        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-50">
+            <button @click="showAddNote = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                    style="background:#0D9488">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Add Note
+            </button>
+            <button @click="showUpdateAmount = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Update Amount
+            </button>
+            @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
+            <button @click="showMoveStage = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                Move Stage
+            </button>
+            @endif
+            <button @click="showAddPartner = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Add Partner
+            </button>
+            <button @click="showAddReferrer = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Add Co-Referrer
+            </button>
+            @if(!$pendingArchiveRequest)
+            <button @click="showArchive = true"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors ml-auto">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                Request Archive
+            </button>
+            @endif
+        </div>
+    </div>
+
+    {{-- Stage Tracker ─────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h2 class="text-sm font-bold text-[#1E1B4B] mb-4">Stage Progress</h2>
+        <div class="flex items-center gap-0">
+            @foreach($stageOrder as $i => $stage)
+            @php
+                $isDone    = $i < $currentIdx;
+                $isCurrent = $i === $currentIdx;
+                $color     = $stageColors[$stage] ?? '#9CA3AF';
+            @endphp
+            <div class="flex-1 flex flex-col items-center">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 z-10"
+                     style="background:{{ $isDone || $isCurrent ? $color : '#E5E7EB' }}">
+                    @if($isDone)
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    @else
+                        {{ $i + 1 }}
+                    @endif
+                </div>
+                <p class="text-[9px] font-medium mt-1 text-center leading-tight {{ $isCurrent ? 'text-[#1E1B4B]' : 'text-gray-400' }}">
+                    {{ $stageLabels[$stage] ?? $stage }}
+                </p>
+            </div>
+            @if(!$loop->last)
+            <div class="flex-1 h-0.5 -mt-4" style="background:{{ $i < $currentIdx ? $color : '#E5E7EB' }}"></div>
+            @endif
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Commission / Splits ───────────────────────────────────── --}}
+    @if(count($splits) > 0 || count($partnerSplits) > 0)
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h2 class="text-sm font-bold text-[#1E1B4B] mb-3">Commission & Splits</h2>
+        @if(count($splits) > 0)
+        <div class="space-y-2 mb-3">
+            @foreach($splits as $split)
+            <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" style="background:#7B61FF"></span>
+                    <span class="text-gray-700">{{ $split->reseller_name }} <span class="text-[10px] text-gray-400 ml-1">{{ ucfirst($split->role ?? 'referrer') }}</span></span>
+                </div>
+                <span class="font-semibold text-[#1E1B4B]">{{ $split->percentage }}%</span>
+            </div>
+            @endforeach
+        </div>
+        @endif
+        @foreach($partnerSplits as $ps)
+        <div class="flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full" style="background:#0D9488"></span>
+                <span class="text-gray-700">{{ $ps->partner_name ?? 'Partner' }} <span class="text-[10px] text-gray-400 ml-1">Partner</span></span>
+            </div>
+            <span class="font-semibold text-[#1E1B4B]">{{ $ps->split_share_value }}{{ $ps->split_share_type === 'percentage' ? '%' : ' (fixed)' }}</span>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
+    {{-- Notes ────────────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+            <h2 class="text-sm font-bold text-[#1E1B4B]">Notes</h2>
+            <button @click="showAddNote = true" class="text-xs text-teal-600 font-semibold hover:underline">+ Add Note</button>
+        </div>
+        @if(count($notes) === 0)
+        <div class="px-5 py-8 text-center text-xs text-gray-400">No notes yet. Add your first note above.</div>
+        @else
+        <div class="divide-y divide-gray-50">
+            @foreach($notes as $note)
+            <div class="px-5 py-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-semibold text-gray-700">{{ $note['author'] ?? 'Unknown' }}</span>
+                    <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($note['created_at'])->diffForHumans() }}</span>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">{{ $note['text'] }}</p>
+            </div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+
+    {{-- Activity Timeline ─────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="px-5 py-3.5 border-b border-gray-100">
+            <h2 class="text-sm font-bold text-[#1E1B4B]">Activity</h2>
+        </div>
+        @if(count($history) === 0)
+        <div class="px-5 py-8 text-center text-xs text-gray-400">No activity recorded yet.</div>
+        @else
+        <div class="divide-y divide-gray-50">
+            @foreach($history as $h)
+            <div class="px-5 py-3 flex items-start gap-3">
+                <span class="w-1.5 h-1.5 rounded-full bg-gray-300 mt-2 shrink-0"></span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs text-gray-700">{{ $h->action ?? 'Activity recorded' }}</p>
+                    @if($h->actor_name ?? null)
+                    <p class="text-[10px] text-gray-400 mt-0.5">{{ $h->actor_name }} · {{ \Carbon\Carbon::parse($h->created_at)->diffForHumans() }}</p>
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+
+    {{-- ── MODALS ────────────────────────────────────────────────── --}}
+
+    {{-- Add Note modal --}}
+    <div x-show="showAddNote" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Add Note</h3>
+                <button @click="showAddNote = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-4">
+                <textarea x-model="noteBody" rows="4" placeholder="Write your note…"
+                          class="form-input w-full text-sm resize-none" required></textarea>
+                <div x-show="noteError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="noteError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showAddNote = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="saveNote()" :disabled="!noteBody.trim() || noteSaving"
+                        class="rs-btn-primary text-sm" x-text="noteSaving ? 'Saving…' : 'Add Note'"></button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Update Amount modal --}}
+    <div x-show="showUpdateAmount" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Update Deal Amount</h3>
+                <button @click="showUpdateAmount = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Changing the deal amount updates the financial breakdown and may affect commission calculations. Admins and Managers will be notified.
+                </div>
+                <div>
+                    <label class="form-label">New Deal Amount (₱)</label>
+                    <input x-model="newAmount" type="number" min="1" step="0.01" placeholder="0.00" class="form-input w-full">
+                </div>
+                <div>
+                    <label class="form-label">Reason for change <span class="text-red-400">*</span></label>
+                    <textarea x-model="amountReason" rows="2" placeholder="Explain why the amount is changing…" class="form-input w-full text-sm resize-none"></textarea>
+                </div>
+                <div x-show="amountError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="amountError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showUpdateAmount = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="saveAmount()" :disabled="!newAmount || !amountReason.trim() || amountSaving"
+                        class="rs-btn-primary text-sm" x-text="amountSaving ? 'Updating…' : 'Update Amount'"></button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Move Stage modal --}}
+    <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Move Deal Stage</h3>
+                <button @click="showMoveStage = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div>
+                    <label class="form-label">Move to Stage</label>
+                    <select x-model="targetStage" class="form-input w-full">
+                        <option value="">Select target stage…</option>
+                        @foreach($stageOrder as $s)
+                            @if($s !== $lead->stage)
+                            <option value="{{ $s }}">{{ $stageLabels[$s] }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <input type="checkbox" x-model="stageApproval" id="stageApprovalChk" class="w-4 h-4 rounded accent-[#7B61FF]">
+                    <label for="stageApprovalChk" class="text-sm text-gray-600 cursor-pointer">
+                        Request Admin approval instead (required if documents are missing)
+                    </label>
+                </div>
+                <div>
+                    <label class="form-label">Note / Reason <span x-show="stageApproval" class="text-red-400">*</span></label>
+                    <textarea x-model="stageReason" rows="2" placeholder="Optional note or reason…" class="form-input w-full text-sm resize-none"></textarea>
+                </div>
+                <div x-show="stageError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="stageError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showMoveStage = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="moveStage()" :disabled="!targetStage || (stageApproval && !stageReason.trim()) || stageSaving"
+                        class="rs-btn-primary text-sm"
+                        x-text="stageSaving ? 'Processing…' : (stageApproval ? 'Request Approval' : 'Move Stage')"></button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Archive Request modal --}}
+    <div x-show="showArchive" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Request Deal Archive</h3>
+                <button @click="showArchive = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                    Archiving this deal requires Admin or Manager approval. The deal will remain active until approved.
+                </div>
+                <div>
+                    <label class="form-label">Reason for archiving <span class="text-red-400">*</span></label>
+                    <select x-model="archiveReason" class="form-input w-full mb-2">
+                        <option value="">Select a reason…</option>
+                        <option>LGU no longer interested</option>
+                        <option>Duplicate deal</option>
+                        <option>Wrong LGU / contact</option>
+                        <option>Deal inactive</option>
+                        <option>Replaced by another deal</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div x-show="archiveError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="archiveError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showArchive = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="submitArchive()" :disabled="!archiveReason || archiveSaving"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+                        x-text="archiveSaving ? 'Submitting…' : 'Submit Archive Request'"></button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Add Partner modal --}}
+    <div x-show="showAddPartner" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Add Partner</h3>
+                <button @click="showAddPartner = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label">Partner Name <span class="text-red-400">*</span></label>
+                        <input x-model="partnerName" type="text" class="form-input w-full text-sm" placeholder="Full name">
+                    </div>
+                    <div>
+                        <label class="form-label">Partner Email <span class="text-red-400">*</span></label>
+                        <input x-model="partnerEmail" type="email" class="form-input w-full text-sm" placeholder="email@example.com">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label">Split Amount <span class="text-red-400">*</span></label>
+                        <input x-model="partnerSplit" type="number" min="0.01" step="0.01" class="form-input w-full text-sm">
+                    </div>
+                    <div>
+                        <label class="form-label">Split Type</label>
+                        <select x-model="partnerType" class="form-input w-full text-sm">
+                            <option value="percentage">Percentage (%)</option>
+                            <option value="fixed_amount">Fixed Amount (₱)</option>
+                        </select>
+                    </div>
+                </div>
+                <div x-show="partnerError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="partnerError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showAddPartner = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="savePartner()" :disabled="!partnerName || !partnerEmail || !partnerSplit || partnerSaving"
+                        class="rs-btn-primary text-sm" x-text="partnerSaving ? 'Saving…' : 'Add Partner'"></button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Add Co-Referrer modal --}}
+    <div x-show="showAddReferrer" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 class="font-bold text-[#1E1B4B]">Add Co-Referrer</h3>
+                <button @click="showAddReferrer = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div>
+                    <label class="form-label">Referrer Name <span class="text-red-400">*</span></label>
+                    <input x-model="refName" type="text" class="form-input w-full text-sm" placeholder="Exact name in the system">
+                </div>
+                <div>
+                    <label class="form-label">Commission Share (%) <span class="text-red-400">*</span></label>
+                    <input x-model="refSplit" type="number" min="0" max="100" step="0.01" class="form-input w-full text-sm" placeholder="0–100">
+                </div>
+                <div x-show="refError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="refError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showAddReferrer = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="saveReferrer()" :disabled="!refName || !refSplit || refSaving"
+                        class="rs-btn-primary text-sm" x-text="refSaving ? 'Adding…' : 'Add Co-Referrer'"></button>
+            </div>
+        </div>
+    </div>
+
+</div>
+@endsection

@@ -98,7 +98,8 @@
                                          :style="`background:${stageColor(d.stage)}`"
                                          x-text="(d.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
-                                        <p class="font-medium text-sm truncate" style="color:#1E1B4B" x-text="d.name"></p>
+                                        <a :href="`/reseller/{{ $tenant->id }}/deals/${d.id}`"
+                                           class="font-medium text-sm truncate block hover:underline" style="color:#1E1B4B" x-text="d.name"></a>
                                         <p class="text-xs text-gray-400 truncate" x-text="d.data?.province || ''"></p>
                                         {{-- Partner info visible on mobile (md and below hides the Partner column) --}}
                                         <div class="md:hidden mt-0.5" x-show="(d.partners||[]).length > 0">
