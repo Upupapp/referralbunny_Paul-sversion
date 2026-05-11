@@ -247,8 +247,8 @@ document.addEventListener('alpine:init', () => {
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[4fr_3fr_5fr] gap-4">
 
         {{-- Bar Chart: Referral Pipeline --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 overflow-hidden" style="display:flex;flex-direction:column;min-height:220px;max-height:280px">
-            <div class="flex items-center justify-between mb-4 shrink-0">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div class="flex items-center justify-between mb-5">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Pipeline</h3>
                 <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
                     <option>Monthly</option><option>Quarterly</option><option>All Time</option>
@@ -256,53 +256,56 @@ document.addEventListener('alpine:init', () => {
             </div>
 
             {{-- Empty state --}}
-            <div x-show="funnel.length===0" class="flex items-center justify-center flex-1 text-sm text-gray-400">No pipeline data yet</div>
+            <div x-show="funnel.length===0"
+                 class="flex flex-col items-center justify-center text-center py-8">
+                <p class="text-sm text-gray-300 font-medium">No deals yet</p>
+                <p class="text-xs text-gray-300 mt-0.5">Pipeline will appear as deals are submitted</p>
+            </div>
 
-            {{-- Chart body --}}
-            <div x-show="funnel.length>0" style="flex:1;min-height:0;display:flex;gap:8px;align-items:flex-end">
-                {{-- Y-axis labels --}}
-                <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;width:16px;flex-shrink:0;padding-bottom:22px;height:100%">
-                    <span class="text-[9px] text-gray-300" x-text="maxCount"></span>
-                    <span class="text-[9px] text-gray-300" x-text="Math.ceil(maxCount*.5)"></span>
-                    <span class="text-[9px] text-gray-300">0</span>
-                </div>
-                {{-- Bars area --}}
-                <div style="flex:1;position:relative;height:100%;overflow:hidden">
-                    {{-- Dashed grid lines --}}
-                    <div style="position:absolute;inset:0;padding-bottom:22px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none" aria-hidden="true">
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
-                        <div class="border-t border-dashed border-gray-100 w-full"></div>
-                    </div>
-                    {{-- Bars row --}}
-                    <div style="position:absolute;bottom:0;left:0;right:0;display:flex;align-items:flex-end;justify-content:space-around;gap:4px">
-                        <template x-for="stage in funnel" :key="stage.stage">
-                            <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
-                                 style="flex:1;max-width:52px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative">
-                                {{-- Tooltip --}}
-                                <div x-show="hov" x-cloak
-                                     class="absolute z-10 bg-[#1E1B4B] text-white rounded-xl px-3 py-2 text-center shadow-lg pointer-events-none"
-                                     style="bottom:calc(100% + 4px);white-space:nowrap;left:50%;transform:translateX(-50%);min-width:80px">
-                                    <p class="text-[10px] text-white/60" x-text="stage.label"></p>
-                                    <p class="text-sm font-bold" x-text="stage.count+' deals'"></p>
-                                </div>
-                                {{-- Bar --}}
-                                <div class="w-full relative overflow-hidden transition-all duration-300"
-                                     :style="`height:${maxCount>0 ? Math.max(8,(stage.count/maxCount)*110) : 8}px;border-radius:6px 6px 3px 3px`">
-                                    <div class="absolute inset-0" style="background:rgba(123,97,255,.10)"></div>
-                                    <div class="absolute inset-0 hatch-bar transition-opacity duration-150"
-                                         :style="`opacity:${hov?0:1}`"></div>
-                                    <div class="absolute inset-0 transition-opacity duration-150"
-                                         style="background:#7B61FF"
-                                         :style="`opacity:${hov?1:0}`"></div>
-                                </div>
-                                {{-- Label --}}
-                                <span class="text-[9px] text-gray-400 text-center leading-tight w-full truncate px-0.5"
-                                      style="height:20px;line-height:20px"
-                                      x-text="stage.label"></span>
+            {{-- Chart: fixed 140px bar area + 24px labels = 164px total --}}
+            <div x-show="funnel.length>0">
+                {{-- Bars --}}
+                <div class="flex items-end justify-around gap-2" style="height:140px">
+                    <template x-for="stage in funnel" :key="stage.stage">
+                        <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
+                             class="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer relative"
+                             style="max-width:60px;height:140px">
+                            {{-- Count label on top of bar --}}
+                            <span class="text-[10px] font-semibold text-[#7B61FF] transition-opacity"
+                                  :class="stage.count>0 ? 'opacity-100' : 'opacity-0'"
+                                  x-text="stage.count"></span>
+                            {{-- Tooltip --}}
+                            <div x-show="hov" x-cloak
+                                 class="absolute z-20 bg-[#1E1B4B] text-white rounded-xl px-3 py-2 text-center shadow-xl pointer-events-none"
+                                 style="bottom:calc(100% + 4px);white-space:nowrap;left:50%;transform:translateX(-50%);min-width:88px">
+                                <p class="text-[10px] text-white/50" x-text="stage.label"></p>
+                                <p class="text-sm font-bold" x-text="stage.count+' deal'+(stage.count!==1?'s':'')"></p>
                             </div>
-                        </template>
-                    </div>
+                            {{-- Bar itself --}}
+                            <div class="w-full rounded-t-lg overflow-hidden transition-all duration-300 relative"
+                                 :style="`height:${maxCount>0 ? Math.max(6, (stage.count/maxCount)*118) : 6}px`">
+                                {{-- Base fill --}}
+                                <div class="absolute inset-0 transition-opacity duration-200"
+                                     style="background:rgba(123,97,255,0.08)"
+                                     :style="`opacity:${hov?0:1}`"></div>
+                                {{-- Hatch pattern --}}
+                                <div class="absolute inset-0 hatch-bar transition-opacity duration-200"
+                                     :style="`opacity:${hov?0:1}`"></div>
+                                {{-- Solid hover fill --}}
+                                <div class="absolute inset-0 transition-opacity duration-200"
+                                     style="background:linear-gradient(180deg,#9B8BFF,#7B61FF)"
+                                     :style="`opacity:${hov?1:0}`"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                {{-- X-axis stage labels --}}
+                <div class="flex items-start justify-around gap-2 mt-2 border-t border-gray-50 pt-2">
+                    <template x-for="stage in funnel" :key="'lbl_'+stage.stage">
+                        <span class="flex-1 text-center text-[9px] text-gray-400 leading-tight px-0.5 truncate"
+                              style="max-width:60px"
+                              x-text="stage.label"></span>
+                    </template>
                 </div>
             </div>
         </div>
