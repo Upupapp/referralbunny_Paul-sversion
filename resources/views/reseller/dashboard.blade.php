@@ -279,51 +279,7 @@
     </div>
     @endif
 
-    {{-- ── 5. DEAL PIPELINE BY STAGE ─────────────────────────────────────── --}}
-    @if($hasDeals && !empty($stageBreakdown))
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-            <div class="flex items-center gap-1.5">
-                <p class="text-sm font-bold" style="color:#1E1B4B">My Deal Pipeline</p>
-                <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @keydown.escape.window="open = false"
-                            aria-label="Explain My Deal Pipeline"
-                            class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-gray-200 transition-colors">
-                        i
-                    </button>
-                    <div x-show="open" @click.outside="open = false" x-cloak
-                         x-transition:enter="transition ease-out duration-150"
-                         x-transition:enter-start="opacity-0 scale-95"
-                         x-transition:enter-end="opacity-100 scale-100"
-                         class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                        <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
-                        <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">My Deal Pipeline</p>
-                        <p class="text-xs text-gray-500 leading-relaxed">Where your assigned deals are in the pipeline. Moving deals forward may require notes, documents, approvals, or completed tasks depending on the stage.</p>
-                    </div>
-                </div>
-            </div>
-            <a href="{{ route('reseller.deals', $tenant->id) }}"
-               class="text-xs font-semibold" style="color:#0D9488">View all →</a>
-        </div>
-        <div class="grid grid-cols-5 divide-x divide-gray-50">
-            @foreach($stageBreakdown as $stage => $data)
-            @php $color = $stageColors[$stage] ?? '#9CA3AF'; @endphp
-            <div class="flex flex-col items-center py-4 px-2 text-center">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold mb-2"
-                     style="background:{{ $color }}">
-                    {{ $data['count'] }}
-                </div>
-                <p class="text-[9px] sm:text-[10px] font-semibold text-gray-600 leading-tight">{{ $stageLabels[$stage] ?? $stage }}</p>
-                @if($data['value'] > 0)
-                <p class="text-[9px] text-gray-400 mt-1">₱{{ $data['value'] >= 1000000 ? number_format($data['value']/1000000, 1).'M' : number_format($data['value']/1000, 0).'K' }}</p>
-                @endif
-            </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
-    {{-- ── 6. RECENT DEALS ──────────────────────────────────────────────── --}}
+    {{-- ── 5. RECENT DEALS ──────────────────────────────────────────────── --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <div class="flex items-center gap-1.5">
