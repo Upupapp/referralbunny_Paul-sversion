@@ -196,7 +196,7 @@
                         <th>Details</th>
                         <th>Deals</th>
                         <th class="hidden sm:table-cell flex items-center gap-1">Closed Value @if($showLocation ?? false)<x-tax-tip />@endif</th>
-                        <th class="hidden md:table-cell">Performance</th>
+                        <th class="hidden md:table-cell">Est. Commission</th>
                         <th>Status</th>
                         <th class="hidden lg:table-cell" x-show="totalRequiredAgreements > 0">Agreements</th>
                         <th class="hidden lg:table-cell" x-show="totalRequiredDocs > 0">Documents</th>
@@ -293,14 +293,15 @@
                             </td>
                             <td class="hidden sm:table-cell font-semibold text-[#1E1B4B] tabular-nums" x-text="formatValue(r.closed_value)"></td>
                             <td class="hidden md:table-cell">
-                                <div class="flex items-center gap-2 min-w-24">
-                                    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full rounded-full transition-all"
-                                             :class="(r.performance_score||0) >= 70 ? 'bg-emerald-500' : (r.performance_score||0) >= 40 ? 'bg-orange-400' : 'bg-gray-300'"
-                                             :style="'width:' + Math.min(r.performance_score||0, 100) + '%'"></div>
+                                <template x-if="(r.total_commission || 0) > 0">
+                                    <div>
+                                        <span class="text-sm font-semibold text-[#0D9488] tabular-nums"
+                                              x-text="'₱' + Math.round(r.total_commission || 0).toLocaleString()"></span>
                                     </div>
-                                    <span class="text-xs tabular-nums text-gray-500" x-text="(r.performance_score||0) + '%'"></span>
-                                </div>
+                                </template>
+                                <template x-if="!(r.total_commission || 0)">
+                                    <span class="text-sm text-gray-300">—</span>
+                                </template>
                             </td>
                             <td>
                                 <span :class="{

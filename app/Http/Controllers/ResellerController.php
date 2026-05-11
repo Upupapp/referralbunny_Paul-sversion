@@ -73,11 +73,14 @@ class ResellerController extends Controller
             fn ($r) => $this->applyAnonymityMask($r, $isTenantAdmin)
         );
 
-        // Compute real deal count from the leads table (assigned_leads column is never auto-incremented)
+        // Compute real deal count + total commission from the leads table.
         $effectiveTenantId = TenantContext::id() ?? $request->get('tenant_id');
         $resellerNames     = $paginated->getCollection()->pluck('name')->filter()->values()->all();
         $dealCounts        = collect();
+        $commissionTotals  = [];
+
         if ($effectiveTenantId && count($resellerNames) > 0) {
+            // Deal counts
             $dealCounts = DB::table('leads')
                 ->where('tenant_id', $effectiveTenantId)
                 ->whereNotIn('status', ['expired', 'declined'])
@@ -85,10 +88,51 @@ class ResellerController extends Controller
                 ->groupBy('reseller_name')
                 ->selectRaw('reseller_name, count(*) as deal_count')
                 ->pluck('deal_count', 'reseller_name');
+
+            // Commission: pool per lead × referrer's split % (100% default when no split record)
+            $leadsData = DB::table('leads')
+                ->where('tenant_id', $effectiveTenantId)
+                ->whereNotIn('status', ['expired', 'declined'])
+                ->whereIn('reseller_name', $resellerNames)
+                ->select('id', 'reseller_name', 'deal_value', 'base_cost', 'added_amount', 'tenant_id')
+                ->get();
+
+            $leadIds = $leadsData->pluck('id')->all();
+            $splitsByLead = count($leadIds) > 0
+                ? DB::table('commission_splits')
+                    ->whereIn('lead_id', $leadIds)
+                    ->select('lead_id', 'reseller_name', 'percentage')
+                    ->get()
+                    ->groupBy('lead_id')
+                : collect();
+
+            foreach ($leadsData as $lead) {
+                // Pool = 70% of added_amount; fall back to LGU IDS pricing for zero-aa leads
+                $dv = (float) $lead->deal_value;
+                $bc = (float) $lead->base_cost;
+                $aa = (float) $lead->added_amount;
+
+                if ($aa <= 0 && $bc <= 0 && $dv > 0 && ($lead->tenant_id ?? '') === 'lgu-ids') {
+                    $bc = \App\Services\LguIds\LguIdsPricingService::lookupBaseCost($dv);
+                    $aa = $dv - $bc;
+                } elseif ($aa <= 0 && $dv > 0) {
+                    $aa = $dv; // generic legacy fallback
+                }
+
+                $pool = round($aa * 0.70, 2);
+
+                $leadsplits    = $splitsByLead->get($lead->id, collect());
+                $referrerSplit = $leadsplits->firstWhere('reseller_name', $lead->reseller_name);
+                $pct           = $referrerSplit ? (float) $referrerSplit->percentage : 100.0;
+
+                $name = $lead->reseller_name;
+                $commissionTotals[$name] = ($commissionTotals[$name] ?? 0.0) + ($pool * $pct / 100);
+            }
         }
 
-        $resellers = $resellers->map(function ($r) use ($dealCounts) {
-            $r['assigned_leads'] = (int) ($dealCounts[$r['name']] ?? 0);
+        $resellers = $resellers->map(function ($r) use ($dealCounts, $commissionTotals) {
+            $r['assigned_leads']     = (int) ($dealCounts[$r['name']] ?? 0);
+            $r['total_commission']   = round($commissionTotals[$r['name']] ?? 0.0, 2);
             return $r;
         });
 
