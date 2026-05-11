@@ -37,17 +37,25 @@ class TenantDealImportController extends Controller
     // ── Guards / helpers ──────────────────────────────────────────
 
     /**
-     * Resolve the tenant and hard-block lgu-ids from using this generic controller.
+     * Resolve the tenant. lgu-ids is blocked for admins (they use LguIdsImportController)
+     * but allowed for resellers who use the generic import form.
      */
     private function resolveTenant(string $tenantId): Tenant
     {
         $tenant = Tenant::findOrFail($tenantId);
-        abort_if(
-            $tenant->id === 'lgu-ids',
-            403,
-            'LGU IDS uses its own dedicated import system. Please use the LGU IDS import section.'
-        );
+        if (!$this->isReseller()) {
+            abort_if(
+                $tenant->id === 'lgu-ids',
+                403,
+                'LGU IDS uses its own dedicated import system. Please use the LGU IDS import section.'
+            );
+        }
         return $tenant;
+    }
+
+    private function isReseller(): bool
+    {
+        return Auth::guard('reseller')->check();
     }
 
     private function authId(): string
@@ -57,6 +65,11 @@ class TenantDealImportController extends Controller
             ?? Auth::guard('reseller')->id()
             ?? Auth::id()
         );
+    }
+
+    private function authResellerId(): ?string
+    {
+        return $this->isReseller() ? (string) Auth::guard('reseller')->id() : null;
     }
 
     private function authRole(): string
@@ -75,6 +88,23 @@ class TenantDealImportController extends Controller
         abort_if(Auth::guard('partner')->check(), 403, 'Partners cannot access the import centre.');
     }
 
+    /** Return the correct named routes based on who is accessing. */
+    private function routeNames(): array
+    {
+        if ($this->isReseller()) {
+            return [
+                'index'   => 'reseller.deals.imports',
+                'preview' => 'reseller.deals.imports.preview',
+                'show'    => 'reseller.deals.imports.show',
+            ];
+        }
+        return [
+            'index'   => 'tenant.imports.deals',
+            'preview' => 'tenant.imports.deals.preview',
+            'show'    => 'tenant.imports.deals.show',
+        ];
+    }
+
     // ── Index ─────────────────────────────────────────────────────
 
     public function index(string $tenantId)
@@ -84,18 +114,25 @@ class TenantDealImportController extends Controller
         $settings = $this->service->getSettings($tenantId);
         $template = $this->service->getTemplate($tenantId);
 
-        $batches = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals')
-            ->orderByDesc('created_at')
-            ->paginate(10);
+        $query = ImportBatch::where('tenant_id', $tenantId)
+            ->where('import_type', 'generic_deals');
+
+        // Resellers see only their own batches
+        if ($this->isReseller()) {
+            $query->where('imported_by_id', $this->authId());
+        }
+
+        $batches = $query->orderByDesc('created_at')->paginate(10);
 
         $pendingInvites = PendingReferrerInvite::where('tenant_id', $tenantId)
             ->where('status', 'pending_invite')
             ->count();
 
-        return view('tenant.imports.deals.index', compact(
-            'tenant', 'batches', 'pendingInvites', 'settings', 'template'
-        ));
+        $view = $this->isReseller()
+            ? 'reseller.deals.imports.index'
+            : 'tenant.imports.deals.index';
+
+        return view($view, compact('tenant', 'batches', 'pendingInvites', 'settings', 'template'));
     }
 
     // ── Download CSV template ─────────────────────────────────────
@@ -126,22 +163,32 @@ class TenantDealImportController extends Controller
             'file' => 'required|file|mimes:csv,xlsx|max:10240',
         ]);
 
+        $routes = $this->routeNames();
+
         try {
             $batch = $this->service->createBatch(
-                file:            $request->file('file'),
-                tenantId:        $tenantId,
-                importedById:    $this->authId(),
-                importedByRole:  $this->authRole(),
+                file:           $request->file('file'),
+                tenantId:       $tenantId,
+                importedById:   $this->authId(),
+                importedByRole: $this->authRole(),
             );
         } catch (\InvalidArgumentException $e) {
             return redirect()
-                ->route('tenant.imports.deals', $tenantId)
+                ->route($routes['index'], $tenantId)
                 ->withErrors(['file' => $e->getMessage()])
+                ->withInput();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('DealImport::upload failed', [
+                'tenant_id' => $tenantId, 'role' => $this->authRole(), 'error' => $e->getMessage(),
+            ]);
+            return redirect()
+                ->route($routes['index'], $tenantId)
+                ->withErrors(['file' => 'Upload failed. Please try again or contact support.'])
                 ->withInput();
         }
 
         return redirect()
-            ->route('tenant.imports.deals.preview', [$tenantId, $batch->id])
+            ->route($routes['preview'], [$tenantId, $batch->id])
             ->with('success', 'File uploaded. Review your import below before confirming.');
     }
 
@@ -151,9 +198,13 @@ class TenantDealImportController extends Controller
     {
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
-        $batch  = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals')
-            ->findOrFail($batchId);
+
+        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
+            ->where('import_type', 'generic_deals');
+        if ($this->isReseller()) {
+            $batchQuery->where('imported_by_id', $this->authId());
+        }
+        $batch = $batchQuery->findOrFail($batchId);
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -161,7 +212,6 @@ class TenantDealImportController extends Controller
         $grouped = $rows->groupBy('validation_status');
         $summary = $rows->groupBy('validation_status')->map->count();
 
-        // Build the list of known/canonical field names for the unmapped-column mapper.
         $settings = \App\Models\TenantImportSettings::forTenant($tenantId);
         $template = config('referralbunny_import_templates')[$settings->industry_template_key ?? 'default']
             ?? config('referralbunny_import_templates.default')
@@ -172,9 +222,11 @@ class TenantDealImportController extends Controller
             array_values($template['aliases'] ?? []),
         )));
 
-        return view('tenant.imports.deals.preview', compact(
-            'tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields'
-        ));
+        $view = $this->isReseller()
+            ? 'reseller.deals.imports.preview'
+            : 'tenant.imports.deals.preview';
+
+        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields'));
     }
 
     // ── Approve single row (JSON) ─────────────────────────────────
@@ -249,28 +301,41 @@ class TenantDealImportController extends Controller
     {
         $this->guardCheck();
         $this->resolveTenant($tenantId);
+        $routes = $this->routeNames();
 
-        $batch = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals')
-            ->findOrFail($batchId);
+        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
+            ->where('import_type', 'generic_deals');
+        if ($this->isReseller()) {
+            $batchQuery->where('imported_by_id', $this->authId());
+        }
+        $batch = $batchQuery->findOrFail($batchId);
 
         if ($batch->status !== 'previewed') {
             return redirect()
-                ->route('tenant.imports.deals.preview', [$tenantId, $batchId])
+                ->route($routes['preview'], [$tenantId, $batchId])
                 ->withErrors([
                     'import' => "Import cannot be executed in '{$batch->status}' status. It must be in 'previewed' state.",
                 ]);
         }
 
-        $result = $this->service->executeImport(
-            batch:        $batch,
-            tenantId:     $tenantId,
-            executorId:   $this->authId(),
-            executorRole: $this->authRole(),
-        );
+        try {
+            $result = $this->service->executeImport(
+                batch:        $batch,
+                tenantId:     $tenantId,
+                executorId:   $this->authId(),
+                executorRole: $this->authRole(),
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('DealImport::execute failed', [
+                'tenant_id' => $tenantId, 'batch_id' => $batchId, 'error' => $e->getMessage(),
+            ]);
+            return redirect()
+                ->route($routes['preview'], [$tenantId, $batchId])
+                ->withErrors(['import' => 'Import failed. Please try again or contact support.']);
+        }
 
         return redirect()
-            ->route('tenant.imports.deals.show', [$tenantId, $batchId])
+            ->route($routes['show'], [$tenantId, $batchId])
             ->with('success',
                 "Import complete. Created: {$result['created']}, "
                 . "Updated: {$result['updated']}, "
@@ -285,9 +350,13 @@ class TenantDealImportController extends Controller
     {
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
-        $batch  = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals')
-            ->findOrFail($batchId);
+
+        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
+            ->where('import_type', 'generic_deals');
+        if ($this->isReseller()) {
+            $batchQuery->where('imported_by_id', $this->authId());
+        }
+        $batch = $batchQuery->findOrFail($batchId);
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -296,9 +365,11 @@ class TenantDealImportController extends Controller
         $grouped = $allRows->groupBy('validation_status');
         $summary = $allRows->groupBy('validation_status')->map->count();
 
-        return view('tenant.imports.deals.show', compact(
-            'tenant', 'batch', 'rows', 'grouped', 'summary'
-        ));
+        $view = $this->isReseller()
+            ? 'reseller.deals.imports.show'
+            : 'tenant.imports.deals.show';
+
+        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary'));
     }
 
     // ── Download failed rows CSV ──────────────────────────────────

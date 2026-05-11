@@ -96,6 +96,15 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
     ->group(function () {
         Route::get('/dashboard',  [ResellerPortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/deals',                                       [ResellerPortalController::class, 'deals'])->name('deals');
+        // ── Deal Import (Referrer) — must be before /deals/{dealId} to avoid route conflict
+        Route::get('/deals/imports',                                   [\App\Http\Controllers\Web\TenantDealImportController::class, 'index'])->name('deals.imports');
+        Route::get('/deals/imports/template',                          [\App\Http\Controllers\Web\TenantDealImportController::class, 'downloadTemplate'])->name('deals.imports.template');
+        Route::post('/deals/imports/upload',                           [\App\Http\Controllers\Web\TenantDealImportController::class, 'upload'])->name('deals.imports.upload');
+        Route::get('/deals/imports/{batchId}',                         [\App\Http\Controllers\Web\TenantDealImportController::class, 'preview'])->name('deals.imports.preview');
+        Route::post('/deals/imports/{batchId}/rows/{rowId}',           [\App\Http\Controllers\Web\TenantDealImportController::class, 'approveRow'])->name('deals.imports.approve-row');
+        Route::post('/deals/imports/{batchId}/bulk-approve',           [\App\Http\Controllers\Web\TenantDealImportController::class, 'bulkApprove'])->name('deals.imports.bulk-approve');
+        Route::post('/deals/imports/{batchId}/execute',                [\App\Http\Controllers\Web\TenantDealImportController::class, 'execute'])->name('deals.imports.execute');
+        Route::get('/deals/imports/{batchId}/report',                  [\App\Http\Controllers\Web\TenantDealImportController::class, 'show'])->name('deals.imports.show');
         Route::get('/deals/{dealId}',                              [\App\Http\Controllers\ResellerDealController::class, 'show'])->name('deals.show');
         Route::post('/deals/{dealId}/notes',                       [\App\Http\Controllers\ResellerDealController::class, 'addNote'])->name('deals.notes');
         Route::patch('/deals/{dealId}/amount',                     [\App\Http\Controllers\ResellerDealController::class, 'updateAmount'])->name('deals.amount');
