@@ -142,5 +142,15 @@
     </div>
 </div>
 
+<script>
+window.addEventListener('pageshow', function(e) {
+    if (!e.persisted) return;
+    var btn = document.querySelector('button[type="submit"].btn-primary');
+    if (!btn) return;
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+    if (btn._x_dataStack && btn._x_dataStack[0]) btn._x_dataStack[0].sub = false;
+});
+</script>
 </body>
 </html>
