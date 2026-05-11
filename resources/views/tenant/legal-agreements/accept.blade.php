@@ -52,7 +52,7 @@
         <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-gray-100 shadow-sm">
             <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div class="h-2 bg-[#7B61FF] rounded-full transition-all duration-300"
-                     :style="`width: ${(agreedIds.length / {{ count($agreements) }}) * 100}%`"></div>
+                     :style="'width: ' + ((agreedIds.length / totalCount) * 100) + '%'"></div>
             </div>
             <span class="text-xs text-gray-500 shrink-0 tabular-nums">
                 <span x-text="agreedIds.length"></span>/{{ count($agreements) }} accepted
@@ -145,7 +145,7 @@
         <div class="sticky bottom-0 pb-4 pt-2">
             <div class="bg-white rounded-2xl border border-gray-200 shadow-lg px-5 py-4 flex items-center gap-4">
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-[#1E1B4B]" x-text="allAgreed ? 'All agreements accepted — you may continue.' : `${{{ count($agreements) }} - agreedIds.length} agreement${({{ count($agreements) }} - agreedIds.length) === 1 ? '' : 's'} remaining`"></p>
+                    <p class="text-sm font-semibold text-[#1E1B4B]" x-text="allAgreed ? 'All agreements accepted — you may continue.' : (totalCount - agreedIds.length) + ' agreement' + ((totalCount - agreedIds.length) === 1 ? '' : 's') + ' remaining'"></p>
                     <p x-show="!allAgreed" class="text-xs text-gray-400 mt-0.5">Please read and accept all agreements to continue.</p>
                 </div>
                 <button @click.prevent="submitAll()"
