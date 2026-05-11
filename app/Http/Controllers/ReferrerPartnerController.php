@@ -14,7 +14,6 @@ use App\Services\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReferrerPartnerController extends Controller
@@ -284,7 +283,6 @@ class ReferrerPartnerController extends Controller
             return response()->json(['error' => 'Commission on this deal is already paid. Contact your admin to add a Partner.'], 422);
         }
 
-        DB::beginTransaction();
         try {
             app(DealPartnerSplitService::class)->upsert(
                 tenantId:    $tenantId,
@@ -320,10 +318,7 @@ class ReferrerPartnerController extends Controller
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':partner:' . md5(strtolower($data['partner_email'])),
             );
-
-            DB::commit();
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('ReferrerPartnerController::store failed', [
                 'tenant_id' => $tenantId,
                 'deal_id'   => $data['deal_id'],
@@ -369,7 +364,6 @@ class ReferrerPartnerController extends Controller
 
         $reason = $request->input('reason', '');
 
-        DB::beginTransaction();
         try {
             app(DealPartnerSplitService::class)->remove($tenantId, $splitId, (string) $reseller->id);
 
@@ -396,10 +390,7 @@ class ReferrerPartnerController extends Controller
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':partner_removed:' . $splitId,
             );
-
-            DB::commit();
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('ReferrerPartnerController::removeFromDeal failed', [
                 'split_id' => $splitId,
                 'error'    => $e->getMessage(),
