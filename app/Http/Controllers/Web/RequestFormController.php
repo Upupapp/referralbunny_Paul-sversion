@@ -330,15 +330,20 @@ class RequestFormController extends Controller
             $submissionsQuery = RequestFormSubmission::where('request_form_id', $formId)
                 ->with(['submissionRecipients']);
 
-            // Add tasks count using a raw subquery to avoid Eloquent withCount issues with
-            // relationship-level where constraints on PostgreSQL.
+            // Use a raw subquery with explicit CAST to avoid PostgreSQL's
+            // "operator does not exist: uuid = character varying" error.
+            // tasks.source_id is varchar; request_form_submissions.id is uuid.
             if (\Illuminate\Support\Facades\Schema::hasTable('tasks') &&
                 \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'source_type')) {
-                $submissionsQuery->withCount([
-                    'tasks' => fn($q) => $q
-                        ->where('source_type', 'request_form_submission')
-                        ->whereNull('deleted_at'),
-                ]);
+                $submissionsQuery->selectRaw(
+                    '"request_form_submissions".*, ' .
+                    '(SELECT COUNT(*) FROM "tasks" ' .
+                    ' WHERE "tasks"."source_id" = CAST("request_form_submissions"."id" AS TEXT) ' .
+                    ' AND "tasks"."source_type" = ? ' .
+                    ' AND "tasks"."deleted_at" IS NULL' .
+                    ') AS "tasks_count"',
+                    ['request_form_submission']
+                );
             }
 
             $submissions = $submissionsQuery
