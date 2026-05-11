@@ -108,7 +108,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'">Activate My Account →</button>
+                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="if (!$el.closest('form').checkValidity()) return; sub=true" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
                     Already set up? <a href="{{ route('reseller.login') }}" style="color:#0D9488;text-decoration:none">Sign in</a>
