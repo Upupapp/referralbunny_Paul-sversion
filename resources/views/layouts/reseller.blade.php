@@ -112,6 +112,84 @@
             <div class="flex items-center gap-2">
                 @yield('topbar-actions')
 
+                {{-- Anonymous mode toggle --}}
+                @if(isset($tenant) && $r)
+                <div x-data="{
+                        open: false,
+                        isAnon: {{ ($r->is_anonymous ?? false) ? 'true' : 'false' }},
+                        busy: false,
+                        async toggle() {
+                            this.busy = true;
+                            const fd = new FormData();
+                            fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
+                            fd.append('is_anonymous', this.isAnon ? '0' : '1');
+                            try {
+                                const res = await fetch('{{ route('reseller.profile.anonymous', $tenant->id) }}', { method: 'POST', body: fd });
+                                if (res.ok) {
+                                    this.isAnon = !this.isAnon;
+                                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: this.isAnon ? 'Anonymous mode enabled.' : 'Anonymous mode disabled.' } }));
+                                    this.open = false;
+                                }
+                            } catch(e) {}
+                            this.busy = false;
+                        }
+                     }"
+                     class="relative"
+                     @click.outside="open = false"
+                     @keydown.escape.window="open = false">
+
+                    <button @click="open = !open"
+                            type="button"
+                            :title="isAnon ? 'Anonymous Mode: ON — click to change' : 'Anonymous Mode: OFF — click to enable'"
+                            :aria-expanded="open"
+                            class="relative p-2 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+                            :class="isAnon ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'">
+                        {{-- Eye-slash when anonymous --}}
+                        <svg x-show="isAnon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                        </svg>
+                        {{-- Eye when visible --}}
+                        <svg x-show="!isAnon" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        {{-- Amber dot indicator when anonymous --}}
+                        <span x-show="isAnon" class="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white"></span>
+                    </button>
+
+                    {{-- Popover --}}
+                    <div x-show="open" x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         class="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
+
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-sm font-bold text-[#1E1B4B]">Anonymous Mode</p>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                  :class="isAnon ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'"
+                                  x-text="isAnon ? 'ON' : 'OFF'"></span>
+                        </div>
+
+                        <p class="text-xs text-gray-500 leading-relaxed mb-3"
+                           x-text="isAnon
+                               ? 'Your name and photo are hidden from other referrers. Platform admins can still see your identity.'
+                               : 'Your profile is visible to other referrers. Enable to hide your name and photo.'">
+                        </p>
+
+                        <button @click="toggle()"
+                                :disabled="busy"
+                                class="w-full px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+                                :class="isAnon ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-amber-500 text-white hover:bg-amber-600'"
+                                x-text="busy ? 'Saving…' : (isAnon ? 'Disable Anonymous Mode' : 'Enable Anonymous Mode')">
+                        </button>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Notification bell --}}
                 @if(isset($tenant))
                 <a href="{{ route('reseller.notifications', $tenant->id) }}"
