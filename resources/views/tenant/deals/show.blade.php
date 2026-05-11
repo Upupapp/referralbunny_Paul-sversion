@@ -16,6 +16,11 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
+    <button x-data @click="$dispatch('open-delete-deal')"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        <span class="hidden sm:inline">Delete Deal</span>
+    </button>
 @endsection
 
 @section('content')
@@ -29,7 +34,8 @@
      x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', __dealSsrLead)"
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
-     @open-reassign-deal.window="showReassign = true">
+     @open-reassign-deal.window="showReassign = true"
+     @open-delete-deal.window="showDeleteConfirm = true">
 
     <a href="{{ route('tenant.deals', $tenant->id) }}"
        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
@@ -1596,6 +1602,36 @@
     </div>
     </template>
 
+    {{-- ── Delete Deal Confirmation Modal ──────────────────────────────── --}}
+    <div x-show="showDeleteConfirm" style="display:none"
+         class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center" @click.stop>
+            <div class="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-[#1E1B4B] mb-1">Delete this deal?</h3>
+            <p class="text-sm text-gray-500 mb-1" x-text="lead?.name || 'This deal'"></p>
+            <p class="text-xs text-gray-400 mb-6">All deal history, notes, and commission data will be permanently removed. This cannot be undone.</p>
+            <div class="flex gap-3">
+                <button @click="showDeleteConfirm = false"
+                        :disabled="deleting"
+                        class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button @click="deleteDeal()"
+                        :disabled="deleting"
+                        class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
+                    <svg x-show="deleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span x-text="deleting ? 'Deleting…' : 'Yes, Delete Deal'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
 
 </div>
 
@@ -2078,6 +2114,37 @@ function dealComments(dealId, tenantId) {
             if (bytes < 1024)      return bytes + ' B';
             if (bytes < 1048576)   return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / 1048576).toFixed(1) + ' MB';
+        },
+
+        // ── Delete Deal ───────────────────────────────────────────────────────
+        showDeleteConfirm: false,
+        deleting: false,
+
+        async deleteDeal() {
+            this.deleting = true;
+            try {
+                const res = await fetch(`/api/leads/${this.lead.id}`, {
+                    method:      'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept':           'application/json',
+                        'X-CSRF-TOKEN':     this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    window.location.href = '/tenant/{{ $tenant->id }}/deals';
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Could not delete deal.' });
+                    this.showDeleteConfirm = false;
+                }
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+                this.showDeleteConfirm = false;
+            } finally {
+                this.deleting = false;
+            }
         },
     };
 }
