@@ -133,6 +133,10 @@ class ContactsImportController extends Controller
             'file' => 'required|file|mimes:csv,xlsx|max:10240',
         ]);
 
+        $indexRoute = $role === 'reseller'
+            ? 'reseller.contacts.imports'
+            : 'tenant.imports.contacts';
+
         try {
             $batch = $this->service->createBatch(
                 file:                 $request->file('file'),
@@ -142,13 +146,20 @@ class ContactsImportController extends Controller
                 importedByResellerId: $this->authResellerId(),
             );
         } catch (\InvalidArgumentException $e) {
-            $indexRoute = $role === 'reseller'
-                ? 'reseller.contacts.imports'
-                : 'tenant.imports.contacts';
-
             return redirect()
                 ->route($indexRoute, $tenantId)
                 ->withErrors(['file' => $e->getMessage()])
+                ->withInput();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ContactsImport::upload failed', [
+                'tenant_id' => $tenantId,
+                'role'      => $role,
+                'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            return redirect()
+                ->route($indexRoute, $tenantId)
+                ->withErrors(['file' => 'Upload failed. Please try again or contact support if the problem persists.'])
                 ->withInput();
         }
 

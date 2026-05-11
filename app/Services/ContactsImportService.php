@@ -848,35 +848,39 @@ class ContactsImportService
             'blocked_rows'                       => $counts['blocked'],
         ]);
 
-        // Notify tenant admins
-        $body = "Your contact import of {$batch->total_rows} rows is ready. "
-            . "{$counts['successful']} ready, {$counts['duplicate']} duplicates, "
-            . "{$counts['same_email_diff_ref']} emails across multiple Referrers.";
+        // Notify tenant admins — best-effort, must never crash the upload
+        try {
+            $body = "Your contact import of {$batch->total_rows} rows is ready. "
+                . "{$counts['successful']} ready, {$counts['duplicate']} duplicates, "
+                . "{$counts['same_email_diff_ref']} emails across multiple Referrers.";
 
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:     $tenantId,
-            category:     'import_preview_ready',
-            priority:     'normal',
-            title:        'Contacts Import Ready for Review',
-            body:         $body,
-            actionUrl:    "/tenant/{$tenantId}/imports/contacts/{$batch->id}",
-            actionLabel:  'Review Import',
-            dedupeSuffix: $batch->id,
-        );
-
-        // Also notify the uploading Referrer (if applicable)
-        if ($importedByRole === 'reseller' && $importedByResellerId) {
-            $this->notifications->dispatchToReseller(
-                resellerId:   $importedByResellerId,
+            $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'import_preview_ready',
                 priority:     'normal',
-                title:        'Contact Import Ready',
-                body:         "Your contact import is ready for review. {$counts['successful']} ready, {$counts['duplicate']} duplicates.",
-                actionUrl:    "/reseller/{$tenantId}/contacts/imports/{$batch->id}",
-                actionLabel:  'Review',
+                title:        'Contacts Import Ready for Review',
+                body:         $body,
+                actionUrl:    "/tenant/{$tenantId}/imports/contacts/{$batch->id}",
+                actionLabel:  'Review Import',
                 dedupeSuffix: $batch->id,
             );
+        } catch (\Throwable) {}
+
+        // Also notify the uploading Referrer (if applicable) — best-effort
+        if ($importedByRole === 'reseller' && $importedByResellerId) {
+            try {
+                $this->notifications->dispatchToReseller(
+                    resellerId:   $importedByResellerId,
+                    tenantId:     $tenantId,
+                    category:     'import_preview_ready',
+                    priority:     'normal',
+                    title:        'Contact Import Ready',
+                    body:         "Your contact import is ready for review. {$counts['successful']} ready, {$counts['duplicate']} duplicates.",
+                    actionUrl:    "/reseller/{$tenantId}/contacts/imports/{$batch->id}",
+                    actionLabel:  'Review',
+                    dedupeSuffix: $batch->id,
+                );
+            } catch (\Throwable) {}
         }
 
         return $batch;
