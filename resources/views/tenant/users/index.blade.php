@@ -510,7 +510,8 @@
         </div>
 
         <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4"
-              x-data="{ sending: false }" @submit="sending = true">
+              x-data="{ sending: false }"
+              @submit="if (!$el.checkValidity()) return; sending = true">
             @csrf
 
             {{-- Inline error --}}

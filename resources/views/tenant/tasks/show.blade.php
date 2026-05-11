@@ -266,6 +266,30 @@
 
             <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
 
+                {{-- Requestor info — always visible so user knows who receives the reply --}}
+                @if($task->requestor_email || $task->requestor_name)
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:#f0f9ff;border-radius:10px;border:1.5px solid #bae6fd">
+                    <svg style="width:15px;height:15px;color:#0284c7;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <div style="flex:1;min-width:0">
+                        <p style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px">Requestor</p>
+                        <p style="font-size:12px;color:#075985;margin:0">
+                            @if($task->requestor_name)<strong>{{ $task->requestor_name }}</strong>@endif
+                            @if($task->requestor_email)
+                                @if($task->requestor_name) &lt;{{ $task->requestor_email }}&gt;@else {{ $task->requestor_email }}@endif
+                            @endif
+                        </p>
+                        @if($completionEmailEnabled && $task->requestor_email)
+                        <p style="font-size:11px;color:#0284c7;margin:3px 0 0">
+                            <svg style="width:10px;height:10px;display:inline;margin-right:2px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            A copy of this response will be emailed to this address.
+                        </p>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
                 {{-- Title --}}
                 <div>
                     <label style="display:block;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">

@@ -14,30 +14,43 @@
      x-data="referrersModule('{{ $tenant->id }}')"
      x-init="init()">
 
-    {{-- Summary KPIs --}}
+    {{-- Summary KPIs — each box filters the list below --}}
     <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
-        <div class="kpi-card">
+        {{-- Total Referrers — clears all filters --}}
+        <button type="button" @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
+                class="kpi-card text-left transition-all hover:shadow-md hover:border-[#7B61FF] focus:outline-none"
+                :class="!filterStatus && !filterAgreement && !filterDoc && !search ? 'ring-2 ring-[#7B61FF]' : ''">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Total Referrers</span>
                 <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="referrers.length"></p>
             </div>
             <div class="kpi-icon bg-purple-100 ml-3 shrink-0"><svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg></div>
-        </div>
-        <div class="kpi-card">
+        </button>
+        {{-- Active — filter to active/nda_signed --}}
+        <button type="button" @click="filterStatus='active'; filterAgreement=''; filterDoc=''; applyFilters()"
+                class="kpi-card text-left transition-all hover:shadow-md hover:border-emerald-400 focus:outline-none"
+                :class="filterStatus === 'active' ? 'ring-2 ring-emerald-500' : ''">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Active</span>
                 <p class="text-2xl font-bold text-[#1E1B4B] mt-1.5" x-text="referrers.filter(r => r.status === 'active' || r.status === 'nda_signed').length"></p>
             </div>
             <div class="kpi-icon bg-emerald-100 ml-3 shrink-0"><svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-        </div>
-        <div class="kpi-card">
+        </button>
+        {{-- Pending Invites — filter to invited --}}
+        <button type="button" @click="filterStatus='invited'; filterAgreement=''; filterDoc=''; applyFilters()"
+                class="kpi-card text-left transition-all hover:shadow-md hover:border-orange-400 focus:outline-none"
+                :class="filterStatus === 'invited' ? 'ring-2 ring-orange-400' : ''">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Pending Invites</span>
                 <p class="text-2xl font-bold text-orange-500 mt-1.5" x-text="referrers.filter(r => r.status === 'invited').length"></p>
             </div>
             <div class="kpi-icon bg-orange-100 ml-3 shrink-0"><svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-        </div>
-        <div class="kpi-card">
+        </button>
+        {{-- Missing Agreements — filter to non-compliant --}}
+        <button type="button" @click="filterAgreement='missing'; filterDoc=''; filterStatus=''; applyFilters()"
+                class="kpi-card text-left transition-all hover:shadow-md hover:border-orange-400 focus:outline-none"
+                :class="filterAgreement === 'missing' ? 'ring-2 ring-orange-400' : ''"
+                :disabled="totalRequiredAgreements === 0">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Missing Agreements</span>
                 <p class="text-2xl font-bold mt-1.5"
@@ -45,8 +58,12 @@
                    x-text="totalRequiredAgreements > 0 ? nonCompliantCount() : '—'"></p>
             </div>
             <div class="kpi-icon bg-orange-100 ml-3 shrink-0"><svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-        </div>
-        <div class="kpi-card">
+        </button>
+        {{-- Missing Docs — filter to doc non-compliant --}}
+        <button type="button" @click="filterDoc='missing'; filterAgreement=''; filterStatus=''; applyFilters()"
+                class="kpi-card text-left transition-all hover:shadow-md hover:border-red-400 focus:outline-none"
+                :class="filterDoc === 'missing' ? 'ring-2 ring-red-400' : ''"
+                :disabled="totalRequiredDocs === 0">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Missing Docs</span>
                 <p class="text-2xl font-bold mt-1.5"
@@ -54,7 +71,8 @@
                    x-text="totalRequiredDocs > 0 ? docNonCompliantCount() : '—'"></p>
             </div>
             <div class="kpi-icon bg-red-100 ml-3 shrink-0"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg></div>
-        </div>
+        </button>
+        {{-- Total Closed — informational only (no filter) --}}
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide flex items-center gap-1">Total Closed @if($showLocation ?? false)<x-tax-tip />@endif</span>
@@ -144,6 +162,24 @@
                 </svg>
                 <span x-text="nonCompliantCount() + ' reseller' + (nonCompliantCount() === 1 ? '' : 's') + ' have unsigned agreements'"></span>
             </div>
+        </div>
+
+        {{-- Bulk delete toolbar — shown when deactivated referrers are selected --}}
+        <div x-show="selectedForDelete.length > 0" x-cloak
+             class="flex flex-wrap items-center gap-3 px-5 py-3 bg-red-50 border-b border-red-100">
+            <span class="text-sm font-medium text-red-700"
+                  x-text="`${selectedForDelete.length} deactivated referrer${selectedForDelete.length === 1 ? '' : 's'} selected`"></span>
+            <button @click="deleteSelectedReferrers()"
+                    :disabled="deletingBulk"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <svg x-show="deletingBulk" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <svg x-show="!deletingBulk" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span x-text="deletingBulk ? 'Deleting…' : 'Delete Selected'"></span>
+            </button>
+            <button @click="selectedForDelete = []"
+                    class="text-xs text-red-600 hover:text-red-800 underline font-medium transition-colors">
+                Clear selection
+            </button>
         </div>
 
         {{-- Loading --}}
@@ -363,6 +399,23 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                                         </svg>
                                     </button>
+                                    {{-- Permanent delete — only for deactivated referrers (with checkbox for bulk) --}}
+                                    <template x-if="r.status === 'deactivated'">
+                                        <div class="flex items-center gap-1" @click.stop>
+                                            <input type="checkbox"
+                                                   :value="r.id"
+                                                   x-model="selectedForDelete"
+                                                   class="w-3.5 h-3.5 rounded accent-red-500"
+                                                   title="Select for bulk delete">
+                                            <button @click.stop="deleteSingleReferrer(r)"
+                                                    title="Permanently delete this deactivated Referrer"
+                                                    class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
                                 </div>
                             </td>
                         </tr>
@@ -851,6 +904,8 @@ function referrersModule(tenantId) {
         saving: false, formError: '',
         form: { name: '', email: '', phone: '', territory: '' },
         summary: { total: 0, active: 0, invited: 0, no_email: 0, no_password: 0 },
+        selectedForDelete: [],
+        deletingBulk: false,
 
         // Pagination
         currentPage: 1, lastPage: 1, loadingMore: false,
@@ -1263,6 +1318,60 @@ function referrersModule(tenantId) {
                 const r = this.referrers.find(r => r.id === id);
                 if (r) { r.status = status; this.applyFilters(); }
             } catch(e) {}
+        },
+
+        // ── Delete deactivated referrers ─────────────────────────────────
+
+        async deleteSingleReferrer(r) {
+            if (!confirm(`Permanently delete ${r.name}? This action cannot be undone.`)) return;
+            const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+            try {
+                const res = await fetch(`/api/resellers/${r.id}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.referrers = this.referrers.filter(x => x.id !== r.id);
+                    this.selectedForDelete = this.selectedForDelete.filter(id => id !== r.id);
+                    this.applyFilters();
+                    this.$dispatch('show-toast', { type: 'success', message: `${r.name} permanently deleted.` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Failed to delete referrer.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
+        },
+
+        async deleteSelectedReferrers() {
+            if (!this.selectedForDelete.length) return;
+            const count = this.selectedForDelete.length;
+            if (!confirm(`Permanently delete ${count} deactivated referrer${count === 1 ? '' : 's'}? This action cannot be undone.`)) return;
+            this.deletingBulk = true;
+            const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+            try {
+                const res = await fetch('/api/resellers/bulk-delete', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ ids: this.selectedForDelete, tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const deleted = new Set(this.selectedForDelete);
+                    this.referrers = this.referrers.filter(r => !deleted.has(r.id));
+                    this.selectedForDelete = [];
+                    this.applyFilters();
+                    this.$dispatch('show-toast', { type: 'success', message: `${data.deleted_count} referrer${data.deleted_count === 1 ? '' : 's'} permanently deleted.` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Bulk delete failed.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
+            this.deletingBulk = false;
         },
 
         resetForm() { this.form = { name:'', email:'', phone:'', territory:'' }; this.formError = ''; },

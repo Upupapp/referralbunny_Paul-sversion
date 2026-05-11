@@ -185,15 +185,19 @@ class TenantUserManagementController extends Controller
             'permissions_preset' => $permPreset ?: null,
         ]);
 
-        // Send initial invitation email
-        EmailLogger::send(
-            mailable:       new TenantInvitationMail($invitation),
-            recipientEmail: $email,
-            recipientType:  'tenant_user',
-            emailKey:       "tenant_invite.{$invitation->id}",
-            subject:        "You've been invited to join {$tenant->name} on ReferralBunny.ai",
-            tenantId:       $tenantId,
-        );
+        // Send initial invitation email (non-blocking — never fails the invite)
+        try {
+            EmailLogger::send(
+                mailable:       new TenantInvitationMail($invitation),
+                recipientEmail: $email,
+                recipientType:  'tenant_user',
+                emailKey:       "tenant_invite.{$invitation->id}",
+                subject:        "You've been invited to join {$tenant->name} on ReferralBunny.ai",
+                tenantId:       $tenantId,
+            );
+        } catch (\Throwable $e) {
+            \Log::warning("Tenant invite email failed for {$email}: " . $e->getMessage());
+        }
 
         // Initialise reminder schedule (non-critical — columns may not exist yet)
         try {
@@ -235,15 +239,19 @@ class TenantUserManagementController extends Controller
             return back()->withErrors(['resend' => 'You can only resend this invitation once every 24 hours.']);
         }
 
-        // Send the invitation email again
-        EmailLogger::send(
-            mailable:       new TenantInvitationMail($invitation),
-            recipientEmail: $invitation->email,
-            recipientType:  'tenant_user',
-            emailKey:       "tenant_invite_resend.{$invitation->id}." . now()->format('YmdHi'),
-            subject:        "Reminder: You've been invited to join on ReferralBunny.ai",
-            tenantId:       $tenantId,
-        );
+        // Send the invitation email again (non-blocking)
+        try {
+            EmailLogger::send(
+                mailable:       new TenantInvitationMail($invitation),
+                recipientEmail: $invitation->email,
+                recipientType:  'tenant_user',
+                emailKey:       "tenant_invite_resend.{$invitation->id}." . now()->format('YmdHi'),
+                subject:        "Reminder: You've been invited to join on ReferralBunny.ai",
+                tenantId:       $tenantId,
+            );
+        } catch (\Throwable $e) {
+            \Log::warning("Tenant invite resend email failed: " . $e->getMessage());
+        }
 
         $this->notifications->dispatchToTenantAdmins(
             tenantId:    $tenantId,
@@ -277,15 +285,19 @@ class TenantUserManagementController extends Controller
         // Suppress all future reminders
         $this->reminderService->suppress($invitation, 'revoked');
 
-        // Notify the invitee that their invitation was cancelled
-        EmailLogger::send(
-            mailable:       new TenantInvitationRevokedMail($invitation),
-            recipientEmail: $invitation->email,
-            recipientType:  'tenant_user',
-            emailKey:       "tenant_invite_revoke.{$invitation->id}",
-            subject:        "Your invitation has been cancelled",
-            tenantId:       $tenantId,
-        );
+        // Notify the invitee that their invitation was cancelled (non-blocking)
+        try {
+            EmailLogger::send(
+                mailable:       new TenantInvitationRevokedMail($invitation),
+                recipientEmail: $invitation->email,
+                recipientType:  'tenant_user',
+                emailKey:       "tenant_invite_revoke.{$invitation->id}",
+                subject:        "Your invitation has been cancelled",
+                tenantId:       $tenantId,
+            );
+        } catch (\Throwable $e) {
+            \Log::warning("Tenant invite revoke email failed: " . $e->getMessage());
+        }
 
         try {
             $this->notifications->dispatchToTenantAdmins(

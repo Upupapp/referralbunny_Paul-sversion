@@ -128,7 +128,8 @@ class ResellerController extends Controller
             if ($existing->status === 'deactivated') {
                 // Reinvite: reset to fresh invited state and resend invitation email.
                 $setupToken = Str::random(64);
-                $existing->update([
+                // Use DB::table to set password=null safely (bypasses hashed cast which can't store null).
+                DB::table('resellers')->where('id', $existing->id)->update([
                     'name'                 => $data['name'],
                     'phone'                => $data['phone'] ?? $existing->phone,
                     'territory'            => $data['territory'] ?? $existing->territory,
@@ -137,6 +138,7 @@ class ResellerController extends Controller
                     'password'             => null,
                     'joined_date'          => null,
                     'linked_tenant_user_id'=> Auth::guard('tenant')->id(),
+                    'updated_at'           => now(),
                 ]);
                 $existing = $existing->fresh();
 
@@ -206,20 +208,25 @@ class ResellerController extends Controller
         $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
-        // ── Send invitation email (non-blocking) ──────────────────────────
-        $emailStatus = \App\Services\EmailLogger::send(
-            mailable:       new ResellerInvitation(
-                resellerName:  $data['name'],
-                resellerEmail: $normalizedEmail,
-                tenantName:    $tenantName,
-                setupUrl:      $setupUrl,
-            ),
-            recipientEmail: $normalizedEmail,
-            recipientType:  'reseller',
-            emailKey:       "reseller_invite.{$reseller->id}",
-            subject:        "You've been invited as a Referrer for {$tenantName}",
-            tenantId:       $tenantId,
-        ) ? 'sent' : 'failed';
+        // ── Send invitation email (non-blocking — never blocks the 201 response) ──
+        $emailStatus = 'failed';
+        try {
+            $emailStatus = \App\Services\EmailLogger::send(
+                mailable:       new ResellerInvitation(
+                    resellerName:  $data['name'],
+                    resellerEmail: $normalizedEmail,
+                    tenantName:    $tenantName,
+                    setupUrl:      $setupUrl,
+                ),
+                recipientEmail: $normalizedEmail,
+                recipientType:  'reseller',
+                emailKey:       "reseller_invite.{$reseller->id}",
+                subject:        "You've been invited as a Referrer for {$tenantName}",
+                tenantId:       $tenantId,
+            ) ? 'sent' : 'failed';
+        } catch (\Throwable $e) {
+            Log::warning("Reseller invite email failed for {$normalizedEmail}: " . $e->getMessage());
+        }
 
         $response = $reseller->toArray();
         $response['email_delivery_status'] = $emailStatus;
@@ -255,14 +262,77 @@ class ResellerController extends Controller
         return response()->json($reseller);
     }
 
-    public function destroy(Reseller $reseller): JsonResponse
+    public function destroy(Request $request, Reseller $reseller): JsonResponse
     {
-        // Hard delete is intentionally blocked — use the deactivate endpoint instead.
-        // This preserves historical deals, commissions, messages, and audit logs.
-        return response()->json([
-            'message'    => 'Direct deletion is not allowed. Use the deactivate endpoint to remove Referrer access.',
-            'error_code' => 'use_deactivate_endpoint',
-        ], 405);
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can delete Referrers.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
+        }
+
+        // Only allow deleting deactivated referrers — active ones must be deactivated first.
+        if ($reseller->status !== 'deactivated') {
+            return response()->json([
+                'error'      => 'Only deactivated Referrers can be permanently deleted. Deactivate first.',
+                'error_code' => 'must_deactivate_first',
+            ], 422);
+        }
+
+        $resellerId   = $reseller->id;
+        $resellerName = $reseller->name;
+
+        $reseller->delete();
+
+        Log::info("Reseller permanently deleted", [
+            'reseller_id'   => $resellerId,
+            'reseller_name' => $resellerName,
+            'tenant_id'     => $tenantId,
+            'deleted_by'    => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+        ]);
+
+        return response()->json(['success' => true, 'deleted_id' => $resellerId]);
+    }
+
+    /**
+     * Bulk delete deactivated referrers.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can delete Referrers.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant context required.'], 403);
+        }
+
+        $data = $request->validate([
+            'ids'   => 'required|array|min:1|max:100',
+            'ids.*' => 'required|string|uuid',
+        ]);
+
+        $deleted = Reseller::where('tenant_id', $tenantId)
+            ->whereIn('id', $data['ids'])
+            ->where('status', 'deactivated')
+            ->get();
+
+        $count = $deleted->count();
+
+        foreach ($deleted as $r) {
+            $r->delete();
+        }
+
+        Log::info("Bulk reseller delete", [
+            'tenant_id' => $tenantId,
+            'count'     => $count,
+            'deleted_by'=> Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+        ]);
+
+        return response()->json(['success' => true, 'deleted_count' => $count]);
     }
 
     /**

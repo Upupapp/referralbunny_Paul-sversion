@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::put('resellers/{reseller}',         [ResellerController::class, 'update']);
     Route::patch('resellers/{reseller}',       [ResellerController::class, 'update']);
     Route::delete('resellers/{reseller}',      [ResellerController::class, 'destroy']);
+    Route::post('resellers/bulk-delete',            [ResellerController::class, 'bulkDelete']);
     Route::post('resellers/{reseller}/deactivate',  [ResellerController::class, 'deactivate']);
     Route::post('resellers/{reseller}/send-invite', [ResellerController::class, 'sendInvite']);
 
