@@ -952,27 +952,9 @@ class LguIdsImportService
             'Maria Reyes', 'maria@lgu.gov.ph', '+63 9XX XXX XXXX', 'IT Department',
             date('Y-m-d'), '', '', 'tagA,tagB', 'REF-001',
         ];
-        $pricingHeaders = ['Deal Amount', 'Base Cost', 'Added Amount', 'Display %'];
-        $pricingRows    = [
-            ['4,000,000', '2,400,000', '1,600,000', '60%'],
-            ['5,000,000', '3,000,000', '2,000,000', '60%'],
-            ['6,000,000', '3,600,000', '2,400,000', '60%'],
-            ['8,000,000', '4,640,000', '3,360,000', '58%'],
-            ['10,000,000', '5,800,000', '4,200,000', '58%'],
-            ['12,000,000', '6,960,000', '5,040,000', '58%'],
-            ['15,000,000', '7,000,000', '8,000,000', '48%'],
-            ['17,000,000', '7,000,000', '10,000,000', '41%'],
-            ['25,000,000', '10,250,000', '14,750,000', '41%'],
-        ];
         $lines   = [];
         $lines[] = implode(',', array_map(fn ($h) => '"' . $h . '"', $headers));
         $lines[] = implode(',', array_map(fn ($v) => '"' . $v . '"', $sampleRow));
-        $lines[] = '';
-        $lines[] = '# LGU IDS STANDARD PRICING REFERENCE';
-        $lines[] = implode(',', array_map(fn ($h) => '"' . $h . '"', $pricingHeaders));
-        foreach ($pricingRows as $r) {
-            $lines[] = implode(',', array_map(fn ($v) => '"' . $v . '"', $r));
-        }
         return implode("\n", $lines);
     }
 }
