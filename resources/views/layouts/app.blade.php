@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ sidebarOpen: false }">
+<html lang="en"
+      x-data="{ sidebarOpen: false }"
+      @sidebar-close.window="sidebarOpen = false">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
