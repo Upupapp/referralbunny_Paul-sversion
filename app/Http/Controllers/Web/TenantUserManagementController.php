@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\EmailLogger;
 use App\Services\InvitationReminderService;
 use App\Services\NotificationDispatchService;
 use App\Services\PermissionService;
@@ -185,11 +186,14 @@ class TenantUserManagementController extends Controller
         ]);
 
         // Send initial invitation email
-        try {
-            Mail::send(new TenantInvitationMail($invitation));
-        } catch (\Throwable) {
-            // queue failure — don't block UI
-        }
+        EmailLogger::send(
+            mailable:       new TenantInvitationMail($invitation),
+            recipientEmail: $email,
+            recipientType:  'tenant_user',
+            emailKey:       "tenant_invite.{$invitation->id}",
+            subject:        "You've been invited to join {$tenant->name} on ReferralBunny.ai",
+            tenantId:       $tenantId,
+        );
 
         // Initialise reminder schedule (non-critical — columns may not exist yet)
         try {
@@ -232,11 +236,14 @@ class TenantUserManagementController extends Controller
         }
 
         // Send the invitation email again
-        try {
-            Mail::send(new TenantInvitationMail($invitation));
-        } catch (\Throwable) {
-            // silent — rate limit already updated
-        }
+        EmailLogger::send(
+            mailable:       new TenantInvitationMail($invitation),
+            recipientEmail: $invitation->email,
+            recipientType:  'tenant_user',
+            emailKey:       "tenant_invite_resend.{$invitation->id}." . now()->format('YmdHi'),
+            subject:        "Reminder: You've been invited to join on ReferralBunny.ai",
+            tenantId:       $tenantId,
+        );
 
         $this->notifications->dispatchToTenantAdmins(
             tenantId:    $tenantId,
@@ -271,11 +278,14 @@ class TenantUserManagementController extends Controller
         $this->reminderService->suppress($invitation, 'revoked');
 
         // Notify the invitee that their invitation was cancelled
-        try {
-            Mail::send(new TenantInvitationRevokedMail($invitation));
-        } catch (\Throwable) {
-            // silent
-        }
+        EmailLogger::send(
+            mailable:       new TenantInvitationRevokedMail($invitation),
+            recipientEmail: $invitation->email,
+            recipientType:  'tenant_user',
+            emailKey:       "tenant_invite_revoke.{$invitation->id}",
+            subject:        "Your invitation has been cancelled",
+            tenantId:       $tenantId,
+        );
 
         try {
             $this->notifications->dispatchToTenantAdmins(

@@ -944,31 +944,37 @@ function referrersModule(tenantId) {
             }
         },
 
-        applyFilters() {
-            // Fast-path: nothing is filtering — show everything
-            if (!this.search && !this.filterStatus && !this.filterAgreement && !this.filterDoc) {
-                this.filtered = this.referrers.slice();
-                return;
-            }
+        statusWeight(status) {
+            if (['active','nda_signed'].includes(status)) return 0;
+            if (status === 'invited') return 1;
+            return 2; // deactivated + unknown last
+        },
 
-            const q = this.search.toLowerCase();
-            // Only apply compliance/doc filters when data has actually loaded
+        applyFilters() {
+            const q = (this.search || '').toLowerCase();
             const agLoaded = Object.keys(this.resellerCompliance).length > 0;
             const dcLoaded = Object.keys(this.resellerDocCompliance).length > 0;
 
-            this.filtered = this.referrers.filter(r => {
+            let result = this.referrers.filter(r => {
                 const matchQ  = !q || (r.name||'').toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q) || (r.territory||'').toLowerCase().includes(q);
                 const matchSt = !this.filterStatus || r.status === this.filterStatus;
-                // Agreement filter: only restrict if compliance data is loaded
                 const matchAg = !this.filterAgreement || !agLoaded
                     || (this.filterAgreement === 'compliant' && this.isCompliant(r.id))
                     || (this.filterAgreement === 'missing'   && !this.isCompliant(r.id));
-                // Document filter: only restrict if doc compliance data is loaded
                 const matchDc = !this.filterDoc || !dcLoaded
                     || (this.filterDoc === 'compliant' && this.isDocCompliant(r.id))
                     || (this.filterDoc === 'missing'   && !this.isDocCompliant(r.id));
                 return matchQ && matchSt && matchAg && matchDc;
             });
+
+            // Always keep active on top, deactivated at bottom
+            result.sort((a, b) => {
+                const sw = this.statusWeight(a.status) - this.statusWeight(b.status);
+                if (sw !== 0) return sw;
+                return (a.name||'').localeCompare(b.name||'');
+            });
+
+            this.filtered = result;
         },
 
         // ── Anonymity ─────────────────────────────────────────────────────

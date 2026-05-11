@@ -48,7 +48,12 @@ class ResellerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Reseller::orderBy('performance_score', 'desc');
+        $query = Reseller::orderByRaw("CASE
+                WHEN status IN ('active','nda_signed') THEN 0
+                WHEN status = 'invited'               THEN 1
+                ELSE 2
+            END")
+            ->orderBy('name', 'asc');
 
         // Always scope to the active tenant; super admins may override via tenant_id param
         $tenantId = TenantContext::id();
@@ -97,22 +102,68 @@ class ResellerController extends Controller
 
         $normalizedEmail = strtolower(trim($data['email']));
 
-        // ── Explicit duplicate check (before anything is created) ─────────
+        // ── Block inviting existing admins/managers (they are referrers by default) ──
+        $tenantUser = \App\Models\TenantUser::whereRaw('lower(email) = ?', [$normalizedEmail])->first();
+        if ($tenantUser) {
+            $adminMembership = \App\Models\TenantMembership::where('tenant_id', $tenantId)
+                ->where('tenant_user_id', $tenantUser->id)
+                ->whereIn('role', ['owner', 'admin', 'manager'])
+                ->where('status', 'active')
+                ->first();
+            if ($adminMembership) {
+                return response()->json([
+                    'message'    => ucfirst($adminMembership->role) . 's are automatically Referrers in this workspace — no separate invite needed.',
+                    'error_code' => 'already_team_admin',
+                    'role'       => $adminMembership->role,
+                ], 409);
+            }
+        }
+
+        // ── Explicit duplicate check ──────────────────────────────────────
         $existing = Reseller::where('tenant_id', $tenantId)
             ->whereRaw('LOWER(email) = ?', [$normalizedEmail])
             ->first();
 
         if ($existing) {
             if ($existing->status === 'deactivated') {
-                return response()->json([
-                    'message'     => 'This email belongs to a deactivated Referrer. Reactivate them instead.',
-                    'error_code'  => 'referrer_deactivated',
-                    'reseller_id' => $existing->id,
-                ], 409);
+                // Reinvite: reset to fresh invited state and resend invitation email.
+                $setupToken = Str::random(64);
+                $existing->update([
+                    'name'                 => $data['name'],
+                    'phone'                => $data['phone'] ?? $existing->phone,
+                    'territory'            => $data['territory'] ?? $existing->territory,
+                    'setup_token'          => $setupToken,
+                    'status'               => 'invited',
+                    'password'             => null,
+                    'joined_date'          => null,
+                    'linked_tenant_user_id'=> Auth::guard('tenant')->id(),
+                ]);
+                $existing = $existing->fresh();
+
+                $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
+                $setupUrl   = url('/reseller/setup?token=' . $setupToken);
+                $emailStatus = 'sent';
+                try {
+                    Mail::send(new ResellerInvitation(
+                        resellerName:  $existing->name,
+                        resellerEmail: $existing->email,
+                        tenantName:    $tenantName,
+                        setupUrl:      $setupUrl,
+                    ));
+                } catch (\Throwable $e) {
+                    $emailStatus = 'failed';
+                    Log::warning("Reseller reinvite email failed for {$existing->email}: {$e->getMessage()}");
+                }
+
+                $response = $existing->toArray();
+                $response['email_delivery_status'] = $emailStatus;
+                $response['reinvited'] = true;
+                return response()->json($response, 201);
             }
+
             if ($existing->status === 'invited') {
                 return response()->json([
-                    'message'     => 'A pending invitation already exists for this email address. You can resend it from the Referrers list.',
+                    'message'     => 'A pending invitation already exists for this email. You can resend it from the Referrers list.',
                     'error_code'  => 'pending_invite_exists',
                     'reseller_id' => $existing->id,
                     'can_resend'  => true,
@@ -156,21 +207,19 @@ class ResellerController extends Controller
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
         // ── Send invitation email (non-blocking) ──────────────────────────
-        $emailStatus = 'sent';
-        try {
-            Mail::send(new ResellerInvitation(
+        $emailStatus = \App\Services\EmailLogger::send(
+            mailable:       new ResellerInvitation(
                 resellerName:  $data['name'],
                 resellerEmail: $normalizedEmail,
                 tenantName:    $tenantName,
                 setupUrl:      $setupUrl,
-            ));
-        } catch (\Throwable $e) {
-            $emailStatus = 'failed';
-            Log::warning("Reseller invite email failed for {$normalizedEmail}: {$e->getMessage()}", [
-                'reseller_id' => $reseller->id,
-                'tenant_id'   => $tenantId,
-            ]);
-        }
+            ),
+            recipientEmail: $normalizedEmail,
+            recipientType:  'reseller',
+            emailKey:       "reseller_invite.{$reseller->id}",
+            subject:        "You've been invited as a Referrer for {$tenantName}",
+            tenantId:       $tenantId,
+        ) ? 'sent' : 'failed';
 
         $response = $reseller->toArray();
         $response['email_delivery_status'] = $emailStatus;
