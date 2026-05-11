@@ -6,10 +6,11 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
 {
-    use BelongsToTenant;
+    use BelongsToTenant, SoftDeletes;
 
     protected $table = 'leads';
     public $incrementing = false;
@@ -29,7 +30,7 @@ class Lead extends Model
         'tenant_id', 'name', 'stage', 'status', 'days_left',
         'reseller_name', 'commission_status',
         'base_cost', 'added_amount', 'deal_value',
-        'data', 'organization_id',
+        'data', 'organization_id', 'deleted_by',
     ];
 
     protected $casts = [

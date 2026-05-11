@@ -45,8 +45,28 @@
      @rb-del-cancel.window="selectMode = false; selectedDeals = []"
      @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true">
 
+    {{-- Tab navigation: Active Deals / Deal Archive --}}
+    <div class="flex items-center gap-2">
+        <button @click="activeTab = 'deals'"
+                :class="activeTab === 'deals' ? 'bg-[#7B61FF] text-white shadow-sm' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'"
+                class="px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+            Active Deals
+            <span class="ml-1 text-[11px] opacity-70" x-text="'(' + leads.length + ')'"></span>
+        </button>
+        <button @click="activeTab = 'archive'"
+                :class="activeTab === 'archive' ? 'bg-red-500 text-white shadow-sm' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'"
+                class="px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"/></svg>
+            Deal Archive
+            <span x-show="archivedLeads.length > 0"
+                  class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full"
+                  :class="activeTab === 'archive' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'"
+                  x-text="archivedLeads.length"></span>
+        </button>
+    </div>
+
     {{-- Filter bar --}}
-    <div class="card space-y-3">
+    <div class="card space-y-3" x-show="activeTab === 'deals'">
         <div class="flex items-center gap-3">
             <div class="search-group flex-1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -123,13 +143,13 @@
     </div>
 
     {{-- Loading --}}
-    <div x-show="loading" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
+    <div x-show="loading && activeTab === 'deals'" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span class="text-sm">Loading deals…</span>
     </div>
 
     {{-- Table view --}}
-    <div x-show="!loading && viewMode === 'table'" class="card p-0 overflow-hidden">
+    <div x-show="!loading && viewMode === 'table' && activeTab === 'deals'" class="card p-0 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-sm font-semibold text-[#1E1B4B]">
@@ -279,7 +299,7 @@
     </div>
 
     {{-- Kanban view --}}
-    <div x-show="!loading && viewMode === 'kanban'" class="overflow-x-auto pb-4">
+    <div x-show="!loading && viewMode === 'kanban' && activeTab === 'deals'" class="overflow-x-auto pb-4">
         <div class="flex gap-4 min-w-max">
             <template x-for="stage in stages" :key="stage.key">
                 <div class="w-64 flex-none">
@@ -330,6 +350,99 @@
                     </div>
                 </div>
             </template>
+        </div>
+    </div>
+
+    {{-- ── Deal Archive Tab ──────────────────────────────────────────── --}}
+    <div x-show="activeTab === 'archive'" class="space-y-4">
+
+        {{-- Loading --}}
+        <div x-show="loadingArchive" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
+            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span class="text-sm">Loading archived deals…</span>
+        </div>
+
+        {{-- Empty state --}}
+        <div x-show="!loadingArchive && archivedLeads.length === 0" class="card py-16 text-center">
+            <div class="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"/></svg>
+            </div>
+            <p class="text-gray-400 text-sm font-medium">No archived deals</p>
+            <p class="text-xs text-gray-300 mt-1">Deleted deals appear here for 10 days before permanent removal.</p>
+        </div>
+
+        {{-- Archive table --}}
+        <div x-show="!loadingArchive && archivedLeads.length > 0" class="card p-0 overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+                <div>
+                    <p class="text-sm font-semibold text-[#1E1B4B]">
+                        <span x-text="archivedLeads.length"></span> archived deal<span x-show="archivedLeads.length !== 1">s</span>
+                    </p>
+                    <p class="text-xs text-gray-400 mt-0.5">Deals are permanently deleted 10 days after archiving. Restore any deal before it expires.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="table-head">
+                            <th>Deal</th>
+                            <th class="hidden sm:table-cell">Referrer</th>
+                            <th>Value</th>
+                            <th class="hidden md:table-cell">Archived By</th>
+                            <th class="hidden md:table-cell">Archived Date</th>
+                            <th>Time Left</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="deal in archivedLeads" :key="deal.id">
+                            <tr class="table-row">
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-red-500 font-bold text-xs shrink-0"
+                                             style="background:#FEE2E2" x-text="(deal.name||'?').slice(0,2).toUpperCase()"></div>
+                                        <div class="min-w-0">
+                                            <p class="font-medium text-[#1E1B4B] truncate max-w-40 text-sm" x-text="deal.name"></p>
+                                            <p class="text-xs text-gray-400 truncate" x-text="[deal.data?.province, deal.data?.municipality].filter(Boolean).join(' › ') || 'Custom deal'"></p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="hidden sm:table-cell text-sm text-gray-600" x-text="deal.reseller_name || '—'"></td>
+                                <td class="text-sm font-semibold text-[#1E1B4B]" x-text="deal.deal_value ? '₱' + Number(deal.deal_value).toLocaleString() : '—'"></td>
+                                <td class="hidden md:table-cell text-xs text-gray-500" x-text="deal.deleted_by || 'Admin'"></td>
+                                <td class="hidden md:table-cell text-xs text-gray-500" x-text="archiveDate(deal.deleted_at)"></td>
+                                <td>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                                          :class="{
+                                              'bg-red-100 text-red-700':    deal.days_until_purge <= 2,
+                                              'bg-amber-100 text-amber-700': deal.days_until_purge > 2 && deal.days_until_purge <= 5,
+                                              'bg-gray-100 text-gray-600':  deal.days_until_purge > 5,
+                                          }">
+                                        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span x-text="deal.days_until_purge === 0 ? 'Purging soon' : (deal.days_until_purge + 'd left')"></span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <button @click="restoreDeal(deal.id)"
+                                                :disabled="restoring === deal.id"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
+                                            <svg x-show="restoring === deal.id" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                            <svg x-show="restoring !== deal.id" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span x-text="restoring === deal.id ? 'Restoring…' : 'Restore'"></span>
+                                        </button>
+                                        <button @click="openForceDelete(deal)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -718,10 +831,10 @@
             <div class="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             </div>
-            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2">Delete Deals?</h3>
-            <p class="text-gray-500 text-sm mb-1">You are about to permanently delete</p>
+            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2">Archive Deals?</h3>
+            <p class="text-gray-500 text-sm mb-1">You are about to archive</p>
             <p class="text-red-600 font-bold text-lg mb-4" x-text="selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '')"></p>
-            <p class="text-gray-400 text-xs mb-6">This action cannot be undone. All deal history and commission data will be removed.</p>
+            <p class="text-gray-400 text-xs mb-6">Archived deals move to the <strong>Deal Archive</strong> tab and are permanently deleted after 10 days. You can restore them before then.</p>
             <div class="flex gap-3">
                 <button @click="showDeleteConfirm=false"
                         class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
@@ -731,7 +844,37 @@
                         :disabled="deleting"
                         class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
                     <svg x-show="deleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                    <span x-text="deleting ? 'Deleting…' : 'Yes, Delete'"></span>
+                    <span x-text="deleting ? 'Archiving…' : 'Yes, Archive'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Force-Delete Confirmation Modal ─────────────────────────────── --}}
+    <div :style="showForceDeleteConfirm ? 'display:flex' : 'display:none'"
+         class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+            <div class="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2">Delete Permanently?</h3>
+            <p class="text-gray-500 text-sm mb-1">You are about to permanently delete</p>
+            <p class="text-red-600 font-bold mb-4" x-text="'&quot;' + (forceDeleteTarget?.name || '') + '&quot;'"></p>
+            <p class="text-gray-400 text-xs mb-6">This cannot be undone. All deal history, notes, and commission data will be removed immediately.</p>
+            <div class="flex gap-3">
+                <button @click="showForceDeleteConfirm = false; forceDeleteTarget = null"
+                        :disabled="!!forceDeleting"
+                        class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button @click="confirmForceDelete()"
+                        :disabled="!!forceDeleting"
+                        class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
+                    <svg x-show="forceDeleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span x-text="forceDeleting ? 'Deleting…' : 'Yes, Delete Forever'"></span>
                 </button>
             </div>
         </div>
@@ -764,6 +907,11 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         showSuccessState: false, createdDeal: null,
         selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false, showDeleteInstructions: false,
         municipalityOptions: [], dealMode: 'standard',
+        // Archive tab
+        activeTab: 'deals',
+        archivedLeads: [], loadingArchive: true,
+        restoring: null, forceDeleting: null,
+        showForceDeleteConfirm: false, forceDeleteTarget: null,
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
         referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
@@ -805,6 +953,85 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
+
+            // Load archive list when user switches to that tab
+            this.$watch('activeTab', (val) => {
+                if (val === 'archive' && this.loadingArchive) this.loadArchivedLeads();
+            });
+        },
+
+        async loadArchivedLeads() {
+            this.loadingArchive = true;
+            try {
+                const res = await fetch(`/api/leads/archived?tenant_id=${tenantId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                this.archivedLeads = Array.isArray(data) ? data : [];
+            } catch(e) { this.archivedLeads = []; }
+            this.loadingArchive = false;
+        },
+
+        async restoreDeal(id) {
+            if (this.restoring) return;
+            this.restoring = id;
+            const csrf = document.querySelector('meta[name=csrf-token]').content;
+            try {
+                const res  = await fetch(`/api/leads/${id}/restore`, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.archivedLeads = this.archivedLeads.filter(d => d.id !== id);
+                    if (data.lead) { this.leads.unshift(data.lead); this.applyFilters(); }
+                    this.$dispatch('show-toast', { type: 'success', message: 'Deal restored to active pipeline.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Restore failed.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            } finally {
+                this.restoring = null;
+            }
+        },
+
+        openForceDelete(deal) {
+            this.forceDeleteTarget = deal;
+            this.showForceDeleteConfirm = true;
+        },
+
+        async confirmForceDelete() {
+            if (!this.forceDeleteTarget || this.forceDeleting) return;
+            const id   = this.forceDeleteTarget.id;
+            const name = this.forceDeleteTarget.name;
+            this.forceDeleting = id;
+            const csrf = document.querySelector('meta[name=csrf-token]').content;
+            try {
+                const res  = await fetch(`/api/leads/${id}/force-delete`, {
+                    method: 'DELETE', credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    this.archivedLeads = this.archivedLeads.filter(d => d.id !== id);
+                    this.showForceDeleteConfirm = false;
+                    this.forceDeleteTarget = null;
+                    this.$dispatch('show-toast', { type: 'success', message: `"${name}" permanently deleted.` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Permanent delete failed.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            } finally {
+                this.forceDeleting = null;
+            }
+        },
+
+        archiveDate(iso) {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
         },
 
         applyFilters() {

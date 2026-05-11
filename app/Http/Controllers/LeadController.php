@@ -543,20 +543,119 @@ class LeadController extends Controller
 
         $lead->assertBelongsToCurrentTenant();
 
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
         $leadId   = $lead->id;
         $leadName = $lead->name;
         $tenantId = $lead->tenant_id;
 
+        // Soft-delete: moves deal to archive (10-day recovery window)
+        $lead->deleted_by = $actorName;
+        $lead->save();
         $lead->delete();
 
-        Log::info('Deal permanently deleted', [
+        Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
             'lead_name'  => $leadName,
             'tenant_id'  => $tenantId,
-            'deleted_by' => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+            'deleted_by' => $actorName,
         ]);
 
         return response()->json(['success' => true, 'deleted_id' => $leadId]);
+    }
+
+    public function archivedIndex(Request $request): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can view archived deals.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant context required.'], 403);
+        }
+
+        $leads = Lead::onlyTrashed()
+            ->where('tenant_id', $tenantId)
+            ->orderBy('deleted_at', 'desc')
+            ->get()
+            ->map(function (Lead $lead) {
+                $arr = $lead->toArray();
+                $daysSince = (int) $lead->deleted_at->diffInDays(now());
+                $arr['days_until_purge'] = max(0, 10 - $daysSince);
+                return $arr;
+            });
+
+        return response()->json($leads);
+    }
+
+    public function restore(Request $request, string $leadId): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can restore deals.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $lead = Lead::onlyTrashed()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $leadId)
+            ->first();
+
+        if (!$lead) {
+            return response()->json(['error' => 'Archived deal not found.'], 404);
+        }
+
+        $lead->restore();
+        $lead->update(['deleted_by' => null]);
+
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+
+        try {
+            app(\App\Services\DealActivityService::class)->record(
+                $lead,
+                ($actorName ?? 'Admin') . ' restored this deal from the archive.',
+                'assignment',
+                ['category' => 'deal', 'actor_name' => $actorName ?? 'Admin', 'actor_role' => $actorRole]
+            );
+        } catch (\Throwable) {}
+
+        Log::info('Deal restored from archive', [
+            'lead_id'     => $lead->id,
+            'tenant_id'   => $lead->tenant_id,
+            'restored_by' => $actorName,
+        ]);
+
+        return response()->json(['success' => true, 'lead' => $lead->fresh(['commissionSplits'])]);
+    }
+
+    public function forceDeleteLead(Request $request, string $leadId): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can permanently delete deals.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $lead = Lead::onlyTrashed()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $leadId)
+            ->first();
+
+        if (!$lead) {
+            return response()->json(['error' => 'Archived deal not found.'], 404);
+        }
+
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+        $deletedId   = $lead->id;
+        $leadName    = $lead->name;
+        $lead->forceDelete();
+
+        Log::info('Deal permanently deleted (force)', [
+            'lead_id'    => $deletedId,
+            'lead_name'  => $leadName,
+            'tenant_id'  => $tenantId,
+            'deleted_by' => $actorName,
+        ]);
+
+        return response()->json(['success' => true, 'deleted_id' => $deletedId]);
     }
 
     public function bulkDelete(Request $request): JsonResponse
@@ -575,6 +674,8 @@ class LeadController extends Controller
             'ids.*' => 'required|string|uuid',
         ]);
 
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+
         $leads = Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
             ->get();
@@ -582,13 +683,15 @@ class LeadController extends Controller
         $count = $leads->count();
 
         foreach ($leads as $lead) {
-            $lead->delete();
+            $lead->deleted_by = $actorName;
+            $lead->save();
+            $lead->delete(); // soft-delete
         }
 
-        Log::info('Bulk deal delete', [
+        Log::info('Bulk deal archive (soft-delete)', [
             'tenant_id'  => $tenantId,
             'count'      => $count,
-            'deleted_by' => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+            'deleted_by' => $actorName,
         ]);
 
         return response()->json(['success' => true, 'deleted_count' => $count]);

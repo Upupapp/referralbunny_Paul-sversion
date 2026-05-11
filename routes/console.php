@@ -33,6 +33,7 @@ Schedule::command('invitations:send-reminders')->hourly();
 
 // ── Lead expiry & pipeline ────────────────────────────────────
 Schedule::command('leads:expire')->dailyAt('00:05');
+Schedule::command('leads:purge-archived')->dailyAt('01:30');
 Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30');
 Schedule::command('leads:notify-expiring')->dailyAt('07:00');
 

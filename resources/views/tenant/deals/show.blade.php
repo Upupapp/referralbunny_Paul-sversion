@@ -1611,9 +1611,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
             </div>
-            <h3 class="text-lg font-bold text-[#1E1B4B] mb-1">Delete this deal?</h3>
+            <h3 class="text-lg font-bold text-[#1E1B4B] mb-1">Archive this deal?</h3>
             <p class="text-sm text-gray-500 mb-1" x-text="lead?.name || 'This deal'"></p>
-            <p class="text-xs text-gray-400 mb-6">All deal history, notes, and commission data will be permanently removed. This cannot be undone.</p>
+            <p class="text-xs text-gray-400 mb-6">This deal will be moved to the <strong>Deal Archive</strong> tab and permanently deleted after 10 days. You can restore it before then.</p>
             <div class="flex gap-3">
                 <button @click="showDeleteConfirm = false"
                         :disabled="deleting"
@@ -1627,7 +1627,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                     </svg>
-                    <span x-text="deleting ? 'Deleting…' : 'Yes, Delete Deal'"></span>
+                    <span x-text="deleting ? 'Archiving…' : 'Yes, Archive Deal'"></span>
                 </button>
             </div>
         </div>
