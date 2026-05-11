@@ -130,10 +130,49 @@ class ResellerDealController extends Controller
             $breakdown = $calc->breakdownFromLead($lead);
         } catch (\Throwable) {}
 
+        $commissionPool = (float) ($breakdown['commission_pool'] ?? 0);
+
+        // My Commission — use logged-in referrer's split % if they are a co-referrer,
+        // otherwise assume 100% of pool (primary referrer with no explicit split record).
+        $myCommission = 0;
+        try {
+            $mySplitRecord = $splits->firstWhere('reseller_name', $reseller->name);
+            $myPct         = $mySplitRecord ? (float) ($mySplitRecord->percentage ?? 100.0) : 100.0;
+            $myCommission  = $calc->referrerShare($commissionPool, $myPct);
+        } catch (\Throwable) {}
+
+        // Partners Commission — sum of all active partner split allocations.
+        $partnersCommission = 0;
+        $partnerSplits = collect($partnerSplits)->map(function ($ps) use ($calc, $commissionPool) {
+            $estimated = 0;
+            try {
+                $estimated = $calc->partnerShare(
+                    $commissionPool,
+                    (float) ($ps->split_share_value ?? 0),
+                    $ps->split_share_type ?? 'percentage'
+                );
+            } catch (\Throwable) {}
+
+            $val = (float) ($ps->split_share_value ?? 0);
+            $displayShare = ($ps->split_share_type ?? '') === 'fixed_amount'
+                ? '₱' . number_format($val, 0)
+                : rtrim(rtrim(number_format($val, 2, '.', ''), '0'), '.') . '%';
+
+            return array_merge((array) $ps, [
+                'estimated_commission' => $estimated,
+                'display_share'        => $displayShare,
+            ]);
+        })->toArray();
+
+        try {
+            $partnersCommission = round(array_sum(array_column($partnerSplits, 'estimated_commission')), 2);
+        } catch (\Throwable) {}
+
         return view('reseller.deals.show', compact(
             'reseller', 'tenant', 'lead', 'tenantId',
             'pendingApprovals', 'notes', 'splits', 'partnerSplits',
-            'attachments', 'history', 'breakdown'
+            'attachments', 'history', 'breakdown',
+            'myCommission', 'partnersCommission'
         ));
     }
 

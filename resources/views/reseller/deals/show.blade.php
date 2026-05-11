@@ -221,14 +221,65 @@
                 <p class="text-xs text-gray-400 mt-1">{{ $lead->data['province'] }}{{ ($lead->data['municipality'] ?? null) ? ' · ' . $lead->data['municipality'] : '' }}</p>
                 @endif
             </div>
-            <div class="text-right shrink-0">
-                <p class="text-xl font-bold text-[#1E1B4B]">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
-                <p class="text-xs text-gray-400 mt-0.5">Deal Value</p>
+            <div class="text-right shrink-0 space-y-2">
+
+                {{-- Deal Value --}}
+                <div>
+                    <p class="text-xl font-bold text-[#1E1B4B]">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Deal Value</p>
+                </div>
+
+                {{-- My Commission --}}
+                <div>
+                    <div class="flex items-center justify-end gap-1 mb-0.5">
+                        <p class="text-xs text-gray-400">My Commission</p>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition
+                                 class="absolute right-0 top-5 z-30 w-64 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                <strong class="text-gray-700 block mb-1">My Commission</strong>
+                                Your estimated commission for this deal based on the current deal amount, commission pool, and your Referrer split. Amounts may change if the deal amount, stage, or split allocation changes. All amounts may be subject to applicable taxes and deductions.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-base font-bold text-[#0D9488]">₱{{ number_format($myCommission, 0) }}</p>
+                    <p class="text-[10px] text-gray-400">
+                        @if($lead->commission_status === 'paid') Paid
+                        @elseif($lead->commission_status === 'locked') Locked
+                        @else Estimated
+                        @endif
+                    </p>
+                </div>
+
+                {{-- Partners Commission --}}
+                <div>
+                    <div class="flex items-center justify-end gap-1 mb-0.5">
+                        <p class="text-xs text-gray-400">Partners Commission</p>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition
+                                 class="absolute right-0 top-5 z-30 w-64 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                <strong class="text-gray-700 block mb-1">Partners Commission</strong>
+                                The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-600">₱{{ number_format($partnersCommission, 0) }}</p>
+                </div>
+
+                {{-- Days left --}}
                 @if($lead->days_left !== null && $lead->stage !== 'paid')
-                <p class="text-xs font-medium mt-1 {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
+                <p class="text-xs font-medium {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
                     {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
                 </p>
                 @endif
+
             </div>
         </div>
 
@@ -302,34 +353,137 @@
         </div>
     </div>
 
-    {{-- Commission / Splits ───────────────────────────────────── --}}
-    @if(count($splits) > 0 || count($partnerSplits) > 0)
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <h2 class="text-sm font-bold text-[#1E1B4B] mb-3">Commission & Splits</h2>
-        @if(count($splits) > 0)
-        <div class="space-y-2 mb-3">
-            @foreach($splits as $split)
-            <div class="flex items-center justify-between text-sm">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full" style="background:#7B61FF"></span>
-                    <span class="text-gray-700">{{ $split->reseller_name }} <span class="text-[10px] text-gray-400 ml-1">{{ ucfirst($split->role ?? 'referrer') }}</span></span>
+    {{-- Partners & Split ────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+                <h2 class="text-sm font-bold text-[#1E1B4B]">Partners & Split</h2>
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak x-transition
+                         class="absolute left-0 top-6 z-30 w-72 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-xs text-gray-500 leading-relaxed">
+                        <strong class="text-gray-700 block mb-1">Partners & Split</strong>
+                        Partners connected to this deal and their split allocation. Partner commissions are estimated based on the current deal amount, commission pool, and approved split setup.
+                    </div>
                 </div>
-                <span class="font-semibold text-[#1E1B4B]">{{ $split->percentage }}%</span>
+            </div>
+            <button @click="showAddPartner = true"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                Add Partner
+            </button>
+        </div>
+
+        @if(count($partnerSplits) === 0)
+        {{-- Empty state --}}
+        <div class="flex flex-col items-center justify-center py-10 px-5 text-center">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style="background:#CCFBF1">
+                <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <p class="text-sm font-semibold text-[#1E1B4B]">No Partners added yet</p>
+            <p class="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
+                Partners connected to this deal will appear here with their split and estimated commission.
+            </p>
+        </div>
+
+        @else
+        {{-- Desktop table --}}
+        <div class="hidden sm:block overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-100">
+                        <th class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Partner</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                        <th class="text-right px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Split</th>
+                        <th class="text-right px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Est. Commission</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @foreach($partnerSplits as $ps)
+                    <tr class="hover:bg-gray-50/40 transition-colors">
+                        <td class="px-5 py-3.5">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
+                                    {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 1)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-[#1E1B4B] truncate">{{ $ps['partner_name'] ?? '—' }}</p>
+                                    <p class="text-[10px] text-gray-400 truncate">{{ $ps['partner_email'] ?? '' }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3.5">
+                            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
+                            <span @class([
+                                'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                'bg-green-100 text-green-700'  => $pStatus === 'active',
+                                'bg-amber-100 text-amber-700'  => $pStatus === 'pending_invite',
+                                'bg-gray-100 text-gray-500'    => in_array($pStatus, ['provisional', 'invite_failed']),
+                            ])>
+                                @if($pStatus === 'active') Active
+                                @elseif($pStatus === 'pending_invite') Pending Invite
+                                @elseif($pStatus === 'invite_failed') Invite Failed
+                                @else Not Invited
+                                @endif
+                            </span>
+                        </td>
+                        <td class="px-4 py-3.5 text-right font-semibold text-[#1E1B4B]">
+                            {{ $ps['display_share'] ?? '—' }}
+                        </td>
+                        <td class="px-5 py-3.5 text-right font-semibold text-[#0D9488]">
+                            ₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Mobile cards --}}
+        <div class="sm:hidden divide-y divide-gray-50">
+            @foreach($partnerSplits as $ps)
+            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
+            <div class="px-4 py-4 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
+                    {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 1)) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $ps['partner_name'] ?? '—' }}</p>
+                        <span @class([
+                            'inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold',
+                            'bg-green-100 text-green-700'  => $pStatus === 'active',
+                            'bg-amber-100 text-amber-700'  => $pStatus === 'pending_invite',
+                            'bg-gray-100 text-gray-500'    => in_array($pStatus, ['provisional', 'invite_failed']),
+                        ])>
+                            @if($pStatus === 'active') Active
+                            @elseif($pStatus === 'pending_invite') Pending
+                            @else Not Invited
+                            @endif
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        Split: <strong class="text-[#1E1B4B]">{{ $ps['display_share'] ?? '—' }}</strong>
+                        &nbsp;·&nbsp;
+                        Est. Commission: <strong class="text-[#0D9488]">₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}</strong>
+                    </p>
+                </div>
             </div>
             @endforeach
         </div>
-        @endif
-        @foreach($partnerSplits as $ps)
-        <div class="flex items-center justify-between text-sm">
-            <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full" style="background:#0D9488"></span>
-                <span class="text-gray-700">{{ $ps->partner_name ?? 'Partner' }} <span class="text-[10px] text-gray-400 ml-1">Partner</span></span>
-            </div>
-            <span class="font-semibold text-[#1E1B4B]">{{ $ps->split_share_value }}{{ $ps->split_share_type === 'percentage' ? '%' : ' (fixed)' }}</span>
+
+        {{-- Total row --}}
+        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <p class="text-xs text-gray-400">{{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }} · Total estimated</p>
+            <p class="text-sm font-bold text-[#0D9488]">₱{{ number_format($partnersCommission, 0) }}</p>
         </div>
-        @endforeach
+        @endif
     </div>
-    @endif
 
     {{-- Notes ────────────────────────────────────────────────── --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
