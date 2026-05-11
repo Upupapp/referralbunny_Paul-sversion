@@ -144,18 +144,20 @@ class ResellerController extends Controller
 
                 $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
                 $setupUrl   = url('/reseller/setup?token=' . $setupToken);
-                $emailStatus = 'sent';
-                try {
-                    Mail::send(new ResellerInvitation(
+                $emailStatus = \App\Services\EmailLogger::send(
+                    mailable:       new ResellerInvitation(
                         resellerName:  $existing->name,
                         resellerEmail: $existing->email,
                         tenantName:    $tenantName,
                         setupUrl:      $setupUrl,
-                    ));
-                } catch (\Throwable $e) {
-                    $emailStatus = 'failed';
-                    Log::warning("Reseller reinvite email failed for {$existing->email}: {$e->getMessage()}");
-                }
+                    ),
+                    recipientEmail: $existing->email,
+                    recipientType:  'reseller',
+                    emailKey:       'reseller-reinvite-' . $existing->id,
+                    subject:        "You've been invited as a Referrer for {$tenantName}",
+                    recipientId:    $existing->id,
+                    tenantId:       $tenantId,
+                ) ? 'sent' : 'failed';
 
                 $response = $existing->toArray();
                 $response['email_delivery_status'] = $emailStatus;
@@ -462,18 +464,25 @@ class ResellerController extends Controller
         $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);
 
-        try {
-            Mail::send(new ResellerInvitation(
+        $sent = \App\Services\EmailLogger::send(
+            mailable:       new ResellerInvitation(
                 resellerName:  $reseller->name,
                 resellerEmail: $reseller->email,
                 tenantName:    $tenantName,
                 setupUrl:      $setupUrl,
-            ));
+            ),
+            recipientEmail: $reseller->email,
+            recipientType:  'reseller',
+            emailKey:       'reseller-invite-resend-' . $reseller->id . '-' . now()->format('YmdHis'),
+            subject:        "You've been invited as a Referrer for {$tenantName}",
+            recipientId:    $reseller->id,
+            tenantId:       $tenantId,
+        );
+
+        if ($sent) {
             return response()->json(['success' => true, 'message' => 'Invitation sent to ' . $reseller->email . '.']);
-        } catch (\Throwable $e) {
-            Log::warning("sendInvite failed for {$reseller->email}: {$e->getMessage()}");
-            return response()->json(['message' => 'Referrer record is ready but email delivery failed. Check mail configuration.'], 500);
         }
+        return response()->json(['message' => 'Referrer record is ready but email delivery failed. Check mail configuration.'], 500);
     }
 
     private function auditDeactivation(string $tenantId, Reseller $reseller, string $actorId, string $event, string $reason, array $extra = []): void
