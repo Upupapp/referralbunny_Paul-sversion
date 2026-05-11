@@ -1,8 +1,23 @@
 @php
-$tenantId    = $tenant->id;
-$navRole     = \App\Services\TenantContext::role() ?? 'viewer';
-$isPartner   = $navRole === 'partner';
-$isAdminMgr  = in_array($navRole, ['owner', 'admin', 'manager', 'super_admin']);
+$tenantId = $tenant->id;
+
+// Resolve nav role from web context (TenantContext is API-only and null on web routes)
+if (auth('web')->check()) {
+    $navRole = 'super_admin';
+} elseif (request()->attributes->has('_tenant_role')) {
+    $navRole = request()->attributes->get('_tenant_role');
+} elseif (auth('tenant')->check()) {
+    // Fallback if middleware didn't run (e.g. sub-tenant prefix routes)
+    $navRole = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
+        ->where('tenant_id', $tenantId)
+        ->where('status', 'active')
+        ->value('role') ?? 'viewer';
+} else {
+    $navRole = 'viewer';
+}
+
+$isPartner  = $navRole === 'partner';
+$isAdminMgr = in_array($navRole, ['owner', 'admin', 'manager', 'super_admin']);
 
 $groups = [
     [

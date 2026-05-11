@@ -36,8 +36,9 @@ class EnsureTenantAccess
                 abort(403, 'You do not have access to this tenant workspace.');
             }
 
-            // Bind membership to request for downstream use
+            // Bind membership to request for downstream use (nav + controllers)
             $request->merge(['_tenant_membership' => $membership]);
+            $request->attributes->set('_tenant_role', $membership->role ?? 'admin');
 
             return $next($request);
         }
