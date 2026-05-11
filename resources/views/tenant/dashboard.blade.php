@@ -46,7 +46,7 @@ document.addEventListener('alpine:init', () => {
         $kpis = [
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>', 'bg' => '#EDE9FE', 'color' => '#7B61FF', 'label' => 'Total Referrals', 'val' => 'leads.length', 'sub' => 'newThisWeek() + \' new this week\'', 'up' => 'newThisWeek()>0', 'line' => '#7B61FF', 'pct' => 'Math.min((leads.length/50)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>', 'bg' => '#D1FAE5', 'color' => '#10B981', 'label' => 'Pipeline Value', 'val' => 'pipelineValue()', 'sub' => '\'Total deal value\'', 'up' => 'true', 'line' => '#10B981', 'pct' => 'Math.min((leads.reduce((s,l)=>s+(+l.deal_value||0),0)/10000000)*100,100)'],
-            ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>', 'bg' => '#DBEAFE', 'color' => '#3B82F6', 'label' => 'Active Referrers', 'val' => 'resellers.length', 'sub' => '\'Referrer partners\'', 'up' => 'true', 'line' => '#3B82F6', 'pct' => 'Math.min((resellers.length/20)*100,100)'],
+            ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>', 'bg' => '#DBEAFE', 'color' => '#3B82F6', 'label' => 'Base Cost', 'val' => 'baseCostTotal()', 'sub' => '\'Total base cost (all deals)\'', 'up' => 'true', 'line' => '#3B82F6', 'pct' => 'Math.min((baseCostRaw()/50000000)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>', 'bg' => '#FEF3C7', 'color' => '#D97706', 'label' => 'Company Share', 'val' => 'companyShareTotal()', 'sub' => '\'30% of added amount\'', 'up' => 'true', 'line' => '#D97706', 'pct' => 'Math.min((companyShareRaw()/5000000)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>', 'bg' => '#CCFBF1', 'color' => '#0D9488', 'label' => 'Commission Pool', 'val' => 'commissionPoolTotal()', 'sub' => '\'70% of added amount\'', 'up' => 'true', 'line' => '#0D9488', 'pct' => 'Math.min((commissionPoolRaw()/10000000)*100,100)'],
         ];
@@ -578,17 +578,17 @@ document.addEventListener('alpine:init', () => {
                        x-text="leads.filter(l=>(l.days_left??21)<=7||l.status==='expired').length+' deals expiring or expired'"></p>
                 </div>
 
-                {{-- Conversion Rate --}}
-                <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-100/60">
+                {{-- Active Referrers --}}
+                <div class="p-4 rounded-2xl bg-blue-50 border border-blue-100/60">
                     <div class="flex items-center gap-2 mb-3">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         </div>
-                        <span class="text-xs text-emerald-600 font-semibold">Conversion Rate</span>
+                        <span class="text-xs text-blue-600 font-semibold">Active Referrers</span>
                     </div>
-                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums" x-text="conversionRate()+'%'"></p>
+                    <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums" x-text="resellers.length"></p>
                     <p class="text-[10px] text-gray-400 mt-1.5"
-                       x-text="leads.filter(l=>l.stage==='paid').length+' paid of '+leads.length+' total'"></p>
+                       x-text="resellers.filter(r=>(r.assigned_leads||0)>0).length+' with active deals'"></p>
                 </div>
 
                 {{-- Referrer Activation --}}
@@ -1091,6 +1091,23 @@ function tenantDashboard(tenantId, currentResellerName) {
         conversionRate() {
             if (!this.leads.length) return 0;
             return Math.round((this.leads.filter(l=>l.stage==='paid').length / this.leads.length)*100);
+        },
+        baseCostRaw() {
+            return this.leads.reduce((s, l) => {
+                const bc = Number(l.base_cost) || 0;
+                const aa = Number(l.added_amount) || 0;
+                const dv = Number(l.deal_value) || 0;
+                // Use stored base_cost if set; derive from deal_value - added_amount if both exist
+                if (bc > 0) return s + bc;
+                if (aa > 0 && dv > 0) return s + Math.max(0, dv - aa);
+                return s;
+            }, 0);
+        },
+        baseCostTotal() {
+            const t = this.baseCostRaw();
+            if (t >= 1000000) return '₱' + (t / 1000000).toFixed(1) + 'M';
+            if (t >= 1000)    return '₱' + Math.round(t / 1000) + 'K';
+            return t > 0 ? '₱' + Math.round(t).toLocaleString() : '₱0';
         },
         // Added amount per lead: use stored added_amount; fall back to deal_value for legacy zero-aa leads
         _addedAmount(l) {
