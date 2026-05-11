@@ -1063,29 +1063,33 @@ class ContactsImportService
 
         $this->snapshots->markBatchEligible($batch->id);
 
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:     $tenantId,
-            category:     'import_completed',
-            priority:     $failed > 0 ? 'high' : 'normal',
-            title:        $status === 'completed' ? 'Contacts Import Complete' : 'Contacts Import Complete with Warnings',
-            body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
-            actionUrl:    "/tenant/{$tenantId}/imports/contacts/{$batch->id}/report",
-            actionLabel:  'View Report',
-            dedupeSuffix: $batch->id,
-        );
-
-        if ($executorRole === 'reseller' && $executorResellerId) {
-            $this->notifications->dispatchToReseller(
-                resellerId:   $executorResellerId,
+        try {
+            $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'import_completed',
-                priority:     'normal',
-                title:        'Contact Import Complete',
-                body:         "Created: $created, Updated: $updated, Skipped: $skipped.",
-                actionUrl:    "/reseller/{$tenantId}/contacts/imports/{$batch->id}/report",
+                priority:     $failed > 0 ? 'high' : 'normal',
+                title:        $status === 'completed' ? 'Contacts Import Complete' : 'Contacts Import Complete with Warnings',
+                body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
+                actionUrl:    "/tenant/{$tenantId}/imports/contacts/{$batch->id}/report",
                 actionLabel:  'View Report',
                 dedupeSuffix: $batch->id,
             );
+        } catch (\Throwable) {}
+
+        if ($executorRole === 'reseller' && $executorResellerId) {
+            try {
+                $this->notifications->dispatchToReseller(
+                    resellerId:   $executorResellerId,
+                    tenantId:     $tenantId,
+                    category:     'import_completed',
+                    priority:     'normal',
+                    title:        'Contact Import Complete',
+                    body:         "Created: $created, Updated: $updated, Skipped: $skipped.",
+                    actionUrl:    "/reseller/{$tenantId}/contacts/imports/{$batch->id}/report",
+                    actionLabel:  'View Report',
+                    dedupeSuffix: $batch->id,
+                );
+            } catch (\Throwable) {}
         }
 
         return compact('created', 'updated', 'skipped', 'failed');

@@ -304,13 +304,30 @@ class ContactsImportController extends Controller
                 ]);
         }
 
-        $result = $this->service->executeImport(
-            batch:               $batch,
-            tenantId:            $tenantId,
-            executorId:          $this->authId(),
-            executorRole:        $role,
-            executorResellerId:  $this->authResellerId(),
-        );
+        $previewRoute = $role === 'reseller'
+            ? 'reseller.contacts.imports.preview'
+            : 'tenant.imports.contacts.preview';
+
+        try {
+            $result = $this->service->executeImport(
+                batch:               $batch,
+                tenantId:            $tenantId,
+                executorId:          $this->authId(),
+                executorRole:        $role,
+                executorResellerId:  $this->authResellerId(),
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ContactsImport::execute failed', [
+                'tenant_id' => $tenantId,
+                'batch_id'  => $batchId,
+                'role'      => $role,
+                'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            return redirect()
+                ->route($previewRoute, [$tenantId, $batchId])
+                ->withErrors(['import' => 'Import failed. Please try again or contact support if the problem persists.']);
+        }
 
         $reportRoute = $role === 'reseller'
             ? 'reseller.contacts.imports.show'
