@@ -88,6 +88,21 @@ class TenantDealImportController extends Controller
         abort_if(Auth::guard('partner')->check(), 403, 'Partners cannot access the import centre.');
     }
 
+    /** Build a batch query that accepts both generic_deals and lgu_ids_deals for LGU IDS resellers. */
+    private function batchQuery(string $tenantId): \Illuminate\Database\Eloquent\Builder
+    {
+        $q = ImportBatch::where('tenant_id', $tenantId);
+        if ($tenantId === 'lgu-ids' && $this->isReseller()) {
+            $q->whereIn('import_type', ['generic_deals', 'lgu_ids_deals']);
+        } else {
+            $q->where('import_type', 'generic_deals');
+        }
+        if ($this->isReseller()) {
+            $q->where('imported_by_id', $this->authId());
+        }
+        return $q;
+    }
+
     /** Return the correct named routes based on who is accessing. */
     private function routeNames(): array
     {
@@ -114,13 +129,7 @@ class TenantDealImportController extends Controller
         $settings = $this->service->getSettings($tenantId);
         $template = $this->service->getTemplate($tenantId);
 
-        $query = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals');
-
-        // Resellers see only their own batches
-        if ($this->isReseller()) {
-            $query->where('imported_by_id', $this->authId());
-        }
+        $query = $this->batchQuery($tenantId);
 
         $batches = $query->orderByDesc('created_at')->paginate(10);
 
@@ -142,7 +151,13 @@ class TenantDealImportController extends Controller
         $this->guardCheck();
         $this->resolveTenant($tenantId);
 
-        $csv      = $this->service->generateTemplateCsv($tenantId);
+        // LGU IDS resellers get the province/municipality template
+        if ($tenantId === 'lgu-ids' && $this->isReseller()) {
+            $lguService = app(\App\Services\LguIds\LguIdsImportService::class);
+            $csv = $lguService->generateTemplateCsv();
+        } else {
+            $csv = $this->service->generateTemplateCsv($tenantId);
+        }
         $filename = 'deals-import-template-' . date('Y-m-d') . '.csv';
 
         return response()->streamDownload(
@@ -166,12 +181,22 @@ class TenantDealImportController extends Controller
         $routes = $this->routeNames();
 
         try {
-            $batch = $this->service->createBatch(
-                file:           $request->file('file'),
-                tenantId:       $tenantId,
-                importedById:   $this->authId(),
-                importedByRole: $this->authRole(),
-            );
+            // LGU IDS resellers use LguIdsImportService (province + municipality columns)
+            if ($tenantId === 'lgu-ids' && $this->isReseller()) {
+                $lguService = app(\App\Services\LguIds\LguIdsImportService::class);
+                $batch = $lguService->createBatch(
+                    file:           $request->file('file'),
+                    importedById:   $this->authId(),
+                    importedByRole: $this->authRole(),
+                );
+            } else {
+                $batch = $this->service->createBatch(
+                    file:           $request->file('file'),
+                    tenantId:       $tenantId,
+                    importedById:   $this->authId(),
+                    importedByRole: $this->authRole(),
+                );
+            }
         } catch (\InvalidArgumentException $e) {
             return redirect()
                 ->route($routes['index'], $tenantId)
@@ -179,11 +204,12 @@ class TenantDealImportController extends Controller
                 ->withInput();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('DealImport::upload failed', [
-                'tenant_id' => $tenantId, 'role' => $this->authRole(), 'error' => $e->getMessage(),
+                'tenant_id' => $tenantId, 'role' => $this->authRole(),
+                'error'     => $e->getMessage(), 'trace' => $e->getTraceAsString(),
             ]);
             return redirect()
                 ->route($routes['index'], $tenantId)
-                ->withErrors(['file' => 'Upload failed. Please try again or contact support.'])
+                ->withErrors(['file' => 'Upload failed: ' . $e->getMessage()])
                 ->withInput();
         }
 
@@ -199,12 +225,7 @@ class TenantDealImportController extends Controller
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
 
-        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals');
-        if ($this->isReseller()) {
-            $batchQuery->where('imported_by_id', $this->authId());
-        }
-        $batch = $batchQuery->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -222,11 +243,14 @@ class TenantDealImportController extends Controller
             array_values($template['aliases'] ?? []),
         )));
 
+        $isLguIds  = ($tenantId === 'lgu-ids' && $batch->import_type === 'lgu_ids_deals');
+        $provinces = $isLguIds ? config('philippines.provinces', []) : [];
+
         $view = $this->isReseller()
             ? 'reseller.deals.imports.preview'
             : 'tenant.imports.deals.preview';
 
-        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields'));
+        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields', 'isLguIds', 'provinces'));
     }
 
     // ── Approve single row (JSON) ─────────────────────────────────
@@ -303,12 +327,7 @@ class TenantDealImportController extends Controller
         $this->resolveTenant($tenantId);
         $routes = $this->routeNames();
 
-        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals');
-        if ($this->isReseller()) {
-            $batchQuery->where('imported_by_id', $this->authId());
-        }
-        $batch = $batchQuery->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         if ($batch->status !== 'previewed') {
             return redirect()
@@ -319,12 +338,22 @@ class TenantDealImportController extends Controller
         }
 
         try {
-            $result = $this->service->executeImport(
-                batch:        $batch,
-                tenantId:     $tenantId,
-                executorId:   $this->authId(),
-                executorRole: $this->authRole(),
-            );
+            // LGU IDS reseller batches use LguIdsImportService
+            if ($batch->import_type === 'lgu_ids_deals') {
+                $lguService = app(\App\Services\LguIds\LguIdsImportService::class);
+                $result = $lguService->executeImport(
+                    batch:       $batch,
+                    executorId:  $this->authId(),
+                    executorRole: $this->authRole(),
+                );
+            } else {
+                $result = $this->service->executeImport(
+                    batch:        $batch,
+                    tenantId:     $tenantId,
+                    executorId:   $this->authId(),
+                    executorRole: $this->authRole(),
+                );
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('DealImport::execute failed', [
                 'tenant_id' => $tenantId, 'batch_id' => $batchId, 'error' => $e->getMessage(),
@@ -351,12 +380,7 @@ class TenantDealImportController extends Controller
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
 
-        $batchQuery = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals');
-        if ($this->isReseller()) {
-            $batchQuery->where('imported_by_id', $this->authId());
-        }
-        $batch = $batchQuery->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -365,11 +389,12 @@ class TenantDealImportController extends Controller
         $grouped = $allRows->groupBy('validation_status');
         $summary = $allRows->groupBy('validation_status')->map->count();
 
+        $isLguIds = ($tenantId === 'lgu-ids' && $batch->import_type === 'lgu_ids_deals');
         $view = $this->isReseller()
             ? 'reseller.deals.imports.show'
             : 'tenant.imports.deals.show';
 
-        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary'));
+        return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'isLguIds'));
     }
 
     // ── Download failed rows CSV ──────────────────────────────────

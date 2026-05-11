@@ -104,8 +104,13 @@
                     <tr class="hover:bg-gray-50/40 transition-colors">
                         <td class="px-4 py-3 text-xs text-gray-400">{{ $row->row_number }}</td>
                         <td class="px-4 py-3">
-                            <p class="font-medium text-[#1E1B4B]">{{ $norm['deal_name'] ?? '—' }}</p>
-                            <p class="text-xs text-gray-400 mt-0.5">{{ $norm['organization_name'] ?? '' }}</p>
+                            @if($isLguIds ?? false)
+                                <p class="font-medium text-[#1E1B4B]">{{ $norm['municipality_or_city'] ?? '—' }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $norm['province'] ?? '' }}</p>
+                            @else
+                                <p class="font-medium text-[#1E1B4B]">{{ $norm['deal_name'] ?? '—' }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $norm['organization_name'] ?? '' }}</p>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums text-gray-600">
                             @if(!empty($norm['deal_amount']))

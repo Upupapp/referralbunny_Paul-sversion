@@ -14,6 +14,10 @@
     $bulkUrl     = route('reseller.deals.imports.bulk-approve',[$tenant->id, $batch->id]);
     $approveBase = url("reseller/{$tenant->id}/deals/imports/{$batch->id}/rows");
     $backUrl     = route('reseller.deals.imports', $tenant->id);
+    $isLguIds    = $isLguIds ?? false;
+    $provinces   = $provinces ?? [];
+    // Build municipalities map from config for Alpine.js
+    $municipalitiesJson = $isLguIds ? json_encode(config('philippines.municipalities', [])) : '{}';
 @endphp
 
 <div class="space-y-5 max-w-5xl mx-auto">
@@ -103,12 +107,18 @@
         @if($rows->isEmpty())
         <div class="px-5 py-10 text-center text-sm text-gray-400">No rows found in this import.</div>
         @else
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto"
+             @if($isLguIds) x-data="{ allMunicipalities: {!! $municipalitiesJson !!} }" @endif>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-100">
                         <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">#</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Deal / Org</th>
+                        @if($isLguIds)
+                            <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Province</th>
+                            <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Municipality / City</th>
+                        @else
+                            <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Deal / Org</th>
+                        @endif
                         <th class="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Amount</th>
                         <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Stage</th>
                         <th class="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
@@ -133,15 +143,47 @@
                             'failed'             => ['bg-red-100 text-red-700',     'Failed'],
                             'unknown_referrer'   => ['bg-amber-100 text-amber-700', 'Unknown Referrer'],
                             'needs_review'       => ['bg-blue-100 text-blue-700',   'Needs Review'],
+                            'unknown_lgu'        => ['bg-orange-100 text-orange-600','Unknown LGU'],
+                            'pricing_issue'      => ['bg-red-100 text-red-700',     'Pricing Issue'],
                         ];
                         [$badgeCls, $badgeLabel] = $statusMap[$row->validation_status] ?? ['bg-gray-100 text-gray-500', ucfirst($row->validation_status)];
                     @endphp
+                    @if($isLguIds)
+                    {{-- LGU IDS: Province + Municipality row --}}
+                    <tr class="hover:bg-gray-50/40 transition-colors"
+                        x-data="{ province: '{{ addslashes($norm['province'] ?? '') }}', municipality: '{{ addslashes($norm['municipality_or_city'] ?? '') }}' }">
+                        <td class="px-4 py-3 text-xs text-gray-400">{{ $row->row_number }}</td>
+                        <td class="px-4 py-3 min-w-[160px]">
+                            <select x-model="province"
+                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700">
+                                <option value="">— Select Province —</option>
+                                @foreach($provinces as $prov)
+                                    <option value="{{ $prov }}" @if(($norm['province'] ?? '') === $prov) selected @endif>{{ $prov }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                        <td class="px-4 py-3 min-w-[180px]">
+                            <select x-model="municipality"
+                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700">
+                                <option value="">— Select Municipality —</option>
+                                <template x-for="mun in (allMunicipalities[province] ?? [])" :key="mun">
+                                    <option :value="mun" :selected="mun === municipality" x-text="mun"></option>
+                                </template>
+                                {{-- Keep current value even if not in list --}}
+                                <template x-if="municipality && !(allMunicipalities[province] ?? []).includes(municipality)">
+                                    <option :value="municipality" selected x-text="municipality"></option>
+                                </template>
+                            </select>
+                        </td>
+                    @else
+                    {{-- Generic: Deal/Org row --}}
                     <tr class="hover:bg-gray-50/40 transition-colors">
                         <td class="px-4 py-3 text-xs text-gray-400">{{ $row->row_number }}</td>
                         <td class="px-4 py-3">
                             <p class="font-medium text-[#1E1B4B]">{{ $norm['deal_name'] ?? '—' }}</p>
                             <p class="text-xs text-gray-400 mt-0.5">{{ $norm['organization_name'] ?? '' }}</p>
                         </td>
+                    @endif
                         <td class="px-4 py-3 text-right tabular-nums text-gray-600">
                             @if(!empty($norm['deal_amount']))
                                 ₱{{ number_format((float)$norm['deal_amount'], 0) }}
@@ -149,7 +191,7 @@
                                 <span class="text-gray-300">—</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', $norm['deal_stage'] ?? 'introduction')) }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', $norm['deal_stage'] ?? $norm['stage'] ?? 'introduction')) }}</td>
                         <td class="px-4 py-3">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $badgeCls }}">
                                 {{ $badgeLabel }}

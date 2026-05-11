@@ -937,8 +937,10 @@ class LguIdsImportService
 
     public function generateTemplateCsv(): string
     {
+        // Province is first column per LGU IDS standard.
+        // Municipality/City + Province combined = Organization (no separate Organization column needed).
         $headers = [
-            'Municipality or City', 'Province', 'Deal Amount', 'Referrer Email',
+            'Province', 'Municipality or City', 'Deal Amount', 'Referrer Email',
             'Deal Start Date', 'Stage', 'Status',
             'Referrer Name', 'Partner Emails', 'Partner Names', 'Notes', 'Source',
             'Contact Person', 'Contact Email', 'Contact Phone', 'Office / Department',
@@ -946,7 +948,7 @@ class LguIdsImportService
             'Tags', 'Internal Reference ID',
         ];
         $sampleRow = [
-            'Quezon City', 'Metro Manila', '4000000', 'referrer@email.com',
+            'Metro Manila', 'Quezon City', '4000000', 'referrer@email.com',
             date('Y-m-d'), 'introduction', 'active',
             'Juan dela Cruz', 'partner@email.com', 'Jose Santos', 'Notes here', 'referral',
             'Maria Reyes', 'maria@lgu.gov.ph', '+63 9XX XXX XXXX', 'IT Department',
