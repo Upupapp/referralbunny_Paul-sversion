@@ -21,24 +21,28 @@ class EnsureLegalAgreementsAccepted
 
     public function handle(Request $request, Closure $next)
     {
-        if ($request->routeIs(self::SKIP_ROUTES)) {
-            return $next($request);
-        }
+        try {
+            if ($request->routeIs(self::SKIP_ROUTES)) {
+                return $next($request);
+            }
 
-        [$tenantId, $userType, $userId, $role] = $this->resolveContext($request);
+            [$tenantId, $userType, $userId, $role] = $this->resolveContext($request);
 
-        if (!$tenantId || !$userId) {
-            return $next($request);
-        }
+            if (!$tenantId || !$userId) {
+                return $next($request);
+            }
 
-        // Owners and admins manage agreements — never gate them
-        if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
-            return $next($request);
-        }
+            // Owners and admins manage agreements — never gate them
+            if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
+                return $next($request);
+            }
 
-        if ($this->hasPending($tenantId, $userType, $userId, $role)) {
-            session()->put('legal_agreements.intended_url', $request->fullUrl());
-            return redirect()->route('tenant.legal-agreements.accept', $tenantId);
+            if ($this->hasPending($tenantId, $userType, $userId, $role)) {
+                session()->put('legal_agreements.intended_url', $request->fullUrl());
+                return redirect()->route('tenant.legal-agreements.accept', $tenantId);
+            }
+        } catch (\Throwable) {
+            // Never block access due to a middleware error — fail open
         }
 
         return $next($request);

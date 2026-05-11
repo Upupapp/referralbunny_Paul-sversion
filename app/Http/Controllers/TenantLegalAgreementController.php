@@ -206,13 +206,15 @@ class TenantLegalAgreementController extends Controller
                 'role'       => $role,
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('showAccept failed', [
-                'tenant_id' => $tenantId,
-                'error'     => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-            ]);
-            // Fall through to dashboard rather than showing a 500
-            return $this->afterAcceptRedirect($tenantId, $this->resolveUserContext($tenantId)[0] ?? '');
+            try {
+                \Illuminate\Support\Facades\Log::error('showAccept failed', [
+                    'tenant_id' => $tenantId,
+                    'error'     => $e->getMessage(),
+                    'trace'     => $e->getTraceAsString(),
+                ]);
+            } catch (\Throwable) {}
+            // Absolute safe fallback — never show a 500
+            return redirect()->to('/');
         }
     }
 
