@@ -14,10 +14,8 @@
     $bulkUrl     = route('reseller.deals.imports.bulk-approve',[$tenant->id, $batch->id]);
     $approveBase = url("reseller/{$tenant->id}/deals/imports/{$batch->id}/rows");
     $backUrl     = route('reseller.deals.imports', $tenant->id);
-    $isLguIds    = $isLguIds ?? false;
-    $provinces   = $provinces ?? [];
-    // Build municipalities map from config for Alpine.js
-    $municipalitiesJson = $isLguIds ? json_encode(config('philippines.municipalities', [])) : '{}';
+    $isLguIds  = $isLguIds ?? false;
+    $provinces = $provinces ?? [];
 @endphp
 
 <div class="space-y-5 max-w-5xl mx-auto">
@@ -107,8 +105,7 @@
         @if($rows->isEmpty())
         <div class="px-5 py-10 text-center text-sm text-gray-400">No rows found in this import.</div>
         @else
-        <div class="overflow-x-auto"
-             @if($isLguIds) x-data="{ allMunicipalities: {!! $municipalitiesJson !!} }" @endif>
+        <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-100">
@@ -149,28 +146,50 @@
                         [$badgeCls, $badgeLabel] = $statusMap[$row->validation_status] ?? ['bg-gray-100 text-gray-500', ucfirst($row->validation_status)];
                     @endphp
                     @if($isLguIds)
-                    {{-- LGU IDS: Province + Municipality row --}}
+                    @php
+                        $rowProvince = $norm['province'] ?? '';
+                        $rowMunicipality = $norm['municipality_or_city'] ?? '';
+                    @endphp
+                    {{-- LGU IDS: Province + Municipality row with dynamic org lookup --}}
                     <tr class="hover:bg-gray-50/40 transition-colors"
-                        x-data="{ province: '{{ addslashes($norm['province'] ?? '') }}', municipality: '{{ addslashes($norm['municipality_or_city'] ?? '') }}' }">
+                        x-data="{
+                            province: '{{ addslashes($rowProvince) }}',
+                            municipality: '{{ addslashes($rowMunicipality) }}',
+                            municipalities: [],
+                            loading: false,
+                            async loadMunicipalities(prov) {
+                                if (!prov) { this.municipalities = []; return; }
+                                this.loading = true;
+                                try {
+                                    const r = await fetch('/api/lgu-ids/municipalities?province=' + encodeURIComponent(prov));
+                                    this.municipalities = await r.json();
+                                } catch(e) { this.municipalities = []; }
+                                this.loading = false;
+                            },
+                            init() { this.loadMunicipalities(this.province); },
+                        }"
+                        x-init="init()">
                         <td class="px-4 py-3 text-xs text-gray-400">{{ $row->row_number }}</td>
                         <td class="px-4 py-3 min-w-[160px]">
                             <select x-model="province"
+                                    @change="municipality = ''; loadMunicipalities(province)"
                                     class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700">
                                 <option value="">— Select Province —</option>
                                 @foreach($provinces as $prov)
-                                    <option value="{{ $prov }}" @if(($norm['province'] ?? '') === $prov) selected @endif>{{ $prov }}</option>
+                                    <option value="{{ $prov }}" @if($rowProvince === $prov) selected @endif>{{ $prov }}</option>
                                 @endforeach
                             </select>
                         </td>
                         <td class="px-4 py-3 min-w-[180px]">
                             <select x-model="municipality"
-                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700">
-                                <option value="">— Select Municipality —</option>
-                                <template x-for="mun in (allMunicipalities[province] ?? [])" :key="mun">
+                                    :disabled="loading"
+                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 disabled:opacity-50">
+                                <option value="" x-text="loading ? 'Loading…' : '— Select Municipality —'"></option>
+                                <template x-for="mun in municipalities" :key="mun">
                                     <option :value="mun" :selected="mun === municipality" x-text="mun"></option>
                                 </template>
-                                {{-- Keep current value even if not in list --}}
-                                <template x-if="municipality && !(allMunicipalities[province] ?? []).includes(municipality)">
+                                {{-- Always keep the CSV value as an option even if not in the DB list --}}
+                                <template x-if="municipality && !municipalities.includes(municipality)">
                                     <option :value="municipality" selected x-text="municipality"></option>
                                 </template>
                             </select>

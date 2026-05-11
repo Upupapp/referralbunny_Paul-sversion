@@ -468,8 +468,8 @@ class LguIdsImportService
             'total_rows'       => count($rawRows),
         ]);
 
-        $importDate     = now()->toDateString();
-        $counts         = [
+        $importDate    = now()->toDateString();
+        $counts        = [
             'successful'      => 0,
             'failed'          => 0,
             'duplicate'       => 0,
@@ -479,14 +479,20 @@ class LguIdsImportService
         ];
         $pendingInvites = []; // email => [name, rows]
 
+        // Resolve uploader email once (not per-row)
+        $uploaderEmail = null;
+        if ($importedByRole === 'reseller') {
+            $uploaderEmail = Reseller::where('id', $importedById)->value('email');
+        }
+
         foreach ($rawRows as $i => $rawRow) {
             $rowNum     = $i + 2; // 1-indexed, row 1 = header
             $normalized = $this->normalizeRow($rawRow, $colMap, $importDate);
 
-            // Resolve uploader email for reseller permission check
-            $uploaderEmail = null;
-            if ($importedByRole === 'reseller') {
-                $uploaderEmail = Reseller::where('id', $importedById)->value('email');
+            // For resellers, auto-set referrer_email to their own account email.
+            // They should never need to type their own email in the spreadsheet.
+            if ($importedByRole === 'reseller' && $uploaderEmail) {
+                $normalized['referrer_email'] = $uploaderEmail;
             }
 
             $validation = $this->validateRow($normalized, $rowNum, $importedByRole, $uploaderEmail);

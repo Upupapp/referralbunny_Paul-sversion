@@ -37,6 +37,20 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     return view('auth.portal-select');
 })->name('home');
 
+// ── LGU IDS public helpers ────────────────────────────────────
+Route::get('/api/lgu-ids/municipalities', function(\Illuminate\Http\Request $request) {
+    $province = $request->query('province', '');
+    if (!$province) return response()->json([]);
+    $cities = \Illuminate\Support\Facades\DB::table('organizations')
+        ->where('tenant_id', 'lgu-ids')
+        ->whereRaw('LOWER(address) = ?', [strtolower($province)])
+        ->orderBy('city')
+        ->pluck('city')
+        ->filter()
+        ->values();
+    return response()->json($cities);
+})->name('api.lgu-ids.municipalities');
+
 // ── Portal selection ──────────────────────────────────────────
 Route::get('/select-portal', fn() => view('auth.portal-select'))->name('portal.select');
 Route::get('/sign-in',       fn() => view('auth.signin-select'))->name('signin.select');
