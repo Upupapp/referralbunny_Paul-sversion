@@ -51,6 +51,11 @@ use App\Http\Controllers\Web\TenantInvitationController;
 Route::get('/tenant/accept-invite/{token}',  [TenantInvitationController::class, 'show'])->name('tenant.accept-invite.show');
 Route::post('/tenant/accept-invite/{token}', [TenantInvitationController::class, 'accept'])->name('tenant.accept-invite')->middleware('throttle:10,1');
 
+// ── Legal Agreement Acceptance (shown after invite accept / referrer setup) ──
+use App\Http\Controllers\TenantLegalAgreementController;
+Route::get('/tenant/{tenantId}/legal-agreements/accept',  [TenantLegalAgreementController::class, 'showAccept'])->name('tenant.legal-agreements.accept');
+Route::post('/tenant/{tenantId}/legal-agreements/accept', [TenantLegalAgreementController::class, 'storeAccept'])->name('tenant.legal-agreements.store-accept');
+
 // ── Contact Role Invite Acceptance (public — no auth required) ─
 Route::get('/tenant/accept-role-invite/{token}',  [\App\Http\Controllers\Web\ContactRoleInviteWebController::class, 'show'])->name('contact-role-invite.show');
 Route::post('/tenant/accept-role-invite/{token}', [\App\Http\Controllers\Web\ContactRoleInviteWebController::class, 'accept'])->name('contact-role-invite.accept');

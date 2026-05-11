@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\InviteAcceptedEvent;
 use App\Events\ResellerJoined;
+use App\Http\Controllers\TenantLegalAgreementController;
 use App\Mail\ResellerInvitation;
 use App\Mail\ResellerPasswordReset;
 use App\Models\Reseller;
@@ -218,6 +219,13 @@ class ResellerPortalAuthController extends Controller
             );
         } catch (\Throwable $e) {
             Log::warning('InviteAcceptedEvent dispatch failed for reseller: ' . $e->getMessage());
+        }
+
+        // Check for pending required legal agreements (referrer role)
+        if (TenantLegalAgreementController::hasPending(
+            $reseller->tenant_id, 'reseller', (string) $reseller->id, 'referrer'
+        )) {
+            return redirect()->route('tenant.legal-agreements.accept', $reseller->tenant_id);
         }
 
         return redirect()->route('reseller.dashboard', $reseller->tenant_id);

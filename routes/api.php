@@ -24,6 +24,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\RequiredDocumentController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\TenantLegalAgreementController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ─────────────────────────────────────────────
@@ -297,6 +298,15 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::delete('agreements/{id}',                     [AgreementController::class, 'destroy']);
     Route::post('agreements/{agreementId}/acknowledge',   [AgreementController::class, 'acknowledge']);
     Route::delete('agreements/{agreementId}/acknowledge', [AgreementController::class, 'revokeAcknowledgment']);
+
+    // Legal Agreements by Role (NDA, Non-Compete, etc.)
+    // pending must be before {id} to avoid route-model-binding collision
+    Route::get('legal-agreements/pending',        [TenantLegalAgreementController::class, 'pending']);
+    Route::get('legal-agreements',                [TenantLegalAgreementController::class, 'index']);
+    Route::post('legal-agreements',               [TenantLegalAgreementController::class, 'store']);
+    Route::put('legal-agreements/{id}',           [TenantLegalAgreementController::class, 'update']);
+    Route::delete('legal-agreements/{id}',        [TenantLegalAgreementController::class, 'destroy']);
+    Route::post('legal-agreements/{id}/accept',   [TenantLegalAgreementController::class, 'accept']);
 
     // R Bunny on-site assistant
     Route::prefix('r-bunny')->group(function () {

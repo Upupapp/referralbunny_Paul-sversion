@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Events\InviteAcceptedEvent;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\TenantLegalAgreementController;
 use App\Mail\TenantInvitationAcceptedMail;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
@@ -151,6 +152,13 @@ class TenantInvitationController extends Controller
         // Log the user in
         Auth::guard('tenant')->login($user);
         $request->session()->regenerate();
+
+        // Check for pending required legal agreements before redirecting
+        if (TenantLegalAgreementController::hasPending(
+            $invitation->tenant_id, 'tenant_user', (string) $user->id, $invitation->role
+        )) {
+            return redirect()->route('tenant.legal-agreements.accept', $invitation->tenant_id);
+        }
 
         // Check for multiple active memberships
         $activeMemberships = TenantMembership::where('tenant_user_id', $user->id)
