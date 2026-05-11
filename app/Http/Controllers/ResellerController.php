@@ -73,6 +73,25 @@ class ResellerController extends Controller
             fn ($r) => $this->applyAnonymityMask($r, $isTenantAdmin)
         );
 
+        // Compute real deal count from the leads table (assigned_leads column is never auto-incremented)
+        $effectiveTenantId = TenantContext::id() ?? $request->get('tenant_id');
+        $resellerNames     = $paginated->getCollection()->pluck('name')->filter()->values()->all();
+        $dealCounts        = collect();
+        if ($effectiveTenantId && count($resellerNames) > 0) {
+            $dealCounts = DB::table('leads')
+                ->where('tenant_id', $effectiveTenantId)
+                ->whereNotIn('status', ['expired', 'declined'])
+                ->whereIn('reseller_name', $resellerNames)
+                ->groupBy('reseller_name')
+                ->selectRaw('reseller_name, count(*) as deal_count')
+                ->pluck('deal_count', 'reseller_name');
+        }
+
+        $resellers = $resellers->map(function ($r) use ($dealCounts) {
+            $r['assigned_leads'] = (int) ($dealCounts[$r['name']] ?? 0);
+            return $r;
+        });
+
         return response()->json([
             'data'      => $resellers->values(),
             'total'     => $paginated->total(),

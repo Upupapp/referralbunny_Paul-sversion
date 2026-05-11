@@ -272,6 +272,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('contact-role-assignments/{id}/resend',    [\App\Http\Controllers\ContactRoleAssignmentController::class, 'resend']);
 
     // Organizations
+    Route::get('organizations/available',                  [OrganizationController::class, 'available']);
     Route::get('organizations',                            [OrganizationController::class, 'index']);
     Route::post('organizations',                           [OrganizationController::class, 'store']);
     Route::put('organizations/{id}',                      [OrganizationController::class, 'update']);
