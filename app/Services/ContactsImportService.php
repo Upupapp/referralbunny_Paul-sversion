@@ -975,7 +975,7 @@ class ContactsImportService
                     'created_by_user_id'      => $executorId,
                     'do_not_contact'          => $norm['do_not_contact'] ?? false,
                     'consent_status'          => $norm['consent_status'] ?? null,
-                    'data'                    => [],
+                    'data'                    => json_encode([]),
                 ];
 
                 if ($row->row_action === 'overwrite' && $row->existing_contact_id) {
