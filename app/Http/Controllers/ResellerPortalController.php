@@ -360,16 +360,16 @@ class ResellerPortalController extends Controller
         $leadName = ($entity === 'lead' && $entityId) ? ($leadNames[$entityId] ?? 'a deal') : 'a deal';
 
         return match(true) {
-            $action === 'deal_comment_created'   => ["Comment added on "{$leadName}"", $meta['comment_preview'] ?? null, 'comment', 'Comment'],
-            $action === 'deal_comment_edited'    => ["Comment edited on "{$leadName}"", null, 'comment', 'Comment'],
-            $action === 'deal_comment_deleted'   => ["Comment removed on "{$leadName}"", null, 'comment', 'Comment'],
-            $action === 'deal_extension_requested'   => ["Extension requested for "{$leadName}"", $meta['reason'] ?? null, 'extension', 'Extension'],
-            $action === 'deal_extension_approved'    => ["Extension approved for "{$leadName}"", null, 'extension', 'Extension'],
-            $action === 'deal_extension_rejected'    => ["Extension rejected for "{$leadName}"", $meta['reason'] ?? null, 'extension', 'Extension'],
-            $action === 'deal_extension_clarification_requested' => ["Clarification requested for "{$leadName}"", null, 'extension', 'Extension'],
-            $action === 'partner_split_created'  => ["Commission split recorded", ($meta['deal_name'] ?? null) ? 'On deal ' . $meta['deal_name'] : null, 'commission', 'Commission'],
-            $action === 'partner_split_removed'  => ["Commission split removed", null, 'commission', 'Commission'],
-            in_array($action, ['invite_accepted','invite.accepted']) => ["You joined as a referrer", "Welcome to {$meta['tenant_name'] ?? 'the workspace'}!", 'system', 'System'],
+            $action === 'deal_comment_created'   => ['Comment added on "' . $leadName . '"', $meta['comment_preview'] ?? null, 'comment', 'Comment'],
+            $action === 'deal_comment_edited'    => ['Comment edited on "' . $leadName . '"', null, 'comment', 'Comment'],
+            $action === 'deal_comment_deleted'   => ['Comment removed on "' . $leadName . '"', null, 'comment', 'Comment'],
+            $action === 'deal_extension_requested'   => ['Extension requested for "' . $leadName . '"', $meta['reason'] ?? null, 'extension', 'Extension'],
+            $action === 'deal_extension_approved'    => ['Extension approved for "' . $leadName . '"', null, 'extension', 'Extension'],
+            $action === 'deal_extension_rejected'    => ['Extension rejected for "' . $leadName . '"', $meta['reason'] ?? null, 'extension', 'Extension'],
+            $action === 'deal_extension_clarification_requested' => ['Clarification requested for "' . $leadName . '"', null, 'extension', 'Extension'],
+            $action === 'partner_split_created'  => ['Commission split recorded', ($meta['deal_name'] ?? null) ? 'On deal ' . $meta['deal_name'] : null, 'commission', 'Commission'],
+            $action === 'partner_split_removed'  => ['Commission split removed', null, 'commission', 'Commission'],
+            in_array($action, ['invite_accepted','invite.accepted']) => ['You joined as a referrer', 'Welcome to ' . ($meta['tenant_name'] ?? 'the workspace') . '!', 'system', 'System'],
             str_contains($action, 'referrer_')   => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'system', 'System'],
             default                              => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'deal', 'Activity'],
         };
