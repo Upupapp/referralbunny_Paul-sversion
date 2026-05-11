@@ -70,7 +70,8 @@ class DealPartnerSplit extends Model
         if ($this->split_share_type === 'fixed_amount') {
             return '₱' . number_format((float) $this->split_share_value, 2);
         }
-        return $this->split_share_value . '%';
+        $pct = rtrim(rtrim(number_format((float) $this->split_share_value, 2, '.', ''), '0'), '.');
+        return $pct . '%';
     }
 
     public function scopeActive($query)
