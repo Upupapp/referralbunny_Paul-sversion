@@ -391,8 +391,24 @@
             <div x-show="!showSuccessState">
             <div class="p-6 space-y-4">
                 @if($showLocation)
-                {{-- Province + Municipality — LGU IDS specific (driven by tenant field config) --}}
-                <div class="grid grid-cols-2 gap-3">
+                {{-- Mode toggle: Standard (province + municipality) vs Custom (free-text org name) --}}
+                <div class="flex rounded-xl overflow-hidden border border-gray-200 text-xs font-semibold">
+                    <button type="button"
+                            @click="dealMode = 'standard'; form.customOrgName = ''"
+                            :class="dealMode === 'standard' ? 'bg-[#7B61FF] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                            class="flex-1 py-2 transition-colors">
+                        Select Province &amp; Municipality
+                    </button>
+                    <button type="button"
+                            @click="dealMode = 'custom'; form.province = ''; form.municipality = ''; municipalityOptions = []; nameAutoFilled = false"
+                            :class="dealMode === 'custom' ? 'bg-[#7B61FF] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                            class="flex-1 py-2 transition-colors border-l border-gray-200">
+                        Custom Deal
+                    </button>
+                </div>
+
+                {{-- Province + Municipality — Standard mode --}}
+                <div x-show="dealMode === 'standard'" class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">Province *</label>
                         <select x-model="form.province"
@@ -422,13 +438,20 @@
                         <p x-show="!form.province" class="text-[11px] text-gray-400 mt-0.5">Select a province first.</p>
                     </div>
                 </div>
+
+                {{-- Organization Name — Custom mode --}}
+                <div x-show="dealMode === 'custom'">
+                    <label class="form-label">Organization Name *</label>
+                    <input type="text" x-model="form.customOrgName" class="form-input" placeholder="e.g. Manila City Hall">
+                    <p class="text-xs text-gray-400 mt-1">A new organization will be created with this name.</p>
+                </div>
                 @endif
 
                 <div>
                     <label class="form-label">
                         Deal Name *
                         @if($showLocation)
-                        <span x-show="nameAutoFilled" class="ml-1 text-xs text-purple-500 font-normal">(auto-filled from location)</span>
+                        <span x-show="nameAutoFilled && dealMode === 'standard'" class="ml-1 text-xs text-purple-500 font-normal">(auto-filled from location)</span>
                         @endif
                     </label>
                     <input type="text" x-model="form.name" @input="nameAutoFilled = false" class="form-input"
@@ -740,11 +763,11 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         showSuccessState: false, createdDeal: null,
         selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false, showDeleteInstructions: false,
-        municipalityOptions: [],
+        municipalityOptions: [], dealMode: 'standard',
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
         referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
-        form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '' },
+        form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '', customOrgName: '' },
 
         stages: [
             { key: 'introduction',  label: 'Introduction',  color: '#9CA3AF' },
@@ -1052,7 +1075,8 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         resetForm() {
-            this.form = { name:'', stage:'introduction', deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'' };
+            this.dealMode = 'standard';
+            this.form = { name:'', stage:'introduction', deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'', customOrgName:'' };
             this.formError      = '';
             this.nameAutoFilled = false;
             this.municipalityOptions = [];
@@ -1066,8 +1090,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         async addRecord() {
-            if (showLocation && !this.form.province)     { this.formError = 'Province is required.'; this.saving = false; return; }
-            if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; this.saving = false; return; }
+            if (showLocation && this.dealMode === 'standard' && !this.form.province)     { this.formError = 'Province is required.'; this.saving = false; return; }
+            if (showLocation && this.dealMode === 'standard' && !this.form.municipality) { this.formError = 'Municipality / City is required.'; this.saving = false; return; }
+            if (showLocation && this.dealMode === 'custom' && !this.form.customOrgName.trim()) { this.formError = 'Organization name is required.'; this.saving = false; return; }
             if (!this.form.name) { this.formError = 'Deal name is required.'; this.saving = false; return; }
             if (!this.manualReferrer && !this.referrerSelected) {
                 this.formError = 'Please select a referrer from the list, or use "Add manually".'; this.saving = false; return;
@@ -1077,29 +1102,45 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             if (!this.isConsistent()) { this.formError = 'Deal Value must equal Base Cost + Added Amount. Please review the amounts.'; this.saving = false; return; }
             this.saving = true; this.formError = '';
             try {
+                const csrf    = document.querySelector('meta[name=csrf-token]').content;
+                const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' };
+
+                // Custom mode: create the organization first, then link the deal to it
+                let customOrgId = null;
+                if (showLocation && this.dealMode === 'custom') {
+                    const orgRes = await fetch('/api/organizations', {
+                        method: 'POST', credentials: 'same-origin', headers,
+                        body: JSON.stringify({ tenant_id: tenantId, name: this.form.customOrgName.trim() }),
+                    });
+                    const org = await orgRes.json();
+                    if (!orgRes.ok) { this.formError = org.message || 'Failed to create organization.'; this.saving = false; return; }
+                    customOrgId = org.id;
+                }
+
                 const bc = Number(this.form.base_cost)    || 0;
                 const aa = Number(this.form.added_amount) || 0;
                 const dv = Number(this.form.deal_value)   || (bc + aa) || (showLocation ? 4000000 : 0);
                 const payload = {
                     ...this.form,
-                    base_cost:        bc,
-                    added_amount:     aa,
-                    deal_value:       dv,
-                    tenant_id:        tenantId,
+                    base_cost:          bc,
+                    added_amount:       aa,
+                    deal_value:         dv,
+                    tenant_id:          tenantId,
+                    organization_id:    customOrgId,
                     new_reseller_email: this.manualReferrer ? this.form.reseller_email : null,
-                    data: { province: this.form.province, municipality: this.form.municipality },
+                    data: (showLocation && this.dealMode === 'custom')
+                        ? { custom: true }
+                        : { province: this.form.province, municipality: this.form.municipality },
                 };
+                delete payload.customOrgName;
                 const res = await fetch('/api/leads', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'X-Requested-With': 'XMLHttpRequest' },
+                    method: 'POST', credentials: 'same-origin', headers,
                     body: JSON.stringify(payload),
                 });
                 const lead = await res.json();
                 if (lead.id) {
                     this.leads.unshift(lead);
                     this.applyFilters();
-                    // Show in-modal success state instead of silently closing
                     this.createdDeal = lead;
                     this.showSuccessState = true;
                     this.saving = false;

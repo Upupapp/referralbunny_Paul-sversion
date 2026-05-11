@@ -202,25 +202,44 @@
 
     {{-- ── CLAIM DEAL MODAL (LGU IDS: browse by province) ──── --}}
     <div x-show="showClaim" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
-         @keydown.escape.window="showClaim = false; claimStep = 1; selectedOrg = null">
+         @keydown.escape.window="showClaim = false; claimStep = 1; dealMode = 'standard'; selectedOrg = null; customForm = { name: '', org_name: '', stage: 'introduction', deal_value: '' }; customError = ''">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" @click.stop>
 
             {{-- Header --}}
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
                 <div>
                     <h3 class="font-semibold" style="color:#1E1B4B">
-                        <span x-show="claimStep === 1">Choose a Municipality</span>
-                        <span x-show="claimStep === 2">Confirm Your Claim</span>
+                        <span x-show="dealMode === 'standard' && claimStep === 1">Choose a Municipality</span>
+                        <span x-show="dealMode === 'standard' && claimStep === 2">Confirm Your Claim</span>
+                        <span x-show="dealMode === 'custom'">Custom Deal</span>
                     </h3>
-                    <p class="text-xs text-gray-400 mt-0.5" x-show="claimStep === 1">Select a province, then pick an available municipality.</p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-show="dealMode === 'standard' && claimStep === 1">Select a province, then pick an available municipality.</p>
                 </div>
-                <button @click="showClaim = false; claimStep = 1; selectedOrg = null" class="text-gray-400 hover:text-gray-600">
+                <button @click="showClaim = false; claimStep = 1; dealMode = 'standard'; selectedOrg = null; customError = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
+            {{-- Mode toggle --}}
+            <div class="px-6 pt-3 pb-0 shrink-0" x-show="claimStep === 1">
+                <div class="flex rounded-xl overflow-hidden border border-gray-200 text-xs font-semibold">
+                    <button type="button"
+                            @click="dealMode = 'standard'"
+                            :class="dealMode === 'standard' ? 'bg-[#7B61FF] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                            class="flex-1 py-2 transition-colors">
+                        Select Municipality
+                    </button>
+                    <button type="button"
+                            @click="dealMode = 'custom'; customError = ''"
+                            :class="dealMode === 'custom' ? 'bg-[#7B61FF] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
+                            class="flex-1 py-2 transition-colors border-l border-gray-200">
+                        Custom Deal
+                    </button>
+                </div>
+            </div>
+
             {{-- Step 1: Browse --}}
-            <div x-show="claimStep === 1" class="flex flex-col flex-1 overflow-hidden">
+            <div x-show="claimStep === 1 && dealMode === 'standard'" class="flex flex-col flex-1 overflow-hidden">
                 {{-- Province selector --}}
                 <div class="px-6 pt-4 pb-3 shrink-0">
                     <label class="form-label">Province</label>
@@ -275,8 +294,44 @@
                 </div>
             </div>
 
+            {{-- Custom deal form --}}
+            <div x-show="dealMode === 'custom'" class="p-6 space-y-4 flex-1 overflow-y-auto">
+                <div class="px-3 py-2.5 rounded-xl text-xs leading-relaxed" style="background:#EDE9FE;color:#5B21B6">
+                    Create a deal with a custom name and organization — not linked to a specific municipality.
+                </div>
+                <div>
+                    <label class="form-label">Organization Name *</label>
+                    <input type="text" x-model="customForm.org_name" class="form-input" placeholder="e.g. Manila City Hall">
+                    <p class="text-xs text-gray-400 mt-1">A new organization will be created with this name.</p>
+                </div>
+                <div>
+                    <label class="form-label">Deal Name *</label>
+                    <input type="text" x-model="customForm.name" class="form-input" placeholder="e.g. City of Manila — ID System">
+                </div>
+                <div>
+                    <label class="form-label">Stage</label>
+                    <select x-model="customForm.stage" class="form-input">
+                        <option value="introduction">Introduction</option>
+                        <option value="presentation">Presentation</option>
+                        <option value="contract_sent">Contract Sent</option>
+                        <option value="signed">Signed</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Deal Value (₱) <span class="text-gray-400 font-normal">optional</span></label>
+                    <input type="number" x-model="customForm.deal_value" class="form-input" placeholder="0">
+                </div>
+                <p x-show="customError" class="text-xs text-red-600 font-medium" x-text="customError"></p>
+                <button @click="confirmCustomDeal()" :disabled="savingCustom"
+                        class="rs-btn-primary w-full justify-center">
+                    <svg x-show="savingCustom" class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="savingCustom ? 'Creating…' : 'Create Custom Deal'"></span>
+                </button>
+            </div>
+
             {{-- Step 2: Confirm claim --}}
-            <div x-show="claimStep === 2" class="p-6 flex-1">
+            <div x-show="claimStep === 2 && dealMode === 'standard'" class="p-6 flex-1">
                 <div x-show="selectedOrg" class="text-center mb-6">
                     <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold mx-auto mb-3"
                          :style="`background:${selectedOrg?.lgu_type === 'City' ? '#7B61FF' : '#0D9488'}`"
@@ -354,11 +409,13 @@ function resellerDeals(tenantId, resellerName) {
     return {
         leads: [], filtered: [], loading: true,
         search: '', filterStatus: '', filterStage: '',
-        showClaim: false, claimStep: 1,
+        showClaim: false, claimStep: 1, dealMode: 'standard',
         claimProvince: '', availableOrgs: [], loadingOrgs: false,
         selectedOrg: null, saving: false, claimError: '',
         claimForm: { stage: 'introduction', deal_value: '' },
         claimPrompt: '',
+        customForm: { name: '', org_name: '', stage: 'introduction', deal_value: '' },
+        savingCustom: false, customError: '',
         showSuccessPrompt: false, successPrompt: '', successOrgName: '',
 
         stageColors: { introduction:'#9CA3AF', presentation:'#3B82F6', contract_sent:'#F59E0B', signed:'#8B5CF6', paid:'#10B981' },
@@ -464,6 +521,54 @@ function resellerDeals(tenantId, resellerName) {
                 this.claimError = 'Network error. Please try again.';
             } finally {
                 this.saving = false;
+            }
+        },
+
+        async confirmCustomDeal() {
+            this.customError = '';
+            if (!this.customForm.org_name.trim()) { this.customError = 'Organization name is required.'; return; }
+            if (!this.customForm.name.trim())     { this.customError = 'Deal name is required.'; return; }
+            this.savingCustom = true;
+            const csrf    = document.querySelector('meta[name=csrf-token]').content;
+            const headers = { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' };
+            try {
+                // 1. Create the organization
+                const orgRes = await fetch('/api/organizations', {
+                    method: 'POST', credentials: 'same-origin', headers,
+                    body: JSON.stringify({ tenant_id: tenantId, name: this.customForm.org_name.trim() }),
+                });
+                const org = await orgRes.json();
+                if (!orgRes.ok) { this.customError = org.message || 'Failed to create organization.'; return; }
+
+                // 2. Create the deal linked to the new org
+                const res = await fetch('/api/leads', {
+                    method: 'POST', credentials: 'same-origin', headers,
+                    body: JSON.stringify({
+                        tenant_id:       tenantId,
+                        reseller_name:   resellerName,
+                        organization_id: org.id,
+                        name:            this.customForm.name.trim(),
+                        stage:           this.customForm.stage,
+                        deal_value:      this.customForm.deal_value || 0,
+                        data:            { custom: true },
+                    }),
+                });
+                const lead = await res.json();
+                if (!res.ok) { this.customError = lead.message || 'Failed to create deal.'; return; }
+
+                this.leads.unshift(lead);
+                this.applyFilters();
+                this.showClaim   = false;
+                this.dealMode    = 'standard';
+                this.customForm  = { name: '', org_name: '', stage: 'introduction', deal_value: '' };
+                this.customError = '';
+                this.successOrgName  = lead.name;
+                this.successPrompt   = CLAIM_PROMPTS[Math.floor(Math.random() * CLAIM_PROMPTS.length)];
+                this.showSuccessPrompt = true;
+            } catch(e) {
+                this.customError = 'Network error. Please try again.';
+            } finally {
+                this.savingCustom = false;
             }
         },
     };
