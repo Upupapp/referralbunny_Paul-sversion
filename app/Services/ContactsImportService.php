@@ -1034,13 +1034,15 @@ class ContactsImportService
                     $beforeContact = DB::table('contacts')->where('id', $row->existing_contact_id)->first();
                     DB::table('contacts')->where('id', $row->existing_contact_id)
                         ->update(array_merge($contactData, ['updated_at' => now(), 'updated_by_user_id' => $executorId]));
-                    $this->snapshots->recordUpdated(
-                        batchId: $batch->id, tenantId: $tenantId,
-                        entityType: 'contact', entityId: $row->existing_contact_id,
-                        beforeData: $beforeContact ? (array) $beforeContact : [], afterData: $contactData,
-                        changedFields: array_keys($contactData), operationType: 'overwritten',
-                        batchRowId: $row->id, row: $row,
-                    );
+                    try {
+                        $this->snapshots->recordUpdated(
+                            batchId: $batch->id, tenantId: $tenantId,
+                            entityType: 'contact', entityId: $row->existing_contact_id,
+                            beforeData: $beforeContact ? (array) $beforeContact : [], afterData: $contactData,
+                            changedFields: array_keys($contactData), operationType: 'overwritten',
+                            batchRowId: $row->id, row: $row,
+                        );
+                    } catch (\Throwable) {}
                     $row->update(['created_contact_id' => $row->existing_contact_id]);
                     $updated++;
                 } elseif ($row->row_action === 'merge' && $row->existing_contact_id) {
@@ -1050,13 +1052,15 @@ class ContactsImportService
                         unset($mergeData['tenant_id'], $mergeData['owner_user_id'], $mergeData['owner_referrer_id']);
                         DB::table('contacts')->where('id', $row->existing_contact_id)
                             ->update(array_merge($mergeData, ['updated_at' => now()]));
-                        $this->snapshots->recordUpdated(
-                            batchId: $batch->id, tenantId: $tenantId,
-                            entityType: 'contact', entityId: $row->existing_contact_id,
-                            beforeData: (array) $existing, afterData: $mergeData,
-                            changedFields: array_keys($mergeData), operationType: 'merged',
-                            batchRowId: $row->id, row: $row,
-                        );
+                        try {
+                            $this->snapshots->recordUpdated(
+                                batchId: $batch->id, tenantId: $tenantId,
+                                entityType: 'contact', entityId: $row->existing_contact_id,
+                                beforeData: (array) $existing, afterData: $mergeData,
+                                changedFields: array_keys($mergeData), operationType: 'merged',
+                                batchRowId: $row->id, row: $row,
+                            );
+                        } catch (\Throwable) {}
                     }
                     $row->update(['created_contact_id' => $row->existing_contact_id]);
                     $updated++;
@@ -1068,12 +1072,14 @@ class ContactsImportService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]));
-                    $this->snapshots->recordCreated(
-                        batchId: $batch->id, tenantId: $tenantId,
-                        entityType: 'contact', entityId: $contactId,
-                        entityData: array_merge($contactData, ['id' => $contactId]),
-                        batchRowId: $row->id, row: $row,
-                    );
+                    try {
+                        $this->snapshots->recordCreated(
+                            batchId: $batch->id, tenantId: $tenantId,
+                            entityType: 'contact', entityId: $contactId,
+                            entityData: array_merge($contactData, ['id' => $contactId]),
+                            batchRowId: $row->id, row: $row,
+                        );
+                    } catch (\Throwable) {}
 
                     // Associate to deal if a deal was resolved during validation
                     $dealId = $row->existing_deal_id ?? null;
@@ -1092,7 +1098,10 @@ class ContactsImportService
                     $created++;
                 }
             } catch (\Throwable $e) {
-                $row->update(['error_message' => $e->getMessage(), 'row_action' => 'failed']);
+                // 'failed' is not in the row_action CHECK constraint; use 'blocked' to mark error rows
+                try {
+                    $row->update(['error_message' => $e->getMessage(), 'row_action' => 'blocked']);
+                } catch (\Throwable) {}
                 $failed++;
             }
         }

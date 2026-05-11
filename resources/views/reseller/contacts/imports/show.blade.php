@@ -100,7 +100,12 @@
                             'review'           => ['bg-gray-100 text-gray-500',   'Already Exists'],
                             'failed'           => ['bg-red-100 text-red-600',     'Failed'],
                         ];
-                        [$actCls, $actLabel] = $actionLabels[$row->row_action] ?? ['bg-gray-100 text-gray-500', ucfirst($row->row_action ?? '—')];
+                        // blocked + error_message = actual runtime failure, show as Failed
+                        if ($row->row_action === 'blocked' && $row->error_message) {
+                            [$actCls, $actLabel] = ['bg-red-100 text-red-600', 'Failed'];
+                        } else {
+                            [$actCls, $actLabel] = $actionLabels[$row->row_action] ?? ['bg-gray-100 text-gray-500', ucfirst($row->row_action ?? '—')];
+                        }
                     @endphp
                     <tr class="hover:bg-gray-50/40 transition-colors">
                         <td class="px-4 py-3 text-xs text-gray-400">{{ $row->row_number }}</td>
