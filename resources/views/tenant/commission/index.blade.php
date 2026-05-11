@@ -46,6 +46,147 @@
         @endforeach
     </div>
 
+    @if(($tenant->slug ?? '') === 'lgu-ids')
+    {{-- LGU IDS: Pricing & Commission Scheme Reference ─────────────────────── --}}
+    <div x-data="{ open: true }" class="card" style="padding:0;overflow:hidden">
+
+        {{-- Toggle header --}}
+        <button type="button" @click="open = !open"
+                style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fafafa;border:none;cursor:pointer;text-align:left;border-bottom:1px solid #f0effa">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:32px;height:32px;border-radius:8px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg style="width:16px;height:16px;color:#7B61FF" fill="none" stroke="#7B61FF" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0">LGU IDS — Pricing & Commission Scheme</p>
+                    <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Base cost tiers · Added amount split · Referrer earnings formula</p>
+                </div>
+            </div>
+            <svg :style="open ? 'transform:rotate(180deg)' : ''"
+                 style="width:16px;height:16px;color:#9ca3af;flex-shrink:0;transition:transform .2s"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+
+        <div x-show="open" x-collapse style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+            {{-- ── Left: Pricing Tiers ───────────────────────────────────────── --}}
+            <div>
+                <p style="font-size:11px;font-weight:700;color:#7B61FF;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">
+                    Step 1 — Base Cost by Deal Amount
+                </p>
+                <div style="border:1.5px solid #ede9fe;border-radius:12px;overflow:hidden">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                        <thead>
+                            <tr style="background:#EDE9FE">
+                                <th style="padding:8px 14px;text-align:left;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em">Deal Amount Range</th>
+                                <th style="padding:8px 14px;text-align:center;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em">Base Cost %</th>
+                                <th style="padding:8px 14px;text-align:right;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em">Added Amount %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach([
+                                ['range' => '₱0 – ₱6,000,000',          'base' => '60%', 'added' => '40%', 'highlight' => false],
+                                ['range' => '₱6,000,001 – ₱12,000,000', 'base' => '58%', 'added' => '42%', 'highlight' => false],
+                                ['range' => '₱12,000,001 – ₱15,000,000','base' => '48%', 'added' => '52%', 'highlight' => false],
+                                ['range' => '₱15,000,001 and above',     'base' => '41%', 'added' => '59%', 'highlight' => true],
+                            ] as $i => $tier)
+                            <tr style="border-top:1px solid #f0effa;{{ $tier['highlight'] ? 'background:#fdf8ff' : '' }}">
+                                <td style="padding:9px 14px;color:#1E1B4B;font-weight:{{ $i === 0 ? 400 : 400 }}">
+                                    {{ $tier['range'] }}
+                                </td>
+                                <td style="padding:9px 14px;text-align:center">
+                                    <span style="display:inline-block;padding:2px 10px;border-radius:20px;background:#fee2e2;color:#991b1b;font-weight:700;font-size:12px">
+                                        {{ $tier['base'] }}
+                                    </span>
+                                </td>
+                                <td style="padding:9px 14px;text-align:right">
+                                    <span style="display:inline-block;padding:2px 10px;border-radius:20px;background:#dcfce7;color:#15803d;font-weight:700;font-size:12px">
+                                        {{ $tier['added'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <p style="font-size:11px;color:#9ca3af;margin-top:8px">
+                    <strong style="color:#1E1B4B">Added Amount</strong> = Deal Amount − Base Cost
+                </p>
+            </div>
+
+            {{-- ── Right: Commission Split + Formula ────────────────────────── --}}
+            <div>
+                <p style="font-size:11px;font-weight:700;color:#7B61FF;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">
+                    Step 2 — Commission Split of Added Amount
+                </p>
+
+                {{-- Split bar visual --}}
+                <div style="border:1.5px solid #ede9fe;border-radius:12px;overflow:hidden;margin-bottom:12px">
+                    <div style="display:flex;height:36px">
+                        <div style="flex:30;background:#dbeafe;display:flex;align-items:center;justify-content:center">
+                            <span style="font-size:12px;font-weight:700;color:#1d4ed8">Company 30%</span>
+                        </div>
+                        <div style="width:1px;background:#e5e7eb"></div>
+                        <div style="flex:70;background:#dcfce7;display:flex;align-items:center;justify-content:center">
+                            <span style="font-size:12px;font-weight:700;color:#15803d">Referrer Pool 70%</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Formula rows --}}
+                <div style="border:1.5px solid #ede9fe;border-radius:12px;overflow:hidden">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                        <thead>
+                            <tr style="background:#EDE9FE">
+                                <th style="padding:8px 14px;text-align:left;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em">Component</th>
+                                <th style="padding:8px 14px;text-align:left;font-size:11px;font-weight:700;color:#6d28d9;letter-spacing:.05em">Formula</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-top:1px solid #f0effa">
+                                <td style="padding:9px 14px;color:#9ca3af;font-size:12px">Base Cost</td>
+                                <td style="padding:9px 14px;color:#1E1B4B;font-family:monospace;font-size:12px">Deal Amount × Tier %</td>
+                            </tr>
+                            <tr style="border-top:1px solid #f0effa;background:#fdf8ff">
+                                <td style="padding:9px 14px;font-weight:700;color:#1E1B4B;font-size:12px">Added Amount</td>
+                                <td style="padding:9px 14px;color:#1E1B4B;font-family:monospace;font-size:12px">Deal Amount − Base Cost</td>
+                            </tr>
+                            <tr style="border-top:1px solid #f0effa">
+                                <td style="padding:9px 14px;color:#2563eb;font-weight:600;font-size:12px">Company Share</td>
+                                <td style="padding:9px 14px;color:#2563eb;font-family:monospace;font-size:12px">Added Amount × 30%</td>
+                            </tr>
+                            <tr style="border-top:1px solid #f0effa">
+                                <td style="padding:9px 14px;color:#15803d;font-weight:600;font-size:12px">Referrer Pool</td>
+                                <td style="padding:9px 14px;color:#15803d;font-family:monospace;font-size:12px">Added Amount × 70%</td>
+                            </tr>
+                            <tr style="border-top:1px solid #f0effa;background:#f9fafb">
+                                <td style="padding:9px 14px;color:#6b7280;font-size:12px">Referrer Earning</td>
+                                <td style="padding:9px 14px;color:#6b7280;font-family:monospace;font-size:12px">Pool × Referrer Split %</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Example --}}
+                <div style="margin-top:12px;padding:12px 14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px">
+                    <p style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Example — ₱8,000,000 deal</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px;color:#374151">
+                        <span>Base Cost (58%)</span>      <span style="text-align:right;font-weight:600">₱4,640,000</span>
+                        <span>Added Amount (42%)</span>   <span style="text-align:right;font-weight:700;color:#15803d">₱3,360,000</span>
+                        <span style="color:#2563eb">Company (30%)</span> <span style="text-align:right;font-weight:600;color:#2563eb">₱1,008,000</span>
+                        <span style="color:#15803d">Referrer Pool (70%)</span> <span style="text-align:right;font-weight:700;color:#15803d">₱2,352,000</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    @endif
+
     {{-- Filters --}}
     <form method="GET" action="{{ route('tenant.commission', $tenant->id) }}"
           style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
