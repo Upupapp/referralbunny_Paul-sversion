@@ -918,24 +918,35 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             if (!this.selectedDeals.length || this.deleting) return;
             this.deleting = true;
             const csrf = document.querySelector('meta[name=csrf-token]').content;
-            let failed = 0;
-            for (const id of this.selectedDeals) {
-                try {
-                    await fetch(`/api/leads/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                        credentials: 'same-origin',
-                    });
-                } catch { failed++; }
+            try {
+                const res  = await fetch('/api/leads/bulk-delete', {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type':      'application/json',
+                        'Accept':            'application/json',
+                        'X-CSRF-TOKEN':      csrf,
+                        'X-Requested-With':  'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ ids: this.selectedDeals, tenant_id: tenantId }),
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    const deleted = new Set(this.selectedDeals);
+                    this.leads         = this.leads.filter(l => !deleted.has(l.id));
+                    this.selectedDeals = [];
+                    this.selectMode    = false;
+                    this.showDeleteConfirm = false;
+                    this.applyFilters();
+                    this.$dispatch('show-toast', { type: 'success', message: `${data.deleted_count} deal${data.deleted_count !== 1 ? 's' : ''} permanently deleted.` });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.error || 'Delete failed. Please try again.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            } finally {
+                this.deleting = false;
             }
-            this.leads = this.leads.filter(l => !this.selectedDeals.includes(l.id));
-            this.selectedDeals = [];
-            this.selectMode     = false;
-            this.showDeleteConfirm = false;
-            this.deleting       = false;
-            this.applyFilters();
-            if (failed > 0) this.$dispatch('show-toast', { type: 'error', message: `${failed} deal(s) could not be deleted.` });
-            else            this.$dispatch('show-toast', { type: 'success', message: 'Selected deals deleted.' });
         },
 
         viewDeal(id) { if (this.selectMode) { this.toggleDeal(id); return; } window.location.href = `/tenant/${tenantId}/deals/${id}`; },

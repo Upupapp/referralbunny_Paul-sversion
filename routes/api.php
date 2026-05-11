@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     // Leads
     Route::get('leads',              [LeadController::class, 'index']);
     Route::post('leads',             [LeadController::class, 'store'])->middleware('feature.access:leads,create');
+    Route::post('leads/bulk-delete', [LeadController::class, 'bulkDelete']);
     Route::get('leads/{lead}',       [LeadController::class, 'show']);
     Route::put('leads/{lead}',       [LeadController::class, 'update']);
     Route::patch('leads/{lead}',     [LeadController::class, 'update']);

@@ -308,6 +308,13 @@ class LeadController extends Controller
         ), 201);
     } // end doStore
 
+    private function callerIsTenantAdmin(): bool
+    {
+        return Auth::guard('web')->check()
+            || Auth::guard('tenant')->check()
+            || (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User);
+    }
+
     private function resolveActor(): array
     {
         if (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
@@ -500,9 +507,61 @@ class LeadController extends Controller
 
     public function destroy(Lead $lead): JsonResponse
     {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can delete deals.'], 403);
+        }
+
         $lead->assertBelongsToCurrentTenant();
+
+        $leadId   = $lead->id;
+        $leadName = $lead->name;
+        $tenantId = $lead->tenant_id;
+
         $lead->delete();
-        return response()->json(['message' => 'Lead deleted.']);
+
+        Log::info('Deal permanently deleted', [
+            'lead_id'    => $leadId,
+            'lead_name'  => $leadName,
+            'tenant_id'  => $tenantId,
+            'deleted_by' => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+        ]);
+
+        return response()->json(['success' => true, 'deleted_id' => $leadId]);
+    }
+
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can delete deals.'], 403);
+        }
+
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant context required.'], 403);
+        }
+
+        $data = $request->validate([
+            'ids'   => 'required|array|min:1|max:200',
+            'ids.*' => 'required|string|uuid',
+        ]);
+
+        $leads = Lead::where('tenant_id', $tenantId)
+            ->whereIn('id', $data['ids'])
+            ->get();
+
+        $count = $leads->count();
+
+        foreach ($leads as $lead) {
+            $lead->delete();
+        }
+
+        Log::info('Bulk deal delete', [
+            'tenant_id'  => $tenantId,
+            'count'      => $count,
+            'deleted_by' => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+        ]);
+
+        return response()->json(['success' => true, 'deleted_count' => $count]);
     }
 
     /**
