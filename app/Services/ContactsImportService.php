@@ -1008,7 +1008,6 @@ class ContactsImportService
                     'internal_reference_id'   => $norm['internal_reference_id'] ?? null,
                     'status'                  => 'active',
                     'organization_id'         => $row->organization_id,
-                    'owner_user_id'           => $executorRole !== 'reseller' ? $executorId : null,
                     'owner_role'              => $executorRole,
                     'owner_referrer_id'       => $executorResellerId,
                     'imported_from_batch_id'  => $batch->id,
@@ -1017,6 +1016,10 @@ class ContactsImportService
                     'consent_status'          => $norm['consent_status'] ?? null,
                     'data'                    => json_encode([]),
                 ];
+
+                if ($executorRole !== 'reseller') {
+                    $contactData['owner_user_id'] = $executorId;
+                }
 
                 if ($row->row_action === 'overwrite' && $row->existing_contact_id) {
                     $beforeContact = DB::table('contacts')->where('id', $row->existing_contact_id)->first();
@@ -1080,7 +1083,7 @@ class ContactsImportService
                     $created++;
                 }
             } catch (\Throwable $e) {
-                $row->update(['error_message' => $e->getMessage()]);
+                $row->update(['error_message' => $e->getMessage(), 'row_action' => 'failed']);
                 $failed++;
             }
         }
