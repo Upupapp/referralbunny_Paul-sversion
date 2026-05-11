@@ -30,12 +30,21 @@
 
 {{-- ── My Deals ─────────────────────────────────────────────── --}}
 <a href="{{ route('reseller.deals', $tid) }}"
-   class="rs-sidebar-link {{ $_dealsActive ? 'active' : '' }}"
-   @if($_dealsActive) aria-current="page" @endif>
+   class="rs-sidebar-link {{ request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show') ? 'active' : '' }}"
+   @if(request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show')) aria-current="page" @endif>
     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
     </svg>
     My Deals
+</a>
+
+<a href="{{ route('reseller.deals.imports', $tid) }}"
+   class="rs-sidebar-child {{ request()->routeIs('reseller.deals.imports*') ? 'active' : '' }}"
+   @if(request()->routeIs('reseller.deals.imports*')) aria-current="page" @endif>
+    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+    </svg>
+    Import Deals
 </a>
 
 {{-- ── My Commission ───────────────────────────────────────── --}}
