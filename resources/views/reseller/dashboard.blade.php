@@ -82,18 +82,61 @@
             </div>
             <p class="text-2xl font-bold mb-3" style="color:#1E1B4B">₱{{ number_format($totalCommission ?? 0) }}</p>
             <div class="space-y-1.5">
+
+                {{-- Pending --}}
                 <div class="flex items-center justify-between text-xs">
-                    <span class="text-gray-400">Pending</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400">Pending</span>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Pending commission">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute left-0 top-5 z-50 w-60 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                                <strong class="block mb-1 text-gray-700">Pending Commission</strong>
+                                Estimates from your active deals. May change as deal amounts, stages, or split allocations are updated.
+                            </div>
+                        </div>
+                    </div>
                     <span class="font-semibold text-amber-500">₱{{ number_format($commissionStats['pending'] ?? 0) }}</span>
                 </div>
+
+                {{-- Locked --}}
                 <div class="flex items-center justify-between text-xs">
-                    <span class="text-gray-400">Locked</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400">Locked</span>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Locked commission">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute left-0 top-5 z-50 w-60 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                                <strong class="block mb-1 text-gray-700">Locked Commission</strong>
+                                Confirmed when a deal reached the Signed stage. Locked and pending final payout. Will not change unless the deal is revised.
+                            </div>
+                        </div>
+                    </div>
                     <span class="font-semibold" style="color:#7B61FF">₱{{ number_format($commissionStats['locked'] ?? 0) }}</span>
                 </div>
+
+                {{-- Paid --}}
                 <div class="flex items-center justify-between text-xs border-t border-gray-50 pt-1.5">
-                    <span class="text-gray-400">Paid</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-400">Paid</span>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Paid commission">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute left-0 top-5 z-50 w-60 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                                <strong class="block mb-1 text-gray-700">Paid Commission</strong>
+                                Commission that has been approved and released. These amounts are final and have been paid out.
+                            </div>
+                        </div>
+                    </div>
                     <span class="font-semibold text-emerald-600">₱{{ number_format($commissionStats['paid'] ?? 0) }}</span>
                 </div>
+
             </div>
             <p class="text-[10px] text-gray-400 mt-2">* Subject to applicable taxes and deductions.</p>
             <a href="{{ route('reseller.commission', $tenant->id) }}"

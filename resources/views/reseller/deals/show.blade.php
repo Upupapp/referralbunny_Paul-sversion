@@ -325,16 +325,38 @@
                     </div>
                 </div>
                 <p class="text-2xl font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold mt-1
-                    @if($lead->commission_status === 'paid') bg-green-100 text-green-700
-                    @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
-                    @else bg-teal-50 text-teal-600
-                    @endif">
-                    @if($lead->commission_status === 'paid') Paid
-                    @elseif($lead->commission_status === 'locked') Locked
-                    @else Estimated
-                    @endif
-                </span>
+                <div class="flex items-center gap-1 mt-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold
+                        @if($lead->commission_status === 'paid') bg-green-100 text-green-700
+                        @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
+                        @else bg-teal-50 text-teal-600
+                        @endif">
+                        @if($lead->commission_status === 'paid') Paid
+                        @elseif($lead->commission_status === 'locked') Locked
+                        @else Estimated
+                        @endif
+                    </span>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors"
+                                aria-label="About commission status">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                             class="absolute left-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                            @if($lead->commission_status === 'paid')
+                                <strong class="block mb-1 text-gray-700">Paid</strong>
+                                Commission has been approved and released. This is a finalized amount.
+                            @elseif($lead->commission_status === 'locked')
+                                <strong class="block mb-1 text-gray-700">Locked</strong>
+                                Commission was locked when this deal reached the Signed stage. Confirmed and pending final payout. Will not change unless the deal is revised.
+                            @else
+                                <strong class="block mb-1 text-gray-700">Estimated</strong>
+                                This is an estimate based on the current deal amount, commission pool, and your split. It may change if the deal amount, stage, or allocations are updated.
+                            @endif
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Partners Commission — RIGHT --}}

@@ -76,7 +76,24 @@
                         <th>Stage</th>
                         <th>Value</th>
                         <th class="hidden md:table-cell">Partner</th>
-                        <th class="hidden sm:table-cell">Commission</th>
+                        <th class="hidden sm:table-cell">
+                            <div class="inline-flex items-center gap-1">
+                                Commission
+                                <div x-data="{ open: false }" class="relative">
+                                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                            class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About commission status">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </button>
+                                    <div x-show="open" x-cloak x-transition
+                                         class="absolute left-0 top-6 z-50 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed font-normal">
+                                        <strong class="block mb-2 text-gray-700">Commission Status</strong>
+                                        <p><strong class="text-gray-600">Pending</strong> — Estimate from an active deal. May change.</p>
+                                        <p class="mt-1"><strong class="text-gray-600">Locked</strong> — Confirmed at the Signed stage. Awaiting payout.</p>
+                                        <p class="mt-1"><strong class="text-gray-600">Paid</strong> — Released and finalized.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </th>
                         <th>Status</th>
                         <th>Days Left</th>
                     </tr>

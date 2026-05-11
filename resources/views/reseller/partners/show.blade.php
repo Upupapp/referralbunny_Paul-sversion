@@ -139,18 +139,27 @@
                     <p class="text-xs text-gray-400 mb-1">Total Est.</p>
                     <p class="text-base font-bold text-[#0D9488]">₱{{ number_format($totalCommission, 0) }}</p>
                 </div>
+                @foreach([
+                    ['Pending', number_format($pendingCommission, 0), 'text-amber-600', 'Estimates from active deals. May change as deal amounts, stages, or splits are updated.'],
+                    ['Locked',  number_format($lockedCommission,  0), 'text-blue-600',  'Confirmed when a deal reached Signed. Awaiting final payout. Will not change unless the deal is revised.'],
+                    ['Paid',    number_format($paidCommission,    0), 'text-green-600', 'Approved and released. These amounts are final.'],
+                ] as [$cLabel, $cAmount, $cColor, $cInfo])
                 <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Pending</p>
-                    <p class="text-base font-bold text-amber-600">₱{{ number_format($pendingCommission, 0) }}</p>
+                    <div class="flex items-center gap-1 mb-1">
+                        <p class="text-xs text-gray-400">{{ $cLabel }}</p>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About {{ $cLabel }} commission">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute left-0 top-5 z-50 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                                <strong class="block mb-1 text-gray-700">{{ $cLabel }}</strong>{{ $cInfo }}
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-base font-bold {{ $cColor }}">₱{{ $cAmount }}</p>
                 </div>
-                <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Locked</p>
-                    <p class="text-base font-bold text-blue-600">₱{{ number_format($lockedCommission, 0) }}</p>
-                </div>
-                <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Paid</p>
-                    <p class="text-base font-bold text-green-600">₱{{ number_format($paidCommission, 0) }}</p>
-                </div>
+                @endforeach
             </div>
             <p class="text-[10px] text-gray-400 mt-3">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
         </div>
@@ -294,18 +303,27 @@
                     <p class="text-xs text-gray-400 mb-1">Total Estimated</p>
                     <p class="text-xl font-bold text-[#0D9488]">₱{{ number_format($totalCommission, 0) }}</p>
                 </div>
-                <div class="text-center p-4 bg-amber-50 rounded-xl">
-                    <p class="text-xs text-gray-400 mb-1">Pending</p>
-                    <p class="text-xl font-bold text-amber-600">₱{{ number_format($pendingCommission, 0) }}</p>
+                @foreach([
+                    ['Pending', number_format($pendingCommission, 0), 'text-amber-600', 'bg-amber-50', 'Estimates from active deals. May change as deal amounts, stages, or splits are updated.'],
+                    ['Locked',  number_format($lockedCommission,  0), 'text-blue-600',  'bg-blue-50',  'Confirmed when a deal reached Signed. Awaiting final payout. Will not change unless the deal is revised.'],
+                    ['Paid',    number_format($paidCommission,    0), 'text-green-600', 'bg-green-50', 'Approved and released. These amounts are final.'],
+                ] as [$cLabel, $cAmt, $cColor, $cBg, $cInfo])
+                <div class="text-center p-4 {{ $cBg }} rounded-xl">
+                    <div class="flex items-center justify-center gap-1 mb-1">
+                        <p class="text-xs text-gray-400">{{ $cLabel }}</p>
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About {{ $cLabel }} commission">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-transition class="absolute left-1/2 -translate-x-1/2 top-5 z-50 w-56 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                <strong class="block mb-1 text-gray-700">{{ $cLabel }}</strong>{{ $cInfo }}
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xl font-bold {{ $cColor }}">₱{{ $cAmt }}</p>
                 </div>
-                <div class="text-center p-4 bg-blue-50 rounded-xl">
-                    <p class="text-xs text-gray-400 mb-1">Locked</p>
-                    <p class="text-xl font-bold text-blue-600">₱{{ number_format($lockedCommission, 0) }}</p>
-                </div>
-                <div class="text-center p-4 bg-green-50 rounded-xl">
-                    <p class="text-xs text-gray-400 mb-1">Paid</p>
-                    <p class="text-xl font-bold text-green-600">₱{{ number_format($paidCommission, 0) }}</p>
-                </div>
+                @endforeach
             </div>
 
             {{-- Per-deal breakdown --}}
