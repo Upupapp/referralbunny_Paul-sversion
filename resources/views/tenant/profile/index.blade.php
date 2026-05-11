@@ -135,6 +135,17 @@
             {{-- Contact & Localization --}}
             <div class="pt-3 border-t border-gray-100">
                 <h2 class="text-sm font-bold text-[#1E1B4B] mb-4">Contact & Preferences</h2>
+                <div class="mb-4">
+                    <label class="form-label">Email address</label>
+                    <div class="flex items-center gap-2">
+                        <input type="email" value="{{ $user->email }}" class="form-input bg-gray-50 text-gray-500 cursor-default" readonly>
+                        <span class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-500 text-xs font-medium whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            Read-only
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Contact your administrator to update your email address.</p>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="form-label">Phone number</label>
