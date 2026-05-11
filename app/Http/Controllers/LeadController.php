@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\CommissionStatusChanged;
 use App\Events\DealCreated as DealCreatedEvent;
+use App\Events\DealReferrerAssigned;
 use App\Mail\ResellerInvitation;
 use App\Models\DealPartner;
 use App\Models\Lead;
@@ -652,36 +653,33 @@ class LeadController extends Controller
             ]
         );
 
-        // Notify tenant admins and new referrer about reassignment
-        try {
-            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $lead->tenant_id,
-                category:     'deal_pipeline',
-                priority:     'normal',
-                title:        'Deal reassigned',
-                body:         "\"{$lead->name}\" has been reassigned to {$data['reseller_name']}.",
-                actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
-                actionLabel:  'View Deal',
-                dedupeSuffix: "{$lead->id}:reassign:" . now()->format('YmdHi'),
-            );
+        // Resolve new referrer for the event payload
+        $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
+            ->where('name', $data['reseller_name'])
+            ->first();
 
-            $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
-                ->where('name', $data['reseller_name'])
-                ->first();
-            if ($newReseller) {
-                app(NotificationDispatchService::class)->dispatchToReseller(
-                    resellerId:   (string) $newReseller->id,
-                    tenantId:     $lead->tenant_id,
-                    category:     'deal_pipeline',
-                    priority:     'high',
-                    title:        'New deal assigned to you',
-                    body:         "You have been assigned to \"{$lead->name}\".",
-                    actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
-                    actionLabel:  'View Deal',
-                    dedupeSuffix: "{$lead->id}:reassign:r:" . now()->format('YmdHi'),
-                );
-            }
-        } catch (\Throwable) {}
+        $assignmentType = ($oldReferrerName && $oldReferrerName !== $data['reseller_name'])
+            ? 'reassignment'
+            : 'new_assignment';
+
+        if ($newReseller?->status === 'invited') {
+            $assignmentType = 'pending_referrer_assignment';
+        }
+
+        DealReferrerAssigned::dispatch(
+            leadId:          $lead->id,
+            leadName:        $lead->name,
+            tenantId:        $lead->tenant_id,
+            resellerName:    $data['reseller_name'],
+            stage:           $lead->stage,
+            dealValue:       (float) ($lead->deal_value ?? 0),
+            assignmentType:  $assignmentType,
+            resellerEmail:   $newReseller?->email,
+            resellerId:      $newReseller ? (string) $newReseller->id : null,
+            oldResellerName: $oldReferrerName ?: null,
+            assignedByName:  $actorNameRa,
+            assignedByRole:  $actorRoleRa,
+        );
 
         return response()->json($lead->fresh(['commissionSplits', 'history']));
     }
