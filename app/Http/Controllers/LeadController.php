@@ -185,8 +185,17 @@ class LeadController extends Controller
         // ── LGU IDS: default editable deal value ₱4,000,000 ─────────────
         // ADDITIVE RULE — does not change base_cost/added_amount computation.
         // Only applied when deal_value is still 0 after the base+added calculation.
+        $amountWasDefaulted = false;
         if ($tenantId === 'lgu-ids' && $dealValue == 0) {
-            $dealValue = 4_000_000.00;
+            $dealValue          = 4_000_000.00;
+            $amountWasDefaulted = true;
+        }
+
+        $leadData = $data['data'] ?? [];
+        if ($amountWasDefaulted) {
+            $leadData['amount_defaulted']             = true;
+            $leadData['amount_confirmation_status']   = 'pending';
+            $leadData['amount_default_reason']        = 'LGU IDS default applied — no deal amount was provided.';
         }
 
         $lead = Lead::create([
@@ -201,8 +210,24 @@ class LeadController extends Controller
             'base_cost'         => $baseCost,
             'added_amount'      => $addedAmount,
             'deal_value'        => $dealValue,
-            'data'              => $data['data'] ?? [],
+            'data'              => $leadData,
         ]);
+
+        if ($amountWasDefaulted) {
+            try {
+                app(\App\Services\DealActivityService::class)->record(
+                    $lead,
+                    'LGU IDS default deal amount of ₱4,000,000 applied — no deal amount was provided.',
+                    'amount',
+                    [
+                        'category'   => 'financial',
+                        'actor_name' => 'System',
+                        'actor_role' => 'system',
+                        'new_values' => ['deal_value' => 4000000.00, 'amount_source' => 'lgu_ids_default'],
+                    ]
+                );
+            } catch (\Throwable) {}
+        }
 
         if (!empty($data['commission_splits'])) {
             foreach ($data['commission_splits'] as $split) {
@@ -429,6 +454,36 @@ class LeadController extends Controller
                 $actorRole,
             );
 
+            // If this deal had a defaulted amount pending confirmation, mark as updated
+            $freshData = $lead->data ?? [];
+            if (($freshData['amount_defaulted'] ?? false) && ($freshData['amount_confirmation_status'] ?? '') === 'pending') {
+                $freshData['amount_confirmation_status'] = 'updated';
+                $freshData['amount_confirmed_at']        = now()->toIso8601String();
+                $freshData['amount_confirmed_by']        = $actorName ?? 'Admin';
+                $lead->update(['data' => $freshData]);
+
+                try {
+                    app(\App\Services\DealActivityService::class)->record(
+                        $lead,
+                        ($actorName ?? 'Admin') . ' changed the deal amount from the LGU IDS default ₱4,000,000 to ₱' . number_format($newDealValue, 0) . '.',
+                        'amount',
+                        [
+                            'category'   => 'financial',
+                            'actor_name' => $actorName ?? 'Admin',
+                            'actor_role' => $actorRole,
+                            'old_values' => ['deal_value' => 4000000.00, 'amount_source' => 'lgu_ids_default'],
+                            'new_values' => ['deal_value' => $newDealValue, 'amount_source' => 'user_updated'],
+                        ]
+                    );
+                } catch (\Throwable) {}
+
+                if ($isReferrer) {
+                    $this->notifyAssignedReferrer($lead, 'Deal amount updated by Referrer',
+                        ($actorName ?? 'Referrer') . ' changed "' . $lead->name . '" from the default ₱4,000,000 to ₱' . number_format($newDealValue, 0) . '.',
+                        $lead->id . ':default_updated:' . now()->format('YmdHi'));
+                }
+            }
+
             // Notify assigned referrer when admin/manager changes the deal amount
             if (!$isReferrer && !$isPartner) {
                 $this->notifyAssignedReferrer(
@@ -448,6 +503,68 @@ class LeadController extends Controller
         $lead->assertBelongsToCurrentTenant();
         $lead->delete();
         return response()->json(['message' => 'Lead deleted.']);
+    }
+
+    /**
+     * POST /api/leads/{lead}/confirm-default-amount
+     * Confirm the LGU IDS default deal amount of ₱4,000,000.
+     */
+    public function confirmDefaultAmount(Request $request, Lead $lead): JsonResponse
+    {
+        $lead->assertBelongsToCurrentTenant();
+
+        $currentData = $lead->data ?? [];
+        if (!($currentData['amount_defaulted'] ?? false)) {
+            return response()->json(['message' => 'This deal does not have a pending default amount.'], 422);
+        }
+        if (($currentData['amount_confirmation_status'] ?? '') !== 'pending') {
+            return response()->json(['message' => 'Amount confirmation already resolved.'], 422);
+        }
+
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+
+        $currentData['amount_confirmation_status'] = 'confirmed';
+        $currentData['amount_confirmed_at']         = now()->toIso8601String();
+        $currentData['amount_confirmed_by']         = $actorName ?? 'Admin';
+        $lead->update(['data' => $currentData]);
+
+        try {
+            app(\App\Services\DealActivityService::class)->record(
+                $lead,
+                ($actorName ?? 'Admin') . ' confirmed the LGU IDS default deal amount of ₱4,000,000.',
+                'amount',
+                [
+                    'category'   => 'financial',
+                    'actor_name' => $actorName ?? 'Admin',
+                    'actor_role' => $actorRole,
+                    'new_values' => ['deal_value' => 4000000.00, 'amount_source' => 'lgu_ids_default_confirmed'],
+                ]
+            );
+        } catch (\Throwable) {}
+
+        // Notify admins if a referrer confirmed
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+            $this->notifyAssignedReferrer(
+                $lead,
+                'Default amount confirmed',
+                ($actorName ?? 'Referrer') . ' confirmed the ₱4,000,000 default amount on "' . $lead->name . '".',
+                $lead->id . ':default_confirmed:' . now()->format('YmdH'),
+            );
+            try {
+                app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                    tenantId:     $lead->tenant_id,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Default deal amount confirmed',
+                    body:         ($actorName ?? 'Referrer') . ' confirmed the ₱4,000,000 default amount for "' . $lead->name . '".',
+                    actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $lead->id . ':default_confirmed_by_referrer',
+                );
+            } catch (\Throwable) {}
+        }
+
+        return response()->json(['success' => true, 'message' => 'Default amount confirmed.']);
     }
 
     public function moveStage(Request $request, Lead $lead): JsonResponse

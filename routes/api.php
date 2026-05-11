@@ -65,10 +65,11 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::put('leads/{lead}',       [LeadController::class, 'update']);
     Route::patch('leads/{lead}',     [LeadController::class, 'update']);
     Route::delete('leads/{lead}',    [LeadController::class, 'destroy']);
-    Route::post('leads/{lead}/stage',             [LeadController::class, 'moveStage']);
-    Route::post('leads/{lead}/notes',             [LeadController::class, 'addNote']);
-    Route::post('leads/{lead}/reassign',          [LeadController::class, 'reassign']);
-    Route::post('leads/{lead}/commission-splits', [LeadController::class, 'updateCommissionSplits']);
+    Route::post('leads/{lead}/stage',                   [LeadController::class, 'moveStage']);
+    Route::post('leads/{lead}/notes',                   [LeadController::class, 'addNote']);
+    Route::post('leads/{lead}/reassign',                [LeadController::class, 'reassign']);
+    Route::post('leads/{lead}/commission-splits',       [LeadController::class, 'updateCommissionSplits']);
+    Route::post('leads/{lead}/confirm-default-amount',  [LeadController::class, 'confirmDefaultAmount']);
     // Deal Notes (comments with attachments + mentions)
     Route::get('deals/{dealId}/comments',                    [\App\Http\Controllers\DealCommentController::class, 'index']);
     Route::post('deals/{dealId}/comments',                   [\App\Http\Controllers\DealCommentController::class, 'store']);

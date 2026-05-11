@@ -168,6 +168,51 @@
         },
     }" class="space-y-5 max-w-3xl mx-auto">
 
+    {{-- ── LGU IDS Default Amount Confirmation Prompt (Referrer) ── --}}
+    @if(($lead->data['amount_defaulted'] ?? false) && ($lead->data['amount_confirmation_status'] ?? '') === 'pending')
+    <div x-data="{ visible: true, busy: false, err: null }" x-show="visible" x-cloak x-transition
+         class="flex flex-col sm:flex-row sm:items-start gap-4 px-5 py-4 rounded-2xl bg-amber-50 border border-amber-200">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-bold text-amber-800">Confirm Deal Amount</p>
+            <p class="text-xs text-amber-700 mt-1 leading-relaxed">
+                No Deal Amount was provided when this deal was created, so the LGU IDS default of <strong>₱4,000,000</strong> was applied.
+                Please confirm this is correct or update it to the actual contract value.
+            </p>
+            <div class="flex flex-wrap items-center gap-2 mt-3">
+                <button @click="async () => {
+                            busy = true; err = null;
+                            const r = await fetch('/api/leads/{{ $lead->id }}/confirm-default-amount', {
+                                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},
+                                body:'{}'});
+                            const d = await r.json().catch(()=>({}));
+                            busy = false;
+                            if (!r.ok) { err = d.message || 'Could not confirm.'; return; }
+                            visible = false;
+                        }"
+                        :disabled="busy"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
+                        style="background:#D97706">
+                    <svg x-show="busy" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="busy ? 'Confirming…' : 'Confirm ₱4,000,000'"></span>
+                </button>
+                <button @click="showUpdateAmount = true"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-all">
+                    Change Amount
+                </button>
+                <button @click="visible = false" class="text-xs text-amber-600 hover:text-amber-800 underline">
+                    Remind me later
+                </button>
+            </div>
+            <p x-show="err" class="text-xs text-red-600 mt-2" x-text="err"></p>
+        </div>
+    </div>
+    @endif
+
     {{-- Pending approval banners ──────────────────────────────── --}}
     @if($pendingStageMoveRequest)
     <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200">

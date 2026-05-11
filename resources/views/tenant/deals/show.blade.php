@@ -45,7 +45,50 @@
 
     <div x-show="!loading && lead" class="space-y-5">
 
-        {{-- Ã¢"â‚¬Ã¢"â‚¬ Header Ã¢"â‚¬Ã¢"â‚¬ --}}
+        {{-- ── LGU IDS Default Amount Confirmation Prompt ──────────────── --}}
+        @if(($ssrLead['data']['amount_defaulted'] ?? false) && ($ssrLead['data']['amount_confirmation_status'] ?? '') === 'pending')
+        <div x-data="defaultAmountPrompt('{{ $dealId }}', '{{ $tenant->id }}')"
+             x-show="visible" x-cloak x-transition
+             class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-bold text-amber-800">Confirm Deal Amount</p>
+                    <p class="text-xs text-amber-700 mt-1 leading-relaxed max-w-2xl">
+                        This deal did not have a Deal Amount when it was created or imported, so the LGU IDS default amount of <strong>₱4,000,000</strong> was applied.
+                        Please confirm if this amount is correct or update it based on the actual contract value.
+                    </p>
+                    <p class="text-[10px] text-amber-600 mt-1">Deal amount affects financial breakdown, commission pool, pipeline value, and reports.</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-4">
+                        <button @click="confirm()"
+                                :disabled="busy"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
+                                style="background:#D97706">
+                            <svg x-show="busy" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            <svg x-show="!busy" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span x-text="busy ? 'Confirming…' : 'Confirm ₱4,000,000'"></span>
+                        </button>
+                        <button @click="window.dispatchEvent(new CustomEvent('open-edit-finance'))"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            Change Amount
+                        </button>
+                        <button @click="snooze()"
+                                class="text-xs text-amber-600 hover:text-amber-800 underline transition-colors">
+                            Remind me later
+                        </button>
+                    </div>
+                    <p x-show="error" class="text-xs text-red-600 mt-2" x-text="error"></p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ── Header ── --}}
         <div class="card">
             <div class="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-[#7B61FF] font-bold text-lg shrink-0"
@@ -2036,6 +2079,33 @@ function dealComments(dealId, tenantId) {
             if (bytes < 1048576)   return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / 1048576).toFixed(1) + ' MB';
         },
+    };
+}
+
+function defaultAmountPrompt(dealId, tenantId) {
+    const CSRF = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    return {
+        visible: true,
+        busy: false,
+        error: null,
+        async confirm() {
+            if (this.busy) return;
+            this.busy = true; this.error = null;
+            try {
+                const r = await fetch(`/api/leads/${dealId}/confirm-default-amount`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                const d = await r.json();
+                if (!r.ok) { this.error = d.message || 'Could not confirm. Please try again.'; return; }
+                this.visible = false;
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Default amount confirmed.' } }));
+            } catch(e) {
+                this.error = 'Network error. Please try again.';
+            } finally { this.busy = false; }
+        },
+        snooze() { this.visible = false; },
     };
 }
 

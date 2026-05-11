@@ -133,6 +133,7 @@ class CriticalActionService
             fn() => $this->pendingExportRequests($tenantId),
             fn() => $this->overdueOpenTasks($tenantId),
             fn() => $this->openRequestFormTasks($tenantId),
+            fn() => $this->pendingDefaultAmounts($tenantId),
         ];
 
         if ($canBilling) {
@@ -862,6 +863,49 @@ class CriticalActionService
             'action_needed' => true,
             'source'        => 'request_form_tasks',
         ]))->toArray();
+    }
+
+    // ── LGU IDS: deals with pending default amount confirmation ────
+
+    private function pendingDefaultAmounts(string $tenantId): array
+    {
+        if ($tenantId !== 'lgu-ids') return [];
+
+        try {
+            $rows = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('status', ['expired', 'declined'])
+                ->whereRaw("data::jsonb->>'amount_defaulted' = 'true'")
+                ->whereRaw("data::jsonb->>'amount_confirmation_status' = 'pending'")
+                ->select('id', 'name', 'reseller_name', 'stage', 'deal_value', 'updated_at')
+                ->orderByRaw("CASE stage WHEN 'paid' THEN 0 WHEN 'signed' THEN 1 WHEN 'contract_sent' THEN 2 ELSE 3 END")
+                ->limit(10)
+                ->get();
+
+            $advancedStages = ['contract_sent', 'signed', 'paid'];
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'default_amount_pending',
+                'category'      => 'deal',
+                'severity'      => in_array($r->stage ?? '', $advancedStages) ? 'high' : 'medium',
+                'summary'       => 'Default deal amount unconfirmed: ' . $r->name,
+                'actor_name'    => $r->reseller_name ?? 'Unassigned',
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->name,
+                'related_type'  => 'deal',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->updated_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/deals/{$r->id}",
+                'action_label'  => 'Confirm Amount',
+                'action_needed' => true,
+                'source'        => 'leads',
+                'meta'          => ['deal_value' => $r->deal_value, 'stage' => $r->stage],
+                'description'   => 'This deal is using the LGU IDS default amount of ₱4,000,000. Confirm it or update it based on the actual contract value.',
+            ]))->all();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] pendingDefaultAmounts failed', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 
     // ── DTO factory ────────────────────────────────────────────────

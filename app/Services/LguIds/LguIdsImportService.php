@@ -647,8 +647,10 @@ class LguIdsImportService
                 $addedAmount   = (float) ($computed['normalized_added_amount'] ?? 0);
                 $dealValue     = $baseCost + $addedAmount;
                 // LGU IDS: default deal value ₱4,000,000 when blank/zero
+                $importAmountDefaulted = false;
                 if ($dealValue == 0) {
-                    $dealValue = 4_000_000.00;
+                    $dealValue             = 4_000_000.00;
+                    $importAmountDefaulted = true;
                 }
                 $orgId         = $row->organization_id;
                 $referrerEmail = $norm['referrer_email'] ?? null;
@@ -735,6 +737,19 @@ class LguIdsImportService
                     $updated++;
                 } else {
                     // Create new deal — CRITICAL PATH: lead creation must not be blocked by secondary operations
+                    $newLeadData = [
+                        'province'     => $province,
+                        'municipality' => $city,
+                        'import_batch' => $batch->id,
+                        'source'       => $norm['source'] ?? 'import',
+                        'notes'        => $norm['notes'] ?? null,
+                    ];
+                    if ($importAmountDefaulted) {
+                        $newLeadData['amount_defaulted']           = true;
+                        $newLeadData['amount_confirmation_status'] = 'pending';
+                        $newLeadData['amount_default_reason']      = 'LGU IDS default applied during import — no deal amount was provided.';
+                    }
+
                     $newLead = Lead::create([
                         'tenant_id'         => self::TENANT_ID,
                         'name'              => $dealName,
@@ -747,13 +762,7 @@ class LguIdsImportService
                         'base_cost'         => $baseCost,
                         'added_amount'      => $addedAmount,
                         'deal_value'        => $dealValue,
-                        'data'              => [
-                            'province'     => $province,
-                            'municipality' => $city,
-                            'import_batch' => $batch->id,
-                            'source'       => $norm['source'] ?? 'import',
-                            'notes'        => $norm['notes'] ?? null,
-                        ],
+                        'data'              => $newLeadData,
                     ]);
 
                     // Record success immediately — secondary ops below must not roll this back
@@ -765,17 +774,19 @@ class LguIdsImportService
                         LeadHistory::create([
                             'lead_id'    => $newLead->id,
                             'tenant_id'  => self::TENANT_ID,
-                            'action'     => 'Deal created via LGU IDS import',
+                            'action'     => 'Deal created via LGU IDS import'
+                                          . ($importAmountDefaulted ? ' — LGU IDS default amount ₱4,000,000 applied (no amount in import file).' : '.'),
                             'type'       => 'import',
                             'category'   => 'import',
                             'actor_name' => $executorRole === 'reseller' ? ($resellerName ?? 'Referrer') : 'Admin (Import)',
                             'actor_role' => $executorRole,
                             'new_values' => [
-                                'deal_name'   => $dealName,
-                                'stage'       => $stage,
-                                'deal_value'  => $dealValue,
-                                'batch_id'    => $batch->id,
-                                'file'        => $batch->file_name,
+                                'deal_name'        => $dealName,
+                                'stage'            => $stage,
+                                'deal_value'       => $dealValue,
+                                'amount_defaulted' => $importAmountDefaulted,
+                                'batch_id'         => $batch->id,
+                                'file'             => $batch->file_name,
                             ],
                             'date'       => now()->toDateString(),
                         ]);
