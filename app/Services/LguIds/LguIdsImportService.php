@@ -275,7 +275,7 @@ class LguIdsImportService
             }
         }
         if ($status === 'failed') {
-            return ['status' => 'failed', 'issue_codes' => $issueCodes, 'computed' => []];
+            return ['status' => 'failed', 'issue_codes' => $issueCodes, 'computed' => [], 'organization_id' => null];
         }
 
         // 2. Referrer permission check (Referrers can only import their own email)
@@ -285,7 +285,7 @@ class LguIdsImportService
                     'code'    => 'REFERRER_PERMISSION_BLOCKED',
                     'message' => "Referrers can only import deals assigned to themselves.",
                 ];
-                return ['status' => 'blocked', 'issue_codes' => $issueCodes, 'computed' => []];
+                return ['status' => 'blocked', 'issue_codes' => $issueCodes, 'computed' => [], 'organization_id' => null];
             }
         }
 
@@ -514,7 +514,7 @@ class LguIdsImportService
                 'issue_codes'       => $validation['issue_codes'],
                 'row_action'        => $rowAction,
                 'existing_deal_id'  => $existingDealId,
-                'organization_id'   => $validation['organization_id'],
+                'organization_id'   => $validation['organization_id'] ?? null,
             ]);
 
             // Track counts
