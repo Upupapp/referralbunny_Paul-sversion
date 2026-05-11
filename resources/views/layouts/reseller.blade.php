@@ -18,6 +18,14 @@
         }
         .rs-sidebar-link:hover { background:rgba(255,255,255,.1); color:#fff; }
         .rs-sidebar-link.active { background:rgba(255,255,255,.12); color:#fff; border-left:3px solid #14B8A6; }
+        .rs-group-active { color:rgba(255,255,255,.9) !important; }
+        .rs-sidebar-child {
+            display:flex;align-items:center;gap:.625rem;padding:.4375rem .875rem;border-radius:.625rem;
+            font-size:.8125rem;font-weight:500;color:rgba(255,255,255,.55);
+            text-decoration:none;transition:all .15s;
+        }
+        .rs-sidebar-child:hover { background:rgba(255,255,255,.07); color:rgba(255,255,255,.9); }
+        .rs-sidebar-child.active { background:rgba(255,255,255,.1); color:#fff; border-left:2px solid #5EEAD4; padding-left:.75rem; }
         .rs-btn-primary { background:#0D9488;color:#fff;border:none;border-radius:.75rem;padding:.625rem 1rem;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:background .15s;font-family:'Inter',sans-serif; }
         .rs-btn-primary:hover { background:#0F766E; }
         .rs-page-bg { background:#F0FDFA; }
