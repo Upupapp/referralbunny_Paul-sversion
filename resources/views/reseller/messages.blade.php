@@ -180,7 +180,8 @@ function resellerChat() {
             if (!THREAD_ID) return;
             try {
                 const r = await fetch(`${BASE}/threads/${THREAD_ID}/messages`, { headers: hdrs() });
-                if (!r.ok) return;
+                if (!r.ok) { this._pollFails = (this._pollFails || 0) + 1; return; }
+                this._pollFails = 0;
                 const d = await r.json();
                 const serverMsgs = d.messages ?? [];
                 const existingIds = new Set(this._knownIds);
@@ -194,7 +195,10 @@ function resellerChat() {
                     }
                 });
                 if (added > 0) this.$nextTick(() => this.scrollToBottom());
-            } catch(e) {}
+            } catch(e) {
+                this._pollFails = (this._pollFails || 0) + 1;
+                if (this._pollFails >= 3) this.sendError = 'Connection issue — messages may be delayed.';
+            }
         },
 
         sendError: '',

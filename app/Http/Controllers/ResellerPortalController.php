@@ -169,7 +169,18 @@ class ResellerPortalController extends Controller
             'paid'    => $leads->where('commission_status', 'paid')->sum('my_commission'),
         ];
 
-        return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats'));
+        // Paginate for display — stats use full $leads collection above
+        $perPage  = 20;
+        $page     = (int) request()->input('page', 1);
+        $pagedLeads = new \Illuminate\Pagination\LengthAwarePaginator(
+            $leads->forPage($page, $perPage)->values(),
+            $leads->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats', 'pagedLeads'));
     }
 
     public function profile($tenantId)

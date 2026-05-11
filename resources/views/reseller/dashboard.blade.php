@@ -273,7 +273,13 @@
     @endif
 
     {{-- ── 4. CRITICAL ACTIONS / NEXT BEST ACTIONS ──────────────────────── --}}
-    @if($hasActions)
+    @if(!$hasActions)
+    <div class="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-2xl">
+        <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <p class="text-sm font-medium text-emerald-700 flex-1">You're all caught up — no actions needed right now.</p>
+        <a href="{{ route('reseller.activity', $tenant->id) }}" class="text-xs font-semibold text-emerald-600 hover:text-emerald-800 shrink-0">View Activity →</a>
+    </div>
+    @else
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <div class="flex items-center gap-2">
@@ -317,6 +323,9 @@
                 @endif
             </div>
             @endforeach
+        </div>
+        <div class="px-5 py-2.5 border-t border-gray-50 text-right">
+            <a href="{{ route('reseller.activity', $tenant->id) }}" class="text-xs font-semibold text-gray-400 hover:text-teal-600 transition-colors">View all activity →</a>
         </div>
     </div>
     @endif

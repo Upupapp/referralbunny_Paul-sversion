@@ -206,6 +206,20 @@ class ResellerDealController extends Controller
             ]);
 
             DB::commit();
+
+            // Notify admins after commit so failure doesn't roll back note creation
+            try {
+                app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Note added by referrer',
+                    body:         $reseller->name . ' added a note on "' . $lead->name . '": ' . \Illuminate\Support\Str::limit($body, 80),
+                    actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $dealId . ':note:' . $note->id,
+                );
+            } catch (\Throwable) {}
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ResellerDealController addNote failed', ['error' => $e->getMessage()]);

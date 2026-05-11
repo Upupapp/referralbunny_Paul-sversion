@@ -81,7 +81,7 @@
                     <th>Deal</th><th>Contract Value</th><th>Your Commission</th><th>Status</th>
                 </tr></thead>
                 <tbody>
-                @foreach($leads as $lead)
+                @foreach($pagedLeads as $lead)
                 @php
                     $aa  = (float) ($lead->added_amount ?? 0);
                     $bc  = (float) ($lead->base_cost ?? 0);
@@ -113,6 +113,9 @@
                 </tbody>
             </table>
         </div>
+        @if($pagedLeads->hasPages())
+        <div class="px-5 py-3 border-t border-gray-100">{{ $pagedLeads->links() }}</div>
+        @endif
         @endif
     </div>
 </div>
