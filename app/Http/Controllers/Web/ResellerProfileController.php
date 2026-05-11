@@ -73,6 +73,22 @@ class ResellerProfileController extends Controller
         return back()->with('success', 'Profile photo updated.');
     }
 
+    public function toggleAnonymous(Request $request, string $tenantId)
+    {
+        $reseller = Auth::guard('reseller')->user();
+        if (!$reseller) abort(403);
+
+        $isAnon = (bool) $request->input('is_anonymous');
+        $reseller->update(['is_anonymous' => $isAnon]);
+        Auth::guard('reseller')->setUser($reseller->fresh());
+
+        $msg = $isAnon
+            ? 'Anonymous mode enabled. Your name and photo are now hidden from other referrers.'
+            : 'Anonymous mode disabled. Your profile is now visible to other referrers.';
+
+        return back()->with('success', $msg);
+    }
+
     public function destroyPhoto(string $tenantId)
     {
         $reseller = Auth::guard('reseller')->user();

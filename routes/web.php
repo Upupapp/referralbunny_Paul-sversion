@@ -120,6 +120,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',    [ResellerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',  [ResellerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+        Route::post('/profile/anonymous', [ResellerProfileController::class, 'toggleAnonymous'])->name('profile.anonymous');
         // ── My Partners ──────────────────────────────────────────────
         Route::get('/partners',                    [\App\Http\Controllers\ReferrerPartnerController::class, 'index'])->name('partners');
         Route::get('/partners/{partnerSlug}',      [\App\Http\Controllers\ReferrerPartnerController::class, 'show'])->name('partners.show')->where('partnerSlug', '.+');

@@ -1113,7 +1113,7 @@ class ContactsImportService
             'summary_json'    => compact('created', 'updated', 'skipped', 'failed'),
         ]);
 
-        $this->snapshots->markBatchEligible($batch->id);
+        try { $this->snapshots->markBatchEligible($batch->id); } catch (\Throwable) {}
 
         try {
             $this->notifications->dispatchToTenantAdmins(

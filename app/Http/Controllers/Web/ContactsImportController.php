@@ -353,9 +353,11 @@ class ContactsImportController extends Controller
                 'error'     => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
             ]);
+            // Reset batch to previewed so the user can retry
+            try { $batch->refresh()->update(['status' => 'previewed']); } catch (\Throwable) {}
             return redirect()
                 ->route($previewRoute, [$tenantId, $batchId])
-                ->withErrors(['import' => 'Import failed. Please try again or contact support if the problem persists.']);
+                ->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
         }
 
         $reportRoute = $role === 'reseller'

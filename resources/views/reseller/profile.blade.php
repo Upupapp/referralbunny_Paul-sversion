@@ -18,6 +18,14 @@
         <p class="text-gray-400 text-sm mt-0.5">Manage your personal information and referrer details.</p>
     </div>
 
+    {{-- Success flash --}}
+    @if(session('success'))
+    <div class="flex items-center gap-3 p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 text-sm font-medium">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        {{ session('success') }}
+    </div>
+    @endif
+
     {{-- Completion --}}
     @if($completion < 100)
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -31,13 +39,102 @@
     </div>
     @endif
 
-    {{-- Anonymity notice --}}
-    @if($reseller->is_anonymous)
-    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-700 flex gap-2 items-start">
-        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <p>Anonymity is enabled for your account. Your name, photo, and contact details are hidden from other referrers and partners. Authorized workspace admins can still view your identity.</p>
+    {{-- Anonymous toggle --}}
+    <div x-data="{
+            isAnon: {{ $reseller->is_anonymous ? 'true' : 'false' }},
+            showModal: false,
+            pendingOn: false,
+            open() { this.pendingOn = !this.isAnon; this.showModal = true; }
+         }"
+         class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h2 class="text-sm font-bold text-[#1E1B4B]">Anonymous Mode</h2>
+                    <span x-show="isAnon"
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">ON</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    <span x-show="!isAnon">Your name and photo are visible to other referrers on this platform.</span>
+                    <span x-show="isAnon">Your name and photo are hidden from other referrers. Admins can still see your identity.</span>
+                </p>
+            </div>
+            <button @click="open()"
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 focus:outline-none"
+                    :class="isAnon ? 'bg-amber-400' : 'bg-gray-200'"
+                    type="button">
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                      :class="isAnon ? 'translate-x-6' : 'translate-x-1'"></span>
+            </button>
+        </div>
+
+        {{-- Confirmation modal --}}
+        <div x-show="showModal" x-cloak
+             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+             @click.self="showModal = false">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100">
+
+                {{-- Icon --}}
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto"
+                     :class="pendingOn ? 'bg-amber-100' : 'bg-teal-100'">
+                    <svg class="w-6 h-6" :class="pendingOn ? 'text-amber-600' : 'text-teal-600'"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+
+                {{-- Title --}}
+                <div class="text-center">
+                    <h3 class="text-base font-bold text-[#1E1B4B]"
+                        x-text="pendingOn ? 'Enable Anonymous Mode?' : 'Disable Anonymous Mode?'"></h3>
+                </div>
+
+                {{-- Explanation --}}
+                <div x-show="pendingOn"
+                     class="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2 text-sm text-amber-800">
+                    <p class="font-semibold">What happens when you go anonymous:</p>
+                    <ul class="space-y-1 text-xs">
+                        <li class="flex items-start gap-2"><span class="text-amber-500 mt-0.5">•</span> Your real name is replaced with an alias (e.g. "Referrer #12") when other referrers view deals or leaderboards</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-500 mt-0.5">•</span> Your profile photo is hidden from other referrers</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-500 mt-0.5">•</span> Platform admins can always see your real identity</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-500 mt-0.5">•</span> Your commissions and deals are not affected</li>
+                    </ul>
+                </div>
+
+                <div x-show="!pendingOn"
+                     class="rounded-xl bg-teal-50 border border-teal-200 p-4 space-y-2 text-sm text-teal-800">
+                    <p class="font-semibold">What happens when you become visible:</p>
+                    <ul class="space-y-1 text-xs">
+                        <li class="flex items-start gap-2"><span class="text-teal-500 mt-0.5">•</span> Your real name and photo will be visible to other referrers on leaderboards and shared deal views</li>
+                        <li class="flex items-start gap-2"><span class="text-teal-500 mt-0.5">•</span> Partners you work with on deals will see your profile</li>
+                        <li class="flex items-start gap-2"><span class="text-teal-500 mt-0.5">•</span> Your commissions and deals are not affected</li>
+                    </ul>
+                </div>
+
+                {{-- Actions --}}
+                <form method="POST" action="{{ route('reseller.profile.anonymous', $tenantId) }}">
+                    @csrf
+                    <input type="hidden" name="is_anonymous" :value="pendingOn ? '1' : '0'">
+                    <div class="flex gap-3">
+                        <button type="button" @click="showModal = false"
+                                class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
+                                :class="pendingOn ? 'bg-amber-500 hover:bg-amber-600' : 'bg-teal-600 hover:bg-teal-700'">
+                            <span x-text="pendingOn ? 'Yes, go anonymous' : 'Yes, become visible'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    @endif
 
     {{-- Photo --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
