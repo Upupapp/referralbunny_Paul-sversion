@@ -6,7 +6,7 @@
 @endsection
 
 @section('topbar-actions')
-    <button @click="openCreate()"
+    <button x-data @click="$dispatch('open-new-agreement')"
             class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -16,7 +16,7 @@
 @endsection
 
 @section('content')
-<div x-data="agreements()" x-init="init()" class="space-y-5">
+<div x-data="agreements()" x-init="init()" @open-new-agreement.window="openCreate()" class="space-y-5">
 
     {{-- Header card --}}
     <div class="card">
@@ -162,8 +162,6 @@
         </template>
     </div>
 
-</div>
-
 {{-- ── Create / Edit Modal ──────────────────────────────────────────── --}}
 <div x-show="showForm" x-cloak
      class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
@@ -292,7 +290,9 @@
             </button>
         </div>
     </div>
-</div>
+</div>{{-- end delete modal --}}
+
+</div>{{-- end x-data="agreements()" --}}
 
 @push('scripts')
 <script>
