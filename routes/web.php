@@ -218,6 +218,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access'])->prefix('tenant/{tenantI
     Route::get('/request-forms/{formId}/submissions/{submissionId}', [\App\Http\Controllers\Web\RequestFormController::class, 'submissionShow'])->name('request-forms.submissions.show');
     Route::delete('/request-forms/{formId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'destroy'])->name('request-forms.destroy');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
+    Route::get('/agreements',      [TenantAdminController::class, 'agreements'])->name('agreements');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');
     Route::get('/commission',      [\App\Http\Controllers\Web\TenantCommissionController::class, 'index'])->name('commission');
     Route::get('/commission/export', [\App\Http\Controllers\Web\TenantCommissionController::class, 'export'])->name('commission.export');
@@ -343,6 +344,7 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::post('/tasks/{taskId}/complete-with-response', [\App\Http\Controllers\Web\TaskController::class, 'completeWithResponse'])->name('tenant.sub.tasks.complete-response');
         Route::get('/request-forms',             [\App\Http\Controllers\Web\RequestFormController::class, 'index'])->name('tenant.sub.request-forms');
         Route::get('/messages',    [TenantAdminController::class, 'messages'])->name('tenant.sub.messages');
+        Route::get('/agreements',  [TenantAdminController::class, 'agreements'])->name('tenant.sub.agreements');
         Route::get('/reports',     [TenantAdminController::class, 'reports'])->name('tenant.sub.reports');
         Route::get('/imports',     [TenantAdminController::class, 'imports'])->name('tenant.sub.imports');
         Route::get('/users',       [TenantAdminController::class, 'users'])->name('tenant.sub.users');

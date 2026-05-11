@@ -327,6 +327,12 @@ class TenantAdminController extends Controller
         return view('tenant.messages.index', compact('tenant', 'resellers'));
     }
 
+    public function agreements($tenantId)
+    {
+        $tenant = Tenant::findOrFail($tenantId);
+        return view('tenant.agreements.index', compact('tenant'));
+    }
+
     public function reports($tenantId)
     {
         $tenant = Tenant::findOrFail($tenantId);

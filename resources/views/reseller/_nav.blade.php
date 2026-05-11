@@ -1,4 +1,15 @@
-@php $tid = $tenant->id; @endphp
+@php
+    $tid = $tenant->id;
+    try {
+        $_rsThread  = \App\Models\MessageThread::where('tenant_id', $tid)
+            ->where('reseller_id', auth('reseller')->id())
+            ->select('reseller_unread')
+            ->first();
+        $_rsUnread = (int) ($_rsThread?->reseller_unread ?? 0);
+    } catch (\Throwable) {
+        $_rsUnread = 0;
+    }
+@endphp
 
 <a href="{{ route('reseller.dashboard', $tid) }}"
    class="rs-sidebar-link {{ request()->routeIs('reseller.dashboard') ? 'active' : '' }}">
@@ -32,6 +43,9 @@
    class="rs-sidebar-link pl-7 {{ request()->routeIs('reseller.messages') ? 'active' : '' }}">
     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
     Messages
+    @if($_rsUnread > 0)
+        <span class="ml-auto min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none" style="background:#14B8A6">{{ $_rsUnread > 9 ? '9+' : $_rsUnread }}</span>
+    @endif
 </a>
 
 <a href="{{ route('reseller.activity', $tid) }}"

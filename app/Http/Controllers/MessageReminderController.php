@@ -17,24 +17,28 @@ class MessageReminderController extends Controller
         [$type, $id, $tenantId] = $this->resolveUser();
         if (!$type || !$id) return response()->json(['reminders' => [], 'count' => 0]);
 
-        $reminders = $service->getActiveForUser($type, $id, $tenantId);
+        try {
+            $reminders = $service->getActiveForUser($type, $id, $tenantId);
 
-        return response()->json([
-            'reminders' => $reminders->map(fn($r) => [
-                'id'                => $r->id,
-                'reminder_type'     => $r->reminder_type,
-                'priority'          => $r->priority,
-                'title'             => $r->title,
-                'body'              => $r->body,
-                'action_url'        => $r->action_url,
-                'deduplication_key' => $r->deduplication_key,
-                'thread_id'         => $r->thread_id,
-                'deal_id'           => $r->deal_id,
-                'reminder_count'    => $r->reminder_count,
-                'metadata'          => $r->metadata,
-            ]),
-            'count' => $reminders->count(),
-        ]);
+            return response()->json([
+                'reminders' => $reminders->map(fn($r) => [
+                    'id'                => $r->id,
+                    'reminder_type'     => $r->reminder_type,
+                    'priority'          => $r->priority,
+                    'title'             => $r->title,
+                    'body'              => $r->body,
+                    'action_url'        => $r->action_url,
+                    'deduplication_key' => $r->deduplication_key,
+                    'thread_id'         => $r->thread_id,
+                    'deal_id'           => $r->deal_id,
+                    'reminder_count'    => $r->reminder_count,
+                    'metadata'          => $r->metadata,
+                ]),
+                'count' => $reminders->count(),
+            ]);
+        } catch (\Throwable) {
+            return response()->json(['reminders' => [], 'count' => 0]);
+        }
     }
 
     public function snooze(Request $request, MessageReminderService $service): JsonResponse
@@ -80,27 +84,31 @@ class MessageReminderController extends Controller
         [$type, $id, $tenantId] = $this->resolveUser();
         if (!$type || !$id || !$tenantId) return response()->json(['threads' => []]);
 
-        $threadIds = MessageReminderState::forUser($type, $id)
-            ->whereIn('status', ['active', 'snoozed'])
-            ->whereNotNull('thread_id')
-            ->pluck('thread_id');
+        try {
+            $threadIds = MessageReminderState::forUser($type, $id)
+                ->whereIn('status', ['active', 'snoozed'])
+                ->whereNotNull('thread_id')
+                ->pluck('thread_id');
 
-        $threads = MessageThread::whereIn('id', $threadIds)
-            ->where('tenant_id', $tenantId)
-            ->with('reseller:id,name,is_anonymous')
-            ->orderByDesc('last_message_at')
-            ->get()
-            ->map(fn($t) => [
-                'id'                   => $t->id,
-                'reseller_name'        => ($t->reseller?->is_anonymous)
-                    ? 'Anonymous Reseller' : ($t->reseller?->name ?? 'Unknown'),
-                'last_message_preview' => $t->last_message_preview,
-                'last_message_at'      => $t->last_message_at?->diffForHumans(),
-                'admin_unread'         => $t->admin_unread,
-                'reseller_unread'      => $t->reseller_unread,
-            ]);
+            $threads = MessageThread::whereIn('id', $threadIds)
+                ->where('tenant_id', $tenantId)
+                ->with('reseller:id,name,is_anonymous')
+                ->orderByDesc('last_message_at')
+                ->get()
+                ->map(fn($t) => [
+                    'id'                   => $t->id,
+                    'reseller_name'        => ($t->reseller?->is_anonymous)
+                        ? 'Anonymous Reseller' : ($t->reseller?->name ?? 'Unknown'),
+                    'last_message_preview' => $t->last_message_preview,
+                    'last_message_at'      => $t->last_message_at?->diffForHumans(),
+                    'admin_unread'         => $t->admin_unread,
+                    'reseller_unread'      => $t->reseller_unread,
+                ]);
 
-        return response()->json(['threads' => $threads]);
+            return response()->json(['threads' => $threads]);
+        } catch (\Throwable) {
+            return response()->json(['threads' => []]);
+        }
     }
 
     private function resolveUser(): array

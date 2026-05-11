@@ -54,6 +54,13 @@ class ResellerPortalAuthController extends Controller
 
         Auth::guard('reseller')->login($reseller, $request->boolean('remember'));
 
+        // Redirect to agreements page if there are pending required agreements
+        if (TenantLegalAgreementController::hasPending(
+            $reseller->tenant_id, 'reseller', (string) $reseller->id, 'referrer'
+        )) {
+            return redirect()->route('tenant.legal-agreements.accept', $reseller->tenant_id);
+        }
+
         return redirect()->route('reseller.dashboard', $reseller->tenant_id);
     }
 
