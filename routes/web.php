@@ -131,6 +131,9 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::get('/notifications',  [ResellerPortalController::class, 'notifications'])->name('notifications'); // redirects → activity
         Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');
 
+        // ── Contacts (Reseller) ──────────────────────────────────
+        Route::get('/contacts',                                     [ContactsImportController::class, 'contacts'])->name('contacts');
+
         // ── Contacts Import (Reseller) ────────────────────────────
         Route::get('/contacts/imports',                             [ContactsImportController::class, 'index'])->name('contacts.imports');
         Route::get('/contacts/imports/template',                    [ContactsImportController::class, 'downloadTemplate'])->name('contacts.imports.template');

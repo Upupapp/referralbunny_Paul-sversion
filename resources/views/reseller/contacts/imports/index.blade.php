@@ -43,6 +43,27 @@
         </div>
     </div>
 
+    {{-- ── Upload success flash ──────────────────────────────── --}}
+    @if(session('import_ready'))
+    @php $ir = session('import_ready'); @endphp
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-2xl bg-teal-50 border border-teal-200">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-teal-800">File uploaded successfully!</p>
+                <p class="text-xs text-teal-700 mt-0.5">{{ $ir['total'] }} row{{ $ir['total'] !== 1 ? 's' : '' }} detected. Review your data before confirming the import.</p>
+            </div>
+        </div>
+        <a href="{{ route('reseller.contacts.imports.preview', [$tenant->id, $ir['id']]) }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shrink-0 transition-colors bg-teal-600 hover:bg-teal-700">
+            Review Import
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
+    </div>
+    @endif
+
     {{-- ── Upload error ────────────────────────────────────── --}}
     @if($errors->has('file'))
     <div class="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200">

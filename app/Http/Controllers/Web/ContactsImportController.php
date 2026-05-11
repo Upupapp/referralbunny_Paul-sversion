@@ -11,6 +11,7 @@ use App\Services\ContactsImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -71,6 +72,35 @@ class ContactsImportController extends Controller
             return (string) Auth::guard('reseller')->id();
         }
         return null;
+    }
+
+    // ── Contacts masterlist (Reseller) ───────────────────────────
+
+    public function contacts(Request $request, string $tenantId)
+    {
+        $this->guardCheck();
+        abort_if($this->authRole() !== 'reseller', 403);
+        $tenant     = $this->resolveTenant($tenantId);
+        $resellerId = $this->authResellerId();
+        $search     = trim((string) $request->input('q'));
+
+        $query = DB::table('contacts')
+            ->where('tenant_id', $tenantId)
+            ->where('owner_referrer_id', $resellerId)
+            ->whereNull('archived_at');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $like = '%' . strtolower($search) . '%';
+                $q->whereRaw('LOWER(full_name) LIKE ?', [$like])
+                  ->orWhereRaw('LOWER(email) LIKE ?', [$like])
+                  ->orWhereRaw('LOWER(phone) LIKE ?', [$like]);
+            });
+        }
+
+        $contacts = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        return view('reseller.contacts.index', compact('tenant', 'contacts', 'search'));
     }
 
     // ── Index ─────────────────────────────────────────────────────
@@ -163,13 +193,12 @@ class ContactsImportController extends Controller
                 ->withInput();
         }
 
-        $previewRoute = $role === 'reseller'
-            ? 'reseller.contacts.imports.preview'
-            : 'tenant.imports.contacts.preview';
-
         return redirect()
-            ->route($previewRoute, [$tenantId, $batch->id])
-            ->with('success', 'File uploaded. Review your import below before confirming.');
+            ->route($indexRoute, $tenantId)
+            ->with('import_ready', [
+                'id'    => $batch->id,
+                'total' => $batch->total_rows,
+            ]);
     }
 
     // ── Preview ───────────────────────────────────────────────────

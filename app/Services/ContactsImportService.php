@@ -358,6 +358,15 @@ class ContactsImportService
             $n['full_name'] = trim(($n['first_name'] ?? '') . ' ' . ($n['last_name'] ?? ''));
         }
 
+        // Derive first_name (and last_name) from full_name when separate fields not provided
+        if (empty($n['first_name']) && !empty($n['full_name'])) {
+            $parts = explode(' ', trim($n['full_name']), 2);
+            $n['first_name'] = $parts[0];
+            if (empty($n['last_name']) && !empty($parts[1])) {
+                $n['last_name'] = $parts[1];
+            }
+        }
+
         return $n;
     }
 
