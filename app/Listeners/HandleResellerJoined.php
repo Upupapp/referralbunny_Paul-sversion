@@ -16,14 +16,14 @@ class HandleResellerJoined
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
         $dispatcher = app(NotificationDispatchService::class);
 
-        // 0. In-app: welcome reseller
+        // 0. In-app: welcome referrer
         $dispatcher->dispatchToReseller(
             resellerId:   $event->resellerId,
             tenantId:     $event->tenantId,
             category:     'account_profile',
             priority:     'normal',
-            title:        'Your reseller account is ready',
-            body:         "You can now access your reseller dashboard for {$tenantName}.",
+            title:        'Your Referrer account is ready',
+            body:         "You can now access your Referrer dashboard for {$tenantName}.",
             actionUrl:    url("/reseller/{$event->tenantId}/dashboard"),
             actionLabel:  'Open Dashboard',
             dedupeSuffix: $event->resellerId,

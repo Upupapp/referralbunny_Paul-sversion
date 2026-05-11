@@ -146,6 +146,11 @@ class ResellerPortalAuthController extends Controller
             return view('auth.reseller-link-expired');
         }
 
+        // Treat invitations older than 90 days as expired.
+        if ($reseller->created_at && $reseller->created_at->lt(now()->subDays(90))) {
+            return view('auth.reseller-link-expired');
+        }
+
         return view('auth.reseller-setup', compact('reseller', 'token'));
     }
 
@@ -160,6 +165,11 @@ class ResellerPortalAuthController extends Controller
         $reseller = Reseller::where('setup_token', $data['token'])->first();
         if (!$reseller) {
             return back()->withErrors(['token' => 'Invalid or expired setup link.']);
+        }
+
+        // Block setup if the invitation is older than 90 days.
+        if ($reseller->created_at && $reseller->created_at->lt(now()->subDays(90))) {
+            return back()->withErrors(['token' => 'This setup link has expired. Please ask your workspace admin to resend the invitation.']);
         }
 
         DB::table('resellers')

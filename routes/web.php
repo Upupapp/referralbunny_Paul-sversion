@@ -49,7 +49,7 @@ Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name(
 // ── Tenant Invite Acceptance (public — no auth required) ──────
 use App\Http\Controllers\Web\TenantInvitationController;
 Route::get('/tenant/accept-invite/{token}',  [TenantInvitationController::class, 'show'])->name('tenant.accept-invite.show');
-Route::post('/tenant/accept-invite/{token}', [TenantInvitationController::class, 'accept'])->name('tenant.accept-invite');
+Route::post('/tenant/accept-invite/{token}', [TenantInvitationController::class, 'accept'])->name('tenant.accept-invite')->middleware('throttle:10,1');
 
 // ── Contact Role Invite Acceptance (public — no auth required) ─
 Route::get('/tenant/accept-role-invite/{token}',  [\App\Http\Controllers\Web\ContactRoleInviteWebController::class, 'show'])->name('contact-role-invite.show');
@@ -78,7 +78,7 @@ Route::get('/reseller/login',  [ResellerPortalAuthController::class, 'showLogin'
 Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post');
 Route::post('/reseller/logout',[ResellerPortalAuthController::class, 'logout'])->name('reseller.logout');
 Route::get('/reseller/setup',          [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
-Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post');
+Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post')->middleware('throttle:10,1');
 Route::get('/reseller/forgot-password',[ResellerPortalAuthController::class, 'showForgotPassword'])->name('reseller.forgot-password');
 Route::post('/reseller/forgot-password',[ResellerPortalAuthController::class, 'forgotPassword'])->name('reseller.forgot-password.post');
 Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'showResetPassword'])->name('reseller.reset-password');

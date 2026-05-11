@@ -144,6 +144,13 @@ class ResellerController extends Controller
         $data['setup_token'] = $setupToken;
         $data['status']      = 'invited';
 
+        // Capture the authenticated tenant user as the inviter so they get
+        // notified when the referrer completes setup (InviteAcceptedEvent).
+        $actingUser = \Illuminate\Support\Facades\Auth::guard('tenant')->user();
+        if ($actingUser) {
+            $data['linked_tenant_user_id'] = $actingUser->id;
+        }
+
         $reseller   = Reseller::create($data);
         $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? 'Referral Bunny';
         $setupUrl   = url('/reseller/setup?token=' . $setupToken);

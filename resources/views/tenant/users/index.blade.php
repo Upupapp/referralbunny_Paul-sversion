@@ -341,7 +341,8 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4">
+        <form method="POST" action="{{ route('tenant.users.invite', $tenant->id) }}" class="p-5 space-y-4"
+              x-data="{ sending: false }" @submit="sending = true">
             @csrf
 
             {{-- Inline error --}}
@@ -384,11 +385,18 @@
                     Cancel
                 </button>
                 <button type="submit"
-                        class="flex-1 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        :disabled="sending"
+                        class="flex-1 bg-[#7c3aed] hover:bg-[#6d28d9] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <template x-if="!sending">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </template>
+                    <svg x-show="sending" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                     </svg>
-                    Send Invitation
+                    <span x-text="sending ? 'Sending invite…' : 'Send Invitation'"></span>
                 </button>
             </div>
         </form>
