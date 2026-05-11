@@ -6,17 +6,59 @@
 <div class="space-y-5">
 
     {{-- Commission Summary Cards --}}
+    @php
+    $commissionCards = [
+        [
+            'label' => 'Pending',
+            'key'   => 'pending',
+            'color' => '#7B61FF',
+            'dot'   => '#EDE9FE',
+            'info'  => 'Commission estimates from your active deals that have not yet reached the Signed stage. These amounts may change if deal values, stages, or split allocations are updated.',
+        ],
+        [
+            'label' => 'Locked',
+            'key'   => 'locked',
+            'color' => '#D97706',
+            'dot'   => '#FEF3C7',
+            'info'  => 'Commission confirmed when a deal reached the Signed stage. This amount is locked and is pending final release or payout approval. It will not change unless the deal is revised.',
+        ],
+        [
+            'label' => 'Paid',
+            'key'   => 'paid',
+            'color' => '#10B981',
+            'dot'   => '#D1FAE5',
+            'info'  => 'Commission that has been approved and released. These amounts are final and have been paid out.',
+        ],
+    ];
+    @endphp
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        @foreach([['Pending','pending','#EDE9FE','#7B61FF'],['Locked','locked','#FEF3C7','#D97706'],['Paid','paid','#D1FAE5','#10B981']] as [$label,$key,$bg,$color])
+        @foreach($commissionCards as $card)
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-medium text-gray-500">{{ $label }}</span>
-                <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $color }}"></span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-semibold" style="color:#1E1B4B">{{ $card['label'] }}</span>
+                    {{-- Info icon --}}
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors"
+                                aria-label="About {{ $card['label'] }} commission">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </button>
+                        <div x-show="open" x-cloak x-transition
+                             class="absolute left-0 top-6 z-30 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-xs text-gray-500 leading-relaxed">
+                            <strong class="block mb-1" style="color:#1E1B4B">{{ $card['label'] }} Commission</strong>
+                            {{ $card['info'] }}
+                        </div>
+                    </div>
+                </div>
+                <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $card['color'] }}"></span>
             </div>
-            <p class="text-2xl font-bold" style="color:#1E1B4B">
-                ₱{{ number_format($commissionStats[$key] ?? 0) }}
+            <p class="text-2xl font-bold tabular-nums" style="color:#1E1B4B">
+                ₱{{ number_format($commissionStats[$card['key']] ?? 0) }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ $leads->where('commission_status', $key)->count() }} deal(s) · your share</p>
+            <p class="text-xs text-gray-400 mt-1">{{ $leads->where('commission_status', $card['key'])->count() }} deal(s) · your share</p>
         </div>
         @endforeach
     </div>
