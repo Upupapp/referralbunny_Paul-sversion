@@ -88,12 +88,17 @@
                     @php
                         $norm = is_array($row->normalized_data) ? $row->normalized_data : (json_decode($row->normalized_data ?? '{}', true) ?? []);
                         $actionLabels = [
-                            'create'     => ['bg-teal-100 text-teal-700',   'Created'],
-                            'update'     => ['bg-blue-100 text-blue-700',   'Updated'],
-                            'skip'       => ['bg-gray-100 text-gray-500',   'Skipped'],
-                            'duplicate'  => ['bg-amber-100 text-amber-600', 'Duplicate'],
-                            'failed'     => ['bg-red-100 text-red-600',     'Failed'],
-                            'merge'      => ['bg-blue-100 text-blue-700',   'Merged'],
+                            'create'           => ['bg-teal-100 text-teal-700',   'Created'],
+                            'update'           => ['bg-blue-100 text-blue-700',   'Updated'],
+                            'updated'          => ['bg-blue-100 text-blue-700',   'Updated'],
+                            'merge'            => ['bg-blue-100 text-blue-700',   'Merged'],
+                            'overwrite'        => ['bg-blue-100 text-blue-700',   'Updated'],
+                            'skip'             => ['bg-gray-100 text-gray-500',   'Skipped'],
+                            'already_existing' => ['bg-gray-100 text-gray-500',   'Already Exists'],
+                            'duplicate'        => ['bg-gray-100 text-gray-500',   'Already Exists'],
+                            'blocked'          => ['bg-gray-100 text-gray-500',   'Skipped'],
+                            'review'           => ['bg-gray-100 text-gray-500',   'Already Exists'],
+                            'failed'           => ['bg-red-100 text-red-600',     'Failed'],
                         ];
                         [$actCls, $actLabel] = $actionLabels[$row->row_action] ?? ['bg-gray-100 text-gray-500', ucfirst($row->row_action ?? '—')];
                     @endphp

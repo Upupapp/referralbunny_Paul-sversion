@@ -934,11 +934,51 @@ class ContactsImportService
                 $skipped++;
                 continue;
             }
-            // Unresolved duplicates without an admin decision are skipped
+            // Duplicates without an explicit admin decision:
+            // - If the existing contact has new data from this row → auto-merge and count as updated
+            // - If no new data → mark as "already_existing" and skip
             if (
                 in_array($row->validation_status, ['duplicate', 'possible_duplicate'], true)
                 && !in_array($row->row_action, ['overwrite', 'merge', 'create'], true)
             ) {
+                $existingId = $row->existing_contact_id;
+                if ($existingId) {
+                    $existing = DB::table('contacts')->where('id', $existingId)->first();
+                    if ($existing) {
+                        $norm = $row->normalized_data;
+                        // Build only the fields that could be new/changed (exclude identity/ownership)
+                        $mergeFields = [
+                            'first_name'              => $norm['first_name']           ?? null,
+                            'last_name'               => $norm['last_name']            ?? null,
+                            'nickname'                => $norm['nickname']             ?? null,
+                            'phone'                   => $norm['phone_number']         ?? null,
+                            'alternate_email'         => $norm['alternate_email']       ?? null,
+                            'alternate_phone'         => $norm['alternate_phone']       ?? null,
+                            'job_title'               => $norm['job_title']            ?? null,
+                            'department'              => $norm['department']           ?? null,
+                            'company_or_organization' => $norm['company_or_organization'] ?? null,
+                            'notes'                   => $norm['notes']               ?? null,
+                        ];
+                        // Only keep fields that are non-empty AND different from what's stored
+                        $updates = [];
+                        foreach ($mergeFields as $col => $newVal) {
+                            if ($newVal !== null && $newVal !== '' && (string)($existing->$col ?? '') !== (string)$newVal) {
+                                $updates[$col] = $newVal;
+                            }
+                        }
+                        if (!empty($updates)) {
+                            DB::table('contacts')->where('id', $existingId)
+                                ->update(array_merge($updates, ['updated_at' => now()]));
+                            $row->update(['row_action' => 'updated', 'created_contact_id' => $existingId]);
+                            $updated++;
+                        } else {
+                            $row->update(['row_action' => 'already_existing']);
+                            $skipped++;
+                        }
+                        continue;
+                    }
+                }
+                $row->update(['row_action' => 'already_existing']);
                 $skipped++;
                 continue;
             }

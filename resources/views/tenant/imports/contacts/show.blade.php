@@ -282,12 +282,19 @@
                             default               => '',
                         };
                         $badgeMap = [
-                            'created'   => ['badge-green', 'Created'],
-                            'updated'   => ['badge-blue',  'Updated'],
-                            'skipped'   => ['badge-gray',  'Skipped'],
-                            'failed'    => ['badge-red',   'Failed'],
-                            'blocked'   => ['badge-gray',  'Blocked'],
-                            'completed' => ['badge-green', 'Completed'],
+                            'created'          => ['badge-green',  'Created'],
+                            'updated'          => ['badge-blue',   'Updated'],
+                            'update'           => ['badge-blue',   'Updated'],
+                            'overwrite'        => ['badge-blue',   'Updated'],
+                            'merge'            => ['badge-blue',   'Merged'],
+                            'skipped'          => ['badge-gray',   'Skipped'],
+                            'skip'             => ['badge-gray',   'Skipped'],
+                            'already_existing' => ['badge-gray',   'Already Exists'],
+                            'duplicate'        => ['badge-gray',   'Already Exists'],
+                            'review'           => ['badge-gray',   'Already Exists'],
+                            'blocked'          => ['badge-gray',   'Blocked'],
+                            'failed'           => ['badge-red',    'Failed'],
+                            'completed'        => ['badge-green',  'Completed'],
                         ];
                         $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst($statusKey)];
                     @endphp
