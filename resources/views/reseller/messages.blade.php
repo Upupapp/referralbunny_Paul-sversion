@@ -150,12 +150,15 @@ function resellerChat() {
     const postHdrs   = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF });
 
     // Pre-populate from server-rendered messages
-    const serverMessages = @json($messages->map(fn($m) => [
-        'id'          => $m->id,
-        'sender_type' => $m->sender_type,
-        'body'        => $m->body,
-        'created_ago' => $m->created_at?->diffForHumans(),
-    ]));
+    @php
+        $serverMsgData = $messages->map(fn($m) => [
+            'id'          => (string) $m->id,
+            'sender_type' => (string) $m->sender_type,
+            'body'        => (string) $m->body,
+            'created_ago' => $m->created_at?->diffForHumans() ?? '',
+        ])->values()->all();
+    @endphp
+    const serverMessages = {!! json_encode($serverMsgData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
 
     return {
         messages:    serverMessages,
