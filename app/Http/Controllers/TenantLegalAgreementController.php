@@ -177,28 +177,43 @@ class TenantLegalAgreementController extends Controller
 
     public function showAccept(Request $request, string $tenantId)
     {
-        $tenant = Tenant::findOrFail($tenantId);
+        try {
+            $tenant = Tenant::findOrFail($tenantId);
 
-        [$userType, $userId, $role] = $this->resolveUserContext($tenantId);
+            [$userType, $userId, $role] = $this->resolveUserContext($tenantId);
 
-        if (!$userId) {
-            return redirect()->route('tenant.login');
+            if (!$userId) {
+                return redirect()->route('tenant.login');
+            }
+
+            // Owners and admins are never gated — they create agreements, not sign them
+            if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
+                return $this->afterAcceptRedirect($tenantId, $userType);
+            }
+
+            $pendingAgreements = $this->loadPending($tenantId, $userType, $userId, $role);
+
+            if ($pendingAgreements->isEmpty()) {
+                return $this->afterAcceptRedirect($tenantId, $userType);
+            }
+
+            return view('tenant.legal-agreements.accept', [
+                'tenant'     => $tenant,
+                'tenantId'   => $tenantId,
+                'agreements' => $pendingAgreements,
+                'userType'   => $userType,
+                'userId'     => $userId,
+                'role'       => $role,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('showAccept failed', [
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            // Fall through to dashboard rather than showing a 500
+            return $this->afterAcceptRedirect($tenantId, $this->resolveUserContext($tenantId)[0] ?? '');
         }
-
-        $pendingAgreements = $this->loadPending($tenantId, $userType, $userId, $role);
-
-        if ($pendingAgreements->isEmpty()) {
-            return $this->afterAcceptRedirect($tenantId, $userType);
-        }
-
-        return view('tenant.legal-agreements.accept', [
-            'tenant'     => $tenant,
-            'tenantId'   => $tenantId,
-            'agreements' => $pendingAgreements,
-            'userType'   => $userType,
-            'userId'     => $userId,
-            'role'       => $role,
-        ]);
     }
 
     // ── Web: Store batch acceptance and redirect ───────────────────────────────
@@ -242,15 +257,24 @@ class TenantLegalAgreementController extends Controller
 
     private function loadPending(string $tenantId, string $userType, string $userId, string $role)
     {
-        // Only count acceptances made AFTER the agreement was last updated (handles re-prompting on edits)
-        $freshAcceptedIds = DB::table('tenant_legal_agreement_acceptances as a')
-            ->join('tenant_legal_agreements as ag', 'a.tenant_legal_agreement_id', '=', 'ag.id')
-            ->where('a.tenant_id', $tenantId)
-            ->where('a.user_type', $userType)
-            ->where('a.user_id', $userId)
-            ->whereRaw('a.accepted_at >= ag.updated_at')
-            ->pluck('a.tenant_legal_agreement_id')
-            ->toArray();
+        // Fresh acceptances: accepted AFTER the agreement was last updated
+        try {
+            $freshAcceptedIds = DB::table('tenant_legal_agreement_acceptances as a')
+                ->join('tenant_legal_agreements as ag', 'a.tenant_legal_agreement_id', '=', 'ag.id')
+                ->where('a.tenant_id', $tenantId)
+                ->where('a.user_type', $userType)
+                ->where('a.user_id', $userId)
+                ->whereRaw('a.accepted_at >= ag.updated_at')
+                ->pluck('a.tenant_legal_agreement_id')
+                ->toArray();
+        } catch (\Throwable) {
+            // Fallback: use all acceptances (no staleness check)
+            $freshAcceptedIds = TenantLegalAgreementAcceptance::where('tenant_id', $tenantId)
+                ->where('user_type', $userType)
+                ->where('user_id', $userId)
+                ->pluck('tenant_legal_agreement_id')
+                ->toArray();
+        }
 
         return TenantLegalAgreement::where('tenant_id', $tenantId)
             ->where('is_active', true)

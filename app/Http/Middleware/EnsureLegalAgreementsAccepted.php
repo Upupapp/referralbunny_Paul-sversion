@@ -31,6 +31,11 @@ class EnsureLegalAgreementsAccepted
             return $next($request);
         }
 
+        // Owners and admins manage agreements — never gate them
+        if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
+            return $next($request);
+        }
+
         if ($this->hasPending($tenantId, $userType, $userId, $role)) {
             session()->put('legal_agreements.intended_url', $request->fullUrl());
             return redirect()->route('tenant.legal-agreements.accept', $tenantId);
