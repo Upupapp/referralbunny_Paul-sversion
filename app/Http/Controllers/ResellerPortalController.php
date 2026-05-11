@@ -189,6 +189,23 @@ class ResellerPortalController extends Controller
         return view('reseller.profile', compact('reseller', 'tenant'));
     }
 
+    public function requestForms($tenantId)
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+
+        $forms = collect();
+        try {
+            $forms = \App\Models\RequestForm::where('tenant_id', $tenantId)
+                ->where('status', 'published')
+                ->whereNull('deleted_at')
+                ->orderBy('title')
+                ->get(['id', 'title', 'description', 'public_token', 'published_at']);
+        } catch (\Throwable) {}
+
+        return view('reseller.request-forms', compact('reseller', 'tenant', 'forms'));
+    }
+
     public function messages($tenantId)
     {
         $reseller = $this->reseller();

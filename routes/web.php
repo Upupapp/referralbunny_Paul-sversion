@@ -111,6 +111,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access'])
         Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',    [ResellerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',  [ResellerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+        Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
         Route::get('/activity',       [ResellerPortalController::class, 'activityLog'])->name('activity');
         Route::get('/notifications',  [ResellerPortalController::class, 'notifications'])->name('notifications'); // redirects → activity
