@@ -196,130 +196,275 @@
     </div>
     @endif
 
-    {{-- Deal Summary card ─────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-base font-bold shrink-0"
-                 style="background:{{ $stageColor }}">
-                {{ strtoupper(substr($lead->name ?? '??', 0, 2)) }}
-            </div>
-            <div class="flex-1 min-w-0">
-                <h1 class="text-lg font-bold text-[#1E1B4B] truncate">{{ $lead->name }}</h1>
-                <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white"
-                          style="background:{{ $stageColor }}">
-                        {{ $stageLabels[$lead->stage] ?? ucfirst($lead->stage) }}
-                    </span>
-                    @if($lead->status === 'expiring')
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Expiring</span>
-                    @endif
-                    @if($lead->status === 'expired')
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Expired</span>
-                    @endif
-                </div>
-                @if($lead->data['province'] ?? null)
-                <p class="text-xs text-gray-400 mt-1">{{ $lead->data['province'] }}{{ ($lead->data['municipality'] ?? null) ? ' · ' . $lead->data['municipality'] : '' }}</p>
-                @endif
-            </div>
-            <div class="text-right shrink-0 space-y-2">
+    {{-- Deal Summary Card ─────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
 
-                {{-- Deal Value --}}
-                <div>
-                    <p class="text-xl font-bold text-[#1E1B4B]">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">Deal Value</p>
-                </div>
+        {{-- ── Top zone: Identity + Financial ─────────────────── --}}
+        <div class="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-6">
 
-                {{-- My Commission --}}
-                <div>
-                    <div class="flex items-center justify-end gap-1 mb-0.5">
-                        <p class="text-xs text-gray-400">My Commission</p>
-                        <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                    class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </button>
-                            <div x-show="open" x-cloak x-transition
-                                 class="absolute right-0 top-5 z-30 w-64 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                <strong class="text-gray-700 block mb-1">My Commission</strong>
-                                Your estimated commission for this deal based on the current deal amount, commission pool, and your Referrer split. Amounts may change if the deal amount, stage, or split allocation changes. All amounts may be subject to applicable taxes and deductions.
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-base font-bold text-[#0D9488]">₱{{ number_format($myCommission, 0) }}</p>
-                    <p class="text-[10px] text-gray-400">
-                        @if($lead->commission_status === 'paid') Paid
-                        @elseif($lead->commission_status === 'locked') Locked
-                        @else Estimated
+            {{-- LEFT: Deal Identity ──────────────────────────── --}}
+            <div class="flex items-start gap-4 flex-1 min-w-0">
+                {{-- Avatar --}}
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm"
+                     style="background:{{ $stageColor }}">
+                    {{ strtoupper(substr($lead->name ?? '??', 0, 2)) }}
+                </div>
+                {{-- Title + badges + location --}}
+                <div class="flex-1 min-w-0 pt-0.5">
+                    <h1 class="text-xl sm:text-2xl font-bold text-[#1E1B4B] leading-tight break-words">{{ $lead->name }}</h1>
+                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+                              style="background:{{ $stageColor }}">
+                            {{ $stageLabels[$lead->stage] ?? ucfirst($lead->stage) }}
+                        </span>
+                        @if($lead->status === 'expiring')
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Expiring</span>
                         @endif
+                        @if($lead->status === 'expired')
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600">Expired</span>
+                        @endif
+                    </div>
+                    @if($lead->data['province'] ?? null)
+                    <p class="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        {{ $lead->data['province'] }}{{ ($lead->data['municipality'] ?? null) ? ' · ' . $lead->data['municipality'] : '' }}
                     </p>
+                    @endif
                 </div>
+            </div>
 
-                {{-- Partners Commission --}}
-                <div>
-                    <div class="flex items-center justify-end gap-1 mb-0.5">
-                        <p class="text-xs text-gray-400">Partners Commission</p>
-                        <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                                    class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </button>
-                            <div x-show="open" x-cloak x-transition
-                                 class="absolute right-0 top-5 z-30 w-64 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-left text-xs text-gray-500 leading-relaxed">
-                                <strong class="text-gray-700 block mb-1">Partners Commission</strong>
-                                The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
+            {{-- RIGHT: Financial Block ───────────────────────── --}}
+            {{-- Desktop: right-aligned. Mobile: row of 3 mini-cards --}}
+            <div class="sm:shrink-0 sm:text-right">
+
+                {{-- Mobile: horizontal 3-card row --}}
+                <div class="grid grid-cols-3 gap-2 sm:hidden">
+                    {{-- Deal Value --}}
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wide mb-1 font-medium">Deal Value</p>
+                        <p class="text-base font-bold text-[#1E1B4B] leading-tight">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                    </div>
+                    {{-- My Commission --}}
+                    <div class="bg-teal-50 rounded-xl p-3 text-center relative">
+                        <div class="flex items-center justify-center gap-1 mb-1">
+                            <p class="text-[10px] text-teal-600 uppercase tracking-wide font-medium">My Commission</p>
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                        class="w-3.5 h-3.5 flex items-center justify-center text-teal-400 hover:text-teal-600 transition-colors" aria-label="Info about My Commission">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     class="absolute left-1/2 -translate-x-1/2 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                    <strong class="text-gray-700 block mb-1">My Commission</strong>
+                                    Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to taxes and deductions.
+                                </div>
                             </div>
                         </div>
+                        <p class="text-base font-bold text-teal-700 leading-tight">₱{{ number_format($myCommission, 0) }}</p>
+                        <p class="text-[9px] text-teal-500 mt-0.5">
+                            @if($lead->commission_status === 'paid') Paid
+                            @elseif($lead->commission_status === 'locked') Locked
+                            @else Est.
+                            @endif
+                        </p>
                     </div>
-                    <p class="text-sm font-semibold text-gray-600">₱{{ number_format($partnersCommission, 0) }}</p>
+                    {{-- Partners Commission --}}
+                    <div class="bg-purple-50 rounded-xl p-3 text-center relative">
+                        <div class="flex items-center justify-center gap-1 mb-1">
+                            <p class="text-[10px] text-purple-500 uppercase tracking-wide font-medium">Partners</p>
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                        class="w-3.5 h-3.5 flex items-center justify-center text-purple-300 hover:text-purple-500 transition-colors" aria-label="Info about Partners Commission">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                    <strong class="text-gray-700 block mb-1">Partners Commission</strong>
+                                    The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-base font-bold text-purple-700 leading-tight">₱{{ number_format($partnersCommission, 0) }}</p>
+                        @if($lead->days_left !== null && $lead->stage !== 'paid')
+                        <p class="text-[9px] mt-0.5 font-medium {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
+                            {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
+                        </p>
+                        @endif
+                    </div>
                 </div>
 
-                {{-- Days left --}}
-                @if($lead->days_left !== null && $lead->stage !== 'paid')
-                <p class="text-xs font-medium {{ $lead->days_left <= 3 ? 'text-red-500' : ($lead->days_left <= 7 ? 'text-amber-500' : 'text-gray-400') }}">
-                    {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
-                </p>
-                @endif
+                {{-- Desktop: stacked right-aligned column --}}
+                <div class="hidden sm:block sm:w-56 lg:w-64">
 
+                    {{-- Deal Value --}}
+                    <div class="mb-3 pb-3 border-b border-gray-100">
+                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                            <p class="text-xs text-gray-400 font-medium">Deal Value</p>
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors rounded-full" aria-label="Info about Deal Value">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                    <strong class="text-gray-700 block mb-1">Deal Value</strong>
+                                    The current deal or contract amount used for pipeline, financial breakdown, and commission calculations.
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                    </div>
+
+                    {{-- My Commission --}}
+                    <div class="mb-3">
+                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                            <p class="text-xs font-semibold text-[#1E1B4B]">My Commission</p>
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-500 transition-colors rounded-full" aria-label="Info about My Commission">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                    <strong class="text-gray-700 block mb-1">My Commission</strong>
+                                    Your estimated commission based on the current deal amount, commission pool, and your Referrer split. Amounts may change and may be subject to applicable taxes and deductions.
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xl font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold mt-1
+                            @if($lead->commission_status === 'paid') bg-green-100 text-green-700
+                            @elseif($lead->commission_status === 'locked') bg-blue-100 text-blue-700
+                            @else bg-teal-50 text-teal-600
+                            @endif">
+                            @if($lead->commission_status === 'paid') Paid
+                            @elseif($lead->commission_status === 'locked') Locked
+                            @else Estimated
+                            @endif
+                        </span>
+                    </div>
+
+                    {{-- Partners Commission --}}
+                    <div class="mb-3">
+                        <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                            <p class="text-xs font-medium text-gray-500">Partners Commission</p>
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                        class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-purple-500 transition-colors rounded-full" aria-label="Info about Partners Commission">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     class="absolute right-0 top-6 z-40 w-64 bg-white border border-gray-100 rounded-xl shadow-xl p-3 text-left text-xs text-gray-500 leading-relaxed">
+                                    <strong class="text-gray-700 block mb-1">Partners Commission</strong>
+                                    The total estimated commission allocated to Partners associated with this deal. It is the sum of all Partner split allocations connected to this deal.
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-lg font-bold text-[#7B61FF] tabular-nums">₱{{ number_format($partnersCommission, 0) }}</p>
+                    </div>
+
+                    {{-- Days left badge --}}
+                    @if($lead->days_left !== null && $lead->stage !== 'paid')
+                    <div class="flex justify-end">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
+                            {{ $lead->days_left <= 3 ? 'bg-red-100 text-red-600' : ($lead->days_left <= 7 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500') }}">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ $lead->days_left > 0 ? $lead->days_left . 'd left' : 'Overdue' }}
+                        </span>
+                    </div>
+                    @endif
+
+                </div>
             </div>
         </div>
 
-        {{-- Action buttons --}}
-        <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-50">
-            <button @click="showAddNote = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
-                    style="background:#0D9488">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                Add Note
-            </button>
-            <button @click="showUpdateAmount = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Update Amount
-            </button>
-            @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
-            <button @click="showMoveStage = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                Move Stage
-            </button>
-            @endif
-            <button @click="showAddPartner = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                Add Partner
-            </button>
-            <button @click="showAddReferrer = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                Add Co-Referrer
-            </button>
-            @if(!$pendingArchiveRequest)
-            <button @click="showArchive = true"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors ml-auto">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
-                Request Archive
-            </button>
-            @endif
+        {{-- ── Bottom zone: Action Bar ──────────────────────────── --}}
+        <div class="mt-5 pt-4 border-t border-gray-100">
+
+            {{-- Desktop: single row, primary left / archive right --}}
+            <div class="hidden sm:flex items-center justify-between gap-3 flex-wrap">
+                {{-- Primary actions --}}
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button @click="showAddNote = true"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:shadow-sm active:scale-95"
+                            style="background:#0D9488">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        Add Note
+                    </button>
+                    <button @click="showUpdateAmount = true"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Update Amount
+                    </button>
+                    @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
+                    <button @click="showMoveStage = true"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        Move Stage
+                    </button>
+                    @endif
+                    <button @click="showAddPartner = true"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                        Add Partner
+                    </button>
+                    <button @click="showAddReferrer = true"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Add Co-Referrer
+                    </button>
+                </div>
+                {{-- Destructive action --}}
+                @if(!$pendingArchiveRequest)
+                <button @click="showArchive = true"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-all active:scale-95 shrink-0">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                    Request Archive
+                </button>
+                @endif
+            </div>
+
+            {{-- Mobile: 2-col grid + full-width archive --}}
+            <div class="sm:hidden space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="showAddNote = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white transition-colors"
+                            style="background:#0D9488">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        Add Note
+                    </button>
+                    <button @click="showUpdateAmount = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Update Amount
+                    </button>
+                    @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
+                    <button @click="showMoveStage = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        Move Stage
+                    </button>
+                    @endif
+                    <button @click="showAddPartner = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                        Add Partner
+                    </button>
+                    <button @click="showAddReferrer = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Add Co-Referrer
+                    </button>
+                </div>
+                @if(!$pendingArchiveRequest)
+                <button @click="showArchive = true"
+                        class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                    Request Archive
+                </button>
+                @endif
+            </div>
+
         </div>
     </div>
 
