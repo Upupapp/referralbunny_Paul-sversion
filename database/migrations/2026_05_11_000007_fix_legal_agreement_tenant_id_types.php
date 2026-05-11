@@ -7,6 +7,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // SQLite doesn't support ALTER TABLE DROP COLUMN IF EXISTS.
+        // These tables are created fresh with the correct varchar column on
+        // SQLite environments, so no fixup is needed there.
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         foreach (['tenant_legal_agreements', 'tenant_legal_agreement_acceptances'] as $table) {
             DB::statement("ALTER TABLE {$table} DROP COLUMN IF EXISTS tenant_id");
             DB::statement("ALTER TABLE {$table} ADD COLUMN tenant_id varchar(36)");
@@ -16,6 +23,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         foreach (['tenant_legal_agreements', 'tenant_legal_agreement_acceptances'] as $table) {
             DB::statement("ALTER TABLE {$table} DROP COLUMN IF EXISTS tenant_id");
             DB::statement("ALTER TABLE {$table} ADD COLUMN tenant_id uuid");
