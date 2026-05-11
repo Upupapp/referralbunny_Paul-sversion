@@ -63,7 +63,9 @@
                     $roleLabel = ucfirst($m->role);
                     $initials  = strtoupper(substr($u?->first_name ?? '?', 0, 1) . substr($u?->last_name ?? '', 0, 1));
                 @endphp
-                <div class="card flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="card flex flex-col sm:flex-row sm:items-center gap-4"
+                     x-data="{ confirmRemove: false }"
+                     @confirm-remove-{{ $u->id }}.window="confirmRemove = true">
                     {{-- Avatar --}}
                     <div class="w-10 h-10 rounded-xl bg-[#EDE9FE] flex items-center justify-center shrink-0 font-semibold text-[#7B61FF] text-sm">
                         {{ $initials }}
@@ -120,23 +122,45 @@
                                     @if($m->status === 'active')
                                         <form method="POST" action="{{ route('tenant.users.deactivate', [$tenant->id, $u->id]) }}">
                                             @csrf
-                                            <button type="submit" class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors">
+                                            <button type="submit" class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors text-sm">
                                                 Deactivate
                                             </button>
                                         </form>
                                     @endif
-                                    <form method="POST" action="{{ route('tenant.users.remove', [$tenant->id, $u->id]) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                class="w-full text-left px-3.5 py-2 text-red-500 hover:bg-red-50 transition-colors"
-                                                onclick="return confirm('Remove this user from the workspace?')">
-                                            Remove from workspace
-                                        </button>
-                                    </form>
+                                    <button @click="open = false; $dispatch('confirm-remove-{{ $u->id }}')"
+                                            class="w-full text-left px-3.5 py-2 text-red-500 hover:bg-red-50 transition-colors text-sm">
+                                        Remove from workspace
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    @endif
+
+                    {{-- Inline remove confirmation banner --}}
+                    @if($isAdmin && $m->role !== 'owner')
+                    <div x-show="confirmRemove" x-cloak
+                         class="w-full mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p class="text-sm text-red-700 font-medium">Remove <strong>{{ $u?->first_name }}</strong> from this workspace?</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button @click="confirmRemove = false"
+                                    class="text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-white transition-colors border border-gray-200">
+                                Keep
+                            </button>
+                            <form method="POST" action="{{ route('tenant.users.remove', [$tenant->id, $u->id]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="text-sm px-3.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-semibold">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                     @endif
                 </div>
             @empty
@@ -185,28 +209,196 @@
                 </div>
             </div>
 
-            {{-- Pending Invitations --}}
+            {{-- Pending invitations summary (links to full table below) --}}
+            @if($pendingInvites->count() > 0)
             <div class="card">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-semibold text-[#1E1B4B] text-sm">Pending Invitations</h3>
-                    @if($pendingInvites->count() > 0)
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">
-                            {{ $pendingInvites->count() }}
-                        </span>
-                    @endif
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-[#1E1B4B]">
+                                {{ $pendingInvites->count() }} Pending Invitation{{ $pendingInvites->count() !== 1 ? 's' : '' }}
+                            </p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Awaiting acceptance</p>
+                        </div>
+                    </div>
+                    <a href="#pending-invitations" class="text-[11px] font-semibold text-[#7B61FF] hover:text-purple-800">
+                        Manage →
+                    </a>
                 </div>
-                @forelse($pendingInvites as $invite)
+            </div>
+            @endif
+
+        </div>
+    </div>
+
+    {{-- ── PENDING INVITATIONS TABLE ──────────────────────────────── --}}
+    @if($pendingInvites->count() > 0 || $isAdmin)
+    <div id="pending-invitations" class="card">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B] text-base">Pending Invitations</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Invitations awaiting acceptance</p>
+                </div>
+            </div>
+            @if($pendingInvites->count() > 0)
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
+                    {{ $pendingInvites->count() }}
+                </span>
+            @endif
+        </div>
+
+        @if($pendingInvites->count() === 0)
+            <div class="flex flex-col items-center py-10 text-center">
+                <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mb-3 opacity-60" loading="lazy">
+                <p class="text-sm font-semibold text-gray-500">No pending invitations</p>
+                <p class="text-xs text-gray-400 mt-1">All invitations have been accepted or you haven't sent any yet.</p>
+                @if($isAdmin)
+                    <button class="btn-primary mt-4 text-sm"
+                            onclick="document.getElementById('invite-modal').classList.remove('hidden')">
+                        Invite a Team Member
+                    </button>
+                @endif
+            </div>
+        @else
+            {{-- Desktop table --}}
+            <div class="hidden sm:block overflow-x-auto -mx-5 -mb-5">
+                <table class="w-full">
+                    <thead>
+                        <tr class="table-head">
+                            <th class="pl-5">Email</th>
+                            <th>Role</th>
+                            <th>Sent</th>
+                            <th>Expires</th>
+                            <th>Reminders</th>
+                            @if($isAdmin)<th class="pr-5 text-right">Actions</th>@endif
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($pendingInvites as $invite)
+                            @php
+                                $expiringSoon    = $invite->expires_at->diffInHours(now()) <= 24;
+                                $canManualRemind = ! $invite->last_manual_resend_at || now()->gte($invite->last_manual_resend_at->addHours(24));
+                                $autoReminders   = $invite->reminder_count ?? 0;
+                            @endphp
+                            <tr class="table-row" x-data="{ revoking: false, resending: false }">
+                                <td class="pl-5">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-[#EDE9FE] flex items-center justify-center shrink-0">
+                                            <svg class="w-3 h-3 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-sm font-medium text-[#1E1B4B]">{{ $invite->email }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+                                        {{ match($invite->role) {
+                                            'admin'   => 'bg-violet-100 text-violet-700',
+                                            'manager' => 'bg-sky-100 text-sky-700',
+                                            'member'  => 'bg-green-100 text-green-700',
+                                            default   => 'bg-gray-100 text-gray-600',
+                                        } }}">
+                                        {{ ucfirst($invite->role) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-xs text-gray-500">{{ $invite->created_at->format('M j, Y') }}</span>
+                                </td>
+                                <td>
+                                    @if($expiringSoon)
+                                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-red-600">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+                                            {{ $invite->expires_at->diffForHumans() }}
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-gray-500">{{ $invite->expires_at->format('M j, Y') }}</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="text-xs text-gray-500">{{ $autoReminders }}/3 sent</span>
+                                </td>
+                                @if($isAdmin)
+                                <td class="pr-5 text-right" @click.stop>
+                                    <div class="flex items-center justify-end gap-2" x-show="!revoking">
+                                        {{-- Resend --}}
+                                        <form method="POST" action="{{ route('tenant.invitations.resend', [$tenant->id, $invite->id]) }}"
+                                              @submit="resending = true">
+                                            @csrf
+                                            <button type="submit" :disabled="resending"
+                                                    class="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <span x-show="!resending">Resend</span>
+                                                <span x-show="resending">Sending…</span>
+                                            </button>
+                                        </form>
+
+                                        {{-- Send reminder now --}}
+                                        @if($canManualRemind)
+                                        <form method="POST" action="{{ route('tenant.invitations.remind-now', [$tenant->id, $invite->id]) }}">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="text-xs px-2.5 py-1.5 rounded-lg border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors">
+                                                Remind
+                                            </button>
+                                        </form>
+                                        @endif
+
+                                        {{-- Revoke trigger --}}
+                                        <button @click="revoking = true"
+                                                class="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                                            Cancel
+                                        </button>
+                                    </div>
+
+                                    {{-- Inline revoke confirmation --}}
+                                    <div x-show="revoking" x-cloak
+                                         class="flex items-center justify-end gap-2">
+                                        <span class="text-xs text-gray-500">Cancel this invite?</span>
+                                        <button @click="revoking = false"
+                                                class="text-xs px-2 py-1 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                                            Keep
+                                        </button>
+                                        <form method="POST" action="{{ route('tenant.invitations.revoke', [$tenant->id, $invite->id]) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="text-xs px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-semibold">
+                                                Yes, cancel
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                                @endif
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Mobile cards --}}
+            <div class="sm:hidden space-y-3">
+                @foreach($pendingInvites as $invite)
                     @php
-                        $isExpiringSoon  = $invite->expires_at->diffInHours(now()) <= 24;
-                        $canManualRemind = ! $invite->last_manual_resend_at
-                            || now()->gte($invite->last_manual_resend_at->addHours(24));
-                        $autoReminders   = $invite->reminder_count ?? 0;
+                        $expiringSoon    = $invite->expires_at->diffInHours(now()) <= 24;
+                        $canManualRemind = ! $invite->last_manual_resend_at || now()->gte($invite->last_manual_resend_at->addHours(24));
                     @endphp
-                    <div class="py-3 border-b border-gray-50 last:border-0">
+                    <div class="p-3 rounded-2xl border border-gray-100 space-y-2"
+                         x-data="{ revoking: false, resending: false }">
                         <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0 flex-1">
-                                <p class="text-xs font-medium text-[#1E1B4B] truncate">{{ $invite->email }}</p>
-                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $invite->email }}</p>
+                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
                                         {{ match($invite->role) {
                                             'admin'   => 'bg-violet-100 text-violet-700',
@@ -216,96 +408,72 @@
                                         } }}">
                                         {{ ucfirst($invite->role) }}
                                     </span>
-                                    @if($isExpiringSoon)
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-600">
-                                            Expires soon
-                                        </span>
+                                    @if($expiringSoon)
+                                        <span class="text-[10px] font-semibold text-red-600">Expires soon</span>
                                     @else
-                                        <span class="text-[10px] text-gray-400">
-                                            expires {{ $invite->expires_at->diffForHumans() }}
-                                        </span>
-                                    @endif
-                                    @if($autoReminders > 0)
-                                        <span class="text-[10px] text-gray-400">
-                                            · {{ $autoReminders }}/3 reminder{{ $autoReminders !== 1 ? 's' : '' }} sent
-                                        </span>
+                                        <span class="text-[10px] text-gray-400">expires {{ $invite->expires_at->diffForHumans() }}</span>
                                     @endif
                                 </div>
                             </div>
-
-                            @if($isAdmin)
-                                <div class="flex items-center gap-1 shrink-0" x-data="{ open: false }">
-                                    <div class="relative">
-                                        <button @click="open = !open"
-                                                class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
-                                            </svg>
-                                        </button>
-                                        <div x-show="open" @click.away="open = false"
-                                             class="absolute right-0 mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-1 text-sm">
-
-                                            {{-- Resend (extends expiry) --}}
-                                            <form method="POST" action="{{ route('tenant.invitations.resend', [$tenant->id, $invite->id]) }}">
-                                                @csrf
-                                                <button type="submit"
-                                                        class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 transition-colors text-xs">
-                                                    Resend &amp; extend 7 days
-                                                </button>
-                                            </form>
-
-                                            {{-- Manual reminder (rate-limited) --}}
-                                            <form method="POST" action="{{ route('tenant.invitations.remind-now', [$tenant->id, $invite->id]) }}">
-                                                @csrf
-                                                <button type="submit"
-                                                        @if(! $canManualRemind) disabled title="Available again {{ optional($invite->last_manual_resend_at)->addHours(24)->diffForHumans() }}" @endif
-                                                        class="w-full text-left px-3.5 py-2 transition-colors text-xs
-                                                            {{ $canManualRemind ? 'text-violet-600 hover:bg-violet-50' : 'text-gray-300 cursor-not-allowed' }}">
-                                                    Send reminder now
-                                                </button>
-                                            </form>
-
-                                            <div class="border-t border-gray-50 my-1"></div>
-
-                                            {{-- Revoke --}}
-                                            <form method="POST" action="{{ route('tenant.invitations.revoke', [$tenant->id, $invite->id]) }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                        onclick="return confirm('Revoke this invitation? The invitee will be notified.')"
-                                                        class="w-full text-left px-3.5 py-2 text-red-500 hover:bg-red-50 transition-colors text-xs">
-                                                    Revoke invitation
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
                         </div>
 
-                        {{-- R Bunny warning for near-expiry --}}
-                        @if($isExpiringSoon && $isAdmin)
-                            <div class="mt-2 flex items-center gap-2 bg-amber-50 rounded-lg px-2.5 py-2">
-                                <img src="/images/mascots/r-bunny-warning-error.webp"
-                                     alt="" class="w-6 h-6 object-contain shrink-0" loading="lazy">
-                                <p class="text-[10px] text-amber-700 font-medium">
-                                    This invitation expires {{ $invite->expires_at->diffForHumans() }}.
-                                    Resend to extend the deadline.
-                                </p>
-                            </div>
+                        @if($isAdmin)
+                        <div x-show="!revoking" class="flex flex-wrap gap-2">
+                            <form method="POST" action="{{ route('tenant.invitations.resend', [$tenant->id, $invite->id]) }}"
+                                  @submit="resending = true">
+                                @csrf
+                                <button type="submit" :disabled="resending"
+                                        class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-50">
+                                    <span x-show="!resending">Resend</span>
+                                    <span x-show="resending">Sending…</span>
+                                </button>
+                            </form>
+
+                            @if($canManualRemind)
+                            <form method="POST" action="{{ route('tenant.invitations.remind-now', [$tenant->id, $invite->id]) }}">
+                                @csrf
+                                <button type="submit"
+                                        class="text-xs px-3 py-1.5 rounded-lg border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors">
+                                    Remind
+                                </button>
+                            </form>
+                            @endif
+
+                            <button @click="revoking = true"
+                                    class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                                Cancel invite
+                            </button>
+                        </div>
+
+                        <div x-show="revoking" x-cloak class="flex items-center gap-2 pt-1">
+                            <span class="text-xs text-gray-500 flex-1">Cancel this invite?</span>
+                            <button @click="revoking = false"
+                                    class="text-xs px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                                Keep
+                            </button>
+                            <form method="POST" action="{{ route('tenant.invitations.revoke', [$tenant->id, $invite->id]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-semibold">
+                                    Yes, cancel
+                                </button>
+                            </form>
+                        </div>
+                        @endif
+
+                        @if($expiringSoon && $isAdmin)
+                        <div class="flex items-center gap-2 bg-amber-50 rounded-lg px-2.5 py-2">
+                            <img src="/images/mascots/r-bunny-warning-error.webp" alt="" class="w-5 h-5 object-contain shrink-0" loading="lazy">
+                            <p class="text-[10px] text-amber-700 font-medium">Expires {{ $invite->expires_at->diffForHumans() }}. Resend to extend.</p>
+                        </div>
                         @endif
                     </div>
-                @empty
-                    <div class="flex flex-col items-center py-8 text-center">
-                        <img src="/images/mascots/r-bunny-sleeping.webp"
-                             alt="" class="w-12 h-12 object-contain mb-2" loading="lazy">
-                        <p class="text-xs text-gray-400">No pending invitations</p>
-                    </div>
-                @endforelse
+                @endforeach
             </div>
-
-        </div>
+        @endif
     </div>
+    @endif
 
 </div>
 

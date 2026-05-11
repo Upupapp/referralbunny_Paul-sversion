@@ -85,13 +85,12 @@ class TenantInvitationController extends Controller
             ]);
         }
 
-        // Prevent duplicate membership
-        $alreadyMember = TenantMembership::where('tenant_id', $invitation->tenant_id)
+        // Handle membership: create fresh, re-activate if previously removed, or leave active/suspended as-is.
+        $existingMembership = TenantMembership::where('tenant_id', $invitation->tenant_id)
             ->where('tenant_user_id', $user->id)
-            ->whereIn('status', ['active', 'suspended'])
-            ->exists();
+            ->first();
 
-        if (! $alreadyMember) {
+        if (! $existingMembership) {
             TenantMembership::create([
                 'tenant_id'                 => $invitation->tenant_id,
                 'tenant_user_id'            => $user->id,
@@ -100,10 +99,22 @@ class TenantInvitationController extends Controller
                 'joined_by_invitation'      => true,
                 'joined_at'                 => now(),
                 'invited_by_user_id'        => $invitation->invited_by,
-                'password_review_completed' => true, // no password review step exists; skip on all future logins
+                'password_review_completed' => true,
+                'setup_completed'           => true,
+            ]);
+        } elseif ($existingMembership->status === 'removed') {
+            // User was previously removed and is being re-added via invitation.
+            $existingMembership->update([
+                'role'                      => $invitation->role,
+                'status'                    => 'active',
+                'joined_by_invitation'      => true,
+                'joined_at'                 => now(),
+                'invited_by_user_id'        => $invitation->invited_by,
+                'password_review_completed' => true,
                 'setup_completed'           => true,
             ]);
         }
+        // If active/suspended: leave the existing membership unchanged.
 
         // Mark invitation as accepted and suppress further reminders
         $invitation->status      = 'accepted';
