@@ -171,12 +171,37 @@ class ResellerDealController extends Controller
             $myCommission  = $calc->referrerShare($remainingPool, $myPct);
         } catch (\Throwable) {}
 
+        // Stage requirements: defines what each transition requires before moving.
+        // required=true items must all be checked to move directly; any unchecked → approval request.
+        $stageRequirements = [
+            'introduction_to_presentation' => [
+                ['id' => 'contact_made',      'label' => 'Initial contact made with decision-maker',      'required' => true],
+                ['id' => 'meeting_scheduled', 'label' => 'Meeting/demo date confirmed with client',       'required' => true],
+            ],
+            'presentation_to_contract_sent' => [
+                ['id' => 'presentation_done', 'label' => 'Formal presentation or demo completed',         'required' => true],
+                ['id' => 'proposal_ready',    'label' => 'Proposal or quotation prepared',                'required' => true],
+                ['id' => 'client_interested', 'label' => 'Client expressed intent to proceed',            'required' => true],
+            ],
+            'contract_sent_to_signed' => [
+                ['id' => 'contract_sent',     'label' => 'Contract sent and received by client',          'required' => true],
+                ['id' => 'client_reviewed',   'label' => 'Client reviewed and confirmed contract terms',  'required' => true],
+                ['id' => 'legal_cleared',     'label' => 'Legal / procurement clearance obtained',        'required' => false],
+            ],
+            'signed_to_paid' => [
+                ['id' => 'signed_received',   'label' => 'Signed contract received from client',          'required' => true],
+                ['id' => 'payment_confirmed', 'label' => 'Payment schedule or terms confirmed',           'required' => true],
+                ['id' => 'po_received',       'label' => 'Purchase order or COA received',                'required' => false],
+            ],
+        ];
+
         return view('reseller.deals.show', compact(
             'reseller', 'tenant', 'lead', 'tenantId',
             'pendingApprovals', 'notes', 'splits', 'partnerSplits',
             'attachments', 'history', 'breakdown',
             'myCommission', 'partnersCommission',
-            'commissionPool', 'remainingPool'
+            'commissionPool', 'remainingPool',
+            'stageRequirements'
         ));
     }
 
@@ -366,8 +391,10 @@ class ResellerDealController extends Controller
         $lead     = $this->deal($tenantId, $dealId);
 
         $data = $request->validate([
-            'target_stage' => 'required|in:introduction,presentation,contract_sent,signed,paid',
-            'reason'       => 'required|string|max:2000',
+            'target_stage'         => 'required|in:introduction,presentation,contract_sent,signed,paid',
+            'reason'               => 'required|string|max:2000',
+            'missing_requirements' => 'nullable|array',
+            'missing_requirements.*' => 'string|max:200',
         ]);
 
         // Block if already pending
@@ -384,14 +411,15 @@ class ResellerDealController extends Controller
         DB::beginTransaction();
         try {
             $approval = DealApprovalRequest::create([
-                'tenant_id'          => $tenantId,
-                'type'               => 'deal_stage_move',
-                'deal_id'            => $dealId,
-                'requested_by_type'  => 'reseller',
-                'requested_by_id'    => (string) $reseller->id,
-                'status'             => 'pending',
-                'reason'             => $data['reason'],
-                'request_payload'    => [
+                'tenant_id'            => $tenantId,
+                'type'                 => 'deal_stage_move',
+                'deal_id'              => $dealId,
+                'requested_by_type'    => 'reseller',
+                'requested_by_id'      => (string) $reseller->id,
+                'status'               => 'pending',
+                'reason'               => $data['reason'],
+                'missing_requirements' => $data['missing_requirements'] ?? [],
+                'request_payload'      => [
                     'current_stage' => $lead->stage,
                     'target_stage'  => $data['target_stage'],
                     'deal_name'     => $lead->name,
@@ -802,17 +830,32 @@ class ResellerDealController extends Controller
             // NOTIFY — tell the requesting reseller clearly what happened
             if ($approval->requested_by_type === 'reseller') {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
-                app(NotificationDispatchService::class)->dispatchToReseller(
-                    resellerId:   $approval->requested_by_id,
-                    tenantId:     $tenantId,
-                    category:     'deal_pipeline',
-                    priority:     'high',
-                    title:        '✅ Archive request approved — ' . $dealName,
-                    body:         'Your archive request for "' . $dealName . '" was approved. The deal has been closed.',
-                    actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
-                    actionLabel:  'View Deal',
-                    dedupeSuffix: $approvalId . ':approved',
-                );
+                if ($approval->type === 'deal_stage_move') {
+                    $targetStage = $approval->request_payload['target_stage'] ?? '';
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   $approval->requested_by_id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'Stage move approved — ' . $dealName,
+                        body:         '"' . $dealName . '" has been moved to ' . ucfirst(str_replace('_', ' ', $targetStage)) . '. Great progress!',
+                        actionUrl:    url("/reseller/{$tenantId}/deals/{$approval->deal_id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $approvalId . ':stage_approved',
+                    );
+                } else {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   $approval->requested_by_id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'Archive request approved — ' . $dealName,
+                        body:         'Your archive request for "' . $dealName . '" was approved. The deal has been closed.',
+                        actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $approvalId . ':approved',
+                    );
+                }
             }
 
             DB::commit();
@@ -855,8 +898,11 @@ class ResellerDealController extends Controller
             ]);
 
             if ($lead) {
-                app(DealActivityService::class)->record($lead, 'Archive request rejected by ' . $reviewerName . ' — reason: ' . \Illuminate\Support\Str::limit($data['reviewer_note'], 100), 'archive', [
-                    'category'   => 'archive',
+                $activityLabel = $approval->type === 'deal_stage_move'
+                    ? 'Stage move request declined by ' . $reviewerName
+                    : 'Archive request declined by ' . $reviewerName;
+                app(DealActivityService::class)->record($lead, $activityLabel . ' — reason: ' . \Illuminate\Support\Str::limit($data['reviewer_note'], 100), $approval->type === 'deal_stage_move' ? 'stage' : 'archive', [
+                    'category'   => $approval->type === 'deal_stage_move' ? 'stage' : 'archive',
                     'actor_name' => $reviewerName,
                     'actor_role' => 'admin',
                     'new_values' => ['rejection_reason' => $data['reviewer_note']],
@@ -866,17 +912,32 @@ class ResellerDealController extends Controller
             // NOTIFY — tell referrer clearly, include deal link and rejection reason
             if ($approval->requested_by_type === 'reseller') {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
-                app(NotificationDispatchService::class)->dispatchToReseller(
-                    resellerId:   $approval->requested_by_id,
-                    tenantId:     $tenantId,
-                    category:     'deal_pipeline',
-                    priority:     'high',
-                    title:        '❌ Archive request declined — ' . $dealName,
-                    body:         'Your archive request for "' . $dealName . '" was not approved. Admin note: ' . $data['reviewer_note'],
-                    actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
-                    actionLabel:  'View Deal',
-                    dedupeSuffix: $approvalId . ':rejected',
-                );
+                if ($approval->type === 'deal_stage_move') {
+                    $targetStage = $approval->request_payload['target_stage'] ?? '';
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   $approval->requested_by_id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'Stage move request declined — ' . $dealName,
+                        body:         'Your request to move "' . $dealName . '" to ' . ucfirst(str_replace('_', ' ', $targetStage)) . ' was declined. Admin note: ' . $data['reviewer_note'],
+                        actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $approvalId . ':rejected',
+                    );
+                } else {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   $approval->requested_by_id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'Archive request declined — ' . $dealName,
+                        body:         'Your archive request for "' . $dealName . '" was not approved. Admin note: ' . $data['reviewer_note'],
+                        actionUrl:    url("/reseller/{$tenantId}/deals/" . $approval->deal_id),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $approvalId . ':rejected',
+                    );
+                }
             }
 
             DB::commit();

@@ -103,7 +103,7 @@ class PartnerPortalController extends Controller
 
         // Load only this partner's own split — never expose other partners' or referrer's shares
         $myPartnerSplit = \Illuminate\Support\Facades\DB::table('deal_partner_splits')
-            ->where('lead_id', $dealId)
+            ->where('deal_id', $dealId)
             ->where('tenant_id', $partner->tenant_id)
             ->where('partner_email', $partner->email)
             ->first();

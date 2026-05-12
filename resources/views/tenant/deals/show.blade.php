@@ -24,7 +24,7 @@
 @endsection
 
 @section('content')
-<script>var __dealSsrLead = @json($ssrLead ?? null);</script>
+<script>var __dealSsrLead = @json($ssrLead ?? null); var __tenantId = '{{ $tenant->id }}';</script>
 <style>
 /* Financial breakdown layout â€" guaranteed, no Tailwind compile dependency */
 .fin-row{display:flex!important;justify-content:space-between;align-items:center}
@@ -48,6 +48,95 @@
         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span class="text-sm">Loading deal…</span>
     </div>
+
+    {{-- ── Pending Approval Requests Panel (Admin/Manager only) ───────── --}}
+    @if(!empty($pendingApprovals))
+    <div id="rb-pending-approvals" class="space-y-3" data-tenant-id="{{ $tenant->id }}" x-data="rbApprovalPanel()">
+        @foreach($pendingApprovals as $approval)
+        @php
+            $isStageMove = ($approval['type'] ?? '') === 'deal_stage_move';
+            $isArchive   = ($approval['type'] ?? '') === 'deal_archive';
+            $payload     = $approval['request_payload'] ?? [];
+            $missing     = $approval['missing_requirements'] ?? [];
+            $tenantId    = $tenant->id;
+            $approvalId  = $approval['id'];
+        @endphp
+        <div class="rounded-2xl border p-5 {{ $isStageMove ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200' }}">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div class="flex items-center gap-2 shrink-0">
+                    @if($isStageMove)
+                    <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </div>
+                    @else
+                    <div class="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                    </div>
+                    @endif
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="text-xs font-bold {{ $isStageMove ? 'text-amber-700' : 'text-red-700' }} uppercase tracking-wide">
+                            {{ $isStageMove ? 'Stage Move Request' : 'Archive Request' }}
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-800 font-semibold">Pending Review</span>
+                    </div>
+                    @if($isStageMove)
+                    <p class="text-sm font-medium text-gray-800">
+                        <strong>{{ $payload['referrer_name'] ?? 'Referrer' }}</strong> wants to move this deal from
+                        <strong class="text-gray-900">{{ ucfirst(str_replace('_', ' ', $payload['current_stage'] ?? '')) }}</strong> →
+                        <strong class="text-[#7B61FF]">{{ ucfirst(str_replace('_', ' ', $payload['target_stage'] ?? '')) }}</strong>
+                    </p>
+                    @else
+                    <p class="text-sm font-medium text-gray-800">
+                        <strong>{{ $payload['referrer_name'] ?? 'Referrer' }}</strong> requested to archive this deal at stage
+                        <strong>{{ ucfirst(str_replace('_', ' ', $payload['deal_stage'] ?? '')) }}</strong>.
+                    </p>
+                    @endif
+                    @if($approval['reason'] ?? '')
+                    <p class="text-xs text-gray-600 mt-1">Reason: {{ $approval['reason'] }}</p>
+                    @endif
+                    @if(!empty($missing))
+                    <div class="mt-2">
+                        <p class="text-xs font-semibold text-red-600 mb-1">Missing requirements (referrer has not confirmed):</p>
+                        <ul class="space-y-0.5">
+                            @foreach($missing as $item)
+                            <li class="flex items-center gap-1.5 text-xs text-red-700">
+                                <svg class="w-3 h-3 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                {{ $item }}
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+                </div>
+                {{-- Action buttons --}}
+                <div class="flex flex-col gap-2 shrink-0 w-full sm:w-auto" x-data="{ note_{{ str_replace('-', '_', $approvalId) }}: '' }">
+                    <input type="text"
+                           x-model="note_{{ str_replace('-', '_', $approvalId) }}"
+                           placeholder="Optional review note…"
+                           class="w-full sm:w-48 text-xs border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400 bg-white">
+                    <div class="flex gap-2">
+                        <button @click="$root.approveApproval('{{ $approvalId }}', note_{{ str_replace('-', '_', $approvalId) }})"
+                                :disabled="$root.apBusy"
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
+                                style="background:#10B981">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Approve
+                        </button>
+                        <button @click="$root.rejectApproval('{{ $approvalId }}', note_{{ str_replace('-', '_', $approvalId) }})"
+                                :disabled="$root.apBusy"
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-700 bg-white border border-red-200 hover:bg-red-50 transition-all disabled:opacity-50">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
 
     <div x-show="!loading && lead" class="space-y-5">
 
@@ -2902,6 +2991,54 @@ function extensionRequestSection(dealId, tenantId) {
                 this.actionError = id;
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error.' });
             } finally { this.saving = false; }
+        },
+    };
+}
+
+function rbApprovalPanel() {
+    const CSRF  = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const hdr   = () => ({ 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
+    return {
+        apBusy: false,
+
+        async approveApproval(approvalId, note) {
+            if (!confirm('Approve this request? The action will be executed immediately.')) return;
+            this.apBusy = true;
+            try {
+                const tenantId = this.$el.dataset.tenantId ?? window.__tenantId;
+                const res = await fetch(`/reseller/${tenantId}/approvals/${approvalId}/approve`, {
+                    method: 'POST', credentials: 'same-origin', headers: hdr(),
+                    body: JSON.stringify({ reviewer_note: note || null }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.error || 'Approval failed.');
+                this.$dispatch('show-toast', { type: 'success', message: 'Request approved and executed.' });
+                setTimeout(() => window.location.reload(), 900);
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: e.message || 'Could not approve. Try again.' });
+            } finally { this.apBusy = false; }
+        },
+
+        async rejectApproval(approvalId, note) {
+            if (!note || !note.trim()) {
+                this.$dispatch('show-toast', { type: 'error', message: 'A review note is required when declining.' });
+                return;
+            }
+            if (!confirm('Decline this request?')) return;
+            this.apBusy = true;
+            try {
+                const tenantId = this.$el.dataset.tenantId ?? window.__tenantId;
+                const res = await fetch(`/reseller/${tenantId}/approvals/${approvalId}/reject`, {
+                    method: 'POST', credentials: 'same-origin', headers: hdr(),
+                    body: JSON.stringify({ reviewer_note: note }),
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.error || 'Rejection failed.');
+                this.$dispatch('show-toast', { type: 'success', message: 'Request declined. Referrer has been notified.' });
+                setTimeout(() => window.location.reload(), 900);
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: e.message || 'Could not decline. Try again.' });
+            } finally { this.apBusy = false; }
         },
     };
 }

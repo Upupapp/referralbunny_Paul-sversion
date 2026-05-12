@@ -46,9 +46,22 @@
 
         targetStage:    '',
         stageReason:    '',
-        stageApproval:  false,
         stageSaving:    false,
         stageError:     '',
+        stageReqs:      @json($stageRequirements),
+        reqChecks:      {},
+
+        get currentStageKey() { return '{{ $lead->stage }}'; },
+        get transitionKey()   { return this.currentStageKey + '_to_' + this.targetStage; },
+        get currentReqs()     { return this.stageReqs[this.transitionKey] ?? []; },
+        get missingRequired() {
+            return this.currentReqs.filter(r => r.required && !this.reqChecks[r.id]);
+        },
+        get needsApproval() { return this.targetStage !== '' && this.missingRequired.length > 0; },
+
+        resetStageModal() {
+            this.targetStage = ''; this.stageReason = ''; this.reqChecks = {}; this.stageError = '';
+        },
 
         archiveReason:  '',
         archiveDetail:  '',
@@ -112,16 +125,30 @@
 
         async moveStage() {
             if (!this.targetStage || this.stageSaving) return;
+            if (this.needsApproval && !this.stageReason.trim()) {
+                this.stageError = 'Please explain what you still need to complete before this stage can move.';
+                return;
+            }
             this.stageSaving = true; this.stageError = '';
-            const url    = this.stageApproval ? '{{ $BASE }}/stage-approval' : '{{ $BASE }}/move-stage';
-            const payload = this.stageApproval
-                ? { target_stage: this.targetStage, reason: this.stageReason }
-                : { stage: this.targetStage, reason: this.stageReason };
-            const { ok, data } = await this.post(url, payload);
+            let ok, data;
+            if (this.needsApproval) {
+                // Submit approval request with list of unmet required items
+                const missing = this.missingRequired.map(r => r.label);
+                ({ ok, data } = await this.post('{{ $BASE }}/stage-approval', {
+                    target_stage:         this.targetStage,
+                    reason:               this.stageReason,
+                    missing_requirements: missing,
+                }));
+            } else {
+                ({ ok, data } = await this.post('{{ $BASE }}/move-stage', {
+                    stage:  this.targetStage,
+                    reason: this.stageReason,
+                }));
+            }
             this.stageSaving = false;
             if (!ok) { this.stageError = data.error || 'Could not process stage action.'; return; }
             this.showMoveStage = false;
-            this.showToast(this.stageApproval ? 'Stage approval request submitted.' : 'Stage moved successfully.');
+            this.showToast(this.needsApproval ? 'Approval request submitted. Admin will review shortly.' : 'Stage moved successfully.');
             setTimeout(() => window.location.reload(), 800);
         },
 
@@ -757,42 +784,83 @@
 
     {{-- Move Stage modal --}}
     <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-[#1E1B4B]">Move Deal Stage</h3>
-                <button @click="showMoveStage = false" class="text-gray-400 hover:text-gray-600">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]">Move Deal Stage</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Check all requirements before moving the stage.</p>
+                </div>
+                <button @click="showMoveStage = false; resetStageModal()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="px-5 py-4 space-y-3">
+            <div class="px-5 py-4 space-y-4">
+                {{-- Stage selector --}}
                 <div>
                     <label class="form-label">Move to Stage</label>
-                    <select x-model="targetStage" class="form-input w-full">
+                    <select x-model="targetStage" @change="reqChecks = {}; stageError = ''" class="form-input w-full">
                         <option value="">Select target stage…</option>
-                        @foreach($stageOrder as $s)
-                            @if($s !== $lead->stage)
+                        @php $stageOrder = ['introduction','presentation','contract_sent','signed','paid']; $currentIdx = array_search($lead->stage, $stageOrder); @endphp
+                        @foreach($stageOrder as $idx => $s)
+                            @if($s !== $lead->stage && $idx > $currentIdx)
                             <option value="{{ $s }}">{{ $stageLabels[$s] }}</option>
                             @endif
                         @endforeach
                     </select>
                 </div>
-                <div class="flex items-center gap-2.5">
-                    <input type="checkbox" x-model="stageApproval" id="stageApprovalChk" class="w-4 h-4 rounded accent-[#7B61FF]">
-                    <label for="stageApprovalChk" class="text-sm text-gray-600 cursor-pointer">
-                        Request Admin approval instead (required if documents are missing)
-                    </label>
+
+                {{-- Requirements checklist (shows when target selected and requirements exist) --}}
+                <div x-show="targetStage && currentReqs.length > 0" x-cloak class="space-y-1">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Requirements for this transition</p>
+                    <template x-for="req in currentReqs" :key="req.id">
+                        <label class="flex items-start gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
+                               :class="reqChecks[req.id] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'">
+                            <input type="checkbox" :id="'req_' + req.id"
+                                   :checked="reqChecks[req.id]"
+                                   @change="reqChecks = {...reqChecks, [req.id]: $event.target.checked}"
+                                   class="mt-0.5 w-4 h-4 rounded accent-green-600 shrink-0">
+                            <div class="flex-1 min-w-0">
+                                <span class="text-sm" :class="reqChecks[req.id] ? 'text-green-700 line-through' : 'text-gray-700'" x-text="req.label"></span>
+                                <span x-show="req.required && !reqChecks[req.id]" class="ml-1.5 text-[10px] font-bold text-red-500 uppercase tracking-wide">Required</span>
+                                <span x-show="!req.required" class="ml-1.5 text-[10px] text-gray-400 uppercase tracking-wide">Optional</span>
+                            </div>
+                        </label>
+                    </template>
+
+                    {{-- Needs-approval notice --}}
+                    <div x-show="needsApproval" class="flex items-start gap-2 mt-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div>
+                            <p class="text-xs font-semibold text-amber-700">Admin approval required</p>
+                            <p class="text-xs text-amber-600 mt-0.5">Some required items are not yet completed. Your request will be sent to an Admin or Manager for review.</p>
+                        </div>
+                    </div>
+                    <div x-show="!needsApproval && targetStage && currentReqs.length > 0" class="flex items-center gap-2 mt-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-200">
+                        <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <p class="text-xs font-semibold text-green-700">All required items confirmed — you can move the stage directly.</p>
+                    </div>
                 </div>
+
+                {{-- Note/reason field --}}
                 <div>
-                    <label class="form-label">Note / Reason <span x-show="stageApproval" class="text-red-400">*</span></label>
-                    <textarea x-model="stageReason" rows="2" placeholder="Optional note or reason…" class="form-input w-full text-sm resize-none"></textarea>
+                    <label class="form-label">
+                        <span x-text="needsApproval ? 'Reason for approval request' : 'Note (optional)'"></span>
+                        <span x-show="needsApproval" class="text-red-400 ml-1">*</span>
+                    </label>
+                    <textarea x-model="stageReason" rows="2"
+                              :placeholder="needsApproval ? 'Explain what you need help with or when requirements will be met…' : 'Optional note about this stage change…'"
+                              class="form-input w-full text-sm resize-none"></textarea>
                 </div>
+
                 <div x-show="stageError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="stageError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showMoveStage = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="moveStage()" :disabled="!targetStage || (stageApproval && !stageReason.trim()) || stageSaving"
+                <button @click="showMoveStage = false; resetStageModal()" class="btn-secondary text-sm">Cancel</button>
+                <button @click="moveStage()"
+                        :disabled="!targetStage || stageSaving"
+                        :class="needsApproval ? 'bg-amber-500 hover:bg-amber-600' : ''"
                         class="rs-btn-primary text-sm"
-                        x-text="stageSaving ? 'Processing…' : (stageApproval ? 'Request Approval' : 'Move Stage')"></button>
+                        x-text="stageSaving ? 'Processing…' : (needsApproval ? 'Request Approval →' : 'Move Stage →')"></button>
             </div>
         </div>
     </div>

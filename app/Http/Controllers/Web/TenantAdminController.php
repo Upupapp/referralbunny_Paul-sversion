@@ -184,8 +184,20 @@ class TenantAdminController extends Controller
             ->with(['commissionSplits', 'notes', 'history'])
             ->first();
         $ssrLead = $lead?->toArray();
+
+        // Load pending approval requests for admin review panel
+        $pendingApprovals = [];
+        try {
+            $pendingApprovals = \App\Models\DealApprovalRequest::where('deal_id', $dealId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->toArray();
+        } catch (\Throwable) {}
+
         return view('tenant.deals.show', array_merge(
-            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead],
+            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals],
             $this->configMeta($tenantId)
         ));
     }

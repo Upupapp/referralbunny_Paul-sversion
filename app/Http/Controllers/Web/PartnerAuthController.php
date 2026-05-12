@@ -94,13 +94,21 @@ class PartnerAuthController extends Controller
             return back()->withErrors(['token' => 'Invalid or expired setup link.']);
         }
 
-        $partner->update([
-            'password'           => Hash::make($data['password']),
-            'status'             => 'active',
-            'setup_completed_at' => now(),
-            'setup_token'        => null,
-            'last_login_at'      => now(),
-        ]);
+        try {
+            $partner->update([
+                'password'           => $data['password'],
+                'status'             => 'active',
+                'setup_completed_at' => now(),
+                'setup_token'        => null,
+                'last_login_at'      => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('PartnerAuthController::setup — update failed', [
+                'partner_id' => $partner->id,
+                'error'      => $e->getMessage(),
+            ]);
+            return back()->withErrors(['token' => 'Account activation failed. Please contact support. (' . $e->getMessage() . ')']);
+        }
 
         // Activate any pending DealPartner invitations for this partner
         try {
@@ -244,7 +252,7 @@ class PartnerAuthController extends Controller
         }
 
         $partner->update([
-            'password'    => Hash::make($data['password']),
+            'password'    => $data['password'],
             'setup_token' => null,
         ]);
 
