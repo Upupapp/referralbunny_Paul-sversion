@@ -276,11 +276,19 @@ window.__rsDeal = {
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Add Note
                     </button>
+                    @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
                     <button @click="showUpdateAmount = true"
                             class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Update Amount
                     </button>
+                    @else
+                    <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
+                          title="Amount cannot be changed after commission is {{ ucfirst($lead->commission_status ?? '') }}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Amount {{ ucfirst($lead->commission_status ?? '') }}
+                    </span>
+                    @endif
                     @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
                     <button @click="showMoveStage = true"
                             class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95">
@@ -992,10 +1000,19 @@ window.__rsDeal = {
                     <label class="form-label">Email Address <span class="text-red-400">*</span></label>
                     <input x-model="refName" type="email" class="form-input w-full text-sm" placeholder="referrer@example.com" autocomplete="email">
                 </div>
+                @php
+                    // Compute available % for co-referrers: 100 minus all existing splits
+                    $existingSplitTotal = collect($splits)->sum(fn($s) => (float) ($s->percentage ?? 0));
+                    $maxCoRefPct        = max(0.0, round(100.0 - $existingSplitTotal, 2));
+                @endphp
                 <div>
                     <label class="form-label">Commission Share (%) <span class="text-red-400">*</span></label>
-                    <input x-model="refSplit" type="number" min="0" max="100" step="0.01" class="form-input w-full text-sm" placeholder="e.g. 10">
-                    <p class="text-xs text-gray-400 mt-1">Your total commission across all co-referrers cannot exceed 100%.</p>
+                    <input x-model="refSplit" type="number" min="0.01" max="{{ $maxCoRefPct }}" step="0.01"
+                           class="form-input w-full text-sm" placeholder="e.g. 10">
+                    <p class="text-xs text-gray-400 mt-1">
+                        Maximum available: <strong class="text-[#1E1B4B]">{{ $maxCoRefPct }}%</strong>
+                        (total across all referrers cannot exceed 100%).
+                    </p>
                 </div>
                 <div x-show="refError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="refError"></div>
             </div>

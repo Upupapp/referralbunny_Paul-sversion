@@ -140,6 +140,7 @@ class CriticalActionService
             fn() => $this->overdueOpenTasks($tenantId),
             fn() => $this->openRequestFormTasks($tenantId),
             fn() => $this->pendingDefaultAmounts($tenantId),
+            fn() => $this->recentReferrerAmountChanges($tenantId, $since),
         ];
 
         if ($canBilling) {
@@ -1063,6 +1064,68 @@ class CriticalActionService
             ]))->all();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] pendingDefaultAmounts failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Deals where a Referrer updated the deal amount in the last $since window.
+     * Admins should review to ensure the new amount is correct before commission finalises.
+     * Resolves automatically after 2 days (the admin has had time to review).
+     */
+    private function recentReferrerAmountChanges(string $tenantId, \Carbon\Carbon $since): array
+    {
+        try {
+            $cutoff = now()->subDays(2); // Only show within 2-day review window
+
+            $rows = DB::table('lead_history as lh')
+                ->join('leads as l', 'l.id', '=', 'lh.lead_id')
+                ->where('lh.tenant_id', $tenantId)
+                ->where('lh.action', 'like', '%amount updated by referrer%')
+                ->where('lh.created_at', '>=', $cutoff)
+                ->where('l.commission_status', 'pending') // only pending — locked/paid are finalised
+                ->whereNull('l.deleted_at')
+                ->select('lh.lead_id', 'lh.actor_name', 'lh.created_at', 'lh.metadata',
+                         'l.name as lead_name', 'l.stage', 'l.deal_value')
+                ->orderByDesc('lh.created_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(function ($r) use ($tenantId) {
+                $meta      = is_string($r->metadata) ? json_decode($r->metadata, true) : (array) ($r->metadata ?? []);
+                $oldAmount = $meta['old_values']['deal_value'] ?? null;
+                $newAmount = $meta['new_values']['deal_value'] ?? $r->deal_value;
+                $reason    = $meta['new_values']['reason']     ?? null;
+
+                $bodyParts = [$r->actor_name . ' changed the contract value'];
+                if ($oldAmount !== null) {
+                    $bodyParts[] = 'from ₱' . number_format($oldAmount, 0) . ' to ₱' . number_format($newAmount, 0);
+                }
+                if ($reason) {
+                    $bodyParts[] = '— "' . \Illuminate\Support\Str::limit($reason, 60) . '"';
+                }
+
+                return $this->make([
+                    'type'          => 'referrer_amount_change',
+                    'category'      => 'deal',
+                    'severity'      => 'normal',
+                    'summary'       => 'Referrer updated deal amount: ' . $r->lead_name,
+                    'actor_name'    => $r->actor_name ?? 'Referrer',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $r->lead_name,
+                    'related_type'  => 'deal',
+                    'related_id'    => $r->lead_id,
+                    'occurred_at'   => $r->created_at ?? now(),
+                    'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}",
+                    'action_label'  => 'Review Deal',
+                    'action_needed' => false, // informational — admin should glance, not must-act
+                    'source'        => 'lead_history',
+                    'description'   => implode(' ', $bodyParts) . '. Review the new amount before finalising commission.',
+                    'meta'          => ['old_amount' => $oldAmount, 'new_amount' => $newAmount, 'stage' => $r->stage],
+                ]);
+            })->all();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] recentReferrerAmountChanges failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }

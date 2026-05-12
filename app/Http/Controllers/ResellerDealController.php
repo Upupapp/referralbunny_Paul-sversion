@@ -278,6 +278,11 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        // Block edits once commission is locked or paid — amounts are finalised
+        if (in_array($lead->commission_status ?? '', ['locked', 'paid'])) {
+            return response()->json(['error' => 'Deal amount cannot be changed after commission has been ' . $lead->commission_status . '. Contact your admin.'], 422);
+        }
+
         $data = $request->validate([
             'deal_value' => 'required|numeric|min:1|max:999999999',
             'reason'     => 'required|string|max:1000',
@@ -290,8 +295,7 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'New amount is the same as the current amount.'], 422);
         }
 
-        // Recalculate added_amount so commission pool stays in sync with deal_value
-        // Formula: added_amount = deal_value - base_cost  (must be ≥ 0)
+        // Recalculate added_amount so commission pool stays in sync with deal_value.
         $newAddedAmount = max(0.0, round($newAmount - (float) $lead->base_cost, 2));
 
         DB::beginTransaction();
@@ -300,16 +304,6 @@ class ResellerDealController extends Controller
                 'deal_value'   => $newAmount,
                 'added_amount' => $newAddedAmount,
             ]);
-
-            app(DealActivityService::class)->record($lead, 'Deal amount updated by referrer', 'amount', [
-                'category'   => 'financial',
-                'reseller'   => $reseller->name,
-                'actor_name' => $reseller->name,
-                'actor_role' => 'referrer',
-                'old_values' => ['deal_value' => $oldAmount],
-                'new_values' => ['deal_value' => $newAmount],
-            ]);
-
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -317,24 +311,35 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not update amount. Please try again.'], 500);
         }
 
-        // Compute breakdown AFTER commit (read-only, never block the update)
-        $newBreakdown = [];
+        // Activity log AFTER commit — never let logging failure roll back the business action
         try {
-            $calc         = app(CommissionCalculationService::class);
-            $newBreakdown = $calc->breakdownFromLead($lead->fresh());
+            app(DealActivityService::class)->record($lead->fresh(), 'Deal amount updated by referrer', 'amount', [
+                'category'   => 'financial',
+                'reseller'   => $reseller->name,
+                'actor_name' => $reseller->name,
+                'actor_role' => 'referrer',
+                'old_values' => ['deal_value' => $oldAmount],
+                'new_values' => ['deal_value' => $newAmount, 'reason' => $data['reason']],
+            ]);
         } catch (\Throwable) {}
 
-        // Notify admins AFTER commit (best-effort)
+        // Compute breakdown AFTER commit (read-only)
+        $newBreakdown = [];
+        try {
+            $newBreakdown = app(CommissionCalculationService::class)->breakdownFromLead($lead->fresh());
+        } catch (\Throwable) {}
+
+        // Notify admins — dedup per deal per day (not per hour) to prevent spam on rapid edits
         try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'normal',
-                title:        'Deal amount changed',
-                body:         $reseller->name . ' changed "' . $lead->name . '" from ₱' . number_format($oldAmount) . ' to ₱' . number_format($newAmount) . '.',
+                title:        'Deal amount updated by Referrer',
+                body:         $reseller->name . ' updated "' . $lead->name . '" from ₱' . number_format($oldAmount, 0) . ' to ₱' . number_format($newAmount, 0) . '. Reason: ' . \Illuminate\Support\Str::limit($data['reason'], 80),
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'Review Deal',
-                dedupeSuffix: $dealId . ':amount:' . now()->format('YmdHi'),
+                dedupeSuffix: $dealId . ':amount:' . now()->format('Ymd'),  // per-day dedup (not per-hour)
             );
         } catch (\Throwable) {}
 
@@ -601,46 +606,23 @@ class ResellerDealController extends Controller
             ], 422);
         }
 
-        // ── Partner invite (when email provided) ─────────────────────────────
         $partnerEmail      = !empty($data['partner_email']) ? strtolower(trim($data['partner_email'])) : null;
         $inviteSent        = false;
         $alreadyHasAccount = false;
+        $newPartner        = null;
 
-        if ($partnerEmail) {
-            $existingPartner = \App\Models\Partner::where('tenant_id', $tenantId)
-                ->whereRaw('LOWER(email) = ?', [$partnerEmail])
-                ->first();
+        // Look up existing partner account BEFORE creating the split (no side effects yet)
+        $existingPartner = $partnerEmail
+            ? \App\Models\Partner::where('tenant_id', $tenantId)->whereRaw('LOWER(email) = ?', [$partnerEmail])->first()
+            : null;
 
-            if ($existingPartner && $existingPartner->isSetupComplete()) {
-                $alreadyHasAccount = true;
-            } elseif (!$existingPartner) {
-                $nameParts  = preg_split('/\s+/', trim($data['partner_name']), 2);
-                $newPartner = \App\Models\Partner::create([
-                    'id'              => (string) \Illuminate\Support\Str::uuid(),
-                    'tenant_id'       => $tenantId,
-                    'email'           => $partnerEmail,
-                    'first_name'      => $nameParts[0] ?? $data['partner_name'],
-                    'last_name'       => $nameParts[1] ?? null,
-                    'status'          => 'invited',
-                    'setup_token'     => \Illuminate\Support\Str::random(64),
-                    'invited_by_type' => 'reseller',
-                    'invited_by_id'   => (string) $reseller->id,
-                ]);
-
-                try {
-                    \Illuminate\Support\Facades\Mail::to($partnerEmail)
-                        ->send(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
-                    $inviteSent = true;
-                } catch (\Throwable $mailEx) {
-                    Log::warning('PartnerInviteMail send failed in addPartnerSplit', [
-                        'tenant_id' => $tenantId, 'email' => $partnerEmail,
-                        'error'     => $mailEx->getMessage(),
-                    ]);
-                }
-            }
+        if ($existingPartner && $existingPartner->isSetupComplete()) {
+            $alreadyHasAccount = true;
         }
 
-        // ── Create the split ──────────────────────────────────────────────────
+        // ── Create the split FIRST ─────────────────────────────────────────────
+        // Invite email is sent AFTER the split is persisted so an orphaned invite
+        // is impossible (email fail does not affect split creation).
         try {
             app(DealPartnerSplitService::class)->upsert(
                 tenantId:    $tenantId,
@@ -653,8 +635,14 @@ class ResellerDealController extends Controller
                 source:      'manual',
                 actorId:     (string) $reseller->id,
             );
+        } catch (\Throwable $e) {
+            Log::error('ResellerDealController addPartnerSplit failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not add partner. Please try again.'], 500);
+        }
 
-            app(DealActivityService::class)->record($lead, 'Partner split added by referrer', 'partner', [
+        // Activity log AFTER split creation (never let logging failure roll back)
+        try {
+            app(DealActivityService::class)->record($lead->fresh(), 'Partner split added by referrer', 'partner', [
                 'category'   => 'partner',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
@@ -663,26 +651,70 @@ class ResellerDealController extends Controller
                     'partner'      => $data['partner_name'],
                     'split'        => $data['split_share_value'],
                     'type'         => $data['split_share_type'],
-                    'invite_sent'  => $inviteSent,
                 ],
             ]);
+        } catch (\Throwable) {}
 
+        // ── Create partner user + send invite if email provided ────────────────
+        if ($partnerEmail && !$existingPartner) {
+            $nameParts  = preg_split('/\s+/', trim($data['partner_name']), 2);
+            $newPartner = \App\Models\Partner::create([
+                'id'              => (string) \Illuminate\Support\Str::uuid(),
+                'tenant_id'       => $tenantId,
+                'email'           => $partnerEmail,
+                'first_name'      => $nameParts[0] ?? $data['partner_name'],
+                'last_name'       => $nameParts[1] ?? null,
+                'status'          => 'invited',
+                'setup_token'     => \Illuminate\Support\Str::random(64),
+                'invited_by_type' => 'reseller',
+                'invited_by_id'   => (string) $reseller->id,
+            ]);
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($partnerEmail)
+                    ->send(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
+                $inviteSent = true;
+            } catch (\Throwable $mailEx) {
+                Log::warning('PartnerInviteMail send failed in addPartnerSplit', [
+                    'tenant_id' => $tenantId, 'email' => $partnerEmail,
+                    'error'     => $mailEx->getMessage(),
+                ]);
+            }
+        }
+
+        // Notify already-active partner via in-app (no email — they have an account)
+        if ($alreadyHasAccount && $existingPartner) {
+            try {
+                app(NotificationDispatchService::class)->dispatch(
+                    category:         'deal_pipeline',
+                    priority:         'high',
+                    title:            'You have been added as a Partner on a deal',
+                    body:             $reseller->name . ' added you as a Partner on "' . $lead->name . '" with a ' . $data['split_share_value'] . ($data['split_share_type'] === 'percentage' ? '%' : ' PHP fixed') . ' commission split.',
+                    notifiableType:   'partner',
+                    notifiableId:     (string) $existingPartner->id,
+                    tenantId:         $tenantId,
+                    actionUrl:        url("/partner/deals/{$dealId}"),
+                    actionLabel:      'View Deal',
+                    deduplicationKey: $dealId . ':partner_added:' . (string) $existingPartner->id,
+                );
+            } catch (\Throwable) {}
+        }
+
+        // Notify admins
+        try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'normal',
                 title:        'Partner added to deal',
                 body:         $reseller->name . ' added ' . $data['partner_name']
-                              . ($inviteSent ? ' and sent a partner invite' : '')
+                              . ($inviteSent ? ' and sent a partner invite' : ($alreadyHasAccount ? ' (active account)' : ''))
                               . ' to "' . $lead->name . '".',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $dealId . ':partner:' . md5($partnerEmail ?? $data['partner_name']),
             );
-        } catch (\Throwable $e) {
-            Log::error('ResellerDealController addPartnerSplit failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not add partner. Please try again.'], 500);
-        }
+        } catch (\Throwable) {}
 
         $message = match(true) {
             $inviteSent        => 'Partner added! Invite email sent to ' . $partnerEmail . '.',
@@ -734,6 +766,16 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
+        // Prevent total splits from exceeding 100%
+        $existingTotal = CommissionSplit::where('lead_id', $lead->id)->sum('percentage');
+        if ($existingTotal + $percentage > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $existingTotal, 2));
+            return response()->json([
+                'error' => "Total commission split cannot exceed 100%. You can allocate up to {$available}% to this co-referrer.",
+                'max_percentage' => $available,
+            ], 422);
+        }
+
         // Look up tenant user (admin/manager) by email for notification
         $tenantUserByEmail = DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
@@ -753,21 +795,23 @@ class ResellerDealController extends Controller
                 'role'            => 'secondary',
                 'activity_status' => 'active',
             ]);
-
-            app(DealActivityService::class)->record($lead, 'Co-referrer added by referrer: ' . $email, 'referrer', [
-                'category'   => 'assignment',
-                'reseller'   => $reseller->name,
-                'actor_name' => $reseller->name,
-                'actor_role' => 'referrer',
-                'new_values' => ['added_referrer_email' => $email, 'percentage' => $percentage],
-            ]);
-
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ResellerDealController addReferrer failed', ['error' => $e->getMessage(), 'email' => $email]);
             return response()->json(['error' => 'Could not add co-referrer. Please try again.'], 500);
         }
+
+        // Activity log AFTER commit — never let logging failure roll back the split
+        try {
+            app(DealActivityService::class)->record($lead->fresh(), 'Co-referrer added by referrer: ' . $email, 'referrer', [
+                'category'   => 'assignment',
+                'reseller'   => $reseller->name,
+                'actor_name' => $reseller->name,
+                'actor_role' => 'referrer',
+                'new_values' => ['added_referrer_email' => $email, 'percentage' => $percentage, 'display_name' => $displayName],
+            ]);
+        } catch (\Throwable) {}
 
         // Post-commit: notify or invite (best-effort — never rollback the split for these)
         $notified = false;
@@ -809,15 +853,17 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
 
         } else {
-            // Not found — send referrer invite by email
+            // Not found — send referrer invite by email.
+            // Direct to the admin's reseller invite flow so the contact gets a proper setup link.
             try {
-                $tenant   = Tenant::find($tenantId);
-                $signupUrl = url('/reseller/login?hint=' . urlencode($email));
+                $tenant    = Tenant::find($tenantId);
+                $setupUrl  = url("/reseller/register?tenant={$tenantId}&invite_email=" . urlencode($email)
+                    . '&deal=' . urlencode($lead->name));
                 Mail::to($email)->send(new ResellerInvitation(
                     resellerName:  $email,
                     resellerEmail: $email,
                     tenantName:    $tenant->name ?? 'ReferralBunny',
-                    setupUrl:      $signupUrl,
+                    setupUrl:      $setupUrl,
                     dealName:      $lead->name,
                     dealCount:     1,
                     dealNames:     [$lead->name],
@@ -834,12 +880,38 @@ class ResellerDealController extends Controller
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'normal',
-                title:        'Co-referrer added',
-                body:         $reseller->name . ' added ' . $email . ' as a co-referrer on "' . $lead->name . '".',
+                title:        'Co-referrer added to deal',
+                body:         $reseller->name . ' added ' . ($displayName !== $email ? $displayName . ' (' . $email . ')' : $email) . ' as a co-referrer (' . $percentage . '%) on "' . $lead->name . '".',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':coreferrer:' . md5($email),
             );
+        } catch (\Throwable) {}
+
+        // Also notify the primary referrer on this deal (if different from the actor)
+        // so they know their commission pool now has an additional split
+        try {
+            $primarySplit = CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'primary')
+                ->first();
+            if ($primarySplit && strtolower($primarySplit->reseller_name ?? '') !== strtolower($reseller->name ?? '')) {
+                $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($primarySplit->reseller_name)])
+                    ->first();
+                if ($primaryReseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   (string) $primaryReseller->id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Co-referrer added to your deal',
+                        body:         $reseller->name . ' added ' . ($displayName !== $email ? $displayName : $email) . ' (' . $percentage . '%) as a co-referrer on "' . $lead->name . '".',
+                        actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
+                    );
+                }
+            }
         } catch (\Throwable) {}
 
         $message = $notified ? 'Co-referrer added — they have been notified.'
