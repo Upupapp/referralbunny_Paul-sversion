@@ -84,7 +84,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('partner.setup.post') }}" x-data="{ show1: false, show2: false }" class="form-wrap">
+            <form method="POST" action="{{ route('partner.setup.post') }}" x-data="{ show1: false, show2: false, sub: false }" @submit="sub=true" class="form-wrap">
                 @csrf
                 <input type="hidden" name="token" value="{{ $token }}">
 
@@ -112,7 +112,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary" @click="sub=true" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'" x-data="{ sub: false }">Activate My Account →</button>
+                <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
                     Already set up? <a href="{{ route('partner.login') }}" style="color:#2563EB;text-decoration:none">Sign in</a>

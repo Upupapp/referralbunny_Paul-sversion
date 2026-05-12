@@ -22,7 +22,7 @@
     </style>
 </head>
 <body>
-<div class="card" x-data="{ show1: false, show2: false }">
+<div class="card" x-data="{ show1: false, show2: false, sub: false }">
     <div style="margin-bottom:2rem">
         <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
     </div>
@@ -36,7 +36,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('reseller.reset-password.post') }}">
+    <form method="POST" action="{{ route('reseller.reset-password.post') }}" @submit="sub=true">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
         <div style="margin-bottom:1rem">
@@ -59,7 +59,7 @@
                 </button>
             </div>
         </div>
-        <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Updating...' : 'Update Password'">Update Password</button>
+        <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Updating...' : 'Update Password'">Update Password</button>
     </form>
 
     <p style="text-align:center;margin-top:1.25rem;font-size:.8125rem;color:#6b7280">

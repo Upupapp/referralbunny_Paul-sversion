@@ -68,7 +68,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('partner.login.post') }}" class="form-wrap">
+            <form method="POST" action="{{ route('partner.login.post') }}" x-data="{ sub: false }" @submit="sub=true" class="form-wrap">
                 @csrf
                 <div style="margin-bottom:1rem">
                     <label for="email" class="field-label">Email address</label>
@@ -100,7 +100,7 @@
                         </p>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
+                <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Signing in...' : 'Sign In'">Sign In</button>
 
                 <p style="text-align:center;margin-top:.875rem;font-size:.8125rem;color:#6b7280">
                     <a href="{{ route('partner.forgot-password') }}" style="color:#3B82F6;text-decoration:none">Forgot your password?</a>

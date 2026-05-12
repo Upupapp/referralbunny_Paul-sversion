@@ -42,13 +42,13 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('reseller.forgot-password.post') }}">
+    <form method="POST" action="{{ route('reseller.forgot-password.post') }}" x-data="{ sub: false }" @submit="sub=true">
         @csrf
         <div style="margin-bottom:1.25rem">
             <label class="field-label">Email address</label>
             <input name="email" type="email" required value="{{ old('email') }}" class="field-input" placeholder="you@email.com">
         </div>
-        <button type="submit" class="btn-primary" x-data="{ sub: false }" @click="sub=true" :disabled="sub" x-text="sub ? 'Sending...' : 'Send Reset Link'">Send Reset Link</button>
+        <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Sending...' : 'Send Reset Link'">Send Reset Link</button>
     </form>
 
     <p style="text-align:center;margin-top:1.25rem;font-size:.8125rem;color:#6b7280">
