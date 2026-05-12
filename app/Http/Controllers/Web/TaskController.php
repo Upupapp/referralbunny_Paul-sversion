@@ -359,7 +359,15 @@ class TaskController extends Controller
 
         $source = null;
         if ($task->source_type === 'request_form_submission' && $task->source_id) {
-            $source = \App\Models\RequestFormSubmission::with('form')->find($task->source_id);
+            try {
+                // Cast uuid PK to text to compare with varchar source_id — avoids
+                // "operator does not exist: uuid = character varying" in PostgreSQL.
+                $source = \App\Models\RequestFormSubmission::with('form')
+                    ->whereRaw('"id"::text = ?', [$task->source_id])
+                    ->first();
+            } catch (\Throwable) {
+                $source = null;
+            }
         }
 
         $canComplete            = $this->canComplete($task, $tenantId);

@@ -567,13 +567,14 @@ $allActivities = collect([$timelineSubmitEntry])
 
                 {{-- Email Requester --}}
                 @if($submission->submitter_email)
-                <a href="mailto:{{ $submission->submitter_email }}"
-                   style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;text-decoration:none;transition:background .12s"
-                   onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'"
-                   aria-label="Email requester {{ $submission->submitter_email }}">
+                <button type="button"
+                        onclick="rbOpenEmailCompose()"
+                        style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer;text-align:left;width:100%;transition:background .12s"
+                        onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'"
+                        aria-label="Compose email to {{ $submission->submitter_email }}">
                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Email Requester
-                </a>
+                </button>
                 @endif
 
                 {{-- Form Settings --}}
@@ -610,4 +611,146 @@ $allActivities = collect([$timelineSubmitEntry])
     </div>{{-- END SIDEBAR --}}
 
 </div>{{-- END GRID --}}
+
+{{-- ── Email Compose Loading Screen ────────────────────────────────────────── --}}
+<div id="rb-email-loading"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.6);z-index:99999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:white;border-radius:20px;padding:36px 32px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="width:56px;height:56px;border-radius:16px;background:#ede9fe;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+            <svg style="width:26px;height:26px;color:#7B61FF" class="animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+        </div>
+        <p style="font-size:15px;font-weight:700;color:#1E1B4B;margin-bottom:4px">Preparing email…</p>
+        <p style="font-size:13px;color:#9ca3af">Setting up your compose window.</p>
+    </div>
+</div>
+
+{{-- ── Email Compose Modal ──────────────────────────────────────────────────── --}}
+<div id="rb-email-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:99999;align-items:center;justify-content:center;padding:16px"
+     role="dialog" aria-modal="true" aria-labelledby="rb-email-modal-title">
+    <div style="background:white;border-radius:20px;max-width:560px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden">
+
+        {{-- Modal header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #f3f4f6">
+            <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg style="width:15px;height:15px;color:#7B61FF" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                    <h3 id="rb-email-modal-title" style="font-size:14px;font-weight:700;color:#1E1B4B;margin:0">Email Requester</h3>
+                    <p style="font-size:11px;color:#9ca3af;margin:0">Compose a message to the requester</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('rb-email-modal').style.display='none'"
+                    style="width:28px;height:28px;border-radius:8px;border:none;background:#f3f4f6;color:#6b7280;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                    aria-label="Close">×</button>
+        </div>
+
+        {{-- Compose fields --}}
+        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+            {{-- To --}}
+            <div>
+                <label style="display:block;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">To</label>
+                <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:10px">
+                    <svg style="width:13px;height:13px;color:#9ca3af;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span style="font-size:13px;color:#1E1B4B;font-weight:600">{{ $submission->submitter_name ?: 'Requester' }}</span>
+                    <span style="font-size:12px;color:#9ca3af">&lt;{{ $submission->submitter_email }}&gt;</span>
+                </div>
+            </div>
+            {{-- Subject --}}
+            <div>
+                <label for="rb-email-subject" style="display:block;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Subject</label>
+                <input id="rb-email-subject" type="text"
+                       value="Re: {{ $form->title }}{{ $submission->request_for ? ' — ' . $submission->request_for : '' }}"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                       onfocus="this.style.borderColor='#7B61FF'" onblur="this.style.borderColor='#e5e7eb'">
+            </div>
+            {{-- Body --}}
+            <div>
+                <label for="rb-email-body" style="display:block;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Message</label>
+                <textarea id="rb-email-body" rows="6"
+                          style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#374151;background:white;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"
+                          onfocus="this.style.borderColor='#7B61FF'" onblur="this.style.borderColor='#e5e7eb'">Hi {{ $submission->submitter_name ?: 'there' }},
+
+Thank you for your request regarding "{{ $submission->request_for ?: $form->title }}".
+
+[Write your message here]
+
+Best regards,
+{{ $form->title }} Team</textarea>
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 24px 20px;border-top:1px solid #f3f4f6;flex-wrap:wrap">
+            <button onclick="rbSendEmailViaMailto()"
+                    style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;min-width:140px;box-shadow:0 2px 8px rgba(123,97,255,0.25)">
+                <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                Open in Email App
+            </button>
+            <button onclick="rbCopyEmailContent(this)"
+                    style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+                <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                Copy Content
+            </button>
+            <button onclick="document.getElementById('rb-email-modal').style.display='none'"
+                    style="display:flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function rbOpenEmailCompose() {
+    const loading = document.getElementById('rb-email-loading');
+    const modal   = document.getElementById('rb-email-modal');
+    loading.style.display = 'flex';
+    setTimeout(() => {
+        loading.style.display = 'none';
+        modal.style.display   = 'flex';
+        document.getElementById('rb-email-subject').focus();
+    }, 600);
+}
+
+function rbSendEmailViaMailto() {
+    const to      = '{{ $submission->submitter_email }}';
+    const subject = encodeURIComponent(document.getElementById('rb-email-subject').value);
+    const body    = encodeURIComponent(document.getElementById('rb-email-body').value);
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
+
+function rbCopyEmailContent(btn) {
+    const subject = document.getElementById('rb-email-subject').value;
+    const body    = document.getElementById('rb-email-body').value;
+    const full    = `Subject: ${subject}\n\n${body}`;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(full).then(() => {
+            btn.textContent = '✓ Copied!';
+            btn.style.color = '#15803d';
+            btn.style.borderColor = '#86efac';
+            setTimeout(() => {
+                btn.innerHTML = '<svg style="width:13px;height:13px;color:#6b7280;display:inline;vertical-align:middle;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Copy Content';
+                btn.style.color = '#374151';
+                btn.style.borderColor = '#e5e7eb';
+            }, 2200);
+        });
+    } else {
+        prompt('Copy this:', full);
+    }
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.getElementById('rb-email-modal').style.display = 'none';
+        document.getElementById('rb-email-loading').style.display = 'none';
+    }
+});
+</script>
+@endpush
 @endsection
