@@ -477,12 +477,17 @@ window.__rsDeal = {
             @foreach($secondarySplits as $split)
             @php
                 $rAmt          = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0);
-                $otherTotal    = $splits->where('id', '!=', $split->id)->sum('percentage');
+                $otherTotal    = $splits->reject(fn($s) => $s === $split)->sum('percentage');
                 $maxForSplit   = max(0.0, round(100.0 - (float)$otherTotal, 2));
-                $splitUpdateUrl = route('reseller.deals.splits.update', [$tenantId, $dealId, $split->id]);
+                // Use url() not route() — avoids UrlGenerationException if split has no id
+                $splitUpdateUrl = $split->id
+                    ? url("/reseller/{$tenantId}/deals/{$dealId}/splits/{$split->id}")
+                    : null;
+                $splitCanEdit  = $canEditSplits && $splitUpdateUrl;
             @endphp
             <div class="px-5 py-3.5 flex items-center justify-between gap-4"
-                 x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }">
+                 x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }"
+                 x-cloak>
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-blue-700" style="background:#dbeafe">
                         {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
@@ -503,7 +508,7 @@ window.__rsDeal = {
                         <p class="text-sm font-bold text-blue-700">₱{{ number_format($rAmt, 0) }}</p>
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
-                    @if($canEditSplits)
+                    @if($splitCanEdit)
                     <button @click="editing = true"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
@@ -523,7 +528,7 @@ window.__rsDeal = {
                             class="px-2 py-1 rounded-lg text-[10px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button @click="window.__saveSplit('{{ $splitUpdateUrl }}', '{{ csrf_token() }}', pct, $data)"
+                    <button @click="window.__saveSplit('{{ $splitUpdateUrl ?? '' }}', '{{ csrf_token() }}', pct, $data)"
                             :disabled="saving || !pct"
                             class="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-50 transition-all"
                             style="background:linear-gradient(135deg,#2563EB,#1D4ED8)"
