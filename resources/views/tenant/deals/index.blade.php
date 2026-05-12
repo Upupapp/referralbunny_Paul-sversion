@@ -791,6 +791,7 @@
 
     {{-- ── Delete Instructions Modal ─────────────────────────────── --}}
     <div :style="showDeleteInstructions ? 'display:flex' : 'display:none'"
+         style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
              x-transition:enter="transition ease-out duration-200"
@@ -823,6 +824,7 @@
 
     {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
     <div :style="showDeleteConfirm ? 'display:flex' : 'display:none'"
+         style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
              x-transition:enter="transition ease-out duration-150"
@@ -852,6 +854,7 @@
 
     {{-- ── Force-Delete Confirmation Modal ─────────────────────────────── --}}
     <div :style="showForceDeleteConfirm ? 'display:flex' : 'display:none'"
+         style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"
              x-transition:enter="transition ease-out duration-150"
