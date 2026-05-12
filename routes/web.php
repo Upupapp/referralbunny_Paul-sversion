@@ -255,6 +255,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');
+    Route::post('/deals/{dealId}/referrers',           [\App\Http\Controllers\ResellerDealController::class, 'adminAddReferrer'])->name('deals.referrers');
     Route::get('/contacts',        [TenantAdminController::class, 'contacts'])->name('contacts');
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
     Route::get('/referrers',               [TenantAdminController::class, 'referrers'])->name('referrers');

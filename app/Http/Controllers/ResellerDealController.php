@@ -368,13 +368,22 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'New amount is the same as the current amount.'], 422);
         }
 
-        // Recalculate added_amount so commission pool stays in sync with deal_value.
-        $newAddedAmount = max(0.0, round($newAmount - (float) $lead->base_cost, 2));
+        // Recalculate base_cost and added_amount for the new deal value.
+        // LGU IDS uses tiered pricing; other tenants scale proportionally.
+        if ($tenantId === 'lgu-ids') {
+            $newBaseCost = \App\Services\LguIds\LguIdsPricingService::lookupBaseCost($newAmount);
+        } elseif ($oldAmount > 0 && ($lead->base_cost ?? 0) > 0) {
+            $newBaseCost = round($newAmount * ((float) $lead->base_cost / $oldAmount), 2);
+        } else {
+            $newBaseCost = (float) $lead->base_cost;
+        }
+        $newAddedAmount = max(0.0, round($newAmount - $newBaseCost, 2));
 
         DB::beginTransaction();
         try {
             $lead->update([
                 'deal_value'   => $newAmount,
+                'base_cost'    => $newBaseCost,
                 'added_amount' => $newAddedAmount,
             ]);
             DB::commit();
@@ -635,6 +644,87 @@ class ResellerDealController extends Controller
         }
 
         return response()->json(['success' => true, 'approval_id' => $approval->id]);
+    }
+
+    // ── Admin: Add Co-Referrer ───────────────────────────────────────────────
+
+    public function adminAddReferrer(Request $request, string $tenantId, string $dealId): JsonResponse
+    {
+        $actor     = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        $actorName = $actor ? ($actor->full_name ?: $actor->email) : 'Admin';
+
+        $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+
+        $data = $request->validate([
+            'referrer_email' => 'required|email|max:200',
+            'percentage'     => 'required|numeric|min:0|max:100',
+        ]);
+
+        $email      = strtolower(trim($data['referrer_email']));
+        $percentage = (float) $data['percentage'];
+
+        $targetReseller = Reseller::where('tenant_id', $tenantId)
+            ->whereRaw('LOWER(email) = ?', [$email])->first();
+        $displayName = $targetReseller ? $targetReseller->name : $email;
+
+        $alreadySplit = CommissionSplit::where('lead_id', $lead->id)
+            ->where(function ($q) use ($displayName, $email) {
+                $q->whereRaw('LOWER(reseller_name) = ?', [strtolower($displayName)])
+                  ->orWhereRaw('LOWER(reseller_name) = ?', [$email]);
+            })->exists();
+
+        if ($alreadySplit) {
+            return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
+        }
+
+        $existingTotal = CommissionSplit::where('lead_id', $lead->id)->sum('percentage');
+        if ($existingTotal + $percentage > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $existingTotal, 2));
+            return response()->json(['error' => "Total splits cannot exceed 100%. Available: {$available}%.", 'max_percentage' => $available], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            CommissionSplit::create([
+                'lead_id'         => $lead->id,
+                'reseller_name'   => $displayName,
+                'percentage'      => $percentage,
+                'role'            => 'secondary',
+                'activity_status' => 'active',
+            ]);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('adminAddReferrer failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not add co-referrer. Please try again.'], 500);
+        }
+
+        try {
+            app(DealActivityService::class)->record($lead->fresh(), 'Co-referrer added by admin: ' . $email, 'referrer', [
+                'category'   => 'assignment',
+                'actor_name' => $actorName,
+                'actor_role' => 'admin',
+                'new_values' => ['added_referrer_email' => $email, 'percentage' => $percentage, 'display_name' => $displayName],
+            ]);
+        } catch (\Throwable) {}
+
+        if ($targetReseller && in_array($targetReseller->status, ['active', 'nda_signed'])) {
+            try {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $targetReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        'You were added as a co-referrer',
+                    body:         $actorName . ' added you as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $lead->id . ':coreferrer:' . (string) $targetReseller->id,
+                );
+            } catch (\Throwable) {}
+        }
+
+        return response()->json(['success' => true, 'display_name' => $displayName, 'percentage' => $percentage]);
     }
 
     // ── Request Extension ────────────────────────────────────────────────────

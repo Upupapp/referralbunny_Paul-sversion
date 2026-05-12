@@ -569,7 +569,15 @@
                 {{-- Commission Distribution — Referrer splits (Alpine-driven) --}}
                 <div x-show="(lead?.commission_splits||[]).length > 0 || lead?.added_amount > 0">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                        <p style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase">Referrer Commission Distribution</p>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <p style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase">Referrer Commission Distribution</p>
+                            <template x-if="lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid'">
+                                <button @click="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
+                                        style="padding:2px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
+                                    + Co-Referrer
+                                </button>
+                            </template>
+                        </div>
                         {{-- Commission status badge --}}
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:600"
                               :style="lead?.commission_status === 'paid'   ? 'background:#dcfce7;color:#15803d'
@@ -654,6 +662,49 @@
                                 </div>
                             </div>
                         </template>
+                    </div>
+
+                    {{-- Add Co-Referrer modal --}}
+                    <div x-show="showAddCoRef" x-cloak style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
+                         :style="showAddCoRef ? 'display:flex' : 'display:none'">
+                        <div style="background:white;border-radius:20px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
+                                <div>
+                                    <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
+                                    <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
+                                </div>
+                                <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
+                                    <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+                                <div>
+                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Email Address <span style="color:#ef4444">*</span></label>
+                                    <input x-model="coRefEmail" type="email" placeholder="referrer@example.com"
+                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
+                                    <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
+                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                    <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
+                                </div>
+                                <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
+                            </div>
+                            <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
+                                <button @click="showAddCoRef = false"
+                                        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                    Cancel
+                                </button>
+                                <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
+                                        :disabled="!coRefEmail || coRefSaving"
+                                        style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
+                                        :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
+                                        x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Locked/Paid notice --}}
@@ -2322,6 +2373,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         editFinance: false,
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
         editSplitId: null, editPct: '', editSaving: false, editErr: '',
+        showAddCoRef: false, coRefEmail: '', coRefPct: '0', coRefSaving: false, coRefErr: '',
 
         // Contacts
         dealContacts: [], loadingContacts: true,
@@ -2584,6 +2636,25 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } catch {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
+        },
+
+        async adminSaveCoRef(tenantId, dealId, csrf) {
+            if (!this.coRefEmail || this.coRefSaving) return;
+            this.coRefSaving = true; this.coRefErr = '';
+            try {
+                const r = await fetch(`/tenant/${tenantId}/deals/${dealId}/referrers`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ referrer_email: this.coRefEmail.trim(), percentage: parseFloat(this.coRefPct) || 0 }),
+                });
+                const d = await r.json();
+                if (!r.ok) { this.coRefErr = d.error || 'Could not add co-referrer.'; return; }
+                this.showAddCoRef = false;
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: `${d.display_name} added as co-referrer (${d.percentage}%).` } }));
+                setTimeout(() => window.location.reload(), 800);
+            } catch(e) { this.coRefErr = 'Network error. Please try again.'; }
+            finally { this.coRefSaving = false; }
         },
 
         async adminSaveSplit(split, url, csrf) {

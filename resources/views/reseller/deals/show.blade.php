@@ -1194,8 +1194,8 @@ window.__rsDeal = {
                 @endphp
                 <div>
                     <label class="form-label">Commission Share (%) <span class="text-red-400">*</span></label>
-                    <input x-model="refSplit" type="number" min="0.01" max="{{ $maxCoRefPct }}" step="0.01"
-                           class="form-input w-full text-sm" placeholder="e.g. 10">
+                    <input x-model="refSplit" type="number" min="0" max="{{ $maxCoRefPct }}" step="0.01"
+                           class="form-input w-full text-sm" placeholder="e.g. 10 (0 to register without a share)">
                     <p class="text-xs text-gray-400 mt-1">
                         Maximum available: <strong class="text-[#1E1B4B]">{{ $maxCoRefPct }}%</strong>
                         (total across all referrers cannot exceed 100%).
@@ -1472,7 +1472,7 @@ function rsDealData() {
         },
 
         async saveReferrer() {
-            if (!this.refName || !this.refSplit || this.refSaving) return;
+            if (!this.refName || this.refSplit === '' || this.refSplit === null || this.refSplit === undefined || this.refSaving) return;
             // Basic email validation client-side
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.refName.trim())) {
                 this.refError = 'Please enter a valid email address.';
