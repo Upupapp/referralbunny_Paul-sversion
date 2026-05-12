@@ -39,13 +39,15 @@ class DealPartnerSplitService
         string  $actorId      = 'system',
         ?string $existingSplitId = null
     ): DealPartnerSplit {
-        $email = strtolower(trim($partnerEmail));
+        $email         = strtolower(trim($partnerEmail));
+        $emailProvided = !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL);
 
         if (empty($partnerName)) {
             throw new \InvalidArgumentException('Partner name is required for a split share.');
         }
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \InvalidArgumentException('A valid partner email is required for a split share.');
+        // Email is optional — only validate format when one is actually supplied
+        if (!empty($email) && !$emailProvided) {
+            throw new \InvalidArgumentException('The partner email address is not valid.');
         }
 
         // If updating, load existing record
@@ -55,18 +57,19 @@ class DealPartnerSplitService
                 ->where('deal_id', $dealId)
                 ->firstOrFail();
         } else {
-            // Prevent duplicate active splits for same email on same deal
-            $duplicate = DealPartnerSplit::where('tenant_id', $tenantId)
-                ->where('deal_id', $dealId)
-                ->where('partner_email', $email)
-                ->whereNull('deleted_at')
-                ->where('status', '!=', 'removed')
-                ->first();
+            $split = null;
 
-            if ($duplicate) {
-                // Update instead of creating duplicate
-                $split = $duplicate;
-            } else {
+            if ($emailProvided) {
+                // Prevent duplicate active splits for same email on same deal
+                $split = DealPartnerSplit::where('tenant_id', $tenantId)
+                    ->where('deal_id', $dealId)
+                    ->where('partner_email', $email)
+                    ->whereNull('deleted_at')
+                    ->where('status', '!=', 'removed')
+                    ->first();
+            }
+
+            if (!$split) {
                 $split = new DealPartnerSplit();
                 $split->id        = (string) Str::uuid();
                 $split->tenant_id = $tenantId;
@@ -74,12 +77,17 @@ class DealPartnerSplitService
             }
         }
 
-        // Resolve partner user / contact
-        [$partnerUserId, $partnerContactId, $status] = $this->resolvePartner($tenantId, $email);
+        // Resolve partner user / contact — only when email is provided
+        $partnerUserId    = null;
+        $partnerContactId = null;
+        $status           = 'provisional';
+        if ($emailProvided) {
+            [$partnerUserId, $partnerContactId, $status] = $this->resolvePartner($tenantId, $email);
+        }
 
         $split->fill([
             'partner_name'        => $partnerName,
-            'partner_email'       => $email,
+            'partner_email'       => $emailProvided ? $email : '',  // NOT NULL column — store empty string when no email
             'split_share_value'   => $splitValue,
             'split_share_type'    => $splitType,
             'currency'            => $currency,
