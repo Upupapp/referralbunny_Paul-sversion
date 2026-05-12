@@ -134,22 +134,25 @@ class RequestFormController extends Controller
                 ]);
             }
 
+            $seenStoreEmails = [];
             foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
                 if (empty($rec['email'])) continue;
+                $normalEmail = strtolower(trim($rec['email']));
+                if (in_array($normalEmail, $seenStoreEmails, true)) continue; // dedup
                 $isTenantMember = DB::table('tenant_memberships')
                     ->where('tenant_id', $tenantId)
                     ->where('tenant_user_id', $recipientId)
                     ->where('status', 'active')
                     ->exists();
                 if (!$isTenantMember && !empty($rec['recipient_id'])) continue;
-
+                $seenStoreEmails[] = $normalEmail;
                 RequestFormRecipientOption::create([
                     'tenant_id'       => $tenantId,
                     'request_form_id' => $form->id,
                     'recipient_type'  => 'tenant_user',
                     'recipient_id'    => $rec['recipient_id'] ?? $recipientId,
                     'display_name'    => $rec['display_name'] ?? $rec['email'],
-                    'email'           => $rec['email'],
+                    'email'           => $normalEmail,
                     'role_snapshot'   => $rec['role_snapshot'] ?? null,
                     'sort_order'      => 0,
                 ]);
@@ -214,17 +217,22 @@ class RequestFormController extends Controller
                 'success_message' => $data['success_message'] ?? null,
             ]);
 
-            // Sync recipient options (delete all, recreate from form data)
+            // Sync recipient options (delete all, recreate from form data).
+            // Deduplicate by email — prevent same recipient being added twice.
             RequestFormRecipientOption::where('request_form_id', $form->id)->delete();
+            $seenEmails = [];
             foreach ($request->input('recipient_data', []) as $recipientId => $rec) {
                 if (empty($rec['email'])) continue;
+                $normalEmail = strtolower(trim($rec['email']));
+                if (in_array($normalEmail, $seenEmails, true)) continue; // skip duplicate
+                $seenEmails[] = $normalEmail;
                 RequestFormRecipientOption::create([
                     'tenant_id'       => $tenantId,
                     'request_form_id' => $form->id,
                     'recipient_type'  => 'tenant_user',
                     'recipient_id'    => $rec['recipient_id'] ?? $recipientId,
                     'display_name'    => $rec['display_name'] ?? $rec['email'],
-                    'email'           => $rec['email'],
+                    'email'           => $normalEmail,
                     'role_snapshot'   => $rec['role_snapshot'] ?? null,
                     'sort_order'      => 0,
                 ]);

@@ -191,6 +191,8 @@ class CriticalActionService
             fn() => $this->openRequestFormTasks($tenantId),
             fn() => $this->pendingDefaultAmounts($tenantId),
             fn() => $this->recentReferrerAmountChanges($tenantId, $since),
+            fn() => $this->stalledDeals($tenantId),
+            fn() => $this->commissionReviewQueue($tenantId),
         ];
 
         if ($canBilling) {
@@ -1215,6 +1217,98 @@ class CriticalActionService
             })->all();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] recentReferrerAmountChanges failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Deals stuck in the same stage for > 14 days without any activity.
+     * Surfaced as medium-severity admin action — someone needs to follow up.
+     */
+    private function stalledDeals(string $tenantId): array
+    {
+        try {
+            $staleThreshold = now()->subDays(14);
+
+            $rows = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('stage', ['paid', 'archived'])
+                ->whereIn('status', ['active', 'expiring'])
+                ->where('updated_at', '<', $staleThreshold)
+                ->whereNull('deleted_at')
+                ->select('id', 'name', 'stage', 'updated_at', 'reseller_name')
+                ->orderBy('updated_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(function ($r) use ($tenantId) {
+                $daysStalled = (int) now()->diffInDays($r->updated_at);
+                return $this->make([
+                    'type'          => 'deal_stalled',
+                    'category'      => 'deal',
+                    'severity'      => $daysStalled >= 30 ? 'high' : 'medium',
+                    'summary'       => 'Deal stalled at ' . ucwords(str_replace('_', ' ', $r->stage)) . ': ' . $r->name,
+                    'actor_name'    => $r->reseller_name ?? 'Referrer',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $r->name,
+                    'related_type'  => 'deal',
+                    'related_id'    => $r->id,
+                    'occurred_at'   => $r->updated_at,
+                    'action_url'    => "/tenant/{$tenantId}/deals/{$r->id}",
+                    'action_label'  => 'Review Deal',
+                    'action_needed' => true,
+                    'source'        => 'leads',
+                    'description'   => "This deal has been in the '{$r->stage}' stage for {$daysStalled} days with no update. Follow up with the Referrer.",
+                    'meta'          => ['days_stalled' => $daysStalled, 'stage' => $r->stage],
+                ]);
+            })->all();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] stalledDeals failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Deals that have reached 'signed' or 'paid' stage but commission_status is still 'pending'.
+     * Admin should review and lock/pay commission to close the deal financially.
+     */
+    private function commissionReviewQueue(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('stage', ['signed', 'paid'])
+                ->where('commission_status', 'pending')
+                ->whereNull('deleted_at')
+                ->select('id', 'name', 'stage', 'deal_value', 'reseller_name', 'updated_at')
+                ->orderByRaw("CASE stage WHEN 'paid' THEN 0 ELSE 1 END")
+                ->orderBy('updated_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(function ($r) use ($tenantId) {
+                $isPaid = $r->stage === 'paid';
+                return $this->make([
+                    'type'          => 'commission_review_pending',
+                    'category'      => 'deal',
+                    'severity'      => $isPaid ? 'high' : 'medium',
+                    'summary'       => 'Commission review needed: ' . $r->name,
+                    'actor_name'    => $r->reseller_name ?? 'Referrer',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $r->name,
+                    'related_type'  => 'deal',
+                    'related_id'    => $r->id,
+                    'occurred_at'   => $r->updated_at,
+                    'action_url'    => "/tenant/{$tenantId}/deals/{$r->id}",
+                    'action_label'  => 'Review & Finalise',
+                    'action_needed' => true,
+                    'source'        => 'leads',
+                    'description'   => 'Deal has reached ' . ucfirst($r->stage) . ' stage but commission is still pending. Lock or pay commission to close this deal.',
+                    'meta'          => ['stage' => $r->stage, 'deal_value' => $r->deal_value],
+                ]);
+            })->all();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] commissionReviewQueue failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }

@@ -394,7 +394,13 @@ $actIcons = [
             </div>
 
             @if($task->activities->isEmpty())
-            <p style="font-size:13px;color:#d1d5db;font-style:italic">No activity recorded yet.</p>
+            <div style="text-align:center;padding:24px 0">
+                <div style="width:40px;height:40px;border-radius:12px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+                    <svg style="width:18px;height:18px;color:#d1d5db" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <p style="font-size:13px;color:#9ca3af;font-weight:500;margin:0">No activity yet</p>
+                <p style="font-size:11px;color:#d1d5db;margin:3px 0 0">Events will appear here as the task progresses.</p>
+            </div>
             @else
             <div style="position:relative;padding-left:22px">
                 <div style="position:absolute;left:13px;top:14px;bottom:8px;width:2px;background:linear-gradient(to bottom,#e9d5ff,#f3f4f6);border-radius:9999px" aria-hidden="true"></div>

@@ -129,26 +129,29 @@ class TaskController extends Controller
                 ]);
 
                 $createdTasks[] = $task;
-
-                // In-app notification — skip if assigning to self (actor is already aware)
-                if ($assigneeId !== $actorId) {
-                    try {
-                        app(\App\Services\NotificationDispatchService::class)->dispatch(
-                            category:         'task',
-                            priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
-                            title:            'New Task: ' . $task->title,
-                            body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
-                            notifiableType:   'tenant_user',
-                            notifiableId:     $assigneeId,
-                            tenantId:         $tenantId,
-                            actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
-                            actionLabel:      'View Task',
-                            deduplicationKey: "task_assigned_{$task->id}",
-                        );
-                    } catch (\Throwable) {}
-                }
             }
         });
+
+        // After commit: send in-app + email notifications (notifications must never run inside a transaction)
+        foreach ($createdTasks as $task) {
+            if ($task->assigned_to_id === $actorId) continue; // skip self-assign
+
+            // In-app notification to assignee
+            try {
+                app(\App\Services\NotificationDispatchService::class)->dispatch(
+                    category:         'task',
+                    priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
+                    title:            'New Task: ' . $task->title,
+                    body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
+                    notifiableType:   'tenant_user',
+                    notifiableId:     $task->assigned_to_id,
+                    tenantId:         $tenantId,
+                    actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                    actionLabel:      'View Task',
+                    deduplicationKey: "task_assigned_{$task->id}",
+                );
+            } catch (\Throwable) {}
+        }
 
         // After commit: send email notifications (skip self-assign)
         foreach ($createdTasks as $task) {
