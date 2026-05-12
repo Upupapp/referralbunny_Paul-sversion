@@ -184,7 +184,7 @@
                             ['key'=>'created_at', 'label'=>'Date Added',  'tip'=>'Sort by date the deal was added',        'hidden'=>'hidden md:table-cell'],
                             ['key'=>'days_left',  'label'=>'Days Left',  'tip'=>'Sort most urgent (fewest days) first',   'hidden'=>'hidden md:table-cell'],
                             ['key'=>'status',            'label'=>'Status',        'tip'=>'Sort by deal status',                         'hidden'=>''],
-                            ['key'=>'last_activity_at',  'label'=>'Last Activity', 'tip'=>'Sort by most recent change or update on deal', 'hidden'=>'hidden xl:table-cell'],
+                            ['key'=>'last_activity_at',  'label'=>'Last Activity', 'tip'=>'Sort by most recent change or update on deal', 'hidden'=>'hidden lg:table-cell'],
                         ];
                         @endphp
                         <th x-show="selectMode" class="w-10">
@@ -286,7 +286,7 @@
                                     'badge badge-gray':   lead.status === 'reassigned' || lead.status === 'declined',
                                 }" x-text="lead.status ? lead.status.charAt(0).toUpperCase() + lead.status.slice(1) : 'Active'"></span>
                             </td>
-                            <td class="hidden xl:table-cell">
+                            <td class="hidden lg:table-cell">
                                 <template x-if="lead.last_activity_at">
                                     <span class="text-xs text-gray-500"
                                           :title="new Date(lead.last_activity_at).toLocaleString('en-PH', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})"

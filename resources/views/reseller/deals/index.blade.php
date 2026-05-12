@@ -104,6 +104,7 @@
                         <th class="hidden sm:table-cell text-right">My Commission</th>
                         <th>Status</th>
                         <th>Days Left</th>
+                        <th class="hidden lg:table-cell">Last Activity</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -192,6 +193,11 @@
                                 <template x-if="d.days_left === null || d.days_left === undefined">
                                     <span class="text-xs text-gray-400">—</span>
                                 </template>
+                            </td>
+                            <td class="hidden lg:table-cell">
+                                <span class="text-xs text-gray-500"
+                                      :title="d.last_activity_at ? new Date(d.last_activity_at).toLocaleString('en-PH') : ''"
+                                      x-text="timeAgo(d.last_activity_at || d.updated_at)"></span>
                             </td>
                         </tr>
                     </template>
@@ -435,6 +441,16 @@ function resellerDeals(tenantId, resellerName) {
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
+        },
+
+        timeAgo(iso) {
+            if (!iso) return '—';
+            const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (s < 60)     return 'just now';
+            if (s < 3600)   return Math.floor(s / 60) + 'm ago';
+            if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
+            if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+            return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
         },
 
         // Returns a compact partner label for mobile secondary line.

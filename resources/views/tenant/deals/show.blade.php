@@ -44,7 +44,8 @@
      @open-move-stage-deal.window="showMoveStage = true"
      @open-reassign-deal.window="showReassign = true"
      @open-delete-deal.window="showDeleteConfirm = true"
-     @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })">
+     @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })"
+     @open-add-co-ref.window="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''">
 
     <a href="{{ route('tenant.deals', $tenant->id) }}"
        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
@@ -933,10 +934,17 @@
                  @finance-updated.window="load()">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Commission Split Share</h3>
-                    <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        Add Partner
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button @click="window.dispatchEvent(new CustomEvent('open-add-co-ref'))"
+                                class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            + Co-Referrer
+                        </button>
+                        <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Add Partner
+                        </button>
+                    </div>
                 </div>
                 <p class="text-[11px] text-gray-400">The referrer holds the full commission pool. Partners receive a share from the referrer's pool.</p>
 
@@ -973,6 +981,32 @@
                                x-text="splits.length > 0 ? 'net share' : 'full pool'"></p>
                         </div>
                     </div>
+
+                    {{-- Co-Referrer rows --}}
+                    <template x-if="coRefs.length > 0">
+                        <div>
+                            <p style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;padding:8px 4px 4px">
+                                Co-Referrers
+                            </p>
+                            <template x-for="r in coRefs" :key="r.id">
+                                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f0f9ff;border-radius:12px;border:1.5px solid #bae6fd;margin-bottom:6px">
+                                    <div style="width:32px;height:32px;border-radius:9999px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#2563eb;flex-shrink:0"
+                                         x-text="(r.reseller_name||'?').slice(0,2).toUpperCase()"></div>
+                                    <div style="flex:1;min-width:0">
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                                            <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="r.reseller_name"></p>
+                                            <span style="font-size:9px;font-weight:700;color:#2563eb;background:#dbeafe;padding:1px 7px;border-radius:9999px;letter-spacing:.04em;text-transform:uppercase;flex-shrink:0">Co-Referrer</span>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:right;flex-shrink:0">
+                                        <p style="font-size:14px;font-weight:700;color:#2563eb"
+                                           x-text="'₱' + Math.round(commPool * parseFloat(r.percentage||0) / 100).toLocaleString('en-PH')"></p>
+                                        <p style="font-size:10px;color:#9ca3af;margin-top:1px" x-text="parseFloat(r.percentage||0) + '% of pool'"></p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
 
                     {{-- Partner split rows --}}
                     <template x-if="splits.length > 0">
@@ -2833,7 +2867,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
 // -- Partner Split Section ------------------------------------------------------
 function partnerSplitSection(dealId, tenantId) {
     return {
-        splits: [], loading: true, showAdd: false, saving: false, formError: '',
+        splits: [], coRefs: [], loading: true, showAdd: false, saving: false, formError: '',
         totalPct: 0,
         dealValue: 0,
         commPool: 0,
@@ -2956,6 +2990,7 @@ function partnerSplitSection(dealId, tenantId) {
                     this.dealValue    = (bc + aa) || Number(lead.deal_value || 0);
                     this.commPool     = Math.round(aa * 0.70);
                     this.referrerName = lead.reseller_name || '';
+                    this.coRefs       = (lead.commission_splits || []).filter(s => s.role === 'secondary');
                 }
             } catch(e) { this.splits = []; this.$dispatch('show-toast', { type: 'error', message: 'Failed to load partner splits.' }); }
             this.loading = false;

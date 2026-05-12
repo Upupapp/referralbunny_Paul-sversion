@@ -377,7 +377,11 @@ class DealCommentController extends Controller
             };
             if (!$notifiableType) continue;
 
-            $dealUrl = "/tenant/{$tenantId}/deals/{$deal->id}";
+            $dealUrl = match ($notifiableType) {
+                'reseller' => "/reseller/{$tenantId}/deals/{$deal->id}",
+                'partner'  => "/partner/deals/{$deal->id}",
+                default    => "/tenant/{$tenantId}/deals/{$deal->id}",
+            };
 
             try {
                 $svc->dispatch(

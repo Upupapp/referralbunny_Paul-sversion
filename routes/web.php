@@ -391,6 +391,11 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::post('/imports/contacts/{batchId}/execute',        [ContactsImportController::class, 'execute'])->name('imports.contacts.execute');
     Route::get('/imports/contacts/{batchId}/report',          [ContactsImportController::class, 'show'])->name('imports.contacts.show');
     Route::get('/imports/contacts/{batchId}/failed',          [ContactsImportController::class, 'downloadFailed'])->name('imports.contacts.failed');
+
+    // ── Note Attachment Download (session auth — opens inline in new tab) ──
+    Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
+        [\App\Http\Controllers\DealNoteAttachmentController::class, 'downloadForWeb'])
+        ->name('deals.notes.attachments.download');
 });
 
 // ── Subdomain tenant routes: {slug}.referralbunny.ai ─────────

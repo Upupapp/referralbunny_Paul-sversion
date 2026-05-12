@@ -56,7 +56,11 @@ class DealNoteAttachmentController extends Controller
 
     public function download(Request $request, string $dealId, string $commentId, string $attachmentId): Response|JsonResponse
     {
-        $tenantId = TenantContext::requireId();
+        try {
+            $tenantId = TenantContext::requireId();
+        } catch (\Throwable) {
+            abort(403, 'Tenant context required.');
+        }
         return $this->serveAttachment($tenantId, $dealId, $commentId, $attachmentId, 'attachment');
     }
 
@@ -64,35 +68,56 @@ class DealNoteAttachmentController extends Controller
 
     private function serveAttachment(string $tenantId, string $dealId, string $commentId, string $attachmentId, string $disposition): Response|JsonResponse
     {
-        Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+        try {
+            Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+        } catch (\Throwable) {
+            abort(404, 'Deal not found.');
+        }
 
-        $comment = DealComment::where('id', $commentId)
-            ->where('deal_id', $dealId)
-            ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
-            ->firstOrFail();
+        try {
+            $comment = DealComment::where('id', $commentId)
+                ->where('deal_id', $dealId)
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->firstOrFail();
+        } catch (\Throwable) {
+            abort(404, 'Note not found.');
+        }
 
         [$actorId, $role] = $this->resolveActor();
         if (in_array($role, ['referrer', 'partner']) && $comment->isInternal()) {
             abort(403, 'You do not have access to this attachment.');
         }
 
-        $attachment = DealNoteAttachment::where('id', $attachmentId)
-            ->where('deal_comment_id', $commentId)
-            ->where('tenant_id', $tenantId)
-            ->firstOrFail();
-
-        if (!Storage::disk($attachment->disk)->exists($attachment->path)) {
-            abort(404, 'File not found.');
+        try {
+            $attachment = DealNoteAttachment::where('id', $attachmentId)
+                ->where('deal_comment_id', $commentId)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+        } catch (\Throwable) {
+            abort(404, 'Attachment not found.');
         }
 
-        $content = Storage::disk($attachment->disk)->get($attachment->path);
-        $safe    = addslashes($attachment->original_filename);
+        $disk = $attachment->disk ?: 'local';
+        $path = $attachment->path ?? '';
+
+        if (!$path || !Storage::disk($disk)->exists($path)) {
+            abort(404, 'File not found on storage.');
+        }
+
+        try {
+            $content = Storage::disk($disk)->get($path);
+        } catch (\Throwable) {
+            abort(500, 'Could not read file from storage.');
+        }
+
+        $safe     = str_replace(['"', '\\'], '', $attachment->original_filename ?? 'download');
+        $mimeType = $attachment->mime_type ?: 'application/octet-stream';
 
         return response($content, 200, [
-            'Content-Type'        => $attachment->mime_type,
+            'Content-Type'        => $mimeType,
             'Content-Disposition' => "{$disposition}; filename=\"{$safe}\"",
-            'Content-Length'      => $attachment->file_size,
+            'Content-Length'      => strlen($content),
         ]);
     }
 
