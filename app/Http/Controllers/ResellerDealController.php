@@ -202,14 +202,20 @@ class ResellerDealController extends Controller
             ],
         ];
 
-        return view('reseller.deals.show', compact(
-            'reseller', 'tenant', 'lead', 'tenantId',
-            'pendingApprovals', 'notes', 'splits', 'partnerSplits',
-            'attachments', 'history', 'breakdown',
-            'myCommission', 'partnersCommission',
-            'commissionPool', 'remainingPool',
-            'stageRequirements'
-        ));
+        // no-store: ensures every page load fetches fresh DB data.
+        // This guarantees that after a referrer updates the deal amount and the
+        // page reloads, the browser never serves a cached (stale) response.
+        return response()
+            ->view('reseller.deals.show', compact(
+                'reseller', 'tenant', 'lead', 'tenantId',
+                'pendingApprovals', 'notes', 'splits', 'partnerSplits',
+                'attachments', 'history', 'breakdown',
+                'myCommission', 'partnersCommission',
+                'commissionPool', 'remainingPool',
+                'stageRequirements'
+            ))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            ->header('Pragma', 'no-cache');
     }
 
     // ── Add Note ─────────────────────────────────────────────────────────────

@@ -164,7 +164,7 @@ window.__rsDeal = {
                         </div>
                     </div>
                 </div>
-                <p class="text-2xl font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
+                <p id="rs-deal-value-display" class="text-2xl font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format((float)($lead->deal_value ?? 0)) }}</p>
                 @if($lead->days_left !== null && $lead->stage !== 'paid')
                 <div class="flex justify-end mt-2">
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
@@ -213,20 +213,20 @@ window.__rsDeal = {
                 <div class="grid grid-cols-3 divide-x divide-gray-100">
                     <div class="px-3 py-2.5 bg-gray-50">
                         <p class="text-[10px] text-gray-400 font-medium">Contract Value</p>
-                        <p class="text-xs font-bold text-[#1E1B4B] tabular-nums mt-0.5">₱{{ number_format($bdv, 0) }}</p>
+                        <p id="rs-breakdown-dv" class="text-xs font-bold text-[#1E1B4B] tabular-nums mt-0.5">₱{{ number_format($bdv, 0) }}</p>
                     </div>
                     <div class="px-3 py-2.5 bg-gray-50">
                         <p class="text-[10px] text-gray-400 font-medium">Base Cost <span class="text-gray-300">({{ $basePct }}%)</span></p>
-                        <p class="text-xs font-bold text-gray-500 tabular-nums mt-0.5">₱{{ number_format($bbc, 0) }}</p>
+                        <p id="rs-breakdown-bc" class="text-xs font-bold text-gray-500 tabular-nums mt-0.5">₱{{ number_format($bbc, 0) }}</p>
                     </div>
                     <div class="px-3 py-2.5 bg-blue-50">
                         <p class="text-[10px] text-blue-400 font-medium">Added Amount</p>
-                        <p class="text-xs font-bold text-blue-700 tabular-nums mt-0.5">₱{{ number_format($baa, 0) }}</p>
+                        <p id="rs-breakdown-aa" class="text-xs font-bold text-blue-700 tabular-nums mt-0.5">₱{{ number_format($baa, 0) }}</p>
                     </div>
                 </div>
             </div>
 
-            {{-- Pool bar (partner vs referrer within the pool) --}}
+            {{-- Pool bar --}}
             @php
                 $poolPct   = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
                 $myCommPct = $commissionPool > 0 ? min(100 - $poolPct, round(($myCommission / $commissionPool) * 100)) : 0;
@@ -240,7 +240,7 @@ window.__rsDeal = {
             <div class="grid grid-cols-3 gap-2">
                 <div class="bg-gray-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool <span class="text-gray-300">(70%)</span></p>
-                    <p class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
+                    <p id="rs-pool-display" class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
                 </div>
                 <div class="rounded-xl px-3 py-2.5 {{ $partnersCommission > 0 ? 'bg-purple-50' : 'bg-gray-50' }}">
                     <p class="text-[10px] font-medium mb-0.5 {{ $partnersCommission > 0 ? 'text-purple-400' : 'text-gray-400' }}">
@@ -254,7 +254,7 @@ window.__rsDeal = {
                 </div>
                 <div class="bg-teal-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-teal-500 font-medium mb-0.5">My Share</p>
-                    <p class="text-sm font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
+                    <p id="rs-myshare-display" class="text-sm font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>
                 </div>
             </div>
 
@@ -1136,18 +1136,43 @@ function rsDealData() {
                 const { ok, data } = await patch(base + '/amount', { deal_value: dealValue, reason: this.amountReason });
                 this.amountSaving = false;
                 if (!ok) {
-                    // Extract from Laravel validation error format or plain error field
                     const errMsg = data.error || data.message
                         || (data.errors ? Object.values(data.errors).flat().join(' ') : null)
                         || 'Could not update amount. Please try again.';
                     this.amountError = errMsg;
                     return;
                 }
+
+                // ── Immediately update every financial display from server response ──
+                // This bypasses any browser caching issue on reload.
+                const fmt = n => '₱' + Math.round(n || 0).toLocaleString('en');
+                const savedDv = data.deal_value || dealValue;
+                const bd      = data.breakdown  || {};
+
+                [
+                    ['rs-deal-value-display', savedDv],
+                    ['rs-breakdown-dv',  bd.deal_value   ?? savedDv],
+                    ['rs-breakdown-bc',  bd.base_cost    ?? null],
+                    ['rs-breakdown-aa',  bd.added_amount ?? null],
+                    ['rs-pool-display',  bd.commission_pool ?? null],
+                ].forEach(([id, val]) => {
+                    if (val !== null && val !== undefined) {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = fmt(val);
+                    }
+                });
+
+                // Update Alpine state so the modal input shows the new value
+                this.newAmount = String(savedDv.toFixed(2));
+                window.__rsDeal.initAmount = this.newAmount;
+
                 this.showUpdateAmount = false;
                 this.amountReason = '';
                 this.showToast('Deal amount updated. Admins have been notified.');
-                // Force a hard reload (bypasses cache) so updated amounts are reflected
-                setTimeout(() => { window.location.href = window.location.href; }, 700);
+
+                // Full page reload so commission splits and all derived figures refresh.
+                // window.location.reload() bypasses bfcache and sends a fresh GET request.
+                setTimeout(() => window.location.reload(), 1200);
             } catch (e) {
                 this.amountSaving = false;
                 this.amountError = 'Network error. Please check your connection and try again.';
