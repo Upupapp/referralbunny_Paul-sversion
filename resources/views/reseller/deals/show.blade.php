@@ -27,156 +27,18 @@
     $stageColor  = $stageColors[$lead->stage] ?? '#9CA3AF';
 @endphp
 
-<div x-data="{
-        showAddNote:      false,
-        showUpdateAmount: false,
-        showMoveStage:    false,
-        showArchive:      false,
-        showAddPartner:   false,
-        showAddReferrer:  false,
+<script>
+// Blade values injected once — safe for the JS function below
+window.__rsDeal = {
+    base:         '{{ $BASE }}',
+    csrf:         '{{ $CSRF }}',
+    currentStage: '{{ $lead->stage }}',
+    initAmount:   '{{ number_format((float)($lead->deal_value ?? 0), 2, ".", "") }}',
+    stageReqs:    @json($stageRequirements),
+};
+</script>
 
-        noteBody:    '',
-        noteSaving:  false,
-        noteError:   '',
-
-        newAmount:    '{{ number_format((float)($lead->deal_value ?? 0), 2, '.', '') }}',
-        amountReason: '',
-        amountSaving: false,
-        amountError:  '',
-
-        targetStage:    '',
-        stageReason:    '',
-        stageSaving:    false,
-        stageError:     '',
-        stageReqs:      @json($stageRequirements),
-        reqChecks:      {},
-
-        get currentStageKey() { return '{{ $lead->stage }}'; },
-        get transitionKey()   { return this.currentStageKey + '_to_' + this.targetStage; },
-        get currentReqs()     { return this.stageReqs[this.transitionKey] ?? []; },
-        get missingRequired() {
-            return this.currentReqs.filter(r => r.required && !this.reqChecks[r.id]);
-        },
-        get needsApproval() { return this.targetStage !== '' && this.missingRequired.length > 0; },
-
-        resetStageModal() {
-            this.targetStage = ''; this.stageReason = ''; this.reqChecks = {}; this.stageError = '';
-        },
-
-        archiveReason:  '',
-        archiveDetail:  '',
-        archiveSaving:  false,
-        archiveError:   '',
-
-        refName:        '',
-        refSplit:       '',
-        refSaving:      false,
-        refError:       '',
-
-        toast: '',
-
-        showToast(msg) {
-            this.toast = msg;
-            setTimeout(() => this.toast = '', 4000);
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: msg } }));
-        },
-
-        async post(url, body) {
-            const r = await fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify(body),
-            });
-            return { ok: r.ok, data: await r.json().catch(() => ({})) };
-        },
-
-        async patch(url, body) {
-            const r = await fetch(url, {
-                method: 'PATCH',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify(body),
-            });
-            return { ok: r.ok, data: await r.json().catch(() => ({})) };
-        },
-
-        async saveNote() {
-            if (!this.noteBody.trim() || this.noteSaving) return;
-            this.noteSaving = true; this.noteError = '';
-            const { ok, data } = await this.post('{{ $BASE }}/notes', { body: this.noteBody });
-            this.noteSaving = false;
-            if (!ok) { this.noteError = data.error || 'Could not save note.'; return; }
-            this.showAddNote = false; this.noteBody = '';
-            this.showToast('Note added.');
-            setTimeout(() => window.location.reload(), 800);
-        },
-
-        async saveAmount() {
-            if (!this.newAmount || this.amountSaving) return;
-            this.amountSaving = true; this.amountError = '';
-            const { ok, data } = await this.patch('{{ $BASE }}/amount', { deal_value: parseFloat(this.newAmount.replace(/,/g,'')), reason: this.amountReason });
-            this.amountSaving = false;
-            if (!ok) { this.amountError = data.error || 'Could not update amount.'; return; }
-            this.showUpdateAmount = false;
-            this.showToast('Deal amount updated. Admins have been notified.');
-            setTimeout(() => window.location.reload(), 800);
-        },
-
-        async moveStage() {
-            if (!this.targetStage || this.stageSaving) return;
-            if (this.needsApproval && !this.stageReason.trim()) {
-                this.stageError = 'Please explain what you still need to complete before this stage can move.';
-                return;
-            }
-            this.stageSaving = true; this.stageError = '';
-            let ok, data;
-            if (this.needsApproval) {
-                // Submit approval request with list of unmet required items
-                const missing = this.missingRequired.map(r => r.label);
-                ({ ok, data } = await this.post('{{ $BASE }}/stage-approval', {
-                    target_stage:         this.targetStage,
-                    reason:               this.stageReason,
-                    missing_requirements: missing,
-                }));
-            } else {
-                ({ ok, data } = await this.post('{{ $BASE }}/move-stage', {
-                    stage:  this.targetStage,
-                    reason: this.stageReason,
-                }));
-            }
-            this.stageSaving = false;
-            if (!ok) { this.stageError = data.error || 'Could not process stage action.'; return; }
-            this.showMoveStage = false;
-            this.showToast(this.needsApproval ? 'Approval request submitted. Admin will review shortly.' : 'Stage moved successfully.');
-            setTimeout(() => window.location.reload(), 800);
-        },
-
-        async submitArchive() {
-            if (!this.archiveReason.trim() || this.archiveSaving) return;
-            this.archiveSaving = true; this.archiveError = '';
-            const fullReason = this.archiveDetail.trim()
-                ? this.archiveReason + ' — ' + this.archiveDetail.trim()
-                : this.archiveReason;
-            const { ok, data } = await this.post('{{ $BASE }}/archive-request', { reason: fullReason });
-            this.archiveSaving = false;
-            if (!ok) { this.archiveError = data.error || 'Could not submit request.'; return; }
-            this.showArchive = false; this.archiveReason = ''; this.archiveDetail = '';
-            this.showToast('Archive request submitted. Admins have been notified and will review shortly.');
-            setTimeout(() => window.location.reload(), 1000);
-        },
-
-        async saveReferrer() {
-            if (!this.refName || !this.refSplit || this.refSaving) return;
-            this.refSaving = true; this.refError = '';
-            const { ok, data } = await this.post('{{ $BASE }}/referrers', { reseller_name: this.refName, percentage: parseFloat(this.refSplit) });
-            this.refSaving = false;
-            if (!ok) { this.refError = data.error || 'Could not add referrer.'; return; }
-            this.showAddReferrer = false; this.refName = ''; this.refSplit = '';
-            this.showToast('Co-referrer added. Admins have been notified.');
-            setTimeout(() => window.location.reload(), 800);
-        },
-    }" class="space-y-5 max-w-3xl mx-auto">
+<div x-data="rsDealData()" class="space-y-5 max-w-3xl mx-auto">
 
     {{-- ── LGU IDS Default Amount Confirmation Prompt (Referrer) ── --}}
     @if(($lead->data['amount_defaulted'] ?? false) && ($lead->data['amount_confirmation_status'] ?? '') === 'pending')
@@ -810,9 +672,9 @@
                 </div>
 
                 {{-- Requirements checklist (shows when target selected and requirements exist) --}}
-                <div x-show="targetStage && currentReqs.length > 0" x-cloak class="space-y-1">
+                <div x-show="targetStage && currentReqs().length" x-cloak class="space-y-1">
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Requirements for this transition</p>
-                    <template x-for="req in currentReqs" :key="req.id">
+                    <template x-for="req in currentReqs()" :key="req.id">
                         <label class="flex items-start gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
                                :class="reqChecks[req.id] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'">
                             <input type="checkbox" :id="'req_' + req.id"
@@ -828,14 +690,14 @@
                     </template>
 
                     {{-- Needs-approval notice --}}
-                    <div x-show="needsApproval" class="flex items-start gap-2 mt-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <div x-show="needsApproval()" class="flex items-start gap-2 mt-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
                         <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <div>
                             <p class="text-xs font-semibold text-amber-700">Admin approval required</p>
                             <p class="text-xs text-amber-600 mt-0.5">Some required items are not yet completed. Your request will be sent to an Admin or Manager for review.</p>
                         </div>
                     </div>
-                    <div x-show="!needsApproval && targetStage && currentReqs.length > 0" class="flex items-center gap-2 mt-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-200">
+                    <div x-show="!needsApproval() && targetStage && currentReqs().length" class="flex items-center gap-2 mt-2 px-3 py-2.5 rounded-xl bg-green-50 border border-green-200">
                         <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p class="text-xs font-semibold text-green-700">All required items confirmed — you can move the stage directly.</p>
                     </div>
@@ -844,11 +706,11 @@
                 {{-- Note/reason field --}}
                 <div>
                     <label class="form-label">
-                        <span x-text="needsApproval ? 'Reason for approval request' : 'Note (optional)'"></span>
-                        <span x-show="needsApproval" class="text-red-400 ml-1">*</span>
+                        <span x-text="needsApproval() ? 'Reason for approval request' : 'Note (optional)'"></span>
+                        <span x-show="needsApproval()" class="text-red-400 ml-1">*</span>
                     </label>
                     <textarea x-model="stageReason" rows="2"
-                              :placeholder="needsApproval ? 'Explain what you need help with or when requirements will be met…' : 'Optional note about this stage change…'"
+                              :placeholder="needsApproval() ? 'Explain what you need help with or when requirements will be met…' : 'Optional note about this stage change…'"
                               class="form-input w-full text-sm resize-none"></textarea>
                 </div>
 
@@ -858,9 +720,9 @@
                 <button @click="showMoveStage = false; resetStageModal()" class="btn-secondary text-sm">Cancel</button>
                 <button @click="moveStage()"
                         :disabled="!targetStage || stageSaving"
-                        :class="needsApproval ? 'bg-amber-500 hover:bg-amber-600' : ''"
+                        :class="needsApproval() ? 'bg-amber-500 hover:bg-amber-600' : ''"
                         class="rs-btn-primary text-sm"
-                        x-text="stageSaving ? 'Processing…' : (needsApproval ? 'Request Approval →' : 'Move Stage →')"></button>
+                        x-text="stageSaving ? 'Processing…' : (needsApproval() ? 'Request Approval →' : 'Move Stage →')"></button>
             </div>
         </div>
     </div>
@@ -1144,6 +1006,156 @@
 
 @push('scripts')
 <script>
+function rsDealData() {
+    const { base, csrf, currentStage, initAmount, stageReqs } = window.__rsDeal;
+
+    function post(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(body),
+        }).then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })));
+    }
+
+    function patch(url, body) {
+        return fetch(url, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(body),
+        }).then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })));
+    }
+
+    return {
+        showAddNote:      false,
+        showUpdateAmount: false,
+        showMoveStage:    false,
+        showArchive:      false,
+        showAddPartner:   false,
+        showAddReferrer:  false,
+
+        noteBody:    '',
+        noteSaving:  false,
+        noteError:   '',
+
+        newAmount:    initAmount,
+        amountReason: '',
+        amountSaving: false,
+        amountError:  '',
+
+        targetStage:  '',
+        stageReason:  '',
+        stageSaving:  false,
+        stageError:   '',
+        stageReqs:    stageReqs,
+        reqChecks:    {},
+
+        // Computed helpers (methods, not getters, to avoid > in HTML attrs)
+        transitionKey()   { return currentStage + '_to_' + this.targetStage; },
+        currentReqs()     { return this.stageReqs[this.transitionKey()] || []; },
+        missingRequired() { return this.currentReqs().filter(r => r.required && !this.reqChecks[r.id]); },
+        needsApproval()   { return this.targetStage !== '' && this.missingRequired().length !== 0; },
+
+        resetStageModal() {
+            this.targetStage = ''; this.stageReason = ''; this.reqChecks = {}; this.stageError = '';
+        },
+
+        archiveReason:  '',
+        archiveDetail:  '',
+        archiveSaving:  false,
+        archiveError:   '',
+
+        refName:    '',
+        refSplit:   '',
+        refSaving:  false,
+        refError:   '',
+
+        toast: '',
+
+        showToast(msg) {
+            this.toast = msg;
+            setTimeout(() => { this.toast = ''; }, 4000);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: msg } }));
+        },
+
+        async saveNote() {
+            if (!this.noteBody.trim() || this.noteSaving) return;
+            this.noteSaving = true; this.noteError = '';
+            const { ok, data } = await post(base + '/notes', { body: this.noteBody });
+            this.noteSaving = false;
+            if (!ok) { this.noteError = data.error || 'Could not save note.'; return; }
+            this.showAddNote = false; this.noteBody = '';
+            this.showToast('Note added.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async saveAmount() {
+            if (!this.newAmount || this.amountSaving) return;
+            this.amountSaving = true; this.amountError = '';
+            const { ok, data } = await patch(base + '/amount', { deal_value: parseFloat(this.newAmount.replace(/,/g, '')), reason: this.amountReason });
+            this.amountSaving = false;
+            if (!ok) { this.amountError = data.error || 'Could not update amount.'; return; }
+            this.showUpdateAmount = false;
+            this.showToast('Deal amount updated. Admins have been notified.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async moveStage() {
+            if (!this.targetStage || this.stageSaving) return;
+            if (this.needsApproval() && !this.stageReason.trim()) {
+                this.stageError = 'Please explain what you still need to complete before this stage can move.';
+                return;
+            }
+            this.stageSaving = true; this.stageError = '';
+            let ok, data;
+            if (this.needsApproval()) {
+                const missing = this.missingRequired().map(r => r.label);
+                ({ ok, data } = await post(base + '/stage-approval', {
+                    target_stage:         this.targetStage,
+                    reason:               this.stageReason,
+                    missing_requirements: missing,
+                }));
+            } else {
+                ({ ok, data } = await post(base + '/move-stage', {
+                    stage:  this.targetStage,
+                    reason: this.stageReason,
+                }));
+            }
+            this.stageSaving = false;
+            if (!ok) { this.stageError = data.error || 'Could not process stage action.'; return; }
+            this.showMoveStage = false;
+            this.showToast(this.needsApproval() ? 'Approval request submitted. Admin will review shortly.' : 'Stage moved successfully.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+
+        async submitArchive() {
+            if (!this.archiveReason.trim() || this.archiveSaving) return;
+            this.archiveSaving = true; this.archiveError = '';
+            const fullReason = this.archiveDetail.trim()
+                ? this.archiveReason + ' — ' + this.archiveDetail.trim()
+                : this.archiveReason;
+            const { ok, data } = await post(base + '/archive-request', { reason: fullReason });
+            this.archiveSaving = false;
+            if (!ok) { this.archiveError = data.error || 'Could not submit request.'; return; }
+            this.showArchive = false; this.archiveReason = ''; this.archiveDetail = '';
+            this.showToast('Archive request submitted. Admins have been notified and will review shortly.');
+            setTimeout(() => window.location.reload(), 1000);
+        },
+
+        async saveReferrer() {
+            if (!this.refName || !this.refSplit || this.refSaving) return;
+            this.refSaving = true; this.refError = '';
+            const { ok, data } = await post(base + '/referrers', { reseller_name: this.refName, percentage: parseFloat(this.refSplit) });
+            this.refSaving = false;
+            if (!ok) { this.refError = data.error || 'Could not add referrer.'; return; }
+            this.showAddReferrer = false; this.refName = ''; this.refSplit = '';
+            this.showToast('Co-referrer added. Admins have been notified.');
+            setTimeout(() => window.location.reload(), 800);
+        },
+    };
+}
+
 let _rbRemoveSplitId   = null;
 let _rbRemoveSplitUrl  = null;
 
