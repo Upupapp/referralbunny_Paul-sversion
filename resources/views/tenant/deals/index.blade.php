@@ -162,7 +162,7 @@
                         <template x-if="sortDir === 'asc'"><path d="M1 5L5 1L9 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></template>
                         <template x-if="sortDir === 'desc'"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></template>
                     </svg>
-                    <span x-text="{name:'Deal',stage:'Stage',reseller:'Referrer',value:'Value',created_at:'Date Added',days_left:'Days Left',status:'Status'}[sortCol] || sortCol"></span>
+                    <span x-text="{name:'Deal',stage:'Stage',reseller:'Referrer',value:'Value',created_at:'Date Added',days_left:'Days Left',status:'Status',last_activity_at:'Last Activity'}[sortCol] || sortCol"></span>
                     <button @click="sortCol = 'created_at'; sortDir = 'desc'" class="ml-0.5 hover:text-purple-800" title="Clear sort">×</button>
                 </span>
             </div>
@@ -183,7 +183,8 @@
                             ['key'=>'value',      'label'=>'Value',      'tip'=>'Sort highest or lowest first',           'hidden'=>''],
                             ['key'=>'created_at', 'label'=>'Date Added',  'tip'=>'Sort by date the deal was added',        'hidden'=>'hidden md:table-cell'],
                             ['key'=>'days_left',  'label'=>'Days Left',  'tip'=>'Sort most urgent (fewest days) first',   'hidden'=>'hidden md:table-cell'],
-                            ['key'=>'status',     'label'=>'Status',     'tip'=>'Sort by deal status',                    'hidden'=>''],
+                            ['key'=>'status',            'label'=>'Status',        'tip'=>'Sort by deal status',                         'hidden'=>''],
+                            ['key'=>'last_activity_at',  'label'=>'Last Activity', 'tip'=>'Sort by most recent change or update on deal', 'hidden'=>'hidden xl:table-cell'],
                         ];
                         @endphp
                         <th x-show="selectMode" class="w-10">
@@ -284,6 +285,16 @@
                                     'badge badge-red':    lead.status === 'expired',
                                     'badge badge-gray':   lead.status === 'reassigned' || lead.status === 'declined',
                                 }" x-text="lead.status ? lead.status.charAt(0).toUpperCase() + lead.status.slice(1) : 'Active'"></span>
+                            </td>
+                            <td class="hidden xl:table-cell">
+                                <template x-if="lead.last_activity_at">
+                                    <span class="text-xs text-gray-500"
+                                          :title="new Date(lead.last_activity_at).toLocaleString('en-PH', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})"
+                                          x-text="timeAgo(lead.last_activity_at)"></span>
+                                </template>
+                                <template x-if="!lead.last_activity_at">
+                                    <span class="text-xs text-gray-300">—</span>
+                                </template>
                             </td>
                             <td @click.stop>
                                 <a :href="'/tenant/{{ $tenant->id }}/deals/' + lead.id"
@@ -1037,6 +1048,16 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
         },
 
+        timeAgo(iso) {
+            if (!iso) return '—';
+            const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (s < 60)     return 'just now';
+            if (s < 3600)   return Math.floor(s / 60) + 'm ago';
+            if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
+            if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+            return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+        },
+
         applyFilters() {
             const q = this.search.toLowerCase();
             this.filtered = this.leads.filter(l => {
@@ -1059,7 +1080,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             } else {
                 this.sortCol = col;
                 // Sensible default direction per column type
-                const descByDefault = ['value', 'created_at'];
+                const descByDefault = ['value', 'created_at', 'last_activity_at'];
                 const ascByDefault  = ['name', 'reseller', 'stage', 'commission', 'status', 'days_left'];
                 this.sortDir = descByDefault.includes(col) ? 'desc' : 'asc';
             }
@@ -1100,6 +1121,10 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                     case 'status':
                         va = statusOrder[a.status] ?? 99;
                         vb = statusOrder[b.status] ?? 99;
+                        break;
+                    case 'last_activity_at':
+                        va = new Date(a.last_activity_at || a.created_at || 0).getTime();
+                        vb = new Date(b.last_activity_at || b.created_at || 0).getTime();
                         break;
                     default: // created_at
                         va = new Date(a.created_at || 0).getTime();

@@ -38,7 +38,14 @@ class LeadController extends Controller
             $relations[] = 'dealPartners.partner';
         }
 
-        $query = Lead::with($relations)->orderBy('created_at', 'desc');
+        $query = Lead::with($relations)
+            ->addSelect([
+                'last_activity_at' => LeadHistory::select('created_at')
+                    ->whereColumn('lead_id', 'leads.id')
+                    ->orderByDesc('created_at')
+                    ->limit(1),
+            ])
+            ->orderBy('created_at', 'desc');
 
         // Derive tenant from authenticated context; fall back to query param
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
