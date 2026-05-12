@@ -108,16 +108,36 @@ class PartnerPortalController extends Controller
             ->where('partner_email', $partner->email)
             ->first();
 
-        // Compute this partner's peso amount from the deal's commission pool
+        // Compute this partner's peso amount from the deal's commission pool.
+        // NOTE: commission_pool, added_amount, base_cost are NEVER passed to the view —
+        // partners are only entitled to see their own estimated commission amount.
         $commissionPool = round((float) ($lead->added_amount ?? 0) * 0.70, 2);
         if ($myPartnerSplit) {
             $myPartnerSplit->peso_amount = $myPartnerSplit->split_share_type === 'percentage'
                 ? round($commissionPool * (float) $myPartnerSplit->split_share_value / 100, 2)
                 : (float) $myPartnerSplit->split_share_value;
-            $myPartnerSplit->commission_pool = $commissionPool;
+            // Do NOT store commission_pool on the split object — it must not reach the view
         }
 
-        return view('partner.deals.show', compact('partner', 'lead', 'dealPartner', 'thread', 'myPartnerSplit'));
+        // Build a partner-safe deal summary: only fields partners are authorised to see.
+        // Never pass the full Lead model — it contains base_cost, added_amount, tenant financials.
+        $dealSummary = [
+            'id'           => $lead->id,
+            'name'         => $lead->name,
+            'stage'        => $lead->stage,
+            'status'       => $lead->status,
+            'days_left'    => $lead->days_left,
+            'deal_value'   => (float) ($lead->deal_value ?? 0),   // total contract value — visible
+            'reseller_name'=> $lead->reseller_name,               // referrer name only, no contact
+            'data'         => [                                    // location context only
+                'province'     => $lead->data['province']     ?? null,
+                'municipality' => $lead->data['municipality'] ?? null,
+            ],
+        ];
+
+        return view('partner.deals.show', compact(
+            'partner', 'dealSummary', 'dealPartner', 'thread', 'myPartnerSplit'
+        ));
     }
 
     public function messages()
