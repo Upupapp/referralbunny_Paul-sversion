@@ -299,9 +299,7 @@
         @endif
     </div>
 
-</div>
-
-{{-- ── Single-form delete modal ─────────────────────────────────────────── --}}
+{{-- ── Single-form delete modal (plain JS, outside Alpine scope is fine) ── --}}
 <div id="rb-delete-form-modal"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;padding:16px">
     <div style="background:white;border-radius:20px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
@@ -356,6 +354,8 @@
     @csrf
     @method('DELETE')
 </form>
+
+</div>{{-- END x-data="rfBulkSelect()" scope — bulk modal and hidden form must be inside --}}
 
 @push('scripts')
 <script>
