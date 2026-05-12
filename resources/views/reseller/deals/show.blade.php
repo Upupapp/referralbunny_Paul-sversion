@@ -949,24 +949,31 @@ window.__rsDeal = {
     <div x-show="showAddReferrer" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-[#1E1B4B]">Add Co-Referrer</h3>
-                <button @click="showAddReferrer = false" class="text-gray-400 hover:text-gray-600">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]">Add Co-Referrer</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">An invite or in-app notification will be sent.</p>
+                </div>
+                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="px-5 py-4 space-y-3">
+                <div class="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 leading-relaxed">
+                    Enter the email address of the person you want to add as a co-referrer. If they already have a Referrer account, they'll receive an in-app notification. If not, they'll receive an invitation email.
+                </div>
                 <div>
-                    <label class="form-label">Referrer Name <span class="text-red-400">*</span></label>
-                    <input x-model="refName" type="text" class="form-input w-full text-sm" placeholder="Exact name in the system">
+                    <label class="form-label">Email Address <span class="text-red-400">*</span></label>
+                    <input x-model="refName" type="email" class="form-input w-full text-sm" placeholder="referrer@example.com" autocomplete="email">
                 </div>
                 <div>
                     <label class="form-label">Commission Share (%) <span class="text-red-400">*</span></label>
-                    <input x-model="refSplit" type="number" min="0" max="100" step="0.01" class="form-input w-full text-sm" placeholder="0–100">
+                    <input x-model="refSplit" type="number" min="0" max="100" step="0.01" class="form-input w-full text-sm" placeholder="e.g. 10">
+                    <p class="text-xs text-gray-400 mt-1">Your total commission across all co-referrers cannot exceed 100%.</p>
                 </div>
                 <div x-show="refError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="refError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showAddReferrer = false" class="btn-secondary text-sm">Cancel</button>
+                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" class="btn-secondary text-sm">Cancel</button>
                 <button @click="saveReferrer()" :disabled="!refName || !refSplit || refSaving"
                         class="rs-btn-primary text-sm" x-text="refSaving ? 'Adding…' : 'Add Co-Referrer'"></button>
             </div>
@@ -1092,13 +1099,31 @@ function rsDealData() {
 
         async saveAmount() {
             if (!this.newAmount || this.amountSaving) return;
+            if (!this.amountReason.trim()) {
+                this.amountError = 'Please explain why the amount is changing.';
+                return;
+            }
             this.amountSaving = true; this.amountError = '';
-            const { ok, data } = await patch(base + '/amount', { deal_value: parseFloat(this.newAmount.replace(/,/g, '')), reason: this.amountReason });
-            this.amountSaving = false;
-            if (!ok) { this.amountError = data.error || 'Could not update amount.'; return; }
-            this.showUpdateAmount = false;
-            this.showToast('Deal amount updated. Admins have been notified.');
-            setTimeout(() => window.location.reload(), 800);
+            try {
+                const dealValue = parseFloat(String(this.newAmount).replace(/,/g, ''));
+                const { ok, data } = await patch(base + '/amount', { deal_value: dealValue, reason: this.amountReason });
+                this.amountSaving = false;
+                if (!ok) {
+                    // Extract from Laravel validation error format or plain error field
+                    const errMsg = data.error || data.message
+                        || (data.errors ? Object.values(data.errors).flat().join(' ') : null)
+                        || 'Could not update amount. Please try again.';
+                    this.amountError = errMsg;
+                    return;
+                }
+                this.showUpdateAmount = false;
+                this.amountReason = '';
+                this.showToast('Deal amount updated. Admins have been notified.');
+                setTimeout(() => window.location.reload(), 800);
+            } catch (e) {
+                this.amountSaving = false;
+                this.amountError = 'Network error. Please check your connection and try again.';
+            }
         },
 
         async moveStage() {
@@ -1145,13 +1170,30 @@ function rsDealData() {
 
         async saveReferrer() {
             if (!this.refName || !this.refSplit || this.refSaving) return;
+            // Basic email validation client-side
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.refName.trim())) {
+                this.refError = 'Please enter a valid email address.';
+                return;
+            }
             this.refSaving = true; this.refError = '';
-            const { ok, data } = await post(base + '/referrers', { reseller_name: this.refName, percentage: parseFloat(this.refSplit) });
-            this.refSaving = false;
-            if (!ok) { this.refError = data.error || 'Could not add referrer.'; return; }
-            this.showAddReferrer = false; this.refName = ''; this.refSplit = '';
-            this.showToast('Co-referrer added. Admins have been notified.');
-            setTimeout(() => window.location.reload(), 800);
+            try {
+                const { ok, data } = await post(base + '/referrers', {
+                    referrer_email: this.refName.trim().toLowerCase(),
+                    percentage:     parseFloat(this.refSplit),
+                });
+                this.refSaving = false;
+                if (!ok) {
+                    this.refError = data.error || data.message || 'Could not add co-referrer. Please try again.';
+                    return;
+                }
+                this.showAddReferrer = false; this.refName = ''; this.refSplit = '';
+                this.showToast(data.message || 'Co-referrer added.');
+                setTimeout(() => window.location.reload(), 900);
+            } catch (e) {
+                this.refSaving = false;
+                this.refError = 'Network error. Please try again.';
+                return;
+            }
         },
     };
 }

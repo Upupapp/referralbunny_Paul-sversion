@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResellerInvitation;
 use App\Models\DealApprovalRequest;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LeadHistory;
 use App\Models\CommissionSplit;
 use App\Models\Reseller;
+use App\Models\Tenant;
 use App\Services\CommissionCalculationService;
 use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
@@ -17,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ResellerDealController extends Controller
 {
@@ -281,9 +284,6 @@ class ResellerDealController extends Controller
         try {
             $lead->update(['deal_value' => $newAmount]);
 
-            $calc         = app(CommissionCalculationService::class);
-            $newBreakdown = $calc->breakdownFromLead($lead->fresh());
-
             app(DealActivityService::class)->record($lead, 'Deal amount updated by referrer', 'amount', [
                 'category'   => 'financial',
                 'reseller'   => $reseller->name,
@@ -293,7 +293,22 @@ class ResellerDealController extends Controller
                 'new_values' => ['deal_value' => $newAmount],
             ]);
 
-            // Notify tenant admins
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController updateAmount failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not update amount. Please try again.'], 500);
+        }
+
+        // Compute breakdown AFTER commit (read-only, never block the update)
+        $newBreakdown = [];
+        try {
+            $calc         = app(CommissionCalculationService::class);
+            $newBreakdown = $calc->breakdownFromLead($lead->fresh());
+        } catch (\Throwable) {}
+
+        // Notify admins AFTER commit (best-effort)
+        try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
@@ -304,18 +319,12 @@ class ResellerDealController extends Controller
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $dealId . ':amount:' . now()->format('YmdHi'),
             );
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController updateAmount failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not update amount. Please try again.'], 500);
-        }
+        } catch (\Throwable) {}
 
         return response()->json([
-            'success'   => true,
-            'deal_value'=> $newAmount,
-            'breakdown' => $newBreakdown ?? [],
+            'success'    => true,
+            'deal_value' => $newAmount,
+            'breakdown'  => $newBreakdown,
         ]);
     }
 
@@ -676,81 +685,151 @@ class ResellerDealController extends Controller
         $lead     = $this->deal($tenantId, $dealId);
 
         $data = $request->validate([
-            'reseller_name' => 'required|string|max:150',
-            'percentage'    => 'required|numeric|min:0|max:100',
+            'referrer_email' => 'required|email|max:200',
+            'percentage'     => 'required|numeric|min:0|max:100',
         ]);
 
-        // Prevent adding yourself as a duplicate
-        if (strtolower($data['reseller_name']) === strtolower($reseller->name)) {
-            return response()->json(['error' => 'You are already assigned to this deal.'], 422);
+        $email      = strtolower(trim($data['referrer_email']));
+        $percentage = (float) $data['percentage'];
+
+        // Prevent adding yourself
+        if ($email === strtolower(trim($reseller->email ?? ''))) {
+            return response()->json(['error' => 'You cannot add yourself as a co-referrer.'], 422);
         }
 
-        // Prevent cross-tenant assignment (verify reseller exists in this tenant)
+        // Look up existing reseller by email in this tenant
         $targetReseller = Reseller::where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
+            ->whereRaw('LOWER(email) = ?', [$email])
             ->first();
 
-        // Check not already a split
-        $alreadySplit = CommissionSplit::where('lead_id', $dealId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($data['reseller_name'])])
+        // Display name: use reseller name if found, otherwise use email
+        $displayName = $targetReseller ? $targetReseller->name : $email;
+
+        // Prevent duplicate (match by display name or email-as-name)
+        $alreadySplit = CommissionSplit::where('lead_id', $lead->id)
+            ->where(function ($q) use ($displayName, $email) {
+                $q->whereRaw('LOWER(reseller_name) = ?', [strtolower($displayName)])
+                  ->orWhereRaw('LOWER(reseller_name) = ?', [$email]);
+            })
             ->exists();
 
         if ($alreadySplit) {
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
+        // Look up tenant user (admin/manager) by email for notification
+        $tenantUserByEmail = DB::table('tenant_users as tu')
+            ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->whereRaw('LOWER(tu.email) = ?', [$email])
+            ->selectRaw("tu.id, tu.email, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tm.role")
+            ->first();
+
+        // Commit the split creation as its own atomic step
         DB::beginTransaction();
         try {
             CommissionSplit::create([
-                'lead_id'         => $dealId,
-                'reseller_name'   => $data['reseller_name'],
-                'percentage'      => $data['percentage'],
+                'lead_id'         => $lead->id,
+                'reseller_name'   => $displayName,
+                'percentage'      => $percentage,
                 'role'            => 'secondary',
                 'activity_status' => 'active',
             ]);
 
-            app(DealActivityService::class)->record($lead, 'Additional referrer added by referrer', 'referrer', [
+            app(DealActivityService::class)->record($lead, 'Co-referrer added by referrer: ' . $email, 'referrer', [
                 'category'   => 'assignment',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
                 'actor_role' => 'referrer',
-                'new_values' => ['added_referrer' => $data['reseller_name'], 'percentage' => $data['percentage']],
+                'new_values' => ['added_referrer_email' => $email, 'percentage' => $percentage],
             ]);
 
-            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $tenantId,
-                category:     'deal_pipeline',
-                priority:     'normal',
-                title:        'Additional referrer added',
-                body:         $reseller->name . ' added ' . $data['reseller_name'] . ' as a referrer on "' . $lead->name . '".',
-                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
-                actionLabel:  'Review Deal',
-                dedupeSuffix: $dealId . ':coreferrer:' . md5(strtolower($data['reseller_name'])),
-            );
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController addReferrer failed', ['error' => $e->getMessage(), 'email' => $email]);
+            return response()->json(['error' => 'Could not add co-referrer. Please try again.'], 500);
+        }
 
-            // Notify the added referrer if they have an active account
-            if ($targetReseller && in_array($targetReseller->status, ['active', 'nda_signed'])) {
+        // Post-commit: notify or invite (best-effort — never rollback the split for these)
+        $notified = false;
+        $invited  = false;
+
+        if ($targetReseller && in_array($targetReseller->status, ['active', 'nda_signed'])) {
+            // Existing referrer — send in-app notification
+            try {
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   (string) $targetReseller->id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
                     priority:     'high',
-                    title:        'You were added to a deal',
-                    body:         'You were added as a referrer on "' . $lead->name . '".',
-                    actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
+                    title:        'You were added as a co-referrer',
+                    body:         $reseller->name . ' added you as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $dealId . ':added_referrer:' . (string) $targetReseller->id,
+                    dedupeSuffix: $lead->id . ':coreferrer:' . (string) $targetReseller->id,
                 );
-            }
+                $notified = true;
+            } catch (\Throwable) {}
 
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController addReferrer failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not add referrer. Please try again.'], 500);
+        } elseif ($tenantUserByEmail) {
+            // Tenant admin/manager — send in-app notification
+            try {
+                app(NotificationDispatchService::class)->dispatch(
+                    category:         'deal_pipeline',
+                    priority:         'normal',
+                    title:            'You were added as a co-referrer on a deal',
+                    body:             $reseller->name . ' added you as a co-referrer on "' . $lead->name . '".',
+                    notifiableType:   'tenant_user',
+                    notifiableId:     (string) $tenantUserByEmail->id,
+                    tenantId:         $tenantId,
+                    actionUrl:        url("/tenant/{$tenantId}/deals/{$lead->id}"),
+                    actionLabel:      'View Deal',
+                    deduplicationKey: $lead->id . ':coreferrer_admin:' . (string) $tenantUserByEmail->id,
+                );
+                $notified = true;
+            } catch (\Throwable) {}
+
+        } else {
+            // Not found — send referrer invite by email
+            try {
+                $tenant   = Tenant::find($tenantId);
+                $signupUrl = url('/reseller/login?hint=' . urlencode($email));
+                Mail::to($email)->send(new ResellerInvitation(
+                    resellerName:  $email,
+                    resellerEmail: $email,
+                    tenantName:    $tenant->name ?? 'ReferralBunny',
+                    setupUrl:      $signupUrl,
+                    dealName:      $lead->name,
+                    dealCount:     1,
+                    dealNames:     [$lead->name],
+                ));
+                $invited = true;
+            } catch (\Throwable $e) {
+                Log::warning('addReferrer: invite email failed', ['email' => $email, 'error' => $e->getMessage()]);
+            }
         }
 
-        return response()->json(['success' => true]);
+        // Notify admins in all cases
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Co-referrer added',
+                body:         $reseller->name . ' added ' . $email . ' as a co-referrer on "' . $lead->name . '".',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
+                actionLabel:  'Review Deal',
+                dedupeSuffix: $lead->id . ':coreferrer:' . md5($email),
+            );
+        } catch (\Throwable) {}
+
+        $message = $notified ? 'Co-referrer added — they have been notified.'
+            : ($invited  ? 'Co-referrer added — an invitation email has been sent.'
+                         : 'Co-referrer added successfully.');
+
+        return response()->json(['success' => true, 'message' => $message]);
     }
 
     // ── Approve / Reject deal approval (for tenant admins) ───────────────────
