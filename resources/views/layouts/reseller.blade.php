@@ -11,21 +11,57 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .rs-sidebar { background: #0C3D38; }
+
+        /* ── Top-level nav items — visually dominant ─────────────────── */
         .rs-sidebar-link {
-            display:flex;align-items:center;gap:.75rem;padding:.625rem 1rem;border-radius:.75rem;
-            font-size:.875rem;font-weight:500;color:rgba(255,255,255,.65);
+            display:flex;align-items:center;gap:.75rem;
+            padding:.625rem 1rem;border-radius:.875rem;
+            font-size:.9375rem;font-weight:600;
+            color:rgba(255,255,255,.62);
             text-decoration:none;transition:all .15s;
+            border-left:3px solid transparent;
         }
-        .rs-sidebar-link:hover { background:rgba(255,255,255,.1); color:#fff; }
-        .rs-sidebar-link.active { background:rgba(255,255,255,.12); color:#fff; border-left:3px solid #14B8A6; }
-        .rs-group-active { color:rgba(255,255,255,.9) !important; }
+        .rs-sidebar-link:hover {
+            background:rgba(255,255,255,.09);
+            color:rgba(255,255,255,.95);
+        }
+        .rs-sidebar-link:focus-visible {
+            outline:2px solid #14B8A6;
+            outline-offset:2px;
+        }
+        .rs-sidebar-link.active {
+            background:rgba(20,184,166,.18);
+            color:#fff;
+            border-left:3px solid #14B8A6;
+        }
+        /* Group parent when a child is active (but parent itself not a link) */
+        .rs-group-active {
+            color:rgba(255,255,255,.92) !important;
+            background:rgba(255,255,255,.06);
+        }
+
+        /* ── Child nav items — visually secondary ────────────────────── */
         .rs-sidebar-child {
-            display:flex;align-items:center;gap:.625rem;padding:.4375rem .875rem;border-radius:.625rem;
-            font-size:.8125rem;font-weight:500;color:rgba(255,255,255,.55);
+            display:flex;align-items:center;gap:.5rem;
+            padding:.375rem .75rem;border-radius:.625rem;
+            font-size:.8125rem;font-weight:500;
+            color:rgba(255,255,255,.5);
             text-decoration:none;transition:all .15s;
         }
-        .rs-sidebar-child:hover { background:rgba(255,255,255,.07); color:rgba(255,255,255,.9); }
-        .rs-sidebar-child.active { background:rgba(255,255,255,.1); color:#fff; border-left:2px solid #5EEAD4; padding-left:.75rem; }
+        .rs-sidebar-child:hover {
+            background:rgba(255,255,255,.07);
+            color:rgba(255,255,255,.88);
+        }
+        .rs-sidebar-child:focus-visible {
+            outline:2px solid #14B8A6;
+            outline-offset:2px;
+        }
+        .rs-sidebar-child.active {
+            background:rgba(94,234,212,.12);
+            color:#5EEAD4;
+            font-weight:600;
+        }
+
         .rs-btn-primary { background:#0D9488;color:#fff;border:none;border-radius:.75rem;padding:.625rem 1rem;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:background .15s;font-family:'Inter',sans-serif; }
         .rs-btn-primary:hover { background:#0F766E; }
         .rs-page-bg { background:#F0FDFA; }

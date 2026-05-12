@@ -13,46 +13,49 @@
     }
 
     // Active-group detection — used to set default open state
-    $_networkActive = request()->routeIs('reseller.partners*') || request()->routeIs('reseller.contacts*');
-    $_commsActive   = request()->routeIs('reseller.request-forms') || request()->routeIs('reseller.messages');
-    $_dealsActive   = request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show') || request()->routeIs('reseller.deals.imports*');
+    $_networkActive = request()->routeIs('reseller.partners*')
+                   || request()->routeIs('reseller.contacts*');
+
+    $_commsActive   = request()->routeIs('reseller.request-forms')
+                   || request()->routeIs('reseller.messages');
+
+    // My Deals is active on the list, detail, AND import pages
+    $_dealsActive   = request()->routeIs('reseller.deals')
+                   || request()->routeIs('reseller.deals.show')
+                   || request()->routeIs('reseller.deals.imports*');
+
+    // My Contacts is active on the list AND import pages
+    $_contactsActive = request()->routeIs('reseller.contacts')
+                    || request()->routeIs('reseller.contacts.imports*');
 @endphp
 
 {{-- ── Dashboard ────────────────────────────────────────────── --}}
 <a href="{{ route('reseller.dashboard', $tid) }}"
    class="rs-sidebar-link {{ request()->routeIs('reseller.dashboard') ? 'active' : '' }}"
    @if(request()->routeIs('reseller.dashboard')) aria-current="page" @endif>
-    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+    <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
     </svg>
     Dashboard
 </a>
 
 {{-- ── My Deals ─────────────────────────────────────────────── --}}
+{{-- Active on: list, detail, AND import pages (Import Deals CTA is on the page, not the sidebar) --}}
 <a href="{{ route('reseller.deals', $tid) }}"
-   class="rs-sidebar-link {{ request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show') ? 'active' : '' }}"
-   @if(request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show')) aria-current="page" @endif>
-    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+   class="rs-sidebar-link {{ $_dealsActive ? 'active' : '' }}"
+   @if($_dealsActive) aria-current="page" @endif>
+    <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
     </svg>
     My Deals
-</a>
-
-<a href="{{ route('reseller.deals.imports', $tid) }}"
-   class="rs-sidebar-child {{ request()->routeIs('reseller.deals.imports*') ? 'active' : '' }}"
-   @if(request()->routeIs('reseller.deals.imports*')) aria-current="page" @endif>
-    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-    </svg>
-    Import Deals
 </a>
 
 {{-- ── My Commission ───────────────────────────────────────── --}}
 <a href="{{ route('reseller.commission', $tid) }}"
    class="rs-sidebar-link {{ request()->routeIs('reseller.commission') ? 'active' : '' }}"
    @if(request()->routeIs('reseller.commission')) aria-current="page" @endif>
-    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
     </svg>
     My Commission
 </a>
@@ -72,14 +75,14 @@
             :aria-expanded="String(open)"
             aria-controls="rs-network-panel"
             class="rs-sidebar-link w-full text-left {{ $_networkActive ? 'rs-group-active' : '' }}">
-        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
         </svg>
         <span class="flex-1">My Network</span>
-        <svg class="w-3.5 h-3.5 shrink-0 transition-transform duration-200 ml-auto"
+        <svg class="w-3 h-3 shrink-0 transition-transform duration-200 ml-auto opacity-50"
              :class="open ? 'rotate-180' : ''"
              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
         </svg>
     </button>
 
@@ -104,22 +107,14 @@
             My Partners
         </a>
 
+        {{-- My Contacts — active on list AND import pages (Import Contacts CTA is on the page) --}}
         <a href="{{ route('reseller.contacts', $tid) }}"
-           class="rs-sidebar-child {{ request()->routeIs('reseller.contacts') ? 'active' : '' }}"
-           @if(request()->routeIs('reseller.contacts')) aria-current="page" @endif>
+           class="rs-sidebar-child {{ $_contactsActive ? 'active' : '' }}"
+           @if($_contactsActive) aria-current="page" @endif>
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
             My Contacts
-        </a>
-
-        <a href="{{ route('reseller.contacts.imports', $tid) }}"
-           class="rs-sidebar-child {{ request()->routeIs('reseller.contacts.imports*') ? 'active' : '' }}"
-           @if(request()->routeIs('reseller.contacts.imports*')) aria-current="page" @endif>
-            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            Import Contacts
         </a>
 
     </div>
@@ -140,8 +135,8 @@
             :aria-expanded="String(open)"
             aria-controls="rs-comms-panel"
             class="rs-sidebar-link w-full text-left {{ $_commsActive ? 'rs-group-active' : '' }}">
-        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+        <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
         </svg>
         <span class="flex-1">Requests &amp; Messages</span>
         @if($_rsUnread > 0)
@@ -151,10 +146,10 @@
                 {{ $_rsUnread > 9 ? '9+' : $_rsUnread }}
             </span>
         @endif
-        <svg class="w-3.5 h-3.5 shrink-0 transition-transform duration-200 {{ $_rsUnread > 0 ? '' : 'ml-auto' }}"
+        <svg class="w-3 h-3 shrink-0 transition-transform duration-200 opacity-50 {{ $_rsUnread > 0 ? '' : 'ml-auto' }}"
              :class="open ? 'rotate-180' : ''"
              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
         </svg>
     </button>
 
@@ -202,21 +197,21 @@
 <a href="{{ route('reseller.activity', $tid) }}"
    class="rs-sidebar-link {{ request()->routeIs('reseller.activity') ? 'active' : '' }}"
    @if(request()->routeIs('reseller.activity')) aria-current="page" @endif>
-    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
     Activity Log
 </a>
 
 {{-- ── Divider ──────────────────────────────────────────────── --}}
-<div class="mx-1 my-2 border-t border-white/10"></div>
+<div class="mx-1 my-2 border-t border-white/10" role="separator"></div>
 
 {{-- ── Profile ──────────────────────────────────────────────── --}}
 <a href="{{ route('reseller.profile', $tid) }}"
    class="rs-sidebar-link {{ request()->routeIs('reseller.profile') ? 'active' : '' }}"
    @if(request()->routeIs('reseller.profile')) aria-current="page" @endif>
-    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+    <svg class="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
     </svg>
     Profile
 </a>
