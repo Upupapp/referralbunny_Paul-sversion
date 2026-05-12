@@ -103,24 +103,50 @@ class PartnerAuthController extends Controller
         ]);
 
         // Activate any pending DealPartner invitations for this partner
-        DealPartner::where('partner_user_id', $partner->id)
-            ->where('status', 'invited')
-            ->update([
-                'status'      => 'active',
-                'accepted_at' => now(),
+        try {
+            DealPartner::where('partner_user_id', $partner->id)
+                ->where('status', 'invited')
+                ->update(['status' => 'active', 'accepted_at' => now()]);
+        } catch (\Throwable) {}
+
+        // If this partner was invited via the referrer/deal flow (no DealPartner record),
+        // link their DealPartnerSplit rows so the portal can find their deals.
+        try {
+            $splitIds = DB::table('deal_partner_splits')
+                ->where('tenant_id', $partner->tenant_id)
+                ->whereRaw('LOWER(partner_email) = ?', [strtolower($partner->email)])
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->pluck('id');
+
+            if ($splitIds->isNotEmpty()) {
+                DB::table('deal_partner_splits')
+                    ->whereIn('id', $splitIds)
+                    ->update(['partner_user_id' => $partner->id]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('PartnerAuthController: could not link split rows to partner', [
+                'partner_id' => $partner->id, 'error' => $e->getMessage(),
             ]);
-
-        // Fetch a related deal (if any) for the notification
-        $relatedDealPartner = DealPartner::where('partner_user_id', $partner->id)
-            ->where('status', 'active')
-            ->first();
-
-        $relatedDealName = null;
-        if ($relatedDealPartner?->deal_id) {
-            $relatedDealName = DB::table('deals')->where('id', $relatedDealPartner->deal_id)->value('name');
         }
 
-        Auth::guard('partner')->login($partner);
+        // Fetch a related deal (if any) for the notification
+        $relatedDealPartner = null;
+        $relatedDealName    = null;
+        try {
+            $relatedDealPartner = DealPartner::where('partner_user_id', $partner->id)
+                ->where('status', 'active')
+                ->first();
+
+            if ($relatedDealPartner?->deal_id) {
+                // Table is 'leads', not 'deals'
+                $relatedDealName = DB::table('leads')
+                    ->where('id', $relatedDealPartner->deal_id)
+                    ->value('name');
+            }
+        } catch (\Throwable) {}
+
+        Auth::guard('partner')->login($partner->fresh());
 
         // Fire unified invite-accepted event (ActivityLog + AuditLog + in-app notifications)
         try {

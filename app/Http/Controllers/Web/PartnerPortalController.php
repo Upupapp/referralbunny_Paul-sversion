@@ -22,11 +22,27 @@ class PartnerPortalController extends Controller
 
     private function authorizedDealIds(): array
     {
-        return DealPartner::where('partner_user_id', $this->partner()->id)
-            ->where('tenant_id', $this->partner()->tenant_id)
+        $partner = $this->partner();
+
+        // Primary source: deal_partners (formal partner-deal assignments)
+        $fromDealPartners = DealPartner::where('partner_user_id', $partner->id)
+            ->where('tenant_id', $partner->tenant_id)
             ->where('status', 'active')
             ->pluck('deal_id')
             ->toArray();
+
+        // Fallback source: deal_partner_splits linked by partner_user_id.
+        // Partners invited via the referrer portal only have splits, not deal_partners records.
+        // After setup() links partner_user_id on the splits, this finds their deals.
+        $fromSplits = \Illuminate\Support\Facades\DB::table('deal_partner_splits')
+            ->where('partner_user_id', $partner->id)
+            ->where('tenant_id', $partner->tenant_id)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
+            ->pluck('deal_id')
+            ->toArray();
+
+        return array_values(array_unique(array_merge($fromDealPartners, $fromSplits)));
     }
 
     public function dashboard()
@@ -65,13 +81,8 @@ class PartnerPortalController extends Controller
     {
         $partner = $this->partner();
 
-        // Security: verify the partner has active access to this deal
-        $authorized = DealPartner::where('partner_user_id', $partner->id)
-            ->where('deal_id', $dealId)
-            ->where('status', 'active')
-            ->exists();
-
-        if (!$authorized) {
+        // Security: partner must be in authorizedDealIds() (checks both deal_partners and splits)
+        if (!in_array($dealId, $this->authorizedDealIds())) {
             abort(403, 'You do not have access to this deal.');
         }
 
