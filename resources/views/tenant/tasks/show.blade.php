@@ -49,10 +49,7 @@ $actIcons = [
     .task-hdr-actions > * { width:100%; justify-content:center; }
 }
 
-/* ── Task completion modal overlay ─────────────────────────────────────
-   Define display:flex here so Alpine's x-show (which only toggles an
-   inline display:none) doesn't fall back to display:block on show.
-   The overlay must be fixed to the viewport — not the sidebar container. */
+/* ── Task completion modal overlay ────────────────────────────────────── */
 .rb-complete-overlay {
     display: flex !important;
     align-items: center;
@@ -63,6 +60,70 @@ $actIcons = [
     z-index: 9999;
     padding: 16px;
     box-sizing: border-box;
+}
+
+/* ── Modal footer action bar ───────────────────────────────────────────
+   Desktop: Cancel | spacer | [Mark as Done Only] [Send Reply & Mark as Done]
+   Mobile: stack buttons full-width, primary action on top                */
+.rb-modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px 20px;
+    border-top: 1px solid #f3f4f6;
+    background: white;
+    border-radius: 0 0 20px 20px;
+    position: sticky;
+    bottom: 0;
+}
+.rb-modal-footer-spacer { flex: 1; }
+.rb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 42px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: opacity .15s, box-shadow .15s;
+    font-family: inherit;
+    line-height: 1;
+}
+.rb-btn:disabled { opacity: .45; cursor: not-allowed; }
+.rb-btn-ghost {
+    border: 1.5px solid #e5e7eb;
+    background: white;
+    color: #374151;
+}
+.rb-btn-ghost:not(:disabled):hover { background: #f9fafb; }
+.rb-btn-secondary {
+    border: 1.5px solid #7B61FF;
+    background: white;
+    color: #7B61FF;
+}
+.rb-btn-secondary:not(:disabled):hover { background: #f5f3ff; }
+.rb-btn-primary {
+    border: none;
+    background: linear-gradient(135deg,#7B61FF,#5b4cdb);
+    color: white;
+    box-shadow: 0 4px 14px rgba(123,97,255,.28);
+}
+.rb-btn-primary:not(:disabled):hover { box-shadow: 0 6px 20px rgba(123,97,255,.4); }
+@media (max-width: 540px) {
+    .rb-modal-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: 8px;
+        padding: 12px 20px 20px;
+    }
+    .rb-modal-footer-spacer { display: none; }
+    .rb-btn { width: 100%; height: 46px; font-size: 14px; }
+    .rb-btn-cancel-mobile { order: 10; background: none; border: none; color: #9ca3af; height: 36px; }
 }
 </style>
 
@@ -573,23 +634,28 @@ $actIcons = [
         {{-- ── Form content (hidden after success) ── --}}
         <div x-show="!successState" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;flex:1">
 
-            {{-- Requester card (read-only, server-resolved) --}}
+            {{-- Requester card (server-resolved, always read-only) --}}
             @if($hasRequester)
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:#f0f9ff;border-radius:12px;border:1.5px solid #bae6fd">
-                <svg style="width:14px;height:14px;color:#0284c7;flex-shrink:0;margin-top:2px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                <div style="flex:1;min-width:0">
-                    <p style="font-size:10px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.06em;margin:0 0 3px">Requester (read-only)</p>
-                    @if($resolvedRequesterName)
-                    <p style="font-size:13px;font-weight:600;color:#0369a1;margin:0">{{ $resolvedRequesterName }}</p>
-                    @endif
-                    <p style="font-size:12px;color:#075985;margin:2px 0 0;word-break:break-all">{{ $resolvedRequesterEmail }}</p>
-                    <p style="font-size:11px;color:#0284c7;margin:4px 0 0">Click <strong>Send Reply &amp; Mark as Done</strong> below to send an email to this address.</p>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd">
+                <div style="width:32px;height:32px;border-radius:8px;background:#bae6fd;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg style="width:14px;height:14px;color:#0284c7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                 </div>
+                <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        @if($resolvedRequesterName)
+                        <span style="font-size:13px;font-weight:600;color:#0c4a6e">{{ $resolvedRequesterName }}</span>
+                        <span style="font-size:10px;color:#9ca3af">·</span>
+                        @endif
+                        <span style="font-size:12px;color:#075985;word-break:break-all">{{ $resolvedRequesterEmail }}</span>
+                    </div>
+                    <p style="font-size:11px;color:#0284c7;margin:2px 0 0">Requester — address is read-only and cannot be changed.</p>
+                </div>
+                <span style="font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:9999px;flex-shrink:0;white-space:nowrap">Read-only</span>
             </div>
             @else
-            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fffbeb;border-radius:10px;border:1.5px solid #fcd34d">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 13px;background:#fffbeb;border-radius:10px;border:1px solid #fde68a">
                 <svg style="width:14px;height:14px;color:#d97706;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                <p style="font-size:12px;color:#92400e;margin:0">No requester email — you can mark the task done but a reply email cannot be sent.</p>
+                <p style="font-size:12px;color:#92400e;margin:0">No requester email found — you can still mark the task done, but a reply email cannot be sent.</p>
             </div>
             @endif
 
@@ -663,39 +729,62 @@ $actIcons = [
             <div x-show="responseError" style="font-size:13px;color:#dc2626;font-weight:500;padding:10px 14px;background:#fef2f2;border-radius:10px;border:1px solid #fecaca;line-height:1.5" x-text="responseError" role="alert"></div>
         </div>
 
-        {{-- Sticky footer — two clear action buttons --}}
-        <div x-show="!successState" style="padding:16px 24px 20px;border-top:1px solid #f3f4f6;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:white;border-radius:0 0 20px 20px;position:sticky;bottom:0">
-            <button @click="if(!completing){ showCompleteModal = false; resetModal(); }" :disabled="completing"
-                    style="padding:10px 18px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0"
-                    :style="completing ? 'opacity:.45;cursor:not-allowed' : ''">Cancel</button>
+        {{-- ── Footer action bar ──────────────────────────────────────────── --}}
+        {{-- NOTE: x-show is used on SVGs (not x-if/template) so icons stay      --}}
+        {{-- inside the inline-flex button — template x-if breaks this layout.   --}}
+        <div x-show="!successState" class="rb-modal-footer">
 
-            <div style="flex:1"></div>
-
-            {{-- Mark as Done Only --}}
-            <button @click="markDoneOnly()" :disabled="completing"
-                    style="padding:10px 18px;border-radius:10px;border:1.5px solid #6b7280;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px"
-                    :style="completing && !wantReply ? 'opacity:.55;cursor:not-allowed' : (completing ? 'opacity:.45;cursor:not-allowed' : '')">
-                <template x-if="completing && !wantReply">
-                    <svg style="width:14px;height:14px;animation:rb-spin 1s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                </template>
-                <template x-if="!completing || wantReply">
-                    <svg style="width:15px;height:15px;color:#374151;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </template>
-                <span x-text="completing && !wantReply ? 'Completing…' : 'Mark as Done Only'"></span>
+            {{-- Cancel — ghost, left on desktop / bottom on mobile --}}
+            <button @click="if(!completing){ showCompleteModal = false; resetModal(); }"
+                    :disabled="completing"
+                    class="rb-btn rb-btn-ghost rb-btn-cancel-mobile"
+                    aria-label="Cancel and close modal">
+                Cancel
             </button>
 
-            {{-- Send Reply & Mark as Done --}}
+            <span class="rb-modal-footer-spacer" aria-hidden="true"></span>
+
+            {{-- Mark as Done Only — secondary purple, no email sent --}}
+            <button @click="markDoneOnly()"
+                    :disabled="completing"
+                    class="rb-btn rb-btn-secondary"
+                    :aria-busy="completing && !wantReply">
+                {{-- Spinner: visible only while this button is processing --}}
+                <svg x-show="completing && !wantReply"
+                     style="width:15px;height:15px;flex-shrink:0;animation:rb-spin 1s linear infinite"
+                     fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {{-- Checkmark: visible when idle --}}
+                <svg x-show="!completing || wantReply"
+                     style="width:15px;height:15px;flex-shrink:0"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span x-text="(completing && !wantReply) ? 'Marking Done…' : 'Mark as Done Only'"></span>
+            </button>
+
+            {{-- Send Reply & Mark as Done — primary purple, only when requester exists --}}
             @if($hasRequester)
-            <button @click="sendReplyAndComplete()" :disabled="completing"
-                    style="padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(123,97,255,.3)"
-                    :style="completing && wantReply ? 'opacity:.55;cursor:not-allowed' : (completing ? 'opacity:.45;cursor:not-allowed' : '')">
-                <template x-if="completing && wantReply">
-                    <svg style="width:14px;height:14px;animation:rb-spin 1s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                </template>
-                <template x-if="!completing || !wantReply">
-                    <svg style="width:15px;height:15px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                </template>
-                <span x-text="completing && wantReply ? 'Sending reply…' : 'Send Reply & Mark as Done'"></span>
+            <button @click="sendReplyAndComplete()"
+                    :disabled="completing"
+                    class="rb-btn rb-btn-primary"
+                    :aria-busy="completing && wantReply">
+                {{-- Spinner: visible only while this button is processing --}}
+                <svg x-show="completing && wantReply"
+                     style="width:15px;height:15px;flex-shrink:0;animation:rb-spin 1s linear infinite"
+                     fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {{-- Envelope: visible when idle --}}
+                <svg x-show="!completing || !wantReply"
+                     style="width:15px;height:15px;flex-shrink:0"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <span x-text="(completing && wantReply) ? 'Sending Reply…' : 'Send Reply & Mark as Done'"></span>
             </button>
             @endif
         </div>
