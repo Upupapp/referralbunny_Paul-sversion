@@ -1141,4 +1141,134 @@ class ResellerDealController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    // ── Update Co-Referrer Split (Referrer-initiated) ─────────────────────────
+
+    public function updateCoReferrerSplit(Request $request, string $tenantId, string $dealId, string $splitId): JsonResponse
+    {
+        $reseller = $this->reseller();
+        $lead     = $this->deal($tenantId, $dealId);
+
+        // Only the primary referrer on this deal may adjust co-referrer splits
+        $isPrimary = CommissionSplit::where('lead_id', $lead->id)
+            ->where('role', 'primary')
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+            ->exists();
+
+        if (!$isPrimary) {
+            return response()->json(['error' => 'Only the primary Referrer on this deal can adjust co-referrer shares.'], 403);
+        }
+
+        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $reseller->name, 'referrer');
+    }
+
+    // ── Update Co-Referrer Split (Admin-initiated) ────────────────────────────
+
+    public function adminUpdateCoReferrerSplit(Request $request, string $tenantId, string $dealId, string $splitId): JsonResponse
+    {
+        // Admin/manager: must be authenticated as tenant user
+        $actor     = \Illuminate\Support\Facades\Auth::guard('tenant')->user()
+                  ?? \Illuminate\Support\Facades\Auth::guard('web')->user();
+        if (!$actor) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
+        // Verify deal belongs to this tenant
+        $lead = \App\Models\Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+
+        $actorName = method_exists($actor, 'full_name') ? $actor->full_name : ($actor->name ?? $actor->email ?? 'Admin');
+
+        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $actorName, 'admin');
+    }
+
+    /** Shared logic for updating a co-referrer commission split. */
+    private function doUpdateSplit(Request $request, string $tenantId, string $dealId, string $splitId, string $actorName, string $actorRole): JsonResponse
+    {
+        $data = $request->validate([
+            'percentage' => 'required|numeric|min:0.01|max:100',
+        ]);
+
+        $newPct = round((float) $data['percentage'], 2);
+
+        $split = CommissionSplit::where('id', $splitId)
+            ->where('lead_id', $dealId)
+            ->firstOrFail();
+
+        // Only allow editing secondary (co-referrer) splits
+        if ($split->role !== 'secondary') {
+            return response()->json(['error' => 'Only co-referrer splits can be adjusted here.'], 422);
+        }
+
+        // Validate commission pool limit: total across all splits must not exceed 100%
+        $otherTotal = CommissionSplit::where('lead_id', $dealId)
+            ->where('id', '!=', $splitId)
+            ->sum('percentage');
+
+        if ($otherTotal + $newPct > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $otherTotal, 2));
+            return response()->json([
+                'error'          => "Cannot exceed 100% total. Maximum available for this co-referrer: {$available}%.",
+                'max_percentage' => $available,
+            ], 422);
+        }
+
+        $oldPct = (float) $split->percentage;
+        $split->update(['percentage' => $newPct]);
+
+        $lead = \App\Models\Lead::find($dealId);
+
+        // Notify the co-referrer whose share changed
+        try {
+            $coRefReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($split->reseller_name)])
+                ->first();
+            if ($coRefReseller) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $coRefReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        'Your commission share was updated',
+                    body:         $actorName . ' updated your commission share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $splitId . ':share_updated:' . now()->format('YmdH'),
+                    metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'actor' => $actorName],
+                );
+            }
+        } catch (\Throwable) {}
+
+        // Notify admins
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Co-referrer share adjusted',
+                body:         $actorName . ' changed ' . $split->reseller_name . '\'s share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                actionLabel:  'Review Deal',
+                dedupeSuffix: $splitId . ':share_updated_admin:' . now()->format('YmdH'),
+                metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'actor' => $actorName, 'co_referrer' => $split->reseller_name],
+            );
+        } catch (\Throwable) {}
+
+        // Activity log
+        try {
+            app(DealActivityService::class)->record($lead, 'Co-referrer share updated by ' . $actorRole, 'commission', [
+                'category'   => 'financial',
+                'actor_name' => $actorName,
+                'actor_role' => $actorRole,
+                'old_values' => ['percentage' => $oldPct, 'reseller_name' => $split->reseller_name],
+                'new_values' => ['percentage' => $newPct, 'reseller_name' => $split->reseller_name],
+            ]);
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'success'        => true,
+            'split_id'       => $split->id,
+            'new_percentage' => $newPct,
+            'old_percentage' => $oldPct,
+        ]);
+    }
 }

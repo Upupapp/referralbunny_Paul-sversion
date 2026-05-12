@@ -581,24 +581,56 @@
                     </div>
 
                     {{-- Referrer split rows --}}
-                    <div class="space-y-1.5">
+                    <div class="space-y-1.5"
+                         x-data="{ editSplitId: null, editPct: '', editSaving: false, editErr: '' }">
                         <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
-                            <div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border-radius:12px;padding:10px 12px">
-                                <div style="display:flex;align-items:center;gap:10px;min-width:0">
-                                    <div style="width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0"
-                                         :style="split.role==='primary' ? 'background:#dcfce7;color:#16a34a'
-                                               : split.role==='secondary' ? 'background:#dbeafe;color:#2563eb'
-                                               : 'background:#f3f4f6;color:#6b7280'"
-                                         x-text="(split.reseller_name||'?').slice(0,2).toUpperCase()"></div>
-                                    <div style="min-width:0">
-                                        <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="split.reseller_name"></p>
-                                        <p style="font-size:11px;color:#9ca3af;text-transform:capitalize" x-text="split.role + ' referrer'"></p>
+                            <div style="background:#f9fafb;border-radius:12px;padding:10px 12px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                                    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                                        <div style="width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0"
+                                             :style="split.role==='primary' ? 'background:#dcfce7;color:#16a34a'
+                                                   : split.role==='secondary' ? 'background:#dbeafe;color:#2563eb'
+                                                   : 'background:#f3f4f6;color:#6b7280'"
+                                             x-text="(split.reseller_name||'?').slice(0,2).toUpperCase()"></div>
+                                        <div style="min-width:0;flex:1">
+                                            <p style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="split.reseller_name"></p>
+                                            <p style="font-size:11px;color:#9ca3af;text-transform:capitalize" x-text="split.role + ' referrer'"></p>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                                        <div style="text-align:right">
+                                            <p style="font-size:13px;font-weight:700;color:#16a34a" x-text="fmt(commPool() * split.percentage / 100)"></p>
+                                            <p style="font-size:11px;color:#9ca3af" x-text="split.percentage + '% of pool'"></p>
+                                        </div>
+                                        {{-- Edit % button — only for co-referrers (secondary role) --}}
+                                        <template x-if="split.role === 'secondary' && lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid'">
+                                            <button @click="editSplitId = split.id; editPct = String(split.percentage); editErr = ''"
+                                                    style="padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
+                                                Edit %
+                                            </button>
+                                        </template>
                                     </div>
                                 </div>
-                                <div style="text-align:right;flex-shrink:0;margin-left:12px">
-                                    <p style="font-size:13px;font-weight:700;color:#16a34a" x-text="fmt(commPool() * split.percentage / 100)"></p>
-                                    <p style="font-size:11px;color:#9ca3af" x-text="split.percentage + '% of pool'"></p>
-                                </div>
+                                {{-- Inline edit panel for this split --}}
+                                <template x-if="editSplitId === split.id">
+                                    <div style="margin-top:10px;padding:10px;background:white;border-radius:8px;border:1.5px solid #bfdbfe">
+                                        <p style="font-size:11px;font-weight:600;color:#1e40af;margin-bottom:8px">Adjust share for <span x-text="split.reseller_name"></span></p>
+                                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                            <input x-model="editPct" type="number" min="0.01" max="100" step="0.01"
+                                                   style="width:80px;padding:5px 8px;border:1.5px solid #bfdbfe;border-radius:7px;font-size:12px;text-align:center;outline:none">
+                                            <span style="font-size:11px;color:#6b7280">%</span>
+                                            <button @click="adminSaveSplit(split, '{{ url('tenant/'.$tenantId.'/deals') }}/' + lead.id + '/splits/' + split.id, '{{ csrf_token() }}')"
+                                                    :disabled="editSaving || !editPct"
+                                                    style="padding:5px 12px;border-radius:7px;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;opacity:1"
+                                                    x-text="editSaving ? 'Saving…' : 'Save'">Save</button>
+                                            <button @click="editSplitId = null; editPct = ''; editErr = ''"
+                                                    style="padding:5px 10px;border-radius:7px;border:1px solid #e5e7eb;background:white;font-size:11px;font-weight:600;color:#374151;cursor:pointer">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                        <p x-show="editErr" style="font-size:11px;color:#dc2626;margin-top:6px" x-text="editErr"></p>
+                                    </div>
+                                </template>
                             </div>
                         </template>
 
@@ -2290,6 +2322,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         moveStageNote: '',
         editFinance: false,
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
+        editSplitId: null, editPct: '', editSaving: false, editErr: '',
 
         // Contacts
         dealContacts: [], loadingContacts: true,
@@ -2552,6 +2585,26 @@ function dealDetail(leadId, tenantId, ssrLead) {
             } catch {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
+        },
+
+        async adminSaveSplit(split, url, csrf) {
+            this.editSaving = true; this.editErr = '';
+            try {
+                const r = await fetch(url, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ percentage: parseFloat(this.editPct) }),
+                });
+                const d = await r.json();
+                if (!r.ok) { this.editErr = d.error || 'Could not update share.'; return; }
+                // Update split percentage in the local lead data
+                const idx = (this.lead.commission_splits || []).findIndex(s => s.id === split.id);
+                if (idx >= 0) this.lead.commission_splits[idx].percentage = d.new_percentage;
+                this.editSplitId = null; this.editPct = '';
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Co-referrer share updated.' } }));
+            } catch(e) { this.editErr = 'Network error. Please try again.'; }
+            finally { this.editSaving = false; }
         },
 
         async addNote() {

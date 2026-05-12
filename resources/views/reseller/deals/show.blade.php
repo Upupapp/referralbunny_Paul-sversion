@@ -463,6 +463,11 @@ window.__rsDeal = {
 
         {{-- ── Co-Referrers ── --}}
         @if($secondarySplits->count())
+        @php
+            // Primary referrer can edit co-referrer splits; others cannot
+            $canEditSplits = $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
+            $otherSplitsTotal = $primarySplits->sum('percentage');  // used for max available calc
+        @endphp
         @if($primarySplits->count())
         <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Co-Referrers</p>
@@ -470,8 +475,14 @@ window.__rsDeal = {
         @endif
         <div class="divide-y divide-gray-50">
             @foreach($secondarySplits as $split)
-            @php $rAmt = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0); @endphp
-            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+            @php
+                $rAmt          = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0);
+                $otherTotal    = $splits->where('id', '!=', $split->id)->sum('percentage');
+                $maxForSplit   = max(0.0, round(100.0 - (float)$otherTotal, 2));
+                $splitUpdateUrl = route('reseller.deals.splits.update', [$tenantId, $dealId, $split->id]);
+            @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4"
+                 x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-blue-700" style="background:#dbeafe">
                         {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
@@ -481,13 +492,44 @@ window.__rsDeal = {
                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Co-Referrer</span>
                     </div>
                 </div>
-                <div class="text-right shrink-0">
-                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format((float)($split->percentage ?? 0), 1) }}%</p>
-                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+
+                {{-- Display or inline edit --}}
+                <div x-show="!editing" class="flex items-center gap-3">
+                    <div class="text-right shrink-0">
+                        <p class="text-sm font-bold text-[#1E1B4B]" x-text="parseFloat(pct).toFixed(1) + '%'">{{ number_format((float)($split->percentage ?? 0), 1) }}%</p>
+                        <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                    </div>
+                    <div class="text-right shrink-0 min-w-[80px]">
+                        <p class="text-sm font-bold text-blue-700">₱{{ number_format($rAmt, 0) }}</p>
+                        <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+                    </div>
+                    @if($canEditSplits)
+                    <button @click="editing = true"
+                            class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
+                        Edit %
+                    </button>
+                    @endif
                 </div>
-                <div class="text-right shrink-0 min-w-[90px]">
-                    <p class="text-sm font-bold text-blue-700">₱{{ number_format($rAmt, 0) }}</p>
-                    <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+
+                {{-- Inline edit form --}}
+                <div x-show="editing" class="flex items-center gap-2 flex-wrap justify-end">
+                    <div class="flex items-center gap-1.5">
+                        <input x-model="pct" type="number" min="0.01" max="{{ $maxForSplit }}" step="0.01"
+                               class="w-20 border border-blue-300 rounded-lg px-2 py-1 text-xs text-center font-semibold outline-none focus:ring-2 focus:ring-blue-400/20">
+                        <span class="text-xs text-gray-500">% <span class="text-gray-400">(max {{ $maxForSplit }}%)</span></span>
+                    </div>
+                    <p x-show="err" class="text-[10px] text-red-600 w-full text-right" x-text="err"></p>
+                    <button @click="editing = false; pct = '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}'; err = ''"
+                            class="px-2 py-1 rounded-lg text-[10px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="window.__saveSplit('{{ $splitUpdateUrl }}', '{{ csrf_token() }}', pct, $data)"
+                            :disabled="saving || !pct"
+                            class="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-50 transition-all"
+                            style="background:linear-gradient(135deg,#2563EB,#1D4ED8)"
+                            x-text="saving ? 'Saving…' : 'Save'">
+                        Save
+                    </button>
                 </div>
             </div>
             @endforeach
@@ -1107,6 +1149,26 @@ function rsDealData() {
             body: JSON.stringify(body),
         }).then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })));
     }
+
+    // Global helper for co-referrer split editing (used from inline x-data on each row)
+    window.__saveSplit = async function(url, csrf, pctVal, ctx) {
+        ctx.saving = true; ctx.err = '';
+        try {
+            const r = await fetch(url, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ percentage: parseFloat(pctVal) }),
+            });
+            const d = await r.json();
+            if (!r.ok) { ctx.err = d.error || 'Could not update share.'; return; }
+            ctx.editing = false;
+            ctx.pct = String(d.new_percentage);
+            // Brief toast
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Co-referrer share updated.' } }));
+        } catch(e) { ctx.err = 'Network error. Please try again.'; }
+        finally { ctx.saving = false; }
+    };
 
     return {
         showAddNote:      false,
