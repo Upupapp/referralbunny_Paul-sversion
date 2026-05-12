@@ -396,9 +396,18 @@ class TaskController extends Controller
             || !$task->assigned_to_id  // unassigned — anyone who can view can claim
         );
 
+        // Pre-resolve assignee role (avoids a Blade-level DB query)
+        $assigneeRole = null;
+        if ($task->assigned_to_id && $task->assigned_to_type === 'tenant_user') {
+            $assigneeRole = \Illuminate\Support\Facades\DB::table('tenant_memberships')
+                ->where('tenant_id', $tenantId)
+                ->where('tenant_user_id', $task->assigned_to_id)
+                ->value('role');
+        }
+
         return view('tenant.tasks.show', compact(
             'tenant', 'task', 'source', 'canComplete', 'completionEmailEnabled',
-            'actorId', 'actorName', 'actorType', 'assigneeName',
+            'actorId', 'actorName', 'actorType', 'assigneeName', 'assigneeRole',
             'canAssignToSelf', 'isCurrentAssignee', 'isAdmin'
         ));
     }
