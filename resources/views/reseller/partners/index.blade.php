@@ -305,11 +305,30 @@
                            class="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all" required>
                 </div>
 
-                {{-- Partner Email --}}
+                {{-- Partner Email (optional — triggers invite) --}}
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Partner Email <span class="text-red-400">*</span></label>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Partner Email</label>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Optional</span>
+                    </div>
                     <input x-model="form.partner_email" type="email" placeholder="partner@email.com"
-                           class="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all" required>
+                           class="w-full text-sm bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all">
+
+                    {{-- Invite preview — shown when email is typed --}}
+                    <div x-show="form.partner_email && form.partner_email.includes('@')"
+                         x-cloak
+                         class="mt-2 flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                         style="background:#CCFBF1;border:1px solid #99F6E4">
+                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" style="color:#0F766E" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        <span style="color:#0F766E">
+                            An invite email will be sent to <strong x-text="form.partner_email"></strong>. The partner clicks the link to set up their account and gain partner-only access.
+                        </span>
+                    </div>
+                    <p x-show="!form.partner_email" class="text-[11px] text-gray-400 mt-1.5">
+                        Skip email to add the partner without a platform invite.
+                    </p>
                 </div>
 
                 {{-- Split --}}
@@ -339,14 +358,14 @@
                         Cancel
                     </button>
                     <button type="submit"
-                            :disabled="submitting || !form.deal_id || !form.partner_name || !form.partner_email || !form.split_share_value"
+                            :disabled="submitting || !form.deal_id || !form.partner_name || !form.split_share_value"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
                         <svg x-show="submitting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
                         </svg>
-                        <span x-text="submitting ? 'Adding Partner…' : 'Add Partner'"></span>
+                        <span x-text="submitting ? 'Adding…' : (form.partner_email && form.partner_email.includes('@') ? 'Add & Send Invite' : 'Add Partner')"></span>
                     </button>
                 </div>
             </form>

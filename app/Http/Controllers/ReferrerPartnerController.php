@@ -257,11 +257,12 @@ class ReferrerPartnerController extends Controller
     public function store(Request $request, string $tenantId): JsonResponse
     {
         $reseller = $this->reseller();
+        $tenant   = \App\Models\Tenant::findOrFail($tenantId);
 
         $data = $request->validate([
             'deal_id'           => 'required|string',
             'partner_name'      => 'required|string|max:150',
-            'partner_email'     => 'required|email|max:200',
+            'partner_email'     => 'nullable|email|max:200', // optional — triggers invite when provided
             'split_share_value' => 'required|numeric|min:0.01',
             'split_share_type'  => 'required|in:percentage,fixed_amount',
         ]);
@@ -283,12 +284,59 @@ class ReferrerPartnerController extends Controller
             return response()->json(['error' => 'Commission on this deal is already paid. Contact your admin to add a Partner.'], 422);
         }
 
+        // ── Partner invite (email provided) ──────────────────────────────────
+        $inviteSent        = false;
+        $alreadyHasAccount = false;
+        $partnerEmail      = !empty($data['partner_email']) ? strtolower(trim($data['partner_email'])) : null;
+
+        if ($partnerEmail) {
+            $existingPartner = \App\Models\Partner::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(email) = ?', [$partnerEmail])
+                ->first();
+
+            if ($existingPartner && $existingPartner->isSetupComplete()) {
+                // Partner already has a full account — split links them, no re-invite needed
+                $alreadyHasAccount = true;
+            } elseif (!$existingPartner) {
+                // New partner: create invited record and send setup email
+                $setupToken     = \Illuminate\Support\Str::random(64);
+                $nameParts      = preg_split('/\s+/', trim($data['partner_name']), 2);
+                $newPartner     = \App\Models\Partner::create([
+                    'id'              => (string) \Illuminate\Support\Str::uuid(),
+                    'tenant_id'       => $tenantId,
+                    'email'           => $partnerEmail,
+                    'first_name'      => $nameParts[0] ?? $data['partner_name'],
+                    'last_name'       => $nameParts[1] ?? null,
+                    'status'          => 'invited',
+                    'setup_token'     => $setupToken,
+                    'invited_by_type' => 'reseller',
+                    'invited_by_id'   => (string) $reseller->id,
+                ]);
+
+                try {
+                    \Illuminate\Support\Facades\Mail::to($partnerEmail)
+                        ->send(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
+                    $inviteSent = true;
+                } catch (\Throwable $mailEx) {
+                    Log::warning('PartnerInviteMail send failed', [
+                        'tenant_id' => $tenantId,
+                        'email'     => $partnerEmail,
+                        'error'     => $mailEx->getMessage(),
+                    ]);
+                    // Invite record exists even if email failed — they can be re-invited by admin
+                }
+            }
+            // If partner exists but hasn't set up yet (status=invited), no re-send here;
+            // admin can re-invite. Split still links them to the deal.
+        }
+
+        // ── Create the deal split ─────────────────────────────────────────────
         try {
             app(DealPartnerSplitService::class)->upsert(
                 tenantId:    $tenantId,
                 dealId:      $data['deal_id'],
                 partnerName: $data['partner_name'],
-                partnerEmail:$data['partner_email'],
+                partnerEmail: $partnerEmail ?? '',
                 splitValue:  (float) $data['split_share_value'],
                 splitType:   $data['split_share_type'],
                 currency:    'PHP',
@@ -303,6 +351,8 @@ class ReferrerPartnerController extends Controller
                 'actor_role' => 'referrer',
                 'new_values' => [
                     'partner_name'  => $data['partner_name'],
+                    'partner_email' => $partnerEmail,
+                    'invite_sent'   => $inviteSent,
                     'split_value'   => $data['split_share_value'],
                     'split_type'    => $data['split_share_type'],
                 ],
@@ -313,10 +363,12 @@ class ReferrerPartnerController extends Controller
                 category:     'deal_pipeline',
                 priority:     'normal',
                 title:        'Partner added by Referrer',
-                body:         $reseller->name . ' added ' . $data['partner_name'] . ' as a Partner to "' . $lead->name . '".',
+                body:         $reseller->name . ' added ' . $data['partner_name']
+                              . ($inviteSent ? ' and sent a partner invite' : '')
+                              . ' to "' . $lead->name . '".',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
                 actionLabel:  'Review Deal',
-                dedupeSuffix: $lead->id . ':partner:' . md5(strtolower($data['partner_email'])),
+                dedupeSuffix: $lead->id . ':partner:' . md5($partnerEmail ?? $data['partner_name']),
             );
         } catch (\Throwable $e) {
             Log::error('ReferrerPartnerController::store failed', [
@@ -327,9 +379,16 @@ class ReferrerPartnerController extends Controller
             return response()->json(['error' => 'Could not add Partner. Please try again.'], 500);
         }
 
+        $message = match(true) {
+            $inviteSent        => 'Partner added! An invite email has been sent to ' . $partnerEmail . '.',
+            $alreadyHasAccount => 'Partner added. They already have an active account.',
+            $partnerEmail      => 'Partner added. The invite email could not be sent — your admin can resend it.',
+            default            => 'Partner added. Admins have been notified.',
+        };
+
         return response()->json([
             'success'  => true,
-            'message'  => 'Partner added. Admins have been notified.',
+            'message'  => $message,
             'redirect' => route('reseller.partners', $tenantId),
         ]);
     }
