@@ -637,6 +637,37 @@ class ResellerDealController extends Controller
         return response()->json(['success' => true, 'approval_id' => $approval->id]);
     }
 
+    // ── Request Extension ────────────────────────────────────────────────────
+
+    public function requestExtension(Request $request, string $tenantId, string $dealId): JsonResponse
+    {
+        $reseller = $this->reseller();
+        $this->deal($tenantId, $dealId); // validates deal access
+
+        $data = $request->validate([
+            'requested_days' => 'required|integer|min:1|max:90',
+            'reason'         => 'required|string|min:10|max:1000',
+        ]);
+
+        try {
+            app(\App\Services\DealAssignmentExtensionService::class)->createRequest(
+                tenantId:          $tenantId,
+                dealId:            $dealId,
+                requestedByUserId: (string) $reseller->id,
+                requestedByRole:   'referrer',
+                requestedDays:     (int) $data['requested_days'],
+                reason:            $data['reason'],
+                actorId:           (string) $reseller->id,
+            );
+
+            return response()->json([
+                'message' => 'Extension request submitted. The Tenant Admin will review it shortly.',
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
     // ── Add Partner Split ────────────────────────────────────────────────────
 
     public function addPartnerSplit(Request $request, string $tenantId, string $dealId): JsonResponse

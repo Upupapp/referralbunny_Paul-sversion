@@ -266,95 +266,145 @@ window.__rsDeal = {
         {{-- ── Bottom zone: Action Bar ──────────────────────────── --}}
         <div class="mt-5 pt-4 border-t border-gray-100">
 
-            {{-- Desktop: single row, primary left / archive right --}}
-            <div class="hidden sm:flex items-center justify-between gap-3 flex-wrap">
-                {{-- Primary actions --}}
-                <div class="flex items-center gap-2 flex-wrap">
+            {{-- ── Desktop: all primary actions in one flex-wrap row ── --}}
+            <div class="hidden sm:flex flex-wrap items-center gap-2 mb-3">
+
+                {{-- Add Note — teal primary --}}
+                <button @click="showAddNote = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-1"
+                        style="background:#0D9488">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Add Note
+                </button>
+
+                {{-- Update Amount — purple soft --}}
+                @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
+                <button @click="showUpdateAmount = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Update Amount
+                </button>
+                @else
+                <span class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
+                      title="Amount cannot be changed after commission is {{ ucfirst($lead->commission_status ?? '') }}" aria-disabled="true">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    Amount {{ ucfirst($lead->commission_status ?? '') }}
+                </span>
+                @endif
+
+                {{-- Move Stage — blue soft --}}
+                @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
+                <button @click="showMoveStage = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                    Move Stage
+                </button>
+                @endif
+
+                {{-- Add Partner — neutral --}}
+                <button @click="showAddPartner = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    Add Partner
+                </button>
+
+                {{-- Add Co-Referrer — neutral --}}
+                <button @click="showAddReferrer = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Add Co-Referrer
+                </button>
+
+                {{-- Request Extension — amber — backend connected --}}
+                <button @click="showExtension = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Request Extension
+                </button>
+            </div>
+
+            {{-- Desktop: danger action visually separated below ── --}}
+            @if(!$pendingArchiveRequest)
+            <div class="hidden sm:flex justify-end pt-2.5 border-t border-gray-50">
+                <button @click="showArchive = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                    Request Archive
+                </button>
+            </div>
+            @endif
+
+            {{-- ── Mobile: 2-col grid + full-width archive ── --}}
+            <div class="sm:hidden space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+
+                    {{-- Add Note --}}
                     <button @click="showAddNote = true"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:shadow-sm active:scale-95"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-1"
                             style="background:#0D9488">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Add Note
                     </button>
+
+                    {{-- Move Stage --}}
+                    @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
+                    <button @click="showMoveStage = true"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        Move Stage
+                    </button>
+                    @else
+                    <span class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-300 bg-gray-50 cursor-not-allowed" aria-disabled="true">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                        Move Stage
+                    </span>
+                    @endif
+
+                    {{-- Update Amount --}}
                     @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
                     <button @click="showUpdateAmount = true"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Update Amount
                     </button>
                     @else
-                    <span class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
-                          title="Amount cannot be changed after commission is {{ ucfirst($lead->commission_status ?? '') }}">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Amount {{ ucfirst($lead->commission_status ?? '') }}
+                    <span class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-400 bg-gray-100 cursor-not-allowed" aria-disabled="true">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Locked
                     </span>
                     @endif
-                    @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
-                    <button @click="showMoveStage = true"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                        Move Stage
-                    </button>
-                    @endif
-                    <button @click="showAddPartner = true"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                        Add Partner
-                    </button>
-                    <button @click="showAddReferrer = true"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        Add Co-Referrer
-                    </button>
-                </div>
-                {{-- Destructive action --}}
-                @if(!$pendingArchiveRequest)
-                <button @click="showArchive = true"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-all active:scale-95 shrink-0">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
-                    Request Archive
-                </button>
-                @endif
-            </div>
 
-            {{-- Mobile: 2-col grid + full-width archive --}}
-            <div class="sm:hidden space-y-2">
-                <div class="grid grid-cols-2 gap-2">
-                    <button @click="showAddNote = true"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white transition-colors"
-                            style="background:#0D9488">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        Add Note
-                    </button>
-                    <button @click="showUpdateAmount = true"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Update Amount
-                    </button>
-                    @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
-                    <button @click="showMoveStage = true"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                        Move Stage
-                    </button>
-                    @endif
+                    {{-- Add Partner --}}
                     <button @click="showAddPartner = true"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                         Add Partner
                     </button>
+
+                    {{-- Add Co-Referrer --}}
                     <button @click="showAddReferrer = true"
-                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Add Co-Referrer
                     </button>
+
+                    {{-- Request Extension — spans full row on mobile --}}
+                    <button @click="showExtension = true"
+                            class="col-span-2 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Request Extension
+                    </button>
                 </div>
+
+                {{-- Archive — full-width, visually separated --}}
                 @if(!$pendingArchiveRequest)
-                <button @click="showArchive = true"
-                        class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
-                    Request Archive
-                </button>
+                <div class="pt-1">
+                    <button @click="showArchive = true"
+                            class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                        Request Archive
+                    </button>
+                </div>
                 @endif
             </div>
 
@@ -1077,6 +1127,46 @@ window.__rsDeal = {
         </div>
     </div>
 
+    {{-- Request Extension modal --}}
+    <div x-show="showExtension" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showExtension = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                    <h3 class="font-bold text-[#1E1B4B]">Request Deal Extension</h3>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Ask an Admin to extend your assignment deadline.</p>
+                </div>
+                <button @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="text-gray-400 hover:text-gray-600" aria-label="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <div class="flex items-start gap-2.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 leading-relaxed">
+                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Extension requests are reviewed by the Tenant Admin and are not guaranteed. Provide a clear reason to improve approval chances.
+                </div>
+                <div>
+                    <label class="form-label">Days Requested <span class="text-red-400">*</span></label>
+                    <input x-model="extDays" type="number" min="1" max="90" placeholder="e.g. 14" class="form-input w-full">
+                    <p class="text-[10px] text-gray-400 mt-1">Between 1 and 90 days.</p>
+                </div>
+                <div>
+                    <label class="form-label">Reason <span class="text-red-400">*</span></label>
+                    <textarea x-model="extReason" rows="3" placeholder="Explain why you need more time for this deal…" class="form-input w-full text-sm resize-none"></textarea>
+                    <p class="text-[10px] text-gray-400 mt-1">Minimum 10 characters.</p>
+                </div>
+                <div x-show="extError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="extError"></div>
+            </div>
+            <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
+                <button @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="btn-secondary text-sm">Cancel</button>
+                <button @click="saveExtension()"
+                        :disabled="!extDays || !extReason.trim() || extSaving"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        x-text="extSaving ? 'Submitting…' : 'Submit Request'"></button>
+            </div>
+        </div>
+    </div>
+
     {{-- Add Co-Referrer modal --}}
     <div x-show="showAddReferrer" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
@@ -1202,6 +1292,7 @@ function rsDealData() {
         showArchive:      false,
         showAddPartner:   false,
         showAddReferrer:  false,
+        showExtension:    false,
 
         noteBody:    '',
         noteFiles:   [],
@@ -1239,6 +1330,11 @@ function rsDealData() {
         refSplit:   '',
         refSaving:  false,
         refError:   '',
+
+        extDays:    '14',
+        extReason:  '',
+        extSaving:  false,
+        extError:   '',
 
         toast: '',
 
@@ -1400,6 +1496,30 @@ function rsDealData() {
                 this.refSaving = false;
                 this.refError = 'Network error. Please try again.';
                 return;
+            }
+        },
+
+        async saveExtension() {
+            const days = parseInt(this.extDays);
+            if (!days || days < 1 || days > 90 || !this.extReason.trim() || this.extSaving) return;
+            if (this.extReason.trim().length < 10) {
+                this.extError = 'Please provide a reason of at least 10 characters.';
+                return;
+            }
+            this.extSaving = true; this.extError = '';
+            try {
+                const { ok, data } = await post(base + '/extension-request', {
+                    requested_days: days,
+                    reason:         this.extReason.trim(),
+                });
+                this.extSaving = false;
+                if (!ok) { this.extError = data.error || data.message || 'Could not submit extension request.'; return; }
+                this.showExtension = false; this.extDays = '14'; this.extReason = '';
+                this.showToast(data.message || 'Extension request submitted. Admin will review shortly.');
+                setTimeout(() => window.location.reload(), 900);
+            } catch (e) {
+                this.extSaving = false;
+                this.extError = 'Network error. Please try again.';
             }
         },
     };

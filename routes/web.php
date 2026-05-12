@@ -125,6 +125,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/{dealId}/move-stage',                  [\App\Http\Controllers\ResellerDealController::class, 'moveStage'])->name('deals.move-stage');
         Route::post('/deals/{dealId}/stage-approval',              [\App\Http\Controllers\ResellerDealController::class, 'requestStageApproval'])->name('deals.stage-approval');
         Route::post('/deals/{dealId}/archive-request',             [\App\Http\Controllers\ResellerDealController::class, 'requestArchive'])->name('deals.archive-request');
+        Route::post('/deals/{dealId}/extension-request',          [\App\Http\Controllers\ResellerDealController::class, 'requestExtension'])->name('deals.extension-request');
         Route::post('/deals/{dealId}/partners',                    [\App\Http\Controllers\ResellerDealController::class, 'addPartnerSplit'])->name('deals.partners');
         Route::post('/deals/{dealId}/referrers',                   [\App\Http\Controllers\ResellerDealController::class, 'addReferrer'])->name('deals.referrers');
         Route::patch('/deals/{dealId}/splits/{splitId}',           [\App\Http\Controllers\ResellerDealController::class, 'updateCoReferrerSplit'])->name('deals.splits.update');
