@@ -24,17 +24,17 @@
        class="block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:border-[#7B61FF]/30 hover:shadow-md transition-all group">
         <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                         style="background:linear-gradient(135deg,#ede9fe,#ddd6fe)">
-                        <svg class="w-4 h-4 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex items-center gap-2.5 mb-1.5">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                         style="background:linear-gradient(135deg,#7B61FF,#6d28d9)">
+                        <svg class="text-white" style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
-                    <h3 class="text-sm font-bold text-[#1E1B4B] group-hover:text-[#7B61FF] transition-colors">{{ $form->title }}</h3>
+                    <h3 class="text-sm font-bold text-[#1E1B4B] group-hover:text-[#7B61FF] transition-colors leading-snug">{{ $form->title }}</h3>
                 </div>
                 @if($form->description)
-                <p class="text-xs text-gray-400 ml-10 line-clamp-2">{{ $form->description }}</p>
+                <p class="text-xs text-gray-500 mt-0 line-clamp-2">{{ $form->description }}</p>
                 @endif
             </div>
             <svg class="w-4 h-4 text-gray-300 group-hover:text-[#7B61FF] transition-colors shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

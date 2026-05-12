@@ -286,11 +286,12 @@
                                     'badge badge-gray':   lead.status === 'reassigned' || lead.status === 'declined',
                                 }" x-text="lead.status ? lead.status.charAt(0).toUpperCase() + lead.status.slice(1) : 'Active'"></span>
                             </td>
-                            <td class="hidden lg:table-cell">
+                            <td class="hidden lg:table-cell" @click.stop>
                                 <template x-if="lead.last_activity_at">
-                                    <span class="text-xs text-gray-500"
-                                          :title="new Date(lead.last_activity_at).toLocaleString('en-PH', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})"
-                                          x-text="timeAgo(lead.last_activity_at)"></span>
+                                    <a :href="'/tenant/{{ $tenant->id }}/deals/' + lead.id + '#rb-activity-history'"
+                                       class="text-xs text-gray-500 hover:text-purple-600 hover:underline transition-colors"
+                                       :title="new Date(lead.last_activity_at).toLocaleString('en-PH', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})"
+                                       x-text="timeAgo(lead.last_activity_at)"></a>
                                 </template>
                                 <template x-if="!lead.last_activity_at">
                                     <span class="text-xs text-gray-300">—</span>

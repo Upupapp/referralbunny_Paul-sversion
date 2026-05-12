@@ -4,15 +4,16 @@
 
 @section('content')
 @php
-    $dealId       = $dealSummary['id'];
-    $dealName     = $dealSummary['name'];
-    $dealStage    = $dealSummary['stage'];
-    $dealStatus   = $dealSummary['status'];
-    $daysLeft     = $dealSummary['days_left'];
-    $dealValue    = $dealSummary['deal_value'];
-    $referrerName = $dealSummary['reseller_name'];
-    $province     = $dealSummary['data']['province'] ?? null;
-    $municipality = $dealSummary['data']['municipality'] ?? null;
+    $dealId            = $dealSummary['id'];
+    $dealName          = $dealSummary['name'];
+    $dealStage         = $dealSummary['stage'];
+    $dealStatus        = $dealSummary['status'];
+    $daysLeft          = $dealSummary['days_left'];
+    $dealValue         = $dealSummary['deal_value'];
+    $commissionStatus  = $dealSummary['commission_status'] ?? 'pending';
+    $referrerName      = $dealSummary['reseller_name'];
+    $province          = $dealSummary['data']['province'] ?? null;
+    $municipality      = $dealSummary['data']['municipality'] ?? null;
 
     $stageMap = [
         'introduction'  => ['bg-blue-100 text-blue-700',   'Introduction'],
@@ -190,8 +191,25 @@
                         </div>
                         @endif
                         <div class="flex justify-between items-center py-3">
+                            <dt class="text-sm text-gray-500">Split status</dt>
+                            <dd class="text-sm font-semibold capitalize"
+                                style="color:{{ ($myPartnerSplit->status ?? 'provisional') === 'active' ? '#16a34a' : '#7B61FF' }}">
+                                {{ $splitStatusLabel }}
+                            </dd>
+                        </div>
+                        <div class="flex justify-between items-center py-3">
                             <dt class="text-sm text-gray-500">Commission status</dt>
-                            <dd class="text-sm font-semibold text-[#1E1B4B] capitalize">{{ $myPartnerSplit->status ?? 'provisional' }}</dd>
+                            <dd>
+                                @php
+                                $csLabel = ucfirst($commissionStatus);
+                                $csStyle = match($commissionStatus) {
+                                    'paid'   => 'background:#dcfce7;color:#16a34a',
+                                    'locked' => 'background:#fef3c7;color:#d97706',
+                                    default  => 'background:#ede9fe;color:#7B61FF',
+                                };
+                                @endphp
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full" style="{{ $csStyle }}">{{ $csLabel }}</span>
+                            </dd>
                         </div>
                     </dl>
 
@@ -480,6 +498,14 @@
                         Message Referrer
                     </a>
                     @endif
+                    <a href="{{ route('partner.commissions') }}"
+                       class="flex items-center gap-2.5 w-full px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 min-h-[44px]"
+                       style="color:#7B61FF;border-color:#ddd6fe;background:white">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        My Commissions
+                    </a>
                     <a href="{{ route('partner.deals') }}"
                        class="flex items-center gap-2.5 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-300/50 min-h-[44px]">
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

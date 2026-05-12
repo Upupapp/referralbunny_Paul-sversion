@@ -1542,7 +1542,9 @@
                 </div>
 
                 {{-- Activity History — self-contained component, does not rely on dealDetail scope --}}
-                <div class="card" x-data="dealActivityHistory(@json($ssrLead['history'] ?? []))">
+                <div class="card" id="rb-activity-history"
+                     x-data="dealActivityHistory(@json($ssrLead['history'] ?? []))"
+                     x-init="$nextTick(() => refreshHistory())">
 
                     {{-- Header + filters --}}
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">

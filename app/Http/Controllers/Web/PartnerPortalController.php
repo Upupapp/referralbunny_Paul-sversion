@@ -127,14 +127,15 @@ class PartnerPortalController extends Controller
         // Build a partner-safe deal summary: only fields partners are authorised to see.
         // Never pass the full Lead model — it contains base_cost, added_amount, tenant financials.
         $dealSummary = [
-            'id'           => $lead->id,
-            'name'         => $lead->name,
-            'stage'        => $lead->stage,
-            'status'       => $lead->status,
-            'days_left'    => $lead->days_left,
-            'deal_value'   => (float) ($lead->deal_value ?? 0),   // total contract value — visible
-            'reseller_name'=> $lead->reseller_name,               // referrer name only, no contact
-            'data'         => [                                    // location context only
+            'id'                => $lead->id,
+            'name'              => $lead->name,
+            'stage'             => $lead->stage,
+            'status'            => $lead->status,
+            'days_left'         => $lead->days_left,
+            'deal_value'        => (float) ($lead->deal_value ?? 0),   // total contract value — visible
+            'commission_status' => $lead->commission_status ?? 'pending', // pending/locked/paid — visible
+            'reseller_name'     => $lead->reseller_name,               // referrer name only, no contact
+            'data'              => [                                    // location context only
                 'province'     => $lead->data['province']     ?? null,
                 'municipality' => $lead->data['municipality'] ?? null,
             ],
@@ -516,5 +517,56 @@ class PartnerPortalController extends Controller
                 'created_ago' => 'just now',
             ],
         ]);
+    }
+
+    // ── My Commissions ──────────────────────────────────────────────────────
+
+    public function commissions()
+    {
+        $partner = $this->partner();
+        $dealIds = $this->authorizedDealIds();
+
+        // Load deal_partner_splits for this partner across all deals
+        $splits = DB::table('deal_partner_splits')
+            ->whereIn('deal_id', $dealIds)
+            ->where('tenant_id', $partner->tenant_id)
+            ->where('partner_email', $partner->email)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
+            ->get();
+
+        // Load the corresponding deals
+        $deals = Lead::whereIn('id', $splits->pluck('deal_id')->unique()->values()->toArray())
+            ->get(['id', 'name', 'deal_value', 'added_amount', 'stage', 'status', 'commission_status', 'reseller_name'])
+            ->keyBy('id');
+
+        $commissions = $splits->map(function ($s) use ($deals) {
+            $deal = $deals->get($s->deal_id);
+            $pool = round((float) ($deal?->added_amount ?? 0) * 0.70, 2);
+            $myAmount = $s->split_share_type === 'percentage'
+                ? round($pool * (float) $s->split_share_value / 100, 2)
+                : (float) $s->split_share_value;
+            return [
+                'deal_id'         => $s->deal_id,
+                'deal_name'       => $deal?->name ?? '—',
+                'deal_value'      => (float) ($deal?->deal_value ?? 0),
+                'deal_stage'      => $deal?->stage ?? 'unknown',
+                'deal_status'     => $deal?->status ?? 'active',
+                'commission_status' => $deal?->commission_status ?? 'pending',
+                'split_type'      => $s->split_share_type,
+                'split_value'     => (float) $s->split_share_value,
+                'my_amount'       => $myAmount,
+                'status'          => $s->status ?? 'provisional',
+            ];
+        })->values();
+
+        $totalProvisional = $commissions->where('commission_status', 'pending')->sum('my_amount');
+        $totalLocked      = $commissions->where('commission_status', 'locked')->sum('my_amount');
+        $totalPaid        = $commissions->where('commission_status', 'paid')->sum('my_amount');
+        $totalAll         = $commissions->sum('my_amount');
+
+        return view('partner.commissions', compact(
+            'partner', 'commissions', 'totalProvisional', 'totalLocked', 'totalPaid', 'totalAll'
+        ));
     }
 }

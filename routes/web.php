@@ -198,6 +198,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
         Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index');
         Route::post('/deals/{dealId}/notes',          [PartnerPortalController::class, 'addNote'])->name('deals.notes')->middleware('throttle:30,1');
+        Route::get('/commissions',                    [PartnerPortalController::class, 'commissions'])->name('commissions');
         Route::get('/forms',                          [PartnerPortalController::class, 'forms'])->name('forms');
         Route::get('/forms/{token}',                  [PartnerPortalController::class, 'formShow'])->name('forms.show');
         Route::post('/forms/{token}/submit',          [PartnerPortalController::class, 'formSubmit'])->name('forms.submit')->middleware('throttle:20,1');
