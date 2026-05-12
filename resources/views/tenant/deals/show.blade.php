@@ -818,8 +818,10 @@
                                            x-text="s.split_share_type === 'percentage'
                                                ? parseFloat(s.split_share_value) + '% of pool'
                                                : 'fixed'"></p>
-                                        <button @click="removeSplit(s.id)"
-                                                style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:0">Remove</button>
+                                        <button @click="removeSplit(s.id, s.partner_name)"
+                                                style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:2px 6px;border-radius:6px;transition:all .15s"
+                                                onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
+                                                onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
                                     </div>
                                 </div>
                             </template>
@@ -2767,18 +2769,26 @@ function partnerSplitSection(dealId, tenantId) {
             finally { this.saving = false; }
         },
 
-        async removeSplit(splitId) {
-            if (!confirm('Remove this partner split?')) return;
+        async removeSplit(splitId, partnerName) {
+            const name = partnerName || 'this partner';
+            if (!confirm('Remove ' + name + ' from this deal? This will free up their commission split.')) return;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                await fetch(`/api/leads/${dealId}/partner-splits/${splitId}`, {
+                const r = await fetch(`/api/leads/${dealId}/partner-splits/${splitId}`, {
                     method:      'DELETE',
                     credentials: 'same-origin',
-                    headers:     { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    headers:     { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 });
-                await this.load();
-                this.$dispatch('show-toast', { type: 'success', message: 'Partner split removed.' });
-            } catch(e) {}
+                const d = await r.json().catch(() => ({}));
+                if (r.ok) {
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: d.message || 'Partner removed.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: d.error || 'Could not remove partner.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
         },
     };
 }

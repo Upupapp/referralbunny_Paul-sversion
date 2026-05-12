@@ -534,12 +534,16 @@
         {{-- Desktop table --}}
         <div class="hidden sm:block overflow-x-auto">
             <table class="w-full text-sm">
+                @php $canRemovePartner = !in_array($lead->commission_status ?? '', ['locked', 'paid']); @endphp
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-100">
                         <th class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Partner</th>
                         <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Status</th>
                         <th class="text-right px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Split</th>
                         <th class="text-right px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Est. Commission</th>
+                        @if($canRemovePartner)
+                        <th class="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-16"></th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
@@ -577,6 +581,18 @@
                         <td class="px-5 py-3.5 text-right font-semibold text-[#0D9488]">
                             ₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}
                         </td>
+                        @if($canRemovePartner)
+                        <td class="px-4 py-3.5 text-center">
+                            <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
+                                    title="Remove partner from deal"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </td>
+                        @endif
                     </tr>
                     @endforeach
                 </tbody>
@@ -612,6 +628,16 @@
                         Est. Commission: <strong class="text-[#0D9488]">₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}</strong>
                     </p>
                 </div>
+                @if($canRemovePartner)
+                <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
+                        title="Remove partner"
+                        class="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                        aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+                @endif
             </div>
             @endforeach
         </div>
@@ -1018,4 +1044,88 @@
     </div>
 
 </div>
+
+{{-- ── Remove Partner Confirmation Modal ──────────────────────────────────── --}}
+<div id="rb-remove-partner-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,.55);z-index:9999;align-items:center;justify-content:center;padding:16px"
+     role="dialog" aria-modal="true">
+    <div style="background:white;border-radius:20px;max-width:400px;width:100%;padding:28px;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+            <svg style="width:22px;height:22px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#dc2626;margin:0 0 6px">Remove Partner</p>
+        <h3 id="rb-remove-partner-name" style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0 0 8px"></h3>
+        <p style="font-size:13px;color:#9ca3af;margin:0 0 22px;line-height:1.6">
+            This partner will be removed from this deal. Their commission split will no longer be counted. This can be undone by adding them again.
+        </p>
+        <div style="display:flex;gap:10px">
+            <button id="rb-remove-cancel"
+                    onclick="document.getElementById('rb-remove-partner-modal').style.display='none'"
+                    style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                Cancel
+            </button>
+            <button id="rb-remove-confirm"
+                    style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
+                Remove Partner
+            </button>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+let _rbRemoveSplitId   = null;
+let _rbRemoveSplitUrl  = null;
+
+function rbRemovePartner(splitId, name) {
+    _rbRemoveSplitId  = splitId;
+    _rbRemoveSplitUrl = '/reseller/{{ $tenant->id }}/partners/splits/' + splitId;
+
+    document.getElementById('rb-remove-partner-name').textContent = name;
+    document.getElementById('rb-remove-partner-modal').style.display = 'flex';
+
+    document.getElementById('rb-remove-confirm').onclick = async function() {
+        this.textContent = 'Removing…';
+        this.disabled    = true;
+
+        try {
+            const r = await fetch(_rbRemoveSplitUrl, {
+                method:      'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-TOKEN':     document.querySelector('meta[name=csrf-token]').content,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept':           'application/json',
+                },
+            });
+            const d = await r.json().catch(() => ({}));
+            document.getElementById('rb-remove-partner-modal').style.display = 'none';
+
+            if (r.ok) {
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: { type: 'success', message: d.message || 'Partner removed from deal.' }
+                }));
+                setTimeout(() => window.location.reload(), 700);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: { type: 'error', message: d.error || 'Could not remove partner. Please try again.' }
+                }));
+                this.textContent = 'Remove Partner';
+                this.disabled    = false;
+            }
+        } catch (err) {
+            document.getElementById('rb-remove-partner-modal').style.display = 'none';
+            alert('Network error. Please try again.');
+        }
+    };
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('rb-remove-partner-modal').style.display = 'none';
+});
+</script>
+@endpush
 @endsection
