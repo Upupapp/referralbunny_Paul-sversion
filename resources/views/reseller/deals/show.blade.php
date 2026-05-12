@@ -537,7 +537,7 @@ window.__rsDeal = {
                 $maxForSplit   = max(0.0, round(100.0 - (float)$otherTotal, 2));
                 // Use url() not route() — avoids UrlGenerationException if split has no id
                 $splitUpdateUrl = $split->id
-                    ? url("/reseller/{$tenantId}/deals/{$dealId}/splits/{$split->id}")
+                    ? url("/reseller/{$tenantId}/deals/{$lead->id}/splits/{$split->id}")
                     : null;
                 $splitCanEdit  = $canEditSplits && $splitUpdateUrl;
             @endphp
