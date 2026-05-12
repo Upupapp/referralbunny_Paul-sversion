@@ -149,22 +149,22 @@
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
-                                 style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:200;background:white;border:1.5px solid #f3f4f6;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);min-width:170px;padding:6px">
+                                 style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:200;background:white;border:1.5px solid #f3f4f6;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);min-width:210px;max-height:80vh;overflow-y:auto;padding:6px">
 
                                 <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $form->id]) }}"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
-                                    <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     Edit Form
                                 </a>
 
                                 <a href="{{ route('tenant.request-forms.submissions', [$tenant->id, $form->id]) }}"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
-                                    <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    View Responses
+                                    <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span style="flex:1">View Responses</span>
                                     @if($form->submissions_count)
-                                    <span style="margin-left:auto;font-size:10px;font-weight:700;background:#ede9fe;color:#7B61FF;padding:1px 6px;border-radius:9999px">{{ $form->submissions_count }}</span>
+                                    <span style="flex-shrink:0;font-size:10px;font-weight:700;background:#ede9fe;color:#7B61FF;padding:1px 6px;border-radius:9999px">{{ $form->submissions_count }}</span>
                                     @endif
                                 </a>
 
@@ -179,9 +179,9 @@
                                 @endif
 
                                 <a href="{{ $form->publicUrl() }}" target="_blank"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
-                                    <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     Preview Form
                                 </a>
 

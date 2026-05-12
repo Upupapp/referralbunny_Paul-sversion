@@ -392,6 +392,25 @@ class RequestFormController extends Controller
         ));
     }
 
+    // ── Destroy Submission ────────────────────────────────────────────────────
+
+    public function destroySubmission(string $tenantId, string $formId, string $submissionId): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+        $submission = RequestFormSubmission::where('request_form_id', $formId)
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($submissionId);
+
+        DB::transaction(function () use ($submission) {
+            \App\Models\RequestFormSubmissionRecipient::where('request_form_submission_id', $submission->id)->delete();
+            $submission->delete();
+        });
+
+        return redirect()->route('tenant.request-forms.submissions', [$tenantId, $formId])
+            ->with('success', 'Response deleted.');
+    }
+
     // ── Destroy ───────────────────────────────────────────────────────────────
 
     public function destroy(string $tenantId, string $formId): \Illuminate\Http\RedirectResponse

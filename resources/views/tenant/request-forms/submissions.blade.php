@@ -53,6 +53,12 @@
         </div>
     </div>
 
+    @if(session('success'))
+    <div style="padding:12px 16px;background:#dcfce7;border:1px solid #86efac;border-radius:12px;color:#15803d;font-size:13px;font-weight:600">
+        {{ session('success') }}
+    </div>
+    @endif
+
     {{-- Error banner (shown when query failed) --}}
     @if(!empty($submissionsError))
     <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:12px">
@@ -128,7 +134,7 @@
                     <th style="text-align:center;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">Tasks</th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">Status</th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">Submitted</th>
-                    <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">View</th>
+                    <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,11 +177,19 @@
                         {{ $sub->submitted_at ? $sub->submitted_at->format('M j, Y g:i A') : '—' }}
                     </td>
                     <td style="padding:12px 16px;text-align:right">
-                        <a href="{{ route('tenant.request-forms.submissions.show', [$tenant->id, $form->id, $sub->id]) }}"
-                           style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#7B61FF;background:#ede9fe;padding:5px 12px;border-radius:8px;text-decoration:none">
-                            <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            View
-                        </a>
+                        <div style="display:inline-flex;align-items:center;gap:6px">
+                            <a href="{{ route('tenant.request-forms.submissions.show', [$tenant->id, $form->id, $sub->id]) }}"
+                               style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#7B61FF;background:#ede9fe;padding:5px 12px;border-radius:8px;text-decoration:none">
+                                <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                View
+                            </a>
+                            <button type="button"
+                                    onclick="rbConfirmDeleteSubmission('{{ $sub->id }}','{{ addslashes($sub->submitter_name ?: $sub->submitter_email ?: 'this response') }}','{{ route('tenant.request-forms.submissions.destroy', [$tenant->id, $form->id, $sub->id]) }}')"
+                                    style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#dc2626;background:#fee2e2;padding:5px 10px;border-radius:8px;border:none;cursor:pointer"
+                                    title="Delete this response">
+                                <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 @endforeach
@@ -192,4 +206,48 @@
         @endif
     </div>
 </div>
+
+{{-- Delete Response Confirmation Modal --}}
+<div id="rb-del-sub-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:white;border-radius:20px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+            <svg style="width:22px;height:22px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#dc2626;margin-bottom:6px">Delete Response</p>
+        <h3 id="rb-del-sub-name" style="font-size:16px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently remove this submission. This cannot be undone.</p>
+        <div style="display:flex;gap:10px">
+            <button onclick="document.getElementById('rb-del-sub-modal').style.display='none'"
+                    style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                Cancel
+            </button>
+            <button id="rb-del-sub-btn"
+                    style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function rbConfirmDeleteSubmission(subId, name, actionUrl) {
+    document.getElementById('rb-del-sub-name').textContent = name;
+    document.getElementById('rb-del-sub-modal').style.display = 'flex';
+    document.getElementById('rb-del-sub-btn').onclick = function() {
+        this.textContent = 'Deleting…';
+        this.disabled = true;
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = actionUrl;
+        f.innerHTML = '<input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE">';
+        document.body.appendChild(f);
+        f.submit();
+    };
+}
+</script>
+@endpush
 @endsection
