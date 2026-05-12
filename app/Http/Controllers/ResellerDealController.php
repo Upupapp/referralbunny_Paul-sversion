@@ -226,49 +226,73 @@ class ResellerDealController extends Controller
         $lead     = $this->deal($tenantId, $dealId);
 
         $data = $request->validate([
-            'body' => 'required|string|max:10000',
+            'body'    => 'nullable|string|max:10000',
+            'files'   => 'nullable|array|max:5',
+            'files.*' => 'nullable|file|max:10240',
         ]);
 
-        $body = strip_tags(trim($data['body']));
-        if (!$body) return response()->json(['error' => 'Note body is required.'], 422);
+        $body     = strip_tags(trim($data['body'] ?? ''));
+        $hasFiles = !empty($request->file('files'));
+        if (!$body && !$hasFiles) {
+            return response()->json(['error' => 'Please add a note or attach a file.'], 422);
+        }
 
-        DB::beginTransaction();
         try {
-            $note = LeadNote::create([
-                'lead_id' => $lead->id,
-                'text'    => $body,
-                'author'  => $reseller->name,
+            // Use DealComment (supports files + mentions) instead of LeadNote
+            $comment = \App\Models\DealComment::create([
+                'tenant_id'      => $tenantId,
+                'deal_id'        => $dealId,
+                'author_user_id' => $reseller->id,
+                'author_role'    => 'referrer',
+                'body'           => $body,
+                'visibility'     => 'shared',
             ]);
 
+            // Store attachments if provided
+            $attachments = [];
+            if ($hasFiles) {
+                $attachments = \App\Http\Controllers\DealNoteAttachmentController::storeFiles(
+                    $request->file('files'), $tenantId, $dealId, $comment->id, (string) $reseller->id, 'referrer'
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('ResellerDealController addNote failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not save note. Please try again.'], 500);
+        }
+
+        // Activity + admin notification — outside transaction so failures don't roll back
+        try {
             app(DealActivityService::class)->record($lead, 'Note added by referrer', 'note', [
                 'category'   => 'note',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
                 'actor_role' => 'referrer',
             ]);
+        } catch (\Throwable) {}
 
-            DB::commit();
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Note added by Referrer',
+                body:         $reseller->name . ' added a note on "' . $lead->name . '"' . ($body ? ': "' . \Illuminate\Support\Str::limit($body, 60) . '"' : ' (with attachment)'),
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                actionLabel:  'View Deal',
+                dedupeSuffix: $dealId . ':note:' . $comment->id,
+            );
+        } catch (\Throwable) {}
 
-            // Notify admins after commit so failure doesn't roll back note creation
-            try {
-                app(NotificationDispatchService::class)->dispatchToTenantAdmins(
-                    tenantId:     $tenantId,
-                    category:     'deal_pipeline',
-                    priority:     'normal',
-                    title:        'Note added by referrer',
-                    body:         $reseller->name . ' added a note on "' . $lead->name . '": ' . \Illuminate\Support\Str::limit($body, 80),
-                    actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
-                    actionLabel:  'View Deal',
-                    dedupeSuffix: $dealId . ':note:' . $note->id,
-                );
-            } catch (\Throwable) {}
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController addNote failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not save note. Please try again.'], 500);
-        }
-
-        return response()->json(['success' => true, 'note' => $note]);
+        return response()->json([
+            'success' => true,
+            'note'    => [
+                'id'          => $comment->id,
+                'body'        => $comment->body,
+                'author'      => $reseller->name,
+                'attachments' => count($attachments),
+                'created_ago' => 'just now',
+            ],
+        ]);
     }
 
     // ── Update Deal Amount ────────────────────────────────────────────────────

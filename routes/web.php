@@ -188,6 +188,8 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
         Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
+        Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index');
+        Route::post('/deals/{dealId}/notes',          [PartnerPortalController::class, 'addNote'])->name('deals.notes')->middleware('throttle:30,1');
         Route::get('/forms',                          [PartnerPortalController::class, 'forms'])->name('forms');
         Route::get('/forms/{token}',                  [PartnerPortalController::class, 'formShow'])->name('forms.show');
         Route::post('/forms/{token}/submit',          [PartnerPortalController::class, 'formSubmit'])->name('forms.submit')->middleware('throttle:20,1');
@@ -267,6 +269,11 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::delete('/request-forms/{formId}/submissions/{submissionId}', [\App\Http\Controllers\Web\RequestFormController::class, 'destroySubmission'])->name('request-forms.submissions.destroy');
     Route::delete('/request-forms/bulk',        [\App\Http\Controllers\Web\RequestFormController::class, 'bulkDestroy'])->name('request-forms.bulk-destroy');
     Route::delete('/request-forms/{formId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'destroy'])->name('request-forms.destroy');
+    // Field management CRUD (AJAX)
+    Route::post('/request-forms/{formId}/fields',               [\App\Http\Controllers\Web\RequestFormController::class, 'addField'])->name('request-forms.fields.store');
+    Route::patch('/request-forms/{formId}/fields/{fieldId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'updateField'])->name('request-forms.fields.update');
+    Route::delete('/request-forms/{formId}/fields/{fieldId}',   [\App\Http\Controllers\Web\RequestFormController::class, 'destroyField'])->name('request-forms.fields.destroy');
+    Route::post('/request-forms/{formId}/fields/reorder',       [\App\Http\Controllers\Web\RequestFormController::class, 'reorderFields'])->name('request-forms.fields.reorder');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/agreements',      [TenantAdminController::class, 'agreements'])->name('agreements');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');

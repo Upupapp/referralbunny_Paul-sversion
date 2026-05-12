@@ -82,14 +82,23 @@ class DealCommentController extends Controller
             }
         }
 
-        // Permission: Partner must be associated with the deal
+        // Permission: Partner must be associated with the deal.
+        // Check both deal_partners (formal) and deal_partner_splits (referrer-invited partners).
         if ($role === 'partner') {
-            $associated = DB::table('deal_partners')
+            $inDealPartners = DB::table('deal_partners')
                 ->where('deal_id', $dealId)
                 ->where('partner_user_id', $actorId)
                 ->whereIn('status', ['active', 'invited'])
                 ->exists();
-            if (!$associated) {
+
+            $inSplits = DB::table('deal_partner_splits')
+                ->where('deal_id', $dealId)
+                ->where('partner_user_id', $actorId)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->exists();
+
+            if (!$inDealPartners && !$inSplits) {
                 return response()->json(['error' => 'You are not associated with this deal.'], 403);
             }
         }

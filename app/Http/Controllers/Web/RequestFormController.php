@@ -234,6 +234,117 @@ class RequestFormController extends Controller
         return redirect()->route('tenant.request-forms', $tenantId)->with('success', 'Form updated.');
     }
 
+    // ── Field Management (AJAX) ──────────────────────────────────────────────
+
+    public function addField(Request $request, string $tenantId, string $formId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $form = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+
+        $data = $request->validate([
+            'label'       => 'required|string|max:120',
+            'field_type'  => 'required|in:text,email,textarea,select,multi_select,checkbox,radio,number,date',
+            'placeholder' => 'nullable|string|max:120',
+            'helper_text' => 'nullable|string|max:300',
+            'options'     => 'nullable|string',  // newline-separated
+            'is_required' => 'boolean',
+        ]);
+
+        $maxSort = RequestFormField::where('request_form_id', $form->id)->max('sort_order') ?? -1;
+
+        $options = null;
+        if (!empty($data['options'])) {
+            $options = array_values(array_filter(array_map('trim', explode("\n", $data['options']))));
+        }
+
+        $field = RequestFormField::create([
+            'tenant_id'       => $tenantId,
+            'request_form_id' => $form->id,
+            'label'           => $data['label'],
+            'field_key'       => \Illuminate\Support\Str::slug($data['label']) . '_' . \Illuminate\Support\Str::random(4),
+            'field_type'      => $data['field_type'],
+            'placeholder'     => $data['placeholder'] ?? null,
+            'helper_text'     => $data['helper_text'] ?? null,
+            'options'         => $options,
+            'is_required'     => (bool) ($data['is_required'] ?? false),
+            'sort_order'      => $maxSort + 1,
+        ]);
+
+        return response()->json(['field' => $this->formatField($field)], 201);
+    }
+
+    public function updateField(Request $request, string $tenantId, string $formId, string $fieldId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $form  = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+        $field = RequestFormField::where('request_form_id', $form->id)->findOrFail($fieldId);
+
+        $data = $request->validate([
+            'label'       => 'sometimes|required|string|max:120',
+            'placeholder' => 'nullable|string|max:120',
+            'helper_text' => 'nullable|string|max:300',
+            'options'     => 'nullable|string',
+            'is_required' => 'boolean',
+        ]);
+
+        $update = array_filter([
+            'label'       => $data['label'] ?? null,
+            'placeholder' => $data['placeholder'] ?? null,
+            'helper_text' => $data['helper_text'] ?? null,
+            'is_required' => isset($data['is_required']) ? (bool) $data['is_required'] : null,
+        ], fn($v) => $v !== null);
+
+        if (isset($data['options'])) {
+            $update['options'] = array_values(array_filter(array_map('trim', explode("\n", $data['options'] ?? ''))));
+        }
+
+        $field->update($update);
+        return response()->json(['field' => $this->formatField($field->fresh())]);
+    }
+
+    public function destroyField(string $tenantId, string $formId, string $fieldId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $form  = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+        $field = RequestFormField::where('request_form_id', $form->id)->findOrFail($fieldId);
+        $field->delete();
+        return response()->json(['deleted' => true]);
+    }
+
+    public function reorderFields(Request $request, string $tenantId, string $formId): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $form = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
+
+        $order = $request->validate(['ids' => 'required|array', 'ids.*' => 'required|string'])['ids'];
+
+        foreach ($order as $idx => $fieldId) {
+            RequestFormField::where('request_form_id', $form->id)->where('id', $fieldId)
+                ->update(['sort_order' => $idx]);
+        }
+
+        return response()->json(['reordered' => true]);
+    }
+
+    private function formatField(RequestFormField $f): array
+    {
+        $typeLabel = match($f->field_type) {
+            'multi_select' => 'Multi-select', default => ucfirst(str_replace('_', ' ', $f->field_type))
+        };
+        return [
+            'id'          => $f->id,
+            'label'       => $f->label,
+            'field_key'   => $f->field_key,
+            'field_type'  => $f->field_type,
+            'type_label'  => $typeLabel,
+            'placeholder' => $f->placeholder,
+            'helper_text' => $f->helper_text,
+            'options'     => $f->options ?? [],
+            'is_required' => (bool) $f->is_required,
+            'sort_order'  => $f->sort_order,
+        ];
+    }
+
     // ── Publish / Unpublish ───────────────────────────────────────────────────
 
     public function publish(string $tenantId, string $formId): \Illuminate\Http\JsonResponse

@@ -243,6 +243,115 @@
     </div>
     @endif
 
+    {{-- ── Notes ─────────────────────────────────────────────────── --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+         x-data="partnerNotes('{{ $dealId }}', '{{ route('partner.deals.notes', $dealId) }}', '{{ csrf_token() }}')"
+         x-init="load()">
+
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-[#1E1B4B]">Notes</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Shared notes on this deal</p>
+            </div>
+            <button @click="showForm = !showForm"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-all"
+                    style="background:linear-gradient(135deg,#2563EB,#3B82F6)">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Note
+            </button>
+        </div>
+
+        {{-- Add note form --}}
+        <div x-show="showForm" class="px-5 py-4 border-b border-gray-100 bg-blue-50/30">
+            <textarea x-model="noteBody" rows="3" placeholder="Write your note…"
+                      class="w-full border border-gray-200 bg-white rounded-xl px-3.5 py-2.5 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none mb-3"></textarea>
+
+            {{-- File attachment --}}
+            <label class="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors mb-3">
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                </svg>
+                <span class="text-xs text-gray-500">Attach files</span>
+                <span class="text-[10px] text-gray-400">(PDF, Word, Excel, images · max 10MB)</span>
+                <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp,.gif"
+                       class="sr-only" @change="noteFiles = Array.from($event.target.files).slice(0, 5)">
+            </label>
+
+            <template x-if="noteFiles.length > 0">
+                <ul class="flex flex-wrap gap-1.5 mb-3">
+                    <template x-for="(f, i) in noteFiles" :key="i">
+                        <li class="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
+                            <span class="truncate max-w-[120px]" x-text="f.name"></span>
+                            <button type="button" @click="noteFiles = noteFiles.filter((_,j)=>j!==i)" class="text-red-400 hover:text-red-600">✕</button>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+
+            <div x-show="noteError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-2" x-text="noteError"></div>
+
+            <div class="flex gap-2 justify-end">
+                <button @click="showForm = false; noteBody = ''; noteFiles = []; noteError = ''"
+                        class="px-3 py-1.5 rounded-xl text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button @click="save()"
+                        :disabled="(!noteBody.trim() && noteFiles.length === 0) || saving"
+                        class="px-3 py-1.5 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all"
+                        style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
+                        x-text="saving ? 'Saving…' : 'Save Note'">
+                    Save Note
+                </button>
+            </div>
+        </div>
+
+        {{-- Notes list --}}
+        <div class="divide-y divide-gray-50">
+            <template x-if="loading">
+                <div class="px-5 py-6 text-center">
+                    <svg class="w-4 h-4 animate-spin text-blue-400 mx-auto" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                    </svg>
+                </div>
+            </template>
+            <template x-if="!loading && notes.length === 0">
+                <div class="px-5 py-8 text-center">
+                    <p class="text-xs text-gray-400">No notes yet. Add the first note above.</p>
+                </div>
+            </template>
+            <template x-for="n in notes" :key="n.id">
+                <div class="px-5 py-3.5 flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-[10px] shrink-0 mt-0.5"
+                         x-text="(n.author_name || '?').charAt(0).toUpperCase()"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-semibold text-[#1E1B4B]" x-text="n.author_name || 'Team'"></span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold capitalize"
+                                  :class="n.author_role === 'partner' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
+                                  x-text="n.author_role === 'partner' ? 'You' : n.author_role_label"></span>
+                            <span class="text-[10px] text-gray-400" x-text="n.created_ago"></span>
+                        </div>
+                        <p class="text-sm text-gray-700 mt-0.5 leading-relaxed whitespace-pre-wrap" x-text="n.body"></p>
+                        <template x-if="n.attachments && n.attachments.length > 0">
+                            <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                <template x-for="att in n.attachments" :key="att.id">
+                                    <a :href="att.download_url" target="_blank"
+                                       class="inline-flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                        <span x-text="att.original_filename"></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     {{-- ── Actions ───────────────────────────────────────────────────── --}}
     <div class="flex flex-wrap gap-3">
         <a href="{{ route('partner.messages') }}?deal_id={{ $dealId }}"
@@ -259,4 +368,67 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+function partnerNotes(dealId, postUrl, csrf) {
+    return {
+        notes:    [],
+        loading:  true,
+        showForm: false,
+        noteBody: '',
+        noteFiles:[],
+        noteError:'',
+        saving:   false,
+
+        async load() {
+            try {
+                const r = await fetch('/partner/deals/' + dealId + '/notes', {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (r.ok) this.notes = (await r.json()).notes ?? [];
+            } catch(e) {}
+            this.loading = false;
+        },
+
+        async save() {
+            if ((!this.noteBody.trim() && this.noteFiles.length === 0) || this.saving) return;
+            this.saving = true; this.noteError = '';
+            try {
+                const fd = new FormData();
+                fd.append('_token', csrf);
+                if (this.noteBody.trim()) fd.append('body', this.noteBody);
+                this.noteFiles.forEach(f => fd.append('files[]', f));
+
+                const r = await fetch(postUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: fd,
+                });
+                const d = await r.json();
+                if (!r.ok) { this.noteError = d.error || 'Could not save note.'; return; }
+                // Prepend new note
+                this.notes.unshift({
+                    id:          d.note.id,
+                    body:        d.note.body,
+                    author_name: d.note.author,
+                    author_role: 'partner',
+                    author_role_label: 'Partner',
+                    created_ago: 'just now',
+                    attachments: [],
+                });
+                this.showForm = false;
+                this.noteBody = '';
+                this.noteFiles = [];
+            } catch(e) {
+                this.noteError = 'Network error. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+}
+</script>
+@endpush
 @endsection

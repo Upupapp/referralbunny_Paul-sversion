@@ -626,23 +626,53 @@ window.__rsDeal = {
 
     {{-- ── MODALS ────────────────────────────────────────────────── --}}
 
-    {{-- Add Note modal --}}
-    <div x-show="showAddNote" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    {{-- Add Note modal (with file attachments) --}}
+    <div x-show="showAddNote" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         @keydown.escape.window="showAddNote = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h3 class="font-bold text-[#1E1B4B]">Add Note</h3>
-                <button @click="showAddNote = false" class="text-gray-400 hover:text-gray-600">
+                <button @click="showAddNote = false; noteFiles = []; noteBody = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="px-5 py-4 space-y-4">
-                <textarea x-model="noteBody" rows="4" placeholder="Write your note…"
-                          class="form-input w-full text-sm resize-none" required></textarea>
+                <textarea x-model="noteBody" rows="4" placeholder="Write your note… (optional if attaching files)"
+                          class="form-input w-full text-sm resize-none"></textarea>
+
+                {{-- File attachments --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                        Attachments <span class="text-gray-400 font-normal">(optional · PDF, Word, Excel, images · max 10MB each)</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-3 py-2.5 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-colors">
+                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        <span class="text-xs text-gray-500">Click to attach files</span>
+                        <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp,.gif"
+                               class="sr-only"
+                               @change="noteFiles = Array.from($event.target.files).slice(0, 5)">
+                    </label>
+                    <template x-if="noteFiles.length > 0">
+                        <ul class="mt-2 space-y-1">
+                            <template x-for="(f, i) in noteFiles" :key="i">
+                                <li class="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2.5 py-1.5 rounded-lg">
+                                    <svg class="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span class="truncate flex-1" x-text="f.name"></span>
+                                    <span class="text-gray-400 shrink-0" x-text="(f.size/1024/1024).toFixed(1)+'MB'"></span>
+                                    <button type="button" @click="noteFiles = noteFiles.filter((_,j)=>j!==i)" class="text-red-400 hover:text-red-600 shrink-0">✕</button>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                </div>
+
                 <div x-show="noteError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="noteError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showAddNote = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="saveNote()" :disabled="!noteBody.trim() || noteSaving"
+                <button @click="showAddNote = false; noteFiles = []; noteBody = ''" class="btn-secondary text-sm">Cancel</button>
+                <button @click="saveNote()" :disabled="(!noteBody.trim() && noteFiles.length === 0) || noteSaving"
                         class="rs-btn-primary text-sm" x-text="noteSaving ? 'Saving…' : 'Add Note'"></button>
             </div>
         </div>
@@ -1087,6 +1117,7 @@ function rsDealData() {
         showAddReferrer:  false,
 
         noteBody:    '',
+        noteFiles:   [],
         noteSaving:  false,
         noteError:   '',
 
@@ -1131,14 +1162,33 @@ function rsDealData() {
         },
 
         async saveNote() {
-            if (!this.noteBody.trim() || this.noteSaving) return;
+            if ((!this.noteBody.trim() && this.noteFiles.length === 0) || this.noteSaving) return;
             this.noteSaving = true; this.noteError = '';
-            const { ok, data } = await post(base + '/notes', { body: this.noteBody });
-            this.noteSaving = false;
-            if (!ok) { this.noteError = data.error || 'Could not save note.'; return; }
-            this.showAddNote = false; this.noteBody = '';
-            this.showToast('Note added.');
-            setTimeout(() => window.location.reload(), 800);
+            try {
+                // Use FormData to support file attachments
+                const fd = new FormData();
+                fd.append('_token', csrf);
+                if (this.noteBody.trim()) fd.append('body', this.noteBody);
+                this.noteFiles.forEach(f => fd.append('files[]', f));
+
+                const r = await fetch(base + '/notes', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: fd,
+                });
+                const d = await r.json();
+                if (!r.ok) { this.noteError = d.error || 'Could not save note.'; return; }
+                this.showAddNote = false;
+                this.noteBody = '';
+                this.noteFiles = [];
+                this.showToast('Note added.');
+                setTimeout(() => window.location.reload(), 800);
+            } catch(e) {
+                this.noteError = 'Network error. Please try again.';
+            } finally {
+                this.noteSaving = false;
+            }
         },
 
         async saveAmount() {

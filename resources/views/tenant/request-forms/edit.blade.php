@@ -142,56 +142,197 @@
             </form>
         </div>
 
-        {{-- Form Fields (read-only) ────────────────────────────────────────────── --}}
-        <div class="card">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-                <div style="width:30px;height:30px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                    <svg style="width:14px;height:14px;color:#2563eb" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        {{-- Form Fields (editable) ─────────────────────────────────────────────── --}}
+        <div class="card" x-data="rfFieldManager(
+            @json($form->fields->sortBy('sort_order')->map(fn($f) => ['id'=>$f->id,'label'=>$f->label,'field_type'=>$f->field_type,'type_label'=>match($f->field_type){'multi_select'=>'Multi-select',default=>ucfirst(str_replace('_',' ',$f->field_type))},'placeholder'=>$f->placeholder,'helper_text'=>$f->helper_text,'options'=>$f->options??[],'is_required'=>(bool)$f->is_required])->values()),
+            '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}',
+            '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}',
+            '{{ csrf_token() }}'
+        )">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:30px;height:30px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <svg style="width:14px;height:14px;color:#2563eb" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size:14px;font-weight:700;color:#1E1B4B;margin:0">Form Fields</h3>
+                        <p style="font-size:11px;color:#9ca3af;margin:0"><span x-text="fields.length"></span> fields · drag to reorder</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 style="font-size:14px;font-weight:700;color:#1E1B4B;margin:0">Form Fields</h3>
-                    <p style="font-size:11px;color:#9ca3af;margin:0">{{ $form->fields->count() }} {{ Str::plural('field', $form->fields->count()) }} configured</p>
-                </div>
+                <button type="button" @click="showAdd = true"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:9px;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer">
+                    <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    Add Field
+                </button>
             </div>
 
-            {{-- Lock notice --}}
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;margin-bottom:14px">
-                <svg style="width:14px;height:14px;color:#d97706;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                <p style="font-size:12px;color:#92400e;margin:0;line-height:1.5">Field types are locked after creation to protect existing responses. To change field types, <a href="{{ route('tenant.request-forms.duplicate', [$tenant->id, $form->id]) }}" style="color:#d97706;font-weight:700;text-decoration:none" onclick="return confirm('Duplicate this form?')">duplicate this form</a>.</p>
+            {{-- Field type lock notice --}}
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:9px;margin-bottom:12px;font-size:12px;color:#92400e;line-height:1.5">
+                <svg style="width:13px;height:13px;color:#d97706;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Field <strong>type</strong> is locked after creation — edit label, placeholder, options, and required. To change a type, delete and re-add.
             </div>
 
-            {{-- Field cards --}}
+            {{-- Add Field panel --}}
+            <div x-show="showAdd" style="padding:16px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:12px;margin-bottom:14px">
+                <p style="font-size:13px;font-weight:700;color:#0369a1;margin:0 0 12px">Add New Field</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Label *</label>
+                        <input x-model="newField.label" type="text" placeholder="e.g. Full Name"
+                               style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Field Type *</label>
+                        <select x-model="newField.field_type" style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;background:white;box-sizing:border-box">
+                            <option value="text">Text</option>
+                            <option value="email">Email</option>
+                            <option value="textarea">Long Text</option>
+                            <option value="select">Dropdown</option>
+                            <option value="radio">Radio</option>
+                            <option value="checkbox">Checkbox</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Placeholder</label>
+                        <input x-model="newField.placeholder" type="text" placeholder="e.g. Enter your name"
+                               style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Helper Text</label>
+                        <input x-model="newField.helper_text" type="text" placeholder="Short description"
+                               style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box">
+                    </div>
+                </div>
+                <template x-if="['select','radio','checkbox','multi_select'].includes(newField.field_type)">
+                    <div style="margin-bottom:10px">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Options (one per line)</label>
+                        <textarea x-model="newField.options" rows="3" placeholder="Option A&#10;Option B&#10;Option C"
+                                  style="width:100%;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
+                    </div>
+                </template>
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;cursor:pointer">
+                        <input type="checkbox" x-model="newField.is_required" class="rounded">
+                        Required field
+                    </label>
+                    <div style="display:flex;gap:8px">
+                        <button type="button" @click="showAdd = false; resetNew()"
+                                style="padding:7px 16px;border-radius:8px;border:1.5px solid #e5e7eb;background:white;font-size:12px;font-weight:600;cursor:pointer;color:#374151">
+                            Cancel
+                        </button>
+                        <button type="button" @click="addField()"
+                                :disabled="!newField.label.trim() || addingSaving"
+                                style="padding:7px 16px;border-radius:8px;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;disabled:opacity:50"
+                                x-text="addingSaving ? 'Adding…' : 'Add Field'">Add Field</button>
+                    </div>
+                </div>
+                <div x-show="addError" style="margin-top:8px;padding:6px 10px;background:#fef2f2;border-radius:7px;font-size:12px;color:#dc2626" x-text="addError"></div>
+            </div>
+
+            {{-- Field cards (editable) --}}
             <div style="display:flex;flex-direction:column;gap:8px">
-                @forelse($form->fields as $field)
-                @php
-                $typeBg  = match($field->field_type) { 'text'=>'#ede9fe','email'=>'#dbeafe','textarea'=>'#dcfce7','select'=>'#fff7ed','multi_select'=>'#fef3c7','radio'=>'#f3f4f6','number'=>'#ede9fe','date'=>'#f0fdf4', default=>'#f3f4f6' };
-                $typeClr = match($field->field_type) { 'text'=>'#7B61FF','email'=>'#2563eb','textarea'=>'#15803d','select'=>'#ea580c','multi_select'=>'#d97706','radio'=>'#6b7280','number'=>'#7B61FF','date'=>'#15803d', default=>'#6b7280' };
-                $typeLabel = match($field->field_type) { 'multi_select'=>'Multi-select', default=>ucfirst(str_replace('_',' ',$field->field_type)) };
-                @endphp
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9fafb;border-radius:10px;border:1px solid #f3f4f6">
-                    <div style="width:26px;height:26px;border-radius:7px;background:{{ $typeBg }};color:{{ $typeClr }};font-size:9px;font-weight:700;text-transform:uppercase;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                        {{ strtoupper(substr($typeLabel, 0, 3)) }}
-                    </div>
-                    <div style="flex:1;min-width:0">
-                        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-                            <span style="font-size:13px;font-weight:600;color:#1E1B4B">{{ $field->label }}</span>
-                            <span style="font-size:10px;font-weight:600;color:{{ $typeClr }};background:{{ $typeBg }};padding:1px 7px;border-radius:9999px">{{ $typeLabel }}</span>
-                            @if($field->is_required)
-                            <span style="font-size:10px;font-weight:700;color:#ef4444;background:#fef2f2;padding:1px 7px;border-radius:9999px">Required</span>
-                            @endif
+                <template x-if="fields.length === 0">
+                    <p style="font-size:13px;color:#9ca3af;font-style:italic;text-align:center;padding:20px 0">No fields yet. Add your first field above.</p>
+                </template>
+                <template x-for="(field, idx) in fields" :key="field.id">
+                    <div style="background:#f9fafb;border-radius:10px;border:1px solid #f3f4f6;overflow:hidden">
+                        {{-- Field header row --}}
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px">
+                            <div style="width:26px;height:26px;border-radius:7px;background:#ede9fe;color:#7B61FF;font-size:9px;font-weight:700;text-transform:uppercase;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                                 x-text="field.type_label.substring(0,3).toUpperCase()"></div>
+                            <div style="flex:1;min-width:0">
+                                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                                    <span style="font-size:13px;font-weight:600;color:#1E1B4B" x-text="field.label"></span>
+                                    <span style="font-size:10px;font-weight:600;color:#7B61FF;background:#ede9fe;padding:1px 7px;border-radius:9999px" x-text="field.type_label"></span>
+                                    <span x-show="field.is_required" style="font-size:10px;font-weight:700;color:#ef4444;background:#fef2f2;padding:1px 7px;border-radius:9999px">Required</span>
+                                </div>
+                                <p x-show="field.helper_text" style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="field.helper_text"></p>
+                            </div>
+                            <div style="display:flex;gap:4px;flex-shrink:0">
+                                <button type="button" @click="field._editing = !field._editing"
+                                        style="padding:4px 10px;border-radius:7px;border:1px solid #e5e7eb;background:white;font-size:11px;font-weight:600;color:#374151;cursor:pointer"
+                                        x-text="field._editing ? 'Close' : 'Edit'">Edit</button>
+                                <button type="button" @click="confirmDelete(field)"
+                                        style="padding:4px 8px;border-radius:7px;border:1px solid #fee2e2;background:white;font-size:11px;font-weight:600;color:#dc2626;cursor:pointer">✕</button>
+                            </div>
                         </div>
-                        @if($field->helper_text)
-                        <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $field->helper_text }}</p>
-                        @endif
-                        @if($field->options && is_array($field->options) && count($field->options))
-                        <p style="font-size:10px;color:#9ca3af;margin:2px 0 0">Options: {{ implode(', ', array_slice($field->options, 0, 4)) }}{{ count($field->options) > 4 ? '…' : '' }}</p>
-                        @endif
+
+                        {{-- Inline edit panel --}}
+                        <div x-show="field._editing" style="padding:12px 14px;border-top:1px solid #f3f4f6;background:white">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                                <div>
+                                    <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px">Label</label>
+                                    <input x-model="field.label" type="text"
+                                           style="width:100%;padding:6px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;outline:none;box-sizing:border-box">
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px">Placeholder</label>
+                                    <input x-model="field.placeholder" type="text"
+                                           style="width:100%;padding:6px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;outline:none;box-sizing:border-box">
+                                </div>
+                            </div>
+                            <div style="margin-bottom:8px">
+                                <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px">Helper Text</label>
+                                <input x-model="field.helper_text" type="text"
+                                       style="width:100%;padding:6px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;outline:none;box-sizing:border-box">
+                            </div>
+                            <template x-if="['select','radio','checkbox','multi_select'].includes(field.field_type)">
+                                <div style="margin-bottom:8px">
+                                    <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px">Options (one per line)</label>
+                                    <textarea :x-model="null"
+                                              :value="Array.isArray(field.options) ? field.options.join('\n') : ''"
+                                              @input="field.options = $event.target.value.split('\n')"
+                                              rows="3"
+                                              style="width:100%;padding:6px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
+                                </div>
+                            </template>
+                            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#374151;cursor:pointer">
+                                    <input type="checkbox" :checked="field.is_required" @change="field.is_required = $event.target.checked" class="rounded">
+                                    Required
+                                </label>
+                                <div style="display:flex;gap:6px">
+                                    <button type="button" @click="field._editing = false; revertField(field)"
+                                            style="padding:5px 12px;border-radius:7px;border:1.5px solid #e5e7eb;background:white;font-size:11px;font-weight:600;cursor:pointer;color:#374151">
+                                        Cancel
+                                    </button>
+                                    <button type="button" @click="saveField(field)"
+                                            :disabled="field._saving"
+                                            style="padding:5px 12px;border-radius:7px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer"
+                                            x-text="field._saving ? 'Saving…' : 'Save Changes'">Save</button>
+                                </div>
+                            </div>
+                            <div x-show="field._error" style="margin-top:6px;font-size:11px;color:#dc2626" x-text="field._error"></div>
+                        </div>
                     </div>
-                    <svg style="width:13px;height:13px;color:#d1d5db;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </template>
+            </div>
+
+            {{-- Delete confirmation modal --}}
+            <div x-show="deletingField" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+                <div style="background:white;border-radius:16px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.15);text-align:center">
+                    <div style="width:44px;height:44px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                        <svg style="width:22px;height:22px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </div>
+                    <h3 style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0 0 6px">Remove Field?</h3>
+                    <p style="font-size:13px;color:#9ca3af;margin:0 0 20px">
+                        "<span x-text="deletingField?.label"></span>" will be removed from this form. Existing submissions are unaffected.
+                    </p>
+                    <div style="display:flex;gap:8px;justify-content:center">
+                        <button type="button" @click="deletingField = null"
+                                style="padding:9px 22px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;font-size:13px;font-weight:600;cursor:pointer;color:#374151">
+                            Cancel
+                        </button>
+                        <button type="button" @click="deleteField()"
+                                :disabled="deleteLoading"
+                                style="padding:9px 22px;border-radius:10px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
+                                x-text="deleteLoading ? 'Removing…' : 'Remove Field'">Remove</button>
+                    </div>
                 </div>
-                @empty
-                <p style="font-size:13px;color:#9ca3af;font-style:italic;text-align:center;padding:16px 0">No fields configured.</p>
-                @endforelse
             </div>
         </div>
 
@@ -398,6 +539,95 @@ function rbConfirmDeleteForm(formId, title, actionUrl) {
         f.innerHTML = '<input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE">';
         document.body.appendChild(f);
         f.submit();
+    };
+}
+
+function rfFieldManager(initialFields, addUrl, baseUrl, csrf) {
+    return {
+        fields:       initialFields.map(f => ({ ...f, _editing: false, _saving: false, _error: '', _original: { ...f } })),
+        showAdd:      false,
+        addingSaving: false,
+        addError:     '',
+        deletingField:null,
+        deleteLoading:false,
+        newField:     { label:'', field_type:'text', placeholder:'', helper_text:'', options:'', is_required:false },
+
+        resetNew() {
+            this.newField = { label:'', field_type:'text', placeholder:'', helper_text:'', options:'', is_required:false };
+            this.addError = '';
+        },
+
+        revertField(field) {
+            Object.assign(field, field._original, { _editing:false, _saving:false, _error:'', _original:field._original });
+        },
+
+        async addField() {
+            if (!this.newField.label.trim() || this.addingSaving) return;
+            this.addingSaving = true; this.addError = '';
+            try {
+                const r = await fetch(addUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        label:       this.newField.label,
+                        field_type:  this.newField.field_type,
+                        placeholder: this.newField.placeholder,
+                        helper_text: this.newField.helper_text,
+                        options:     this.newField.options,
+                        is_required: this.newField.is_required,
+                    }),
+                });
+                const d = await r.json();
+                if (!r.ok) { this.addError = d.message || d.error || 'Failed to add field.'; return; }
+                this.fields.push({ ...d.field, _editing: false, _saving: false, _error: '', _original: { ...d.field } });
+                this.showAdd = false;
+                this.resetNew();
+            } catch(e) { this.addError = 'Network error. Please try again.'; }
+            finally { this.addingSaving = false; }
+        },
+
+        async saveField(field) {
+            field._saving = true; field._error = '';
+            try {
+                const optVal = Array.isArray(field.options) ? field.options.join('\n') : (field.options || '');
+                const r = await fetch(baseUrl + '/' + field.id, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        label:       field.label,
+                        placeholder: field.placeholder,
+                        helper_text: field.helper_text,
+                        options:     optVal,
+                        is_required: field.is_required,
+                    }),
+                });
+                const d = await r.json();
+                if (!r.ok) { field._error = d.message || 'Failed to save.'; return; }
+                Object.assign(field, { ...d.field, _editing: false, _saving: false, _error: '', _original: { ...d.field } });
+            } catch(e) { field._error = 'Network error.'; }
+            finally { field._saving = false; }
+        },
+
+        confirmDelete(field) { this.deletingField = field; },
+
+        async deleteField() {
+            if (!this.deletingField || this.deleteLoading) return;
+            this.deleteLoading = true;
+            try {
+                const r = await fetch(baseUrl + '/' + this.deletingField.id, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                });
+                if (r.ok) {
+                    this.fields = this.fields.filter(f => f.id !== this.deletingField.id);
+                    this.deletingField = null;
+                }
+            } catch(e) {}
+            finally { this.deleteLoading = false; }
+        },
     };
 }
 

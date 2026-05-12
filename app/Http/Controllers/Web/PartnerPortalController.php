@@ -145,6 +145,111 @@ class PartnerPortalController extends Controller
         ));
     }
 
+    // ── Deal Notes ──────────────────────────────────────────────────────────
+
+    public function dealNotes(string $dealId)
+    {
+        $partner = $this->partner();
+
+        if (!in_array($dealId, $this->authorizedDealIds())) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $notes = \App\Models\DealComment::with('attachments')
+            ->where('deal_id', $dealId)
+            ->where('tenant_id', $partner->tenant_id)
+            ->where('visibility', 'shared')  // partners only see shared notes
+            ->whereNull('deleted_at')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn($c) => [
+                'id'               => $c->id,
+                'body'             => $c->body,
+                'author_name'      => $c->author_name ?? ($c->author_role === 'partner' ? 'Partner' : 'Team'),
+                'author_role'      => $c->author_role,
+                'author_role_label'=> match($c->author_role) {
+                    'tenant_admin' => 'Admin', 'referrer' => 'Referrer',
+                    'partner'      => 'Partner', default => ucfirst($c->author_role),
+                },
+                'created_ago'      => $c->created_at?->diffForHumans() ?? 'just now',
+                'attachments'      => $c->attachments->map(fn($a) => [
+                    'id'                => $a->id,
+                    'original_filename' => $a->original_filename,
+                    'download_url'      => url("/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}"),
+                ])->values(),
+            ]);
+
+        return response()->json(['notes' => $notes]);
+    }
+
+    // ── Deal Notes (create) ──────────────────────────────────────────────────
+
+    public function addNote(Request $request, string $dealId)
+    {
+        $partner = $this->partner();
+
+        if (!in_array($dealId, $this->authorizedDealIds())) {
+            return response()->json(['error' => 'You do not have access to this deal.'], 403);
+        }
+
+        $lead = Lead::where('id', $dealId)->where('tenant_id', $partner->tenant_id)->firstOrFail();
+
+        $data = $request->validate([
+            'body'    => 'nullable|string|max:10000',
+            'files'   => 'nullable|array|max:5',
+            'files.*' => 'nullable|file|max:10240',
+        ]);
+
+        $hasBody  = !empty(trim($data['body'] ?? ''));
+        $hasFiles = !empty($request->file('files'));
+        if (!$hasBody && !$hasFiles) {
+            return response()->json(['error' => 'Please add a note or attach a file.'], 422);
+        }
+
+        $note = \App\Models\DealComment::create([
+            'tenant_id'      => $partner->tenant_id,
+            'deal_id'        => $dealId,
+            'author_user_id' => $partner->id,
+            'author_role'    => 'partner',
+            'body'           => $hasBody ? strip_tags($data['body']) : '',
+            'visibility'     => 'shared',
+        ]);
+
+        $attachments = [];
+        if ($hasFiles) {
+            $attachments = \App\Http\Controllers\DealNoteAttachmentController::storeFiles(
+                $request->file('files'), $partner->tenant_id, $dealId, $note->id, (string) $partner->id, 'partner'
+            );
+        }
+
+        // Notify admins
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $partner->tenant_id,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Partner added a note on a deal',
+                body:         ($partner->full_name ?: $partner->email) . ' added a note on "' . $lead->name . '"' . ($hasBody ? ': "' . \Illuminate\Support\Str::limit($data['body'], 60) . '"' : ' (with attachment)'),
+                actionUrl:    url("/tenant/{$partner->tenant_id}/deals/{$dealId}"),
+                actionLabel:  'View Deal',
+                dedupeSuffix: 'partner_note:' . $note->id,
+            );
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'success' => true,
+            'note'    => [
+                'id'          => $note->id,
+                'body'        => $note->body,
+                'author'      => $partner->full_name ?: $partner->email,
+                'author_role' => 'partner',
+                'created_ago' => 'just now',
+                'attachments' => count($attachments),
+            ],
+        ]);
+    }
+
     // ── Request Forms ────────────────────────────────────────────────────────
 
     public function forms()
