@@ -12,19 +12,17 @@
         $_rsUnread = 0;
     }
 
-    // Active-group detection — used to set default open state
+    // Active-group detection
     $_networkActive = request()->routeIs('reseller.partners*')
                    || request()->routeIs('reseller.contacts*');
 
     $_commsActive   = request()->routeIs('reseller.request-forms')
                    || request()->routeIs('reseller.messages');
 
-    // My Deals is active on the list, detail, AND import pages
     $_dealsActive   = request()->routeIs('reseller.deals')
                    || request()->routeIs('reseller.deals.show')
                    || request()->routeIs('reseller.deals.imports*');
 
-    // My Contacts is active on the list AND import pages
     $_contactsActive = request()->routeIs('reseller.contacts')
                     || request()->routeIs('reseller.contacts.imports*');
 @endphp
@@ -39,8 +37,7 @@
     Dashboard
 </a>
 
-{{-- ── My Deals ─────────────────────────────────────────────── --}}
-{{-- Active on: list, detail, AND import pages (Import Deals CTA is on the page, not the sidebar) --}}
+{{-- ── My Deals + Import Deals ─────────────────────────────── --}}
 <a href="{{ route('reseller.deals', $tid) }}"
    class="rs-sidebar-link {{ $_dealsActive ? 'active' : '' }}"
    @if($_dealsActive) aria-current="page" @endif>
@@ -49,6 +46,17 @@
     </svg>
     My Deals
 </a>
+
+<div class="ml-3 pl-3 border-l border-white/10 space-y-0.5">
+    <a href="{{ route('reseller.deals.imports', $tid) }}"
+       class="rs-sidebar-child {{ request()->routeIs('reseller.deals.imports*') ? 'active' : '' }}"
+       @if(request()->routeIs('reseller.deals.imports*')) aria-current="page" @endif>
+        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        My Imported Deals
+    </a>
+</div>
 
 {{-- ── My Commission ───────────────────────────────────────── --}}
 <a href="{{ route('reseller.commission', $tid) }}"
@@ -60,12 +68,13 @@
     My Commission
 </a>
 
-{{-- ── My Network (expandable) ─────────────────────────────── --}}
+{{-- ── My Network (expandable, defaults open so My Contacts is always reachable) --}}
 <div x-data="{
         open: false,
         init() {
             const saved = localStorage.getItem('rs_nav_network');
-            this.open = saved !== null ? (saved === 'true') : {{ $_networkActive ? 'true' : 'false' }};
+            // Default to open so My Contacts and My Partners are always visible
+            this.open = saved !== null ? (saved === 'true') : true;
             this.$watch('open', v => localStorage.setItem('rs_nav_network', String(v)));
         }
      }">
@@ -107,7 +116,6 @@
             My Partners
         </a>
 
-        {{-- My Contacts — active on list AND import pages (Import Contacts CTA is on the page) --}}
         <a href="{{ route('reseller.contacts', $tid) }}"
            class="rs-sidebar-child {{ $_contactsActive ? 'active' : '' }}"
            @if($_contactsActive) aria-current="page" @endif>
@@ -115,6 +123,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
             </svg>
             My Contacts
+        </a>
+
+        <a href="{{ route('reseller.contacts.imports', $tid) }}"
+           class="rs-sidebar-child {{ request()->routeIs('reseller.contacts.imports*') ? 'active' : '' }}"
+           @if(request()->routeIs('reseller.contacts.imports*')) aria-current="page" @endif>
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            My Imported Contacts
         </a>
 
     </div>
