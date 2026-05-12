@@ -247,9 +247,7 @@ window.__rsDeal = {
                         Partners <span class="font-normal">({{ count($partnerSplits) }})</span>
                     </p>
                     <p class="text-sm font-bold tabular-nums {{ $partnersCommission > 0 ? 'text-[#7B61FF]' : 'text-gray-300' }}">
-                        @if($partnersCommission > 0) −₱{{ number_format($partnersCommission, 0) }}
-                        @else ₱0
-                        @endif
+                        ₱{{ number_format($partnersCommission, 0) }}
                     </p>
                 </div>
                 <div class="bg-teal-50 rounded-xl px-3 py-2.5">

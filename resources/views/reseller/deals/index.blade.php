@@ -165,7 +165,7 @@
                                            x-text="'₱' + Math.round(d.referrer_pool_remaining ?? d.commission_pool ?? 0).toLocaleString()"></p>
                                         <template x-if="(d.partner_commission_total ?? 0) > 0">
                                             <p class="text-[10px] text-purple-400 tabular-nums"
-                                               x-text="'−₱' + Math.round(d.partner_commission_total).toLocaleString() + ' partners'"></p>
+                                               x-text="'₱' + Math.round(d.partner_commission_total).toLocaleString() + ' partners'"></p>
                                         </template>
                                     </div>
                                 </template>
