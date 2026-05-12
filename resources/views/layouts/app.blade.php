@@ -619,25 +619,9 @@ function notifPanel() {
             });
         },
 
-        // Mark a single notification as read, store details for the destination-page modal, then navigate.
+        // Mark a single notification as read, then navigate directly to the action URL.
         async markOneRead(n, url) {
             this.open = false;
-
-            // Bridge notification data to the destination page via sessionStorage.
-            // The notifDetailModal component on the next page reads and clears this key.
-            try {
-                sessionStorage.setItem('__notif_detail', JSON.stringify({
-                    id:          n.id,
-                    title:       n.title || n.message,
-                    message:     n.message,
-                    priority:    n.priority,
-                    category:    n.category,
-                    action_url:  n.action_url,
-                    action_label:n.action_label,
-                    created_ago: n.created_ago,
-                    metadata:    n.metadata || null,
-                }));
-            } catch(e) { /* sessionStorage unavailable — skip modal */ }
 
             if (!n.is_read) {
                 // Optimistic update immediately (feels instant to user)

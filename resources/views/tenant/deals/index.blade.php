@@ -1123,8 +1123,9 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                         vb = statusOrder[b.status] ?? 99;
                         break;
                     case 'last_activity_at':
-                        va = new Date(a.last_activity_at || a.created_at || 0).getTime();
-                        vb = new Date(b.last_activity_at || b.created_at || 0).getTime();
+                        // Null values sort to the bottom (0 = epoch = oldest)
+                        va = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
+                        vb = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
                         break;
                     default: // created_at
                         va = new Date(a.created_at || 0).getTime();

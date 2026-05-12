@@ -610,12 +610,18 @@
                                             <p style="font-size:13px;font-weight:700;color:#16a34a" x-text="fmt(commPool() * split.percentage / 100)"></p>
                                             <p style="font-size:11px;color:#9ca3af" x-text="split.percentage + '% of pool'"></p>
                                         </div>
-                                        {{-- Edit % button — only for co-referrers (secondary role) --}}
+                                        {{-- Edit % + Remove buttons — only for co-referrers (secondary role) --}}
                                         <template x-if="split.role === 'secondary' && lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid'">
-                                            <button @click="editSplitId = split.id; editPct = String(split.percentage); editErr = ''"
-                                                    style="padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
-                                                Edit %
-                                            </button>
+                                            <div style="display:flex;flex-direction:column;gap:4px">
+                                                <button @click="editSplitId = split.id; editPct = String(split.percentage); editErr = ''"
+                                                        style="padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
+                                                    Edit %
+                                                </button>
+                                                <button @click="adminRemoveCoRef(split.id, split.reseller_name)"
+                                                        style="padding:3px 8px;border-radius:6px;border:1px solid #fecaca;background:white;font-size:10px;font-weight:600;color:#dc2626;cursor:pointer;white-space:nowrap">
+                                                    Remove
+                                                </button>
+                                            </div>
                                         </template>
                                     </div>
                                 </div>
@@ -665,49 +671,6 @@
                         </template>
                     </div>
 
-                    {{-- Add Co-Referrer modal --}}
-                    <div x-show="showAddCoRef" x-cloak style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
-                         :style="showAddCoRef ? 'display:flex' : 'display:none'">
-                        <div style="background:white;border-radius:20px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
-                            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
-                                <div>
-                                    <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
-                                    <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
-                                </div>
-                                <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
-                                    <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                </button>
-                            </div>
-                            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-                                <div>
-                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Email Address <span style="color:#ef4444">*</span></label>
-                                    <input x-model="coRefEmail" type="email" placeholder="referrer@example.com"
-                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
-                                </div>
-                                <div>
-                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
-                                    <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
-                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
-                                    <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
-                                </div>
-                                <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
-                            </div>
-                            <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
-                                <button @click="showAddCoRef = false"
-                                        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
-                                    Cancel
-                                </button>
-                                <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
-                                        :disabled="!coRefEmail || coRefSaving"
-                                        style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
-                                        :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
-                                        x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
-                            </div>
-                        </div>
-                    </div>
-
                     {{-- Locked/Paid notice --}}
                     <template x-if="lead?.commission_status === 'locked'">
                         <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px">
@@ -725,6 +688,51 @@
                             <p style="font-size:11px;color:#16a34a;font-weight:600">Commission paid.</p>
                         </div>
                     </template>
+                </div>
+
+                {{-- Add Co-Referrer modal — placed outside conditional wrapper so it can display regardless --}}
+                <div x-show="showAddCoRef" x-cloak
+                     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
+                     :style="showAddCoRef ? 'display:flex' : 'display:none'"
+                     @keydown.escape.window="showAddCoRef = false">
+                    <div style="background:white;border-radius:20px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
+                            <div>
+                                <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
+                                <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
+                            </div>
+                            <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
+                                <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+                            <div>
+                                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Email Address <span style="color:#ef4444">*</span></label>
+                                <input x-model="coRefEmail" type="email" placeholder="referrer@example.com"
+                                       style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                            </div>
+                            <div>
+                                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
+                                <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
+                                       style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
+                            </div>
+                            <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
+                        </div>
+                        <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
+                            <button @click="showAddCoRef = false"
+                                    style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                Cancel
+                            </button>
+                            <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
+                                    :disabled="!coRefEmail || coRefSaving"
+                                    style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
+                                    :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
+                                    x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- No financial data notice --}}
@@ -1002,6 +1010,10 @@
                                         <p style="font-size:14px;font-weight:700;color:#2563eb"
                                            x-text="'₱' + Math.round(commPool * parseFloat(r.percentage||0) / 100).toLocaleString('en-PH')"></p>
                                         <p style="font-size:10px;color:#9ca3af;margin-top:1px" x-text="parseFloat(r.percentage||0) + '% of pool'"></p>
+                                        <button @click="removeCoRef(r.id, r.reseller_name)"
+                                                style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:2px 6px;border-radius:6px;transition:all .15s"
+                                                onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
+                                                onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
                                     </div>
                                 </div>
                             </template>
@@ -1057,9 +1069,22 @@
                     </template>
                 </div>
 
-                {{-- Add form --}}
-                <div x-show="showAdd" style="display:none" class="space-y-2.5 pt-2 border-t border-gray-100">
-                    <p class="text-xs font-medium text-[#1E1B4B]">Add Partner Split</p>
+                {{-- Add Partner modal --}}
+                <div x-show="showAdd"
+                     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:16px"
+                     :style="showAdd ? 'display:flex' : 'display:none'"
+                     @keydown.escape.window="showAdd = false; clearContact(); formError = ''">
+                    <div style="background:white;border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6;position:sticky;top:0;background:white;z-index:1">
+                            <div>
+                                <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Partner Split</p>
+                                <p style="font-size:11px;color:#9ca3af;margin-top:2px">Partner receives a share of the referrer's commission pool.</p>
+                            </div>
+                            <button @click="showAdd = false; clearContact(); formError = ''" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
+                                <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="space-y-2.5 p-5">
 
                     {{-- Contact combobox --}}
                     <div x-show="!contactSelected" class="relative" @click.outside="contactOpen = false">
@@ -1186,7 +1211,10 @@
                                 :style="(saving || isOverCap() || isDuplicate() || remainingPool() <= 0) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
                                 x-text="saving ? 'Saving...' : 'Add Split'"></button>
                     </div>
-                </div>
+
+                        </div>{{-- /modal body --}}
+                    </div>{{-- /modal card --}}
+                </div>{{-- /modal overlay --}}
             </div>
 
             {{-- Extend Assignment (admin/manager review view) --}}
@@ -2691,6 +2719,32 @@ function dealDetail(leadId, tenantId, ssrLead) {
             finally { this.coRefSaving = false; }
         },
 
+        async adminRemoveCoRef(splitId, name) {
+            if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
+            const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+            try {
+                const r = await fetch(`/tenant/{{ $tenant->id }}/deals/${this.lead.id}/splits/${splitId}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: d.error || 'Could not remove co-referrer.' } }));
+                    return;
+                }
+                // Remove from local state
+                if (this.lead && this.lead.commission_splits) {
+                    this.lead.commission_splits = this.lead.commission_splits.filter(s => s.id !== splitId);
+                }
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: (name || 'Co-referrer') + ' removed.' } }));
+                // Reload partnerSplitSection to reflect change
+                window.dispatchEvent(new CustomEvent('finance-updated'));
+            } catch(e) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
+            }
+        },
+
         async adminSaveSplit(split, url, csrf) {
             this.editSaving = true; this.editErr = '';
             try {
@@ -2780,7 +2834,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         async fetchContacts() {
             this.loadingContacts = true;
             try {
-                const res = await fetch(`/api/deals/${leadId}/contacts`, {
+                const res = await fetch(`/api/deals/${leadId}/contacts?tenant_id=${tenantId}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -2794,7 +2848,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
             if (this.loadingAllContacts) return;
             this.loadingAllContacts = true;
             try {
-                const res = await fetch(`/api/contacts?per_page=200`, {
+                const res = await fetch(`/api/contacts?per_page=200&tenant_id=${tenantId}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -3038,6 +3092,27 @@ function partnerSplitSection(dealId, tenantId) {
                 }
             } catch(e) { this.formError = 'Network error. Please try again.'; }
             finally { this.saving = false; }
+        },
+
+        async removeCoRef(splitId, name) {
+            if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const r = await fetch(`/tenant/${tenantId}/deals/${dealId}/splits/${splitId}`, {
+                    method:      'DELETE',
+                    credentials: 'same-origin',
+                    headers:     { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                const d = await r.json().catch(() => ({}));
+                if (r.ok) {
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: (name || 'Co-referrer') + ' removed.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: d.error || 'Could not remove co-referrer.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
         },
 
         async removeSplit(splitId, partnerName) {

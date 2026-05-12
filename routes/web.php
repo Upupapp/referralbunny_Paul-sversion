@@ -128,7 +128,8 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/{dealId}/extension-request',          [\App\Http\Controllers\ResellerDealController::class, 'requestExtension'])->name('deals.extension-request');
         Route::post('/deals/{dealId}/partners',                    [\App\Http\Controllers\ResellerDealController::class, 'addPartnerSplit'])->name('deals.partners');
         Route::post('/deals/{dealId}/referrers',                   [\App\Http\Controllers\ResellerDealController::class, 'addReferrer'])->name('deals.referrers');
-        Route::patch('/deals/{dealId}/splits/{splitId}',           [\App\Http\Controllers\ResellerDealController::class, 'updateCoReferrerSplit'])->name('deals.splits.update');
+        Route::patch('/deals/{dealId}/splits/{splitId}',            [\App\Http\Controllers\ResellerDealController::class, 'updateCoReferrerSplit'])->name('deals.splits.update');
+        Route::delete('/deals/{dealId}/splits/{splitId}',           [\App\Http\Controllers\ResellerDealController::class, 'removeCoReferrer'])->name('deals.splits.remove');
         Route::post('/approvals/{approvalId}/approve',             [\App\Http\Controllers\ResellerDealController::class, 'approveRequest'])->name('approvals.approve');
         Route::post('/approvals/{approvalId}/reject',              [\App\Http\Controllers\ResellerDealController::class, 'rejectRequest'])->name('approvals.reject');
         Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
@@ -255,6 +256,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');
+    Route::delete('/deals/{dealId}/splits/{splitId}',  [\App\Http\Controllers\ResellerDealController::class, 'adminRemoveCoReferrer'])->name('deals.splits.remove');
     Route::post('/deals/{dealId}/referrers',           [\App\Http\Controllers\ResellerDealController::class, 'adminAddReferrer'])->name('deals.referrers');
     Route::get('/contacts',        [TenantAdminController::class, 'contacts'])->name('contacts');
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');

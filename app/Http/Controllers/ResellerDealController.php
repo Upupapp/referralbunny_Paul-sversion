@@ -1441,4 +1441,112 @@ class ResellerDealController extends Controller
             'old_percentage' => $oldPct,
         ]);
     }
+
+    // ── Remove Co-Referrer (Referrer-initiated) ───────────────────────────────
+
+    public function removeCoReferrer(Request $request, string $tenantId, string $dealId, string $splitId): JsonResponse
+    {
+        $reseller = $this->reseller();
+        $lead     = $this->deal($tenantId, $dealId);
+
+        $isPrimary = CommissionSplit::where('lead_id', $lead->id)
+            ->where('role', 'primary')
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+            ->exists();
+
+        if (!$isPrimary) {
+            return response()->json(['error' => 'Only the primary Referrer on this deal can remove co-referrers.'], 403);
+        }
+
+        return $this->doRemoveSplit($tenantId, $dealId, $splitId, $reseller->name, 'referrer', $lead);
+    }
+
+    // ── Remove Co-Referrer (Admin-initiated) ─────────────────────────────────
+
+    public function adminRemoveCoReferrer(Request $request, string $tenantId, string $dealId, string $splitId): JsonResponse
+    {
+        $actor = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        if (!$actor) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
+        $lead      = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+        $actorName = method_exists($actor, 'full_name') ? $actor->full_name : ($actor->name ?? $actor->email ?? 'Admin');
+
+        return $this->doRemoveSplit($tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
+    }
+
+    private function doRemoveSplit(string $tenantId, string $dealId, string $splitId, string $actorName, string $actorRole, Lead $lead): JsonResponse
+    {
+        $split = CommissionSplit::where('id', $splitId)
+            ->where('lead_id', $dealId)
+            ->where('role', 'secondary')
+            ->firstOrFail();
+
+        $removedName = $split->reseller_name;
+        $split->delete();
+
+        // System notification to the removed co-referrer
+        try {
+            $coRefReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($removedName)])
+                ->first();
+
+            if ($coRefReseller && in_array($coRefReseller->status, ['active', 'nda_signed'])) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $coRefReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        'You were removed as a co-referrer',
+                    body:         $actorName . ' removed you as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $splitId . ':coreferrer_removed:' . now()->format('YmdH'),
+                );
+
+                // Simple email notification
+                try {
+                    \Illuminate\Support\Facades\Mail::send([], [], function ($msg) use ($coRefReseller, $lead, $actorName, $tenantId) {
+                        $msg->to($coRefReseller->email, $coRefReseller->name)
+                            ->subject("You've been removed as a co-referrer on \"{$lead->name}\"")
+                            ->html(
+                                "<p>Hi {$coRefReseller->name},</p>"
+                                . "<p><strong>{$actorName}</strong> has removed you as a co-referrer on the deal <strong>\"{$lead->name}\"</strong>.</p>"
+                                . "<p>If you have any questions, please contact your program administrator.</p>"
+                                . "<p>— ReferralBunny.ai</p>"
+                            );
+                    });
+                } catch (\Throwable) {}
+            }
+        } catch (\Throwable) {}
+
+        // Notify admin if removal was by a referrer
+        if ($actorRole === 'referrer') {
+            try {
+                app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Co-referrer removed',
+                    body:         $actorName . ' removed ' . $removedName . ' as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $splitId . ':coreferrer_removed_admin:' . now()->format('YmdH'),
+                );
+            } catch (\Throwable) {}
+        }
+
+        // Activity log
+        try {
+            app(DealActivityService::class)->record($lead, 'Co-referrer removed by ' . $actorRole . ': ' . $removedName, 'assignment', [
+                'category'   => 'assignment',
+                'actor_name' => $actorName,
+                'actor_role' => $actorRole,
+                'old_values' => ['removed_co_referrer' => $removedName],
+            ]);
+        } catch (\Throwable) {}
+
+        return response()->json(['success' => true, 'removed_name' => $removedName]);
+    }
 }
