@@ -123,6 +123,16 @@
                         </template>
                     </div>
 
+                    {{-- Send error (persistent, dismissible) --}}
+                    <div x-show="sendError"
+                         class="mx-3 mb-1 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 shrink-0">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
+                        </svg>
+                        <span class="flex-1" x-text="sendError"></span>
+                        <button @click="sendError = null" class="shrink-0 text-red-400 hover:text-red-600">✕</button>
+                    </div>
+
                     {{-- Compose --}}
                     <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
                         <form @submit.prevent="send()" class="flex gap-2 items-end" :class="isPendingNew ? 'border-t-2 border-blue-100 pt-0' : ''">
@@ -176,11 +186,12 @@ function partnerMessages() {
         threads: serverThreads,
         activeThreadId: null,
         activeThreadName: '',
-        activeDealId: null,       // used for new (pending) conversations
-        isPendingNew: false,      // true when composing first message for a deal with no thread
+        activeDealId: null,
+        isPendingNew: false,
         messages: [],
         body: '',
         sending: false,
+        sendError: null,
         loadingMessages: false,
         mobilePane: 'list',
 
@@ -251,10 +262,11 @@ function partnerMessages() {
                 const d = await r.json();
 
                 if (!r.ok) {
-                    this.body = msgBody;
-                    this.$dispatch('show-toast', { type: 'error', message: d?.message || d?.error || 'Failed to send. Please try again.' });
+                    this.body     = msgBody;
+                    this.sendError = d?.message || d?.error || 'Failed to send. Please try again.';
                     return;
                 }
+                this.sendError = null;
 
                 if (d.message?.body) {
                     this.messages.push(d.message);
@@ -282,8 +294,8 @@ function partnerMessages() {
                     });
                 }
             } catch (e) {
-                this.body = msgBody;
-                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please check your connection and try again.' });
+                this.body     = msgBody;
+                this.sendError = 'Network error. Please check your connection and try again.';
             } finally {
                 this.sending = false;
             }

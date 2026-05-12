@@ -25,6 +25,9 @@ Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00'); // Reset usage 
 // ── Search index ──────────────────────────────────────────────
 Schedule::command('search:reindex')->dailyAt('03:00');
 
+// ── Email digests (batch / anti-spam) ────────────────────────
+Schedule::command('email:send-digests')->everyThirtyMinutes();
+
 // ── Message reminders (R Bunny AI Dialog) ────────────────────
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
 

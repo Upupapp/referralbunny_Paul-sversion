@@ -114,6 +114,55 @@ class CriticalActionService
         return array_slice($items, 0, $limit);
     }
 
+    /**
+     * Critical actions for a Partner — only their own deals and unread messages.
+     */
+    public function forPartner(string $partnerId, string $tenantId, int $limit = 6): array
+    {
+        $actions = [];
+
+        // Unread messages in partner threads (partner_unread > 0)
+        try {
+            $threads = DB::table('partner_threads')
+                ->where('tenant_id', $tenantId)
+                ->where('partner_id', $partnerId)
+                ->where('partner_unread', '>', 0)
+                ->select('id', 'deal_id', 'partner_unread', 'last_message_at')
+                ->orderByDesc('last_message_at')
+                ->limit(5)
+                ->get();
+
+            if ($threads->isNotEmpty()) {
+                $totalUnread = $threads->sum('partner_unread');
+                $actions[] = $this->make([
+                    'type'          => 'partner_unread_messages',
+                    'category'      => 'messaging',
+                    'severity'      => 'medium',
+                    'summary'       => "{$totalUnread} unread message" . ($totalUnread > 1 ? 's' : '') . ' from your Referrer',
+                    'actor_name'    => 'Referrer',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => 'Messages',
+                    'related_type'  => 'message',
+                    'related_id'    => null,
+                    'occurred_at'   => now(),
+                    'action_url'    => '/partner/messages',
+                    'action_label'  => 'View Messages',
+                    'action_needed' => true,
+                    'source'        => 'partner_threads',
+                    'description'   => 'Your Referrer sent you a message. Reply to stay on top of your deals.',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] forPartner:messages failed', ['partner_id' => $partnerId, 'error' => $e->getMessage()]);
+        }
+
+        usort($actions, fn($a, $b) =>
+            (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+        );
+
+        return array_slice($actions, 0, $limit);
+    }
+
     // ── Tenant-level aggregation ────────────────────────────────────
 
     private function forTenant(string $tenantId, array $opts = []): array
@@ -135,6 +184,7 @@ class CriticalActionService
             fn() => $this->pendingInvites($tenantId),
             fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since),
             fn() => $this->unrepliedMessages($tenantId),
+            fn() => $this->unreadPartnerMessages($tenantId),
             fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
             fn() => $this->pendingExportRequests($tenantId),
             fn() => $this->overdueOpenTasks($tenantId),
@@ -420,6 +470,44 @@ class CriticalActionService
             ])];
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] unrepliedMessages failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Admin view: partner_threads with unread messages from partners (reseller_unread > 0).
+     * These are partner messages that a Referrer (reseller) hasn't replied to.
+     * Grouped as a single count-based action so admin can monitor partner engagement.
+     */
+    private function unreadPartnerMessages(string $tenantId): array
+    {
+        try {
+            $count = DB::table('partner_threads')
+                ->where('tenant_id', $tenantId)
+                ->where('reseller_unread', '>', 0)
+                ->count();
+
+            if ($count === 0) return [];
+
+            return [$this->make([
+                'type'          => 'partner_messages_unread',
+                'category'      => 'messaging',
+                'severity'      => 'medium',
+                'summary'       => "{$count} unread partner message" . ($count > 1 ? 's' : '') . ' waiting for Referrer response',
+                'actor_name'    => 'Partners',
+                'actor_role'    => 'Partner',
+                'related_label' => 'Partner Messages',
+                'related_type'  => 'message',
+                'related_id'    => null,
+                'occurred_at'   => now(),
+                'action_url'    => "/tenant/{$tenantId}/messages",
+                'action_label'  => 'View Messages',
+                'action_needed' => true,
+                'source'        => 'partner_threads',
+                'description'   => 'Partners have sent messages that their Referrer has not yet replied to. Check in to ensure deals stay on track.',
+            ])];
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] unreadPartnerMessages failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
@@ -928,9 +1016,10 @@ class CriticalActionService
 
             if (!$reseller) return [];
 
+            // Count partner_threads where this reseller has unread partner messages
             $count = DB::table('partner_threads')
                 ->where('tenant_id', $tenantId)
-                ->where('partner_id', $reseller->id)
+                ->where('reseller_id', $reseller->id)   // fixed: was partner_id (wrong column)
                 ->where('reseller_unread', '>', 0)
                 ->count();
 

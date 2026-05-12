@@ -9,9 +9,11 @@ use App\Models\Partner;
 use App\Models\PartnerMessage;
 use App\Models\PartnerThread;
 use App\Models\Reseller;
+use App\Services\NotificationDispatchService;
 use App\Services\UserDisplayNameService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PartnerPortalController extends Controller
 {
@@ -20,21 +22,23 @@ class PartnerPortalController extends Controller
         return Auth::guard('partner')->user();
     }
 
+    private ?array $_authorizedDealIds = null;
+
     private function authorizedDealIds(): array
     {
+        if ($this->_authorizedDealIds !== null) {
+            return $this->_authorizedDealIds;
+        }
+
         $partner = $this->partner();
 
-        // Primary source: deal_partners (formal partner-deal assignments)
         $fromDealPartners = DealPartner::where('partner_user_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)
             ->where('status', 'active')
             ->pluck('deal_id')
             ->toArray();
 
-        // Fallback source: deal_partner_splits linked by partner_user_id.
-        // Partners invited via the referrer portal only have splits, not deal_partners records.
-        // After setup() links partner_user_id on the splits, this finds their deals.
-        $fromSplits = \Illuminate\Support\Facades\DB::table('deal_partner_splits')
+        $fromSplits = DB::table('deal_partner_splits')
             ->where('partner_user_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)
             ->whereNull('deleted_at')
@@ -42,7 +46,8 @@ class PartnerPortalController extends Controller
             ->pluck('deal_id')
             ->toArray();
 
-        return array_values(array_unique(array_merge($fromDealPartners, $fromSplits)));
+        $this->_authorizedDealIds = array_values(array_unique(array_merge($fromDealPartners, $fromSplits)));
+        return $this->_authorizedDealIds;
     }
 
     public function dashboard()
@@ -261,7 +266,16 @@ class PartnerPortalController extends Controller
 
         $thread = PartnerThread::findOrFail($threadId);
 
+        // Two-factor authorization: partner owns the thread AND still has deal access.
+        // Prevents IDOR where a removed partner could read thread messages.
         if ((string) $thread->partner_id !== (string) $partner->id) {
+            abort(403, 'You do not have access to this thread.');
+        }
+        if ($thread->deal_id && !in_array($thread->deal_id, $this->authorizedDealIds())) {
+            abort(403, 'You do not have access to this thread.');
+        }
+        // Tenant isolation — thread must belong to the same tenant as the partner
+        if ((string) $thread->tenant_id !== (string) $partner->tenant_id) {
             abort(403, 'You do not have access to this thread.');
         }
 
@@ -349,8 +363,46 @@ class PartnerPortalController extends Controller
             'reseller_id'          => $thread->reseller_id ?? $resellerId,
         ]);
 
+        $tenantId    = $partner->tenant_id;
+        $partnerName = $partner->full_name ?: $partner->email;
+        $msgSnippet  = '"' . \Illuminate\Support\Str::limit($data['body'], 80) . '"';
+
+        // Notify the Referrer on this deal (if known)
+        try {
+            if ($resellerId) {
+                app(NotificationDispatchService::class)->dispatch(
+                    category:         'deal_pipeline',
+                    priority:         'normal',
+                    title:            'New message from your Partner',
+                    body:             $partnerName . ' sent a message on "' . $lead->name . '": ' . $msgSnippet,
+                    notifiableType:   'reseller',
+                    notifiableId:     (string) $resellerId,
+                    tenantId:         $tenantId,
+                    actionUrl:        url("/reseller/{$tenantId}/messages"),
+                    actionLabel:      'View Message',
+                    deduplicationKey: 'partner_msg:' . $thread->id . ':' . now()->format('YmdH'),
+                    metadata:         ['sender_name' => $partnerName, 'deal_name' => $lead->name, 'thread_id' => $thread->id],
+                );
+            }
+        } catch (\Throwable) {}
+
+        // Also notify tenant admins (so they can monitor partner communications)
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'low',
+                title:        'Partner sent a message',
+                body:         $partnerName . ' sent a message on deal "' . $lead->name . '": ' . $msgSnippet,
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$data['deal_id']}"),
+                actionLabel:  'View Deal',
+                dedupeSuffix: 'partner_msg_admin:' . $thread->id . ':' . now()->format('YmdH'),
+                metadata:     ['sender_name' => $partnerName, 'deal_name' => $lead->name],
+            );
+        } catch (\Throwable) {}
+
         return response()->json([
-            'thread_id' => $thread->id,   // returned so the JS can wire up new threads
+            'thread_id' => $thread->id,
             'message'   => [
                 'id'          => $message->id,
                 'sender_type' => $message->sender_type,

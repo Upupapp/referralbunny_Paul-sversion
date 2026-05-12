@@ -77,12 +77,45 @@ class MessageController extends Controller
                     'last_message_preview' => Str::limit($request->body, 80),
                     'admin_unread'         => DB::raw('admin_unread + 1'),
                 ]);
+                // Notify admins of new message from Referrer
+                try {
+                    app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                        tenantId:     $tenantId,
+                        category:     'tenant_workspace',
+                        priority:     'normal',
+                        title:        'New message from Referrer',
+                        body:         $senderName . ' sent a message: "' . Str::limit($request->body, 80) . '"',
+                        actionUrl:    url("/tenant/{$tenantId}/messages"),
+                        actionLabel:  'View Message',
+                        dedupeSuffix: 'thread:' . $thread->id . ':reseller_msg:' . now()->format('YmdH'),
+                        metadata:     ['sender_name' => $senderName, 'thread_id' => $thread->id],
+                    );
+                } catch (\Throwable) {}
             } else {
                 $thread->update([
                     'last_message_at'      => now(),
                     'last_message_preview' => Str::limit($request->body, 80),
                     'reseller_unread'      => DB::raw('reseller_unread + 1'),
                 ]);
+                // Notify the Referrer of new message from admin
+                try {
+                    $notifReseller = $reseller; // already resolved above
+                    if ($notifReseller) {
+                        app(\App\Services\NotificationDispatchService::class)->dispatch(
+                            category:         'tenant_workspace',
+                            priority:         'normal',
+                            title:            'New message from your workspace',
+                            body:             $senderName . ' sent you a message: "' . Str::limit($request->body, 80) . '"',
+                            notifiableType:   'reseller',
+                            notifiableId:     (string) $notifReseller->id,
+                            tenantId:         $tenantId,
+                            actionUrl:        url("/reseller/{$tenantId}/messages"),
+                            actionLabel:      'View Message',
+                            deduplicationKey: 'thread:' . $thread->id . ':admin_msg:' . now()->format('YmdH'),
+                            metadata:         ['sender_name' => $senderName, 'thread_id' => $thread->id],
+                        );
+                    }
+                } catch (\Throwable) {}
             }
 
             return response()->json([
@@ -201,12 +234,45 @@ class MessageController extends Controller
                     'last_message_preview' => Str::limit($request->body, 80),
                     'admin_unread'         => DB::raw('admin_unread + 1'),
                 ]);
+                // Notify tenant admins that the Referrer replied
+                try {
+                    app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                        tenantId:     $tenantId,
+                        category:     'tenant_workspace',
+                        priority:     'normal',
+                        title:        'New message from Referrer',
+                        body:         $senderName . ' sent a message: "' . Str::limit($request->body, 80) . '"',
+                        actionUrl:    url("/tenant/{$tenantId}/messages"),
+                        actionLabel:  'View Message',
+                        dedupeSuffix: 'thread:' . $threadId . ':reseller_msg:' . now()->format('YmdH'),
+                        metadata:     ['sender_name' => $senderName, 'thread_id' => $threadId],
+                    );
+                } catch (\Throwable) {}
             } else {
                 $thread->update([
                     'last_message_at'      => now(),
                     'last_message_preview' => Str::limit($request->body, 80),
                     'reseller_unread'      => DB::raw('reseller_unread + 1'),
                 ]);
+                // Notify the Referrer that admin sent a message
+                try {
+                    $reseller = Reseller::find($thread->reseller_id);
+                    if ($reseller) {
+                        app(\App\Services\NotificationDispatchService::class)->dispatch(
+                            category:         'tenant_workspace',
+                            priority:         'normal',
+                            title:            'New message from your workspace',
+                            body:             $senderName . ' sent you a message: "' . Str::limit($request->body, 80) . '"',
+                            notifiableType:   'reseller',
+                            notifiableId:     (string) $reseller->id,
+                            tenantId:         $tenantId,
+                            actionUrl:        url("/reseller/{$tenantId}/messages"),
+                            actionLabel:      'View Message',
+                            deduplicationKey: 'thread:' . $threadId . ':admin_msg:' . now()->format('YmdH'),
+                            metadata:         ['sender_name' => $senderName, 'thread_id' => $threadId],
+                        );
+                    }
+                } catch (\Throwable) {}
             }
 
             return response()->json($this->formatMessage($msg));
@@ -301,6 +367,21 @@ class MessageController extends Controller
             'last_message_preview' => Str::limit($body, 80),
             'reseller_unread'      => DB::raw('reseller_unread + 1'),
         ]);
+
+        // Notify the Referrer via in-app
+        app(\App\Services\NotificationDispatchService::class)->dispatch(
+            category:         'tenant_workspace',
+            priority:         'normal',
+            title:            'New message from your workspace',
+            body:             $senderName . ' sent you a message: "' . Str::limit($body, 80) . '"',
+            notifiableType:   'reseller',
+            notifiableId:     (string) $reseller->id,
+            tenantId:         $tenantId,
+            actionUrl:        url("/reseller/{$tenantId}/messages"),
+            actionLabel:      'View Message',
+            deduplicationKey: 'broadcast:reseller:' . $reseller->id . ':msg:' . now()->format('YmdH'),
+            metadata:         ['sender_name' => $senderName, 'thread_id' => $thread->id],
+        );
     }
 
     private function sendToPartner(string $tenantId, string $partnerId, string $body, string $senderName, string $senderId): void
@@ -339,6 +420,21 @@ class MessageController extends Controller
             'last_message_preview' => Str::limit($body, 80),
             'partner_unread'       => DB::raw('partner_unread + 1'),
         ]);
+
+        // Notify the Partner via in-app
+        app(\App\Services\NotificationDispatchService::class)->dispatch(
+            category:         'tenant_workspace',
+            priority:         'normal',
+            title:            'New message from your workspace',
+            body:             $senderName . ' sent you a message: "' . Str::limit($body, 80) . '"',
+            notifiableType:   'partner',
+            notifiableId:     (string) $partner->id,
+            tenantId:         $tenantId,
+            actionUrl:        url('/partner/messages'),
+            actionLabel:      'View Message',
+            deduplicationKey: 'broadcast:partner:' . $partner->id . ':msg:' . now()->format('YmdH'),
+            metadata:         ['sender_name' => $senderName, 'thread_id' => $thread->id],
+        );
     }
 
     private function notifyTenantUser(string $tenantId, string $userId, string $body, string $senderName): void
