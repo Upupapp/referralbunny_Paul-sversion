@@ -142,13 +142,33 @@
             </form>
         </div>
 
+        {{-- Field data injected before Alpine init to avoid complex x-data attribute parsing --}}
+        @once
+        <script>
+        window.__rfFieldsData = @json($form->fields->sortBy('sort_order')->map(function($f) {
+            $typeLabel = match($f->field_type) {
+                'multi_select' => 'Multi-select',
+                default        => ucfirst(str_replace('_', ' ', $f->field_type)),
+            };
+            return [
+                'id'          => $f->id,
+                'label'       => $f->label,
+                'field_type'  => $f->field_type,
+                'type_label'  => $typeLabel,
+                'placeholder' => $f->placeholder,
+                'helper_text' => $f->helper_text,
+                'options'     => $f->options ?? [],
+                'is_required' => (bool) $f->is_required,
+            ];
+        })->values());
+        window.__rfAddUrl  = '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}';
+        window.__rfBaseUrl = '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}';
+        window.__rfCsrf    = '{{ csrf_token() }}';
+        </script>
+        @endonce
+
         {{-- Form Fields (editable) ─────────────────────────────────────────────── --}}
-        <div class="card" x-data="rfFieldManager(
-            @json($form->fields->sortBy('sort_order')->map(fn($f) => ['id'=>$f->id,'label'=>$f->label,'field_type'=>$f->field_type,'type_label'=>match($f->field_type){'multi_select'=>'Multi-select',default=>ucfirst(str_replace('_',' ',$f->field_type))},'placeholder'=>$f->placeholder,'helper_text'=>$f->helper_text,'options'=>$f->options??[],'is_required'=>(bool)$f->is_required])->values()),
-            '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}',
-            '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}',
-            '{{ csrf_token() }}'
-        )">
+        <div class="card" x-data="rfFieldManager()">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
                 <div style="display:flex;align-items:center;gap:10px">
                     <div style="width:30px;height:30px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -283,9 +303,9 @@
                             <template x-if="['select','radio','checkbox','multi_select'].includes(field.field_type)">
                                 <div style="margin-bottom:8px">
                                     <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px">Options (one per line)</label>
-                                    <textarea :x-model="null"
-                                              :value="Array.isArray(field.options) ? field.options.join('\n') : ''"
-                                              @input="field.options = $event.target.value.split('\n')"
+                                    <textarea
+                                              :value="Array.isArray(field.options) ? field.options.join('\n') : (field.options || '')"
+                                              @input="field.options = $event.target.value.split('\n').map(s => s.trim()).filter(s => s)"
                                               rows="3"
                                               style="width:100%;padding:6px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:12px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
                                 </div>
@@ -542,7 +562,12 @@ function rbConfirmDeleteForm(formId, title, actionUrl) {
     };
 }
 
-function rfFieldManager(initialFields, addUrl, baseUrl, csrf) {
+function rfFieldManager() {
+    const addUrl  = window.__rfAddUrl  ?? '';
+    const baseUrl = window.__rfBaseUrl ?? '';
+    const csrf    = window.__rfCsrf   ?? document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const initialFields = window.__rfFieldsData ?? [];
+
     return {
         fields:       initialFields.map(f => ({ ...f, _editing: false, _saving: false, _error: '', _original: { ...f } })),
         showAdd:      false,
