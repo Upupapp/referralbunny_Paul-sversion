@@ -17,10 +17,13 @@ class TaskCompletionResponseMail extends Mailable implements ShouldQueue
         public readonly string  $recipientName,
         public readonly string  $senderName,
         public readonly string  $subject,
-        public readonly string  $body,
+        public readonly string  $bodyPlain,
+        public readonly string  $bodyHtml,
         public readonly array   $attachments,
         public readonly string  $taskTitle,
         public readonly string  $tenantId,
+        // Legacy compat — prefer bodyHtml/bodyPlain
+        public readonly string  $body = '',
     ) {}
 
     public function envelope(): Envelope

@@ -6,6 +6,7 @@ use App\Mail\TaskCompletionResponseMail;
 use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\TaskCompletionResponse;
+use App\Services\EmailContentFormatter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -83,7 +84,7 @@ class TaskCompletionService
                 'completed_by_id'   => $actorId,
             ]);
 
-            // Create completion response record
+            // Create completion response record (store plain text body; HTML rendered at send time)
             $response = TaskCompletionResponse::create([
                 'tenant_id'                  => $task->tenant_id,
                 'task_id'                    => $task->id,
@@ -95,7 +96,7 @@ class TaskCompletionService
                 'recipient_email'=> $requestorEmail,
                 'recipient_name' => $requestorName,
                 'subject'        => $subject,
-                'body'           => $body,
+                'body'           => EmailContentFormatter::sanitizePlainText($body),
                 'status'         => 'queued',
                 'attachment_paths' => $attachmentPaths ?: null,
                 'client_request_id' => $clientRequestId,
@@ -130,12 +131,14 @@ class TaskCompletionService
         // After commit: send email only if requested and an address is available.
         if ($sendEmail && $requestorEmail) {
             try {
+                $bodyHtml = EmailContentFormatter::renderTaskResponseEmailBody($body);
                 Mail::to($requestorEmail)
                     ->queue(new TaskCompletionResponseMail(
                         recipientName: $requestorName ?? $requestorEmail,
                         senderName:    $actorName,
                         subject:       $subject,
-                        body:          $body,
+                        bodyPlain:     EmailContentFormatter::sanitizePlainText($body),
+                        bodyHtml:      $bodyHtml,
                         attachments:   $attachmentPaths,
                         taskTitle:     $task->title,
                         tenantId:      $task->tenant_id,

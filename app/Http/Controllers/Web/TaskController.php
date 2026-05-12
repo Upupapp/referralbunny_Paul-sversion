@@ -313,11 +313,12 @@ class TaskController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
-        $tab      = $request->query('tab', 'mine');
-        $status   = $request->query('status');
-        $isAdmin  = Auth::guard('web')->check()
+        $tab            = $request->query('tab', 'mine');
+        $status         = $request->query('status');
+        $assigneeFilter = $request->query('assignee');     // admin-only filter
+        $isAdmin        = Auth::guard('web')->check()
             || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
-        $query    = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
+        $query          = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
 
         if ($tab === 'mine') {
             $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
@@ -338,6 +339,12 @@ class TaskController extends Controller
 
         if ($status) $query->where('status', $status);
 
+        // Admin-only: filter by assigned user
+        if ($isAdmin && $assigneeFilter && $assigneeFilter !== 'all') {
+            $query->where('assigned_to_id', $assigneeFilter)
+                  ->where('assigned_to_type', 'tenant_user');
+        }
+
         $tasks = $query->orderByRaw("CASE WHEN status='open' THEN 0 WHEN status='in_progress' THEN 1 ELSE 2 END")
                        ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
                        ->orderBy('due_at')
@@ -345,7 +352,23 @@ class TaskController extends Controller
                        ->paginate(30)
                        ->withQueryString();
 
-        return view('tenant.tasks.index', compact('tenant', 'tasks', 'tab', 'actorId', 'actorName'));
+        // Build assignee list for admin filter dropdown
+        $assigneeOptions = [];
+        if ($isAdmin) {
+            $assigneeOptions = DB::table('tenant_users as tu')
+                ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tm.role")
+                ->orderBy('tu.first_name')
+                ->get()
+                ->toArray();
+        }
+
+        return view('tenant.tasks.index', compact(
+            'tenant', 'tasks', 'tab', 'actorId', 'actorName',
+            'isAdmin', 'assigneeOptions', 'assigneeFilter'
+        ));
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────
@@ -405,10 +428,19 @@ class TaskController extends Controller
                 ->value('role');
         }
 
+        // Resolve requester email/name server-side (prevents UUID display from raw field)
+        $resolvedRequesterEmail = $task->resolveRequestorEmail();
+        $resolvedRequesterName  = $task->resolveRequestorName();
+        // Validate it looks like an email — if not (e.g. a UUID was stored), treat as missing
+        if ($resolvedRequesterEmail && !filter_var($resolvedRequesterEmail, FILTER_VALIDATE_EMAIL)) {
+            $resolvedRequesterEmail = null;
+        }
+
         return view('tenant.tasks.show', compact(
             'tenant', 'task', 'source', 'canComplete', 'completionEmailEnabled',
             'actorId', 'actorName', 'actorType', 'assigneeName', 'assigneeRole',
-            'canAssignToSelf', 'isCurrentAssignee', 'isAdmin'
+            'canAssignToSelf', 'isCurrentAssignee', 'isAdmin',
+            'resolvedRequesterEmail', 'resolvedRequesterName'
         ));
     }
 
@@ -441,19 +473,33 @@ class TaskController extends Controller
         }
 
         $data = $request->validate([
-            'subject'           => 'required|string|max:150',
-            'body'              => 'required|string|max:20000',
+            'subject'           => 'nullable|string|max:150',
+            'body'              => 'nullable|string|max:20000',
             'send_email'        => 'nullable|boolean',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
             'client_request_id' => 'nullable|string|max:64',
         ]);
 
-        // Determine whether to send the response email.
-        $wantsEmail     = filter_var($data['send_email'] ?? true, FILTER_VALIDATE_BOOLEAN);
-        $emailEnabled   = $this->tenantCompletionEmailEnabled($tenantId);
+        $wantsEmail     = filter_var($data['send_email'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $requestorEmail = $task->resolveRequestorEmail();
-        $sendEmail      = $wantsEmail && $emailEnabled && !empty($requestorEmail);
+
+        // Validate email format server-side — never trust a UUID stored in requestor_email
+        if ($requestorEmail && !filter_var($requestorEmail, FILTER_VALIDATE_EMAIL)) {
+            $requestorEmail = null;
+        }
+
+        $sendEmail = $wantsEmail && !empty($requestorEmail);
+
+        // When sending email, require subject and body
+        if ($sendEmail) {
+            if (empty(trim($data['subject'] ?? ''))) {
+                return response()->json(['error' => 'Email subject is required when sending a reply.'], 422);
+            }
+            if (empty(trim($data['body'] ?? ''))) {
+                return response()->json(['error' => 'Email body is required when sending a reply.'], 422);
+            }
+        }
 
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 

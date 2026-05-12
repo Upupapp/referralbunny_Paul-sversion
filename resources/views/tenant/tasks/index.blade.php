@@ -17,15 +17,35 @@
         </button>
     </div>
 
-    {{-- Tab filters --}}
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-        @foreach([['mine','My Tasks'],['all','All Tasks'],['overdue','Overdue'],['completed','Completed']] as [$key,$label])
-        <a href="{{ request()->fullUrlWithQuery(['tab' => $key]) }}"
-           style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:9999px;text-decoration:none;transition:all .15s;
-                  {{ $tab === $key ? 'background:#7B61FF;color:white;box-shadow:0 4px 12px rgba(123,97,255,0.3)' : 'background:white;color:#9ca3af;border:1.5px solid #e5e7eb' }}">
-            {{ $label }}
-        </a>
-        @endforeach
+    {{-- Tab filters + admin assignee filter --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+            @foreach([['mine','My Tasks'],['all','All Tasks'],['overdue','Overdue'],['completed','Completed']] as [$key,$label])
+            <a href="{{ request()->fullUrlWithQuery(['tab' => $key, 'assignee' => null]) }}"
+               style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:9999px;text-decoration:none;transition:all .15s;
+                      {{ $tab === $key ? 'background:#7B61FF;color:white;box-shadow:0 4px 12px rgba(123,97,255,0.3)' : 'background:white;color:#9ca3af;border:1.5px solid #e5e7eb' }}">
+                {{ $label }}
+            </a>
+            @endforeach
+        </div>
+
+        {{-- Admin-only: filter by assigned user --}}
+        @if(!empty($isAdmin) && !empty($assigneeOptions))
+        <form method="GET" action="{{ request()->url() }}" style="display:flex;align-items:center;gap:6px">
+            <input type="hidden" name="tab" value="{{ $tab }}">
+            <svg style="width:14px;height:14px;color:#9ca3af;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <select name="assignee" onchange="this.form.submit()"
+                    style="padding:7px 12px;font-size:13px;font-weight:500;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;outline:none;cursor:pointer;max-width:200px"
+                    onfocus="this.style.borderColor='#7B61FF'" onblur="this.style.borderColor='#e5e7eb'">
+                <option value="all" {{ empty($assigneeFilter) || $assigneeFilter === 'all' ? 'selected' : '' }}>All Assignees</option>
+                @foreach($assigneeOptions as $u)
+                <option value="{{ $u->id }}" {{ $assigneeFilter === $u->id ? 'selected' : '' }}>
+                    {{ trim($u->name) ?: $u->id }} ({{ ucfirst($u->role) }})
+                </option>
+                @endforeach
+            </select>
+        </form>
+        @endif
     </div>
 
     {{-- Task list --}}
