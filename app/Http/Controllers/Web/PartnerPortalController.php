@@ -140,19 +140,119 @@ class PartnerPortalController extends Controller
         ));
     }
 
-    public function messages()
+    // ── Request Forms ────────────────────────────────────────────────────────
+
+    public function forms()
     {
         $partner = $this->partner();
 
-        // Load threads with deal + reseller for list display only.
-        // Messages are loaded on-demand via threadMessages() when a thread is opened.
+        $forms = \App\Models\RequestForm::where('tenant_id', $partner->tenant_id)
+            ->where('status', 'published')
+            ->orderBy('title')
+            ->get(['id', 'title', 'description', 'public_token', 'created_at']);
+
+        return view('partner.forms.index', compact('partner', 'forms'));
+    }
+
+    public function formShow(string $token)
+    {
+        $partner = $this->partner();
+
+        $form = \App\Models\RequestForm::where('tenant_id', $partner->tenant_id)
+            ->where('public_token', $token)
+            ->where('status', 'published')
+            ->with(['fields', 'recipientOptions'])
+            ->firstOrFail();
+
+        return view('partner.forms.show', compact('partner', 'form'));
+    }
+
+    public function formSubmit(Request $request, string $token)
+    {
+        $partner = $this->partner();
+
+        $form = \App\Models\RequestForm::where('tenant_id', $partner->tenant_id)
+            ->where('public_token', $token)
+            ->where('status', 'published')
+            ->with('fields')
+            ->firstOrFail();
+
+        // Build validation rules from form fields
+        $rules = ['notes' => 'nullable|string|max:5000'];
+        foreach ($form->fields as $field) {
+            $key   = 'fields.' . $field->id;
+            $rule  = $field->is_required ? 'required' : 'nullable';
+            $rule .= match($field->field_type ?? 'text') {
+                'email'  => '|email|max:255',
+                'number' => '|numeric',
+                'url'    => '|url|max:500',
+                default  => '|string|max:2000',
+            };
+            $rules[$key] = $rule;
+        }
+
+        $data = $request->validate($rules);
+
+        $payload = [];
+        foreach ($form->fields as $field) {
+            $payload[$field->label ?? $field->id] = $data['fields'][$field->id] ?? null;
+        }
+
+        \App\Models\RequestFormSubmission::create([
+            'tenant_id'        => $partner->tenant_id,
+            'request_form_id'  => $form->id,
+            'submitter_name'   => $partner->full_name ?: $partner->email,
+            'submitter_email'  => $partner->email,
+            'request_for'      => 'partner',
+            'notes'            => $data['notes'] ?? null,
+            'payload'          => $payload,
+            'status'           => 'pending',
+            'submitted_at'     => now(),
+        ]);
+
+        // Notify tenant admins
+        try {
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $partner->tenant_id,
+                category:     'tenant_workspace',
+                priority:     'normal',
+                title:        'New form submission from Partner',
+                body:         ($partner->full_name ?: $partner->email) . ' submitted "' . $form->title . '".',
+                actionUrl:    url("/tenant/{$partner->tenant_id}/request-forms"),
+                actionLabel:  'View Submissions',
+                dedupeSuffix: 'partner_form:' . $form->id . ':' . $partner->id . ':' . now()->format('Ymd'),
+            );
+        } catch (\Throwable) {}
+
+        return redirect()->route('partner.forms')
+            ->with('success', 'Your submission has been sent! The team will get back to you shortly.');
+    }
+
+    public function messages(Request $request)
+    {
+        $partner = $this->partner();
+
         $threads = PartnerThread::where('partner_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)
             ->with(['deal', 'reseller'])
             ->orderByDesc('last_message_at')
             ->get();
 
-        return view('partner.messages', compact('partner', 'threads'));
+        // If deal_id param is provided and no thread exists yet, pass pending deal context
+        // so the messages view can show a compose area for the first message.
+        $pendingDeal = null;
+        $dealId = $request->query('deal_id');
+        if ($dealId && in_array($dealId, $this->authorizedDealIds())) {
+            $hasThread = $threads->contains('deal_id', $dealId);
+            if (!$hasThread) {
+                $lead = Lead::find($dealId);
+                if ($lead) {
+                    $pendingDeal = ['id' => $lead->id, 'name' => $lead->name, 'reseller_name' => $lead->reseller_name];
+                }
+            }
+        }
+
+        return view('partner.messages', compact('partner', 'threads', 'pendingDeal'));
     }
 
     public function threadMessages(string $threadId)
@@ -196,13 +296,9 @@ class PartnerPortalController extends Controller
             'body'    => 'required|string|max:5000',
         ]);
 
-        // Security: verify the partner has active access to this deal
-        $authorized = DealPartner::where('partner_user_id', $partner->id)
-            ->where('deal_id', $data['deal_id'])
-            ->where('status', 'active')
-            ->exists();
-
-        if (!$authorized) {
+        // Security: verify the partner has access to this deal.
+        // Checks both deal_partners (formal) and deal_partner_splits (referrer-invited partners).
+        if (!in_array($data['deal_id'], $this->authorizedDealIds())) {
             abort(403, 'You do not have access to this deal.');
         }
 
@@ -254,7 +350,8 @@ class PartnerPortalController extends Controller
         ]);
 
         return response()->json([
-            'message' => [
+            'thread_id' => $thread->id,   // returned so the JS can wire up new threads
+            'message'   => [
                 'id'          => $message->id,
                 'sender_type' => $message->sender_type,
                 'sender_name' => $message->sender_name,

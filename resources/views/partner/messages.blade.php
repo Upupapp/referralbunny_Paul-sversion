@@ -52,7 +52,7 @@
         <div :class="mobilePane === 'chat' ? 'flex' : 'hidden lg:flex'"
              class="flex-1 flex-col min-w-0">
 
-            <template x-if="!activeThreadId">
+            <template x-if="!activeThreadId && !isPendingNew">
                 <div class="flex-1 flex flex-col items-center justify-center text-center p-8 h-full">
                     <div class="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-3">
                         <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@
                 </div>
             </template>
 
-            <template x-if="activeThreadId">
+            <template x-if="activeThreadId || isPendingNew">
                 <div class="flex flex-col h-full min-h-0">
 
                     {{-- Thread header --}}
@@ -125,8 +125,8 @@
 
                     {{-- Compose --}}
                     <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
-                        <form @submit.prevent="send()" class="flex gap-2 items-end">
-                            <textarea x-model="body" placeholder="Type a message…" rows="1"
+                        <form @submit.prevent="send()" class="flex gap-2 items-end" :class="isPendingNew ? 'border-t-2 border-blue-100 pt-0' : ''">
+                            <textarea x-model="body" :placeholder="isPendingNew ? 'Send your first message to your Referrer…' : 'Type a message…'" rows="1"
                                       class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                       style="min-height:40px; max-height:120px;"
                                       @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
@@ -161,19 +161,23 @@ function partnerMessages() {
     const hdrs = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
     const postHdrs = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF });
 
-    // Server-rendered thread list
     const serverThreads = @json($threads->map(fn($t) => [
-        'id'           => $t->id,
-        'deal_id'      => $t->deal_id,
-        'deal_name'    => $t->deal?->name ?? 'Deal',
-        'last_preview' => $t->last_message_preview,
+        'id'             => $t->id,
+        'deal_id'        => $t->deal_id,
+        'deal_name'      => $t->deal?->name ?? 'Deal',
+        'last_preview'   => $t->last_message_preview,
         'partner_unread' => $t->partner_unread ?? 0,
     ]));
+
+    // Pending deal = deal_id param was provided but no thread exists yet
+    const pendingDeal = @json($pendingDeal);
 
     return {
         threads: serverThreads,
         activeThreadId: null,
         activeThreadName: '',
+        activeDealId: null,       // used for new (pending) conversations
+        isPendingNew: false,      // true when composing first message for a deal with no thread
         messages: [],
         body: '',
         sending: false,
@@ -181,30 +185,43 @@ function partnerMessages() {
         mobilePane: 'list',
 
         init() {
-            // Auto-open from query string (e.g. from deal show page)
             const urlParams = new URLSearchParams(window.location.search);
             const dealId = urlParams.get('deal_id');
             if (dealId) {
                 const t = this.threads.find(x => String(x.deal_id) === String(dealId));
-                if (t) this.selectThread(t.id);
+                if (t) {
+                    this.selectThread(t.id);
+                } else if (pendingDeal && String(pendingDeal.id) === String(dealId)) {
+                    // No thread yet — show the "start conversation" compose pane
+                    this.startPendingConversation(pendingDeal);
+                }
             } else if (this.threads.length > 0 && window.innerWidth >= 1024) {
-                // Auto-open first thread on desktop only
                 this.selectThread(this.threads[0].id);
             }
         },
 
+        startPendingConversation(deal) {
+            this.activeThreadId  = null;
+            this.activeDealId    = deal.id;
+            this.activeThreadName = deal.name;
+            this.isPendingNew    = true;
+            this.messages        = [];
+            this.mobilePane      = 'chat';
+        },
+
         async selectThread(threadId) {
-            this.activeThreadId = threadId;
-            this.mobilePane = 'chat';
+            this.activeThreadId   = threadId;
+            this.isPendingNew     = false;
+            this.mobilePane       = 'chat';
             const t = this.threads.find(x => x.id === threadId);
+            this.activeDealId     = t?.deal_id ?? null;
             this.activeThreadName = t?.deal_name ?? 'Deal';
-            this.messages = [];
-            this.loadingMessages = true;
+            this.messages         = [];
+            this.loadingMessages  = true;
             try {
                 const r = await fetch(`/partner/messages/thread/${threadId}`, { headers: hdrs() });
                 const d = await r.json();
                 this.messages = d.messages ?? [];
-                // Mark thread unread as 0 locally
                 if (t) t.partner_unread = 0;
             } catch (e) {
                 this.messages = [];
@@ -216,17 +233,17 @@ function partnerMessages() {
         },
 
         async send() {
-            if (!this.body.trim() || this.sending || !this.activeThreadId) return;
+            const dealId = this.activeDealId;
+            if (!this.body.trim() || this.sending || !dealId) return;
             this.sending = true;
-            const t       = this.threads.find(x => x.id === this.activeThreadId);
             const msgBody = this.body;
-            this.body     = '';
+            this.body = '';
             try {
                 const r = await fetch('/partner/messages/send', {
                     method: 'POST',
                     headers: postHdrs(),
                     body: JSON.stringify({
-                        deal_id:   t?.deal_id,
+                        deal_id:   dealId,
                         thread_id: this.activeThreadId,
                         body:      msgBody,
                     }),
@@ -234,14 +251,31 @@ function partnerMessages() {
                 const d = await r.json();
 
                 if (!r.ok) {
-                    this.body = msgBody; // restore so user can retry
-                    this.$dispatch('show-toast', { type: 'error', message: d?.message || d?.error || 'Failed to send message. Please try again.' });
+                    this.body = msgBody;
+                    this.$dispatch('show-toast', { type: 'error', message: d?.message || d?.error || 'Failed to send. Please try again.' });
                     return;
                 }
 
                 if (d.message?.body) {
                     this.messages.push(d.message);
-                    if (t) { t.last_preview = msgBody.slice(0, 60); }
+
+                    // If this was a new thread, update state so subsequent sends use the real thread
+                    if (this.isPendingNew && d.thread_id) {
+                        this.activeThreadId = d.thread_id;
+                        this.isPendingNew   = false;
+                        // Add to thread list so sidebar shows it
+                        this.threads.unshift({
+                            id: d.thread_id,
+                            deal_id: dealId,
+                            deal_name: this.activeThreadName,
+                            last_preview: msgBody.slice(0, 60),
+                            partner_unread: 0,
+                        });
+                    } else {
+                        const t = this.threads.find(x => x.id === this.activeThreadId);
+                        if (t) t.last_preview = msgBody.slice(0, 60);
+                    }
+
                     this.$nextTick(() => {
                         this.scrollToBottom();
                         this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));

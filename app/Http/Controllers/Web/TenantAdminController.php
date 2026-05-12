@@ -357,14 +357,58 @@ class TenantAdminController extends Controller
 
     public function messages($tenantId)
     {
-        $tenant    = Tenant::findOrFail($tenantId);
+        $tenant = Tenant::findOrFail($tenantId);
+
         $resellers = DB::table('resellers')
             ->where('tenant_id', $tenantId)
             ->whereIn('status', ['active', 'invited'])
             ->select('id', 'name', 'email')
             ->orderBy('name')
             ->get();
-        return view('tenant.messages.index', compact('tenant', 'resellers'));
+
+        $partners = DB::table('partner_users')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->select('id', 'first_name', 'last_name', 'email')
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($p) => (object) [
+                'id'    => $p->id,
+                'name'  => trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: $p->email,
+                'email' => $p->email,
+            ]);
+
+        $tenantUsers = DB::table('tenant_users as tu')
+            ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+            ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
+            ->orderBy('tm.role')
+            ->orderBy('tu.first_name')
+            ->get()
+            ->map(fn($u) => (object) [
+                'id'    => $u->id,
+                'name'  => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
+                'email' => $u->email,
+                'role'  => $u->role,
+            ]);
+
+        $contacts = DB::table('contacts')
+            ->where('tenant_id', $tenantId)
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->select('id', 'first_name', 'last_name', 'email')
+            ->orderBy('first_name')
+            ->limit(200)
+            ->get()
+            ->map(fn($c) => (object) [
+                'id'    => $c->id,
+                'name'  => trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')) ?: $c->email,
+                'email' => $c->email,
+            ]);
+
+        return view('tenant.messages.index', compact('tenant', 'resellers', 'partners', 'tenantUsers', 'contacts'));
     }
 
     public function agreements($tenantId)

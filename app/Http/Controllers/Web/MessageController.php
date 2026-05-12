@@ -222,6 +222,154 @@ class MessageController extends Controller
         }
     }
 
+    /**
+     * Broadcast a message to one or many recipients across different role types.
+     * Referrers  → MessageThread + ThreadMessage (they see it in their Messages inbox)
+     * Partners   → PartnerThread + PartnerMessage (they see it in partner portal Messages)
+     * Admins/Managers → in-app notification (platform-side, no dedicated DM table)
+     * Contacts   → in-app notification (external contacts receive notifications)
+     */
+    public function broadcastMessage(Request $request, $tenantId)
+    {
+        $data = $request->validate([
+            'recipients'   => 'required|array|min:1|max:100',
+            'recipients.*' => 'required|string',  // "type:id" format e.g. "reseller:uuid"
+            'body'         => 'required|string|max:5000',
+            'subject'      => 'nullable|string|max:200',
+        ]);
+
+        $senderName = $this->senderName();
+        $senderId   = (string) (Auth::guard('tenant')->id() ?? Auth::guard('web')->id() ?? 'system');
+        $body       = $data['body'];
+        $sent       = 0;
+        $errors     = [];
+
+        foreach ($data['recipients'] as $recipientToken) {
+            [$type, $id] = array_pad(explode(':', $recipientToken, 2), 2, null);
+            if (!$type || !$id) continue;
+
+            try {
+                match ($type) {
+                    'reseller' => $this->sendToReseller($tenantId, $id, $body, $senderName, $senderId),
+                    'partner'  => $this->sendToPartner($tenantId, $id, $body, $senderName, $senderId),
+                    'admin', 'manager', 'owner' => $this->notifyTenantUser($tenantId, $id, $body, $senderName),
+                    'contact'  => $this->notifyContact($tenantId, $id, $body, $senderName),
+                    default    => null,
+                };
+                $sent++;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('broadcastMessage failed for recipient', [
+                    'tenant_id' => $tenantId, 'type' => $type, 'id' => $id, 'error' => $e->getMessage(),
+                ]);
+                $errors[] = $type . ':' . substr($id, 0, 8);
+            }
+        }
+
+        if ($sent === 0) {
+            return response()->json(['error' => 'Could not send to any recipients. Please try again.'], 500);
+        }
+
+        $msg = 'Message sent to ' . $sent . ' recipient' . ($sent > 1 ? 's' : '') . '.';
+        if (!empty($errors)) {
+            $msg .= ' Failed for ' . count($errors) . '.';
+        }
+
+        return response()->json(['success' => true, 'message' => $msg, 'sent' => $sent]);
+    }
+
+    private function sendToReseller(string $tenantId, string $resellerId, string $body, string $senderName, string $senderId): void
+    {
+        $reseller = Reseller::where('tenant_id', $tenantId)->where('id', $resellerId)->firstOrFail();
+
+        $thread = MessageThread::firstOrCreate(
+            ['tenant_id' => $tenantId, 'reseller_id' => $reseller->id],
+            ['id' => (string) Str::uuid()]
+        );
+
+        ThreadMessage::create([
+            'id'          => (string) Str::uuid(),
+            'thread_id'   => $thread->id,
+            'tenant_id'   => $tenantId,
+            'sender_type' => 'admin',
+            'sender_id'   => $senderId,
+            'sender_name' => $senderName,
+            'body'        => $body,
+        ]);
+
+        $thread->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => Str::limit($body, 80),
+            'reseller_unread'      => DB::raw('reseller_unread + 1'),
+        ]);
+    }
+
+    private function sendToPartner(string $tenantId, string $partnerId, string $body, string $senderName, string $senderId): void
+    {
+        $partner = \App\Models\Partner::where('tenant_id', $tenantId)->where('id', $partnerId)->firstOrFail();
+
+        // Reuse existing direct thread (no deal context) if one exists
+        $thread = \App\Models\PartnerThread::where('tenant_id', $tenantId)
+            ->where('partner_id', $partner->id)
+            ->whereNull('deal_id')
+            ->first();
+
+        if (!$thread) {
+            $thread = \App\Models\PartnerThread::create([
+                'id'          => (string) Str::uuid(),
+                'tenant_id'   => $tenantId,
+                'partner_id'  => $partner->id,
+                'deal_id'     => null,
+                'reseller_id' => null,
+            ]);
+        }
+
+        \App\Models\PartnerMessage::create([
+            'thread_id'   => $thread->id,
+            'tenant_id'   => $tenantId,
+            'deal_id'     => null,
+            'sender_type' => 'admin',
+            'sender_id'   => $senderId,
+            'sender_name' => $senderName,
+            'body'        => $body,
+            'is_read'     => false,
+        ]);
+
+        $thread->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => Str::limit($body, 80),
+            'partner_unread'       => DB::raw('partner_unread + 1'),
+        ]);
+    }
+
+    private function notifyTenantUser(string $tenantId, string $userId, string $body, string $senderName): void
+    {
+        app(\App\Services\NotificationDispatchService::class)->dispatch(
+            category:         'tenant_workspace',
+            priority:         'normal',
+            title:            'Message from ' . $senderName,
+            body:             $body,
+            notifiableType:   'tenant_admin',
+            notifiableId:     $userId,
+            tenantId:         $tenantId,
+            deduplicationKey: null,
+        );
+    }
+
+    private function notifyContact(string $tenantId, string $contactId, string $body, string $senderName): void
+    {
+        // Contacts receive in-app notifications (they may also be referrers with platform access)
+        app(\App\Services\NotificationDispatchService::class)->dispatch(
+            category:         'tenant_workspace',
+            priority:         'normal',
+            title:            'Message from ' . $senderName,
+            body:             $body,
+            notifiableType:   'contact',
+            notifiableId:     $contactId,
+            tenantId:         $tenantId,
+            deduplicationKey: null,
+        );
+    }
+
     private function senderName(): string
     {
         if (auth('reseller')->check()) {

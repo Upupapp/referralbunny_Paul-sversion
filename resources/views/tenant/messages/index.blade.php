@@ -195,7 +195,7 @@
                 <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
                     <img src="/images/mascots/r-bunny-helper-question.webp" alt="" class="w-16 h-16 object-contain mb-3 opacity-70">
                     <h3 class="text-[#1E1B4B] font-semibold text-sm">Select a conversation</h3>
-                    <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list on the left, or tap <strong>+</strong> to start a new message with a Referrer.</p>
+                    <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list on the left, or tap <strong>+</strong> to message a Referrer, Partner, Admin, or Contact.</p>
                     <button @click="openCompose = true"
                             class="mt-4 btn-secondary text-xs hidden lg:inline-flex">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,66 +333,137 @@
         </div>
     </div>
 
-    {{-- ── New Message Modal ────────────────────────────────── --}}
+    {{-- ── Compose Modal (send to anyone) ────────────────────── --}}
     <div x-show="openCompose" x-cloak
+         x-data="composeModal()"
          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-         @keydown.escape.window="openCompose = false">
-        <div @click="openCompose = false" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg" @click.stop
+         @keydown.escape.window="openCompose = false; resetCompose()">
+        <div @click="openCompose = false; resetCompose()" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90dvh]" @click.stop
              x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100">
-            <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+             x-transition:enter-start="opacity-0 translate-y-4 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
                 <div>
                     <h3 class="text-[#1E1B4B] font-bold text-base">New Message</h3>
-                    <p class="text-gray-400 text-xs mt-0.5">Send a message to a Referrer</p>
+                    <p class="text-gray-400 text-xs mt-0.5">Send to anyone in your workspace</p>
                 </div>
-                <button @click="openCompose = false"
+                <button @click="openCompose = false; resetCompose()"
                         class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
-            <form @submit.prevent="startThread()" class="px-6 py-5 space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">To</label>
-                    <select x-model="compose.reseller_id" class="form-input w-full text-sm" required>
-                        <option value="">Select a Referrer…</option>
-                        @foreach($resellers as $reseller)
-                            <option value="{{ $reseller->id }}">{{ $reseller->name }} · {{ $reseller->email }}</option>
-                        @endforeach
-                    </select>
-                    @if($resellers->isEmpty())
-                        <p class="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
-                            </svg>
-                            No active Referrers in this workspace yet.
-                        </p>
-                    @endif
+
+            {{-- Role filter chips --}}
+            <div class="px-5 pt-4 pb-3 border-b border-gray-50 shrink-0">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Filter by role</p>
+                <div class="flex flex-wrap gap-1.5">
+                    @php
+                        $roleChips = [
+                            ['key' => 'all',     'label' => 'All',      'count' => $resellers->count() + $partners->count() + $tenantUsers->count() + $contacts->count()],
+                            ['key' => 'reseller','label' => 'Referrer', 'count' => $resellers->count()],
+                            ['key' => 'partner', 'label' => 'Partner',  'count' => $partners->count()],
+                            ['key' => 'admin',   'label' => 'Admin / Manager', 'count' => $tenantUsers->count()],
+                            ['key' => 'contact', 'label' => 'Contact',  'count' => $contacts->count()],
+                        ];
+                    @endphp
+                    @foreach($roleChips as $chip)
+                    <button type="button"
+                            @click="roleFilter = '{{ $chip['key'] }}'; recipientSearch = ''"
+                            :class="roleFilter === '{{ $chip['key'] }}'
+                                ? 'bg-[#7B61FF] text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                            class="px-3 py-1 rounded-full text-xs font-semibold transition-colors">
+                        {{ $chip['label'] }}
+                        <span class="ml-1 opacity-60">({{ $chip['count'] }})</span>
+                    </button>
+                    @endforeach
                 </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+
+                {{-- Recipient search + select --}}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">To</label>
+                        <button type="button" @click="selectAll()" class="text-[10px] text-[#7B61FF] hover:underline">Select all visible</button>
+                    </div>
+
+                    <div class="relative mb-2">
+                        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input x-model="recipientSearch" type="text" placeholder="Search by name or email…"
+                               class="w-full text-xs py-2 pl-8 pr-3 bg-gray-50 rounded-lg border border-gray-200 outline-none focus:ring-1 focus:ring-[#7B61FF] transition-all">
+                    </div>
+
+                    {{-- Recipient list --}}
+                    <div class="border border-gray-200 rounded-xl max-h-44 overflow-y-auto">
+                        <template x-if="visibleRecipients.length === 0">
+                            <p class="text-xs text-gray-400 text-center py-5">No recipients match your filter.</p>
+                        </template>
+                        <template x-for="r in visibleRecipients" :key="r.token">
+                            <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0">
+                                <input type="checkbox" :value="r.token" x-model="selectedTokens"
+                                       class="rounded border-gray-300 text-[#7B61FF] focus:ring-[#7B61FF]/30">
+                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-[10px] shrink-0"
+                                     :style="'background:' + r.color">
+                                    <span x-text="r.initials"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-semibold text-[#1E1B4B] truncate" x-text="r.name"></p>
+                                    <p class="text-[10px] text-gray-400 truncate" x-text="r.email + ' · ' + r.roleLabel"></p>
+                                </div>
+                                <span x-show="selectedTokens.includes(r.token)"
+                                      class="w-4 h-4 rounded-full bg-[#7B61FF] flex items-center justify-center shrink-0">
+                                    <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </span>
+                            </label>
+                        </template>
+                    </div>
+
+                    <p class="text-[10px] text-gray-400 mt-1">
+                        <span x-text="selectedTokens.length"></span> selected
+                    </p>
+                </div>
+
+                {{-- Message body --}}
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Message</label>
-                    <textarea x-model="compose.body" rows="4"
+                    <textarea x-model="broadcastBody" rows="4"
                               placeholder="Write your message…"
                               class="form-input w-full text-sm resize-none" required></textarea>
+                    <p class="text-[10px] text-gray-400 mt-1">
+                        Referrers and Partners will see this in their Messages inbox. Admins and Contacts receive an in-app notification.
+                    </p>
                 </div>
-                <div x-show="composeError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="composeError"></div>
-                <div class="flex gap-3 justify-end">
-                    <button type="button" @click="openCompose = false" class="btn-secondary text-sm">Cancel</button>
-                    <button type="submit"
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
-                            style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
-                            :disabled="sending || !compose.reseller_id || !compose.body.trim()">
-                        <svg x-show="sending" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
-                        </svg>
-                        <span x-text="sending ? 'Sending…' : 'Send Message'"></span>
-                    </button>
-                </div>
-            </form>
+
+                <div x-show="broadcastResult" class="text-xs px-3 py-2 rounded-lg"
+                     :class="broadcastOk ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'"
+                     x-text="broadcastResult"></div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-5 py-4 border-t border-gray-100 flex gap-3 justify-end shrink-0">
+                <button type="button" @click="openCompose = false; resetCompose()" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="sendBroadcast()"
+                        :disabled="broadcastSending || selectedTokens.length === 0 || !broadcastBody.trim()"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
+                        style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
+                    <svg x-show="broadcastSending" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                    </svg>
+                    <span x-text="broadcastSending ? 'Sending…' : 'Send to ' + selectedTokens.length + (selectedTokens.length === 1 ? ' person' : ' people')">Send</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -619,6 +690,102 @@ function messaging() {
         scrollToBottom() {
             const el = this.$refs.messageArea;
             if (el) el.scrollTop = el.scrollHeight;
+        },
+    };
+}
+
+function composeModal() {
+    const BROADCAST_URL = '{{ url("tenant/" . $tenant->id . "/messages/broadcast") }}';
+    const CSRF = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+
+    // Build the full recipient list from server-rendered Blade data
+    const allRecipients = [
+        @foreach($resellers as $r)
+        { token: 'reseller:{{ $r->id }}', name: @json($r->name), email: @json($r->email), role: 'reseller', roleLabel: 'Referrer',
+          initials: {{ json_encode(strtoupper(substr($r->name ?? 'R', 0, 2))) }}, color: '#7B61FF' },
+        @endforeach
+        @foreach($partners as $p)
+        { token: 'partner:{{ $p->id }}', name: @json($p->name), email: @json($p->email), role: 'partner', roleLabel: 'Partner',
+          initials: {{ json_encode(strtoupper(substr($p->name ?? 'P', 0, 2))) }}, color: '#0891b2' },
+        @endforeach
+        @foreach($tenantUsers as $u)
+        { token: '{{ $u->role }}:{{ $u->id }}', name: @json($u->name), email: @json($u->email), role: '{{ $u->role }}', roleLabel: '{{ ucfirst($u->role) }}',
+          initials: {{ json_encode(strtoupper(substr($u->name ?? 'A', 0, 2))) }}, color: '#059669' },
+        @endforeach
+        @foreach($contacts as $c)
+        { token: 'contact:{{ $c->id }}', name: @json($c->name), email: @json($c->email), role: 'contact', roleLabel: 'Contact',
+          initials: {{ json_encode(strtoupper(substr($c->name ?? 'C', 0, 2))) }}, color: '#d97706' },
+        @endforeach
+    ];
+
+    return {
+        roleFilter:      'all',
+        recipientSearch: '',
+        selectedTokens:  [],
+        broadcastBody:   '',
+        broadcastSending:false,
+        broadcastResult: null,
+        broadcastOk:     true,
+
+        get visibleRecipients() {
+            const q = this.recipientSearch.toLowerCase().trim();
+            return allRecipients.filter(r => {
+                const roleMatch = this.roleFilter === 'all'
+                    || r.role === this.roleFilter
+                    || (this.roleFilter === 'admin' && ['admin','manager','owner'].includes(r.role));
+                const searchMatch = !q
+                    || r.name.toLowerCase().includes(q)
+                    || r.email.toLowerCase().includes(q);
+                return roleMatch && searchMatch;
+            });
+        },
+
+        selectAll() {
+            const tokens = this.visibleRecipients.map(r => r.token);
+            const allSelected = tokens.every(t => this.selectedTokens.includes(t));
+            if (allSelected) {
+                this.selectedTokens = this.selectedTokens.filter(t => !tokens.includes(t));
+            } else {
+                this.selectedTokens = [...new Set([...this.selectedTokens, ...tokens])];
+            }
+        },
+
+        async sendBroadcast() {
+            if (this.broadcastSending || this.selectedTokens.length === 0 || !this.broadcastBody.trim()) return;
+            this.broadcastSending = true;
+            this.broadcastResult  = null;
+            try {
+                const r = await fetch(BROADCAST_URL, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    body:    JSON.stringify({ recipients: this.selectedTokens, body: this.broadcastBody }),
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    this.broadcastOk     = true;
+                    this.broadcastResult = d.message || 'Message sent!';
+                    this.selectedTokens  = [];
+                    this.broadcastBody   = '';
+                    // Reload threads after a short delay so new threads appear
+                    setTimeout(() => { if (window.__messaging) window.__messaging.loadThreads(); }, 1200);
+                } else {
+                    this.broadcastOk     = false;
+                    this.broadcastResult = d.error || 'Failed to send. Please try again.';
+                }
+            } catch (e) {
+                this.broadcastOk     = false;
+                this.broadcastResult = 'Network error. Please try again.';
+            } finally {
+                this.broadcastSending = false;
+            }
+        },
+
+        resetCompose() {
+            this.roleFilter      = 'all';
+            this.recipientSearch = '';
+            this.selectedTokens  = [];
+            this.broadcastBody   = '';
+            this.broadcastResult = null;
         },
     };
 }

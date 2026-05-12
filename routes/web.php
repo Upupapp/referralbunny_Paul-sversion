@@ -188,6 +188,9 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
         Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
+        Route::get('/forms',                          [PartnerPortalController::class, 'forms'])->name('forms');
+        Route::get('/forms/{token}',                  [PartnerPortalController::class, 'formShow'])->name('forms.show');
+        Route::post('/forms/{token}/submit',          [PartnerPortalController::class, 'formSubmit'])->name('forms.submit')->middleware('throttle:20,1');
         Route::get('/profile',                        [PartnerProfileController::class, 'show'])->name('profile');
         Route::post('/profile',                       [PartnerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
@@ -227,6 +230,7 @@ Route::middleware(['auth:tenant,reseller,web'])
         Route::get('/threads/{threadId}',          [MessageController::class, 'threadMessages'])->name('thread');
         Route::get('/threads/{threadId}/messages', [MessageController::class, 'fetchMessages'])->name('thread.messages');
         Route::post('/threads/{threadId}',         [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
+        Route::post('/broadcast',                  [MessageController::class, 'broadcastMessage'])->name('broadcast')->middleware('throttle:10,1');
     });
 
 // ── Tenant app ────────────────────────────────────────────────
