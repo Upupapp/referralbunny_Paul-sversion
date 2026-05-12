@@ -381,160 +381,185 @@ window.__rsDeal = {
         </div>
     </div>
 
-    {{-- Partners & Split ────────────────────────────────────────── --}}
+    {{-- Referrers & Partners ─────────────────────────────────── --}}
+    @php
+        $canRemovePartner = !in_array($lead->commission_status ?? '', ['locked', 'paid']);
+        $primarySplits    = collect($splits)->where('role', 'primary')->values();
+        $secondarySplits  = collect($splits)->where('role', 'secondary')->values();
+        $hasAnyone        = $primarySplits->count() || $secondarySplits->count() || count($partnerSplits);
+    @endphp
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div class="flex items-center gap-2">
-                <h2 class="text-sm font-bold text-[#1E1B4B]">Partners & Split</h2>
-                <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
-                            class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak x-transition
-                         class="absolute left-0 top-6 z-30 w-72 bg-white border border-gray-100 rounded-xl shadow-lg p-3 text-xs text-gray-500 leading-relaxed">
-                        <strong class="text-gray-700 block mb-1">Partners & Split</strong>
-                        Partners connected to this deal and their split allocation. Partner commissions are estimated based on the current deal amount, commission pool, and approved split setup.
-                    </div>
-                </div>
+                <h2 class="text-sm font-bold text-[#1E1B4B]">Referrers & Partners</h2>
+                <span class="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                    {{ $primarySplits->count() + $secondarySplits->count() + count($partnerSplits) }} listed
+                </span>
             </div>
-            <button @click="showAddPartner = true"
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                Add Partner
-            </button>
+            <div class="flex items-center gap-2">
+                <button @click="showAddReferrer = true"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    Co-Referrer
+                </button>
+                <button @click="showAddPartner = true"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    Partner
+                </button>
+            </div>
         </div>
 
-        @if(count($partnerSplits) === 0)
+        {{-- Column headers --}}
+        <div class="hidden sm:grid grid-cols-4 gap-0 bg-gray-50 border-b border-gray-100 px-5 py-2">
+            <div class="col-span-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Person / Role</div>
+            <div class="text-right text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Split</div>
+            <div class="text-right text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Est. Commission</div>
+        </div>
+
+        {{-- ── Primary Referrer(s) ── --}}
+        @if($primarySplits->count())
+        <div class="divide-y divide-gray-50">
+            @foreach($primarySplits as $split)
+            @php $rAmt = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0); @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
+                        {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->reseller_name ?? '—' }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Primary Referrer</span>
+                            @if(strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? ''))
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">You</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format((float)($split->percentage ?? 0), 1) }}%</p>
+                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                </div>
+                <div class="text-right shrink-0 min-w-[90px]">
+                    <p class="text-sm font-bold text-green-700">₱{{ number_format($rAmt, 0) }}</p>
+                    <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        {{-- ── Co-Referrers ── --}}
+        @if($secondarySplits->count())
+        @if($primarySplits->count())
+        <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Co-Referrers</p>
+        </div>
+        @endif
+        <div class="divide-y divide-gray-50">
+            @foreach($secondarySplits as $split)
+            @php $rAmt = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0); @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-blue-700" style="background:#dbeafe">
+                        {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->reseller_name ?? '—' }}</p>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Co-Referrer</span>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format((float)($split->percentage ?? 0), 1) }}%</p>
+                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                </div>
+                <div class="text-right shrink-0 min-w-[90px]">
+                    <p class="text-sm font-bold text-blue-700">₱{{ number_format($rAmt, 0) }}</p>
+                    <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        {{-- ── Partners ── --}}
+        @if(count($partnerSplits))
+        @if($primarySplits->count() || $secondarySplits->count())
+        <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Partners</p>
+        </div>
+        @endif
+        <div class="divide-y divide-gray-50">
+            @foreach($partnerSplits as $ps)
+            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
+                        {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 2)) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $ps['partner_name'] ?? '—' }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700">Partner</span>
+                            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full
+                                {{ $pStatus === 'active' ? 'bg-green-100 text-green-700' : ($pStatus === 'pending_invite' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500') }}">
+                                @if($pStatus === 'active') Active
+                                @elseif($pStatus === 'pending_invite') Pending Invite
+                                @elseif($pStatus === 'invite_failed') Invite Failed
+                                @else Not Invited @endif
+                            </span>
+                            @if($ps['partner_email'] ?? '')
+                            <span class="text-[9px] text-gray-400 truncate max-w-[120px]">{{ $ps['partner_email'] }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-sm font-bold text-[#1E1B4B]">{{ $ps['display_share'] ?? '—' }}</p>
+                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                </div>
+                <div class="text-right shrink-0 min-w-[90px] flex items-center justify-end gap-2">
+                    <div>
+                        <p class="text-sm font-bold text-[#0D9488]">₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}</p>
+                        <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+                    </div>
+                    @if($canRemovePartner)
+                    <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
+                            title="Remove partner"
+                            class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                            aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
         {{-- Empty state --}}
+        @if(!$hasAnyone)
         <div class="flex flex-col items-center justify-center py-10 px-5 text-center">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style="background:#CCFBF1">
                 <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
             </div>
-            <p class="text-sm font-semibold text-[#1E1B4B]">No Partners added yet</p>
-            <p class="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">
-                Partners connected to this deal will appear here with their split and estimated commission.
-            </p>
+            <p class="text-sm font-semibold text-[#1E1B4B]">No one listed yet</p>
+            <p class="text-xs text-gray-400 mt-1 max-w-xs leading-relaxed">Referrer splits and partners will appear here once assigned.</p>
         </div>
+        @endif
 
-        @else
-        {{-- Desktop table --}}
-        <div class="hidden sm:block overflow-x-auto">
-            <table class="w-full text-sm">
-                @php $canRemovePartner = !in_array($lead->commission_status ?? '', ['locked', 'paid']); @endphp
-                <thead>
-                    <tr class="bg-gray-50 border-b border-gray-100">
-                        <th class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Partner</th>
-                        <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Status</th>
-                        <th class="text-right px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Split</th>
-                        <th class="text-right px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Est. Commission</th>
-                        @if($canRemovePartner)
-                        <th class="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-16"></th>
-                        @endif
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @foreach($partnerSplits as $ps)
-                    <tr class="hover:bg-gray-50/40 transition-colors">
-                        <td class="px-5 py-3.5">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
-                                    {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 1)) }}
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-[#1E1B4B] truncate">{{ $ps['partner_name'] ?? '—' }}</p>
-                                    <p class="text-[10px] text-gray-400 truncate">{{ $ps['partner_email'] ?? '' }}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3.5">
-                            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
-                            <span @class([
-                                'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
-                                'bg-green-100 text-green-700'  => $pStatus === 'active',
-                                'bg-amber-100 text-amber-700'  => $pStatus === 'pending_invite',
-                                'bg-gray-100 text-gray-500'    => in_array($pStatus, ['provisional', 'invite_failed']),
-                            ])>
-                                @if($pStatus === 'active') Active
-                                @elseif($pStatus === 'pending_invite') Pending Invite
-                                @elseif($pStatus === 'invite_failed') Invite Failed
-                                @else Not Invited
-                                @endif
-                            </span>
-                        </td>
-                        <td class="px-4 py-3.5 text-right font-semibold text-[#1E1B4B]">
-                            {{ $ps['display_share'] ?? '—' }}
-                        </td>
-                        <td class="px-5 py-3.5 text-right font-semibold text-[#0D9488]">
-                            ₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}
-                        </td>
-                        @if($canRemovePartner)
-                        <td class="px-4 py-3.5 text-center">
-                            <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
-                                    title="Remove partner from deal"
-                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                                    aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        </td>
-                        @endif
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Mobile cards --}}
-        <div class="sm:hidden divide-y divide-gray-50">
-            @foreach($partnerSplits as $ps)
-            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
-            <div class="px-4 py-4 flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
-                    {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 1)) }}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $ps['partner_name'] ?? '—' }}</p>
-                        <span @class([
-                            'inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold',
-                            'bg-green-100 text-green-700'  => $pStatus === 'active',
-                            'bg-amber-100 text-amber-700'  => $pStatus === 'pending_invite',
-                            'bg-gray-100 text-gray-500'    => in_array($pStatus, ['provisional', 'invite_failed']),
-                        ])>
-                            @if($pStatus === 'active') Active
-                            @elseif($pStatus === 'pending_invite') Pending
-                            @else Not Invited
-                            @endif
-                        </span>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-0.5">
-                        Split: <strong class="text-[#1E1B4B]">{{ $ps['display_share'] ?? '—' }}</strong>
-                        &nbsp;·&nbsp;
-                        Est. Commission: <strong class="text-[#0D9488]">₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}</strong>
-                    </p>
-                </div>
-                @if($canRemovePartner)
-                <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
-                        title="Remove partner"
-                        class="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
-                        aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                </button>
-                @endif
-            </div>
-            @endforeach
-        </div>
-
-        {{-- Total row --}}
+        {{-- Summary footer --}}
+        @if($hasAnyone)
         <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-            <p class="text-xs text-gray-400">{{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }} · Total estimated</p>
-            <p class="text-sm font-bold text-[#0D9488]">₱{{ number_format($partnersCommission, 0) }}</p>
+            <p class="text-xs text-gray-400">
+                {{ $primarySplits->count() + $secondarySplits->count() }} Referrer{{ ($primarySplits->count() + $secondarySplits->count()) !== 1 ? 's' : '' }}
+                · {{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }}
+            </p>
+            <p class="text-xs font-bold text-[#0D9488]">Pool: ₱{{ number_format($commissionPool, 0) }}</p>
         </div>
         <div class="px-5 py-2 border-t border-gray-50">
             <p class="text-[10px] text-gray-400">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
@@ -1119,7 +1144,8 @@ function rsDealData() {
                 this.showUpdateAmount = false;
                 this.amountReason = '';
                 this.showToast('Deal amount updated. Admins have been notified.');
-                setTimeout(() => window.location.reload(), 800);
+                // Force a hard reload (bypasses cache) so updated amounts are reflected
+                setTimeout(() => { window.location.href = window.location.href; }, 700);
             } catch (e) {
                 this.amountSaving = false;
                 this.amountError = 'Network error. Please check your connection and try again.';

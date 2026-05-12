@@ -280,9 +280,16 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'New amount is the same as the current amount.'], 422);
         }
 
+        // Recalculate added_amount so commission pool stays in sync with deal_value
+        // Formula: added_amount = deal_value - base_cost  (must be ≥ 0)
+        $newAddedAmount = max(0.0, round($newAmount - (float) $lead->base_cost, 2));
+
         DB::beginTransaction();
         try {
-            $lead->update(['deal_value' => $newAmount]);
+            $lead->update([
+                'deal_value'   => $newAmount,
+                'added_amount' => $newAddedAmount,
+            ]);
 
             app(DealActivityService::class)->record($lead, 'Deal amount updated by referrer', 'amount', [
                 'category'   => 'financial',
