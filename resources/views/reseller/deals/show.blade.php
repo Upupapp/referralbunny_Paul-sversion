@@ -631,16 +631,36 @@ window.__rsDeal = {
             <button @click="showAddNote = true" class="text-xs text-teal-600 font-semibold hover:underline">+ Add Note</button>
         </div>
         @if(count($notes) === 0)
-        <div class="px-5 py-8 text-center text-xs text-gray-400">No notes yet. Add your first note above.</div>
+        <div class="px-5 py-8 text-center">
+            <p class="text-xs text-gray-400">No notes yet. Add your first note above.</p>
+        </div>
         @else
         <div class="divide-y divide-gray-50">
             @foreach($notes as $note)
-            <div class="px-5 py-3">
-                <div class="flex items-center gap-2 mb-1">
+            <div class="px-5 py-3.5">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-[10px] font-bold shrink-0">
+                        {{ strtoupper(substr($note['author'] ?? '?', 0, 1)) }}
+                    </div>
                     <span class="text-xs font-semibold text-gray-700">{{ $note['author'] ?? 'Unknown' }}</span>
                     <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($note['created_at'])->diffForHumans() }}</span>
                 </div>
-                <p class="text-sm text-gray-600 leading-relaxed break-words">{!! preg_replace('~(https?://[^\s<>"\']+)~i','<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">$1</a>',e($note['text'] ?? '')) !!}</p>
+                @if(!empty($note['text']))
+                <p class="text-sm text-gray-600 leading-relaxed break-words ml-8">{!! preg_replace('~(https?://[^\s<>"\']+)~i','<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">$1</a>',e($note['text'] ?? '')) !!}</p>
+                @endif
+                @if(!empty($note['attachments']))
+                <div class="flex flex-wrap gap-1.5 mt-2 ml-8">
+                    @foreach($note['attachments'] as $att)
+                    <a href="{{ $att['download_url'] }}" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1 text-[10px] text-teal-600 bg-teal-50 px-2 py-1 rounded-full hover:bg-teal-100 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        {{ $att['original_filename'] }}
+                    </a>
+                    @endforeach
+                </div>
+                @endif
             </div>
             @endforeach
         </div>

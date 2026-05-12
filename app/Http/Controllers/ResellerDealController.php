@@ -82,14 +82,63 @@ class ResellerDealController extends Controller
                 ->toArray();
         } catch (\Throwable) {}
 
-        // Notes visible to this reseller
+        // Load shared notes — DealComment (new system, supports attachments) + LeadNote (legacy)
         $notes = [];
         try {
-            $notes = LeadNote::where('lead_id', $dealId)
+            // New notes: deal_comments with visibility = 'shared'
+            $dealComments = \App\Models\DealComment::with('attachments')
+                ->where('deal_id', $dealId)
+                ->where('tenant_id', $tenantId)
+                ->where('visibility', 'shared')
+                ->whereNull('deleted_at')
+                ->whereNull('parent_comment_id')
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            // Batch-resolve author names for referrer-authored comments
+            $resellerIds   = $dealComments->where('author_role', 'referrer')->pluck('author_user_id')->unique()->filter();
+            $resellerNames = $resellerIds->isNotEmpty()
+                ? Reseller::whereIn('id', $resellerIds)->pluck('name', 'id')
+                : collect();
+
+            $commentNotes = $dealComments->map(fn($c) => [
+                'id'          => $c->id,
+                'text'        => $c->body ?? '',
+                'author'      => match($c->author_role) {
+                    'referrer'    => $resellerNames[$c->author_user_id] ?? 'Referrer',
+                    'partner'     => 'Partner',
+                    'tenant_admin', 'super_admin' => 'Admin',
+                    default       => 'Team',
+                },
+                'created_at'  => $c->created_at,
+                'attachments' => $c->attachments->map(fn($a) => [
+                    'id'                => $a->id,
+                    'original_filename' => $a->original_filename,
+                    'file_type_group'   => $a->file_type_group ?? 'document',
+                    'file_size'         => $a->file_size,
+                    'download_url'      => url("/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}"),
+                ])->toArray(),
+            ])->toArray();
+
+            // Legacy notes: lead_notes (old system, no attachments)
+            $legacyNotes = LeadNote::where('lead_id', $dealId)
                 ->orderBy('created_at', 'asc')
                 ->get()
-                ->toArray();
-        } catch (\Throwable) {}
+                ->map(fn($n) => [
+                    'id'          => $n->id ?? null,
+                    'text'        => $n->text ?? '',
+                    'author'      => $n->author ?? 'Referrer',
+                    'created_at'  => $n->created_at,
+                    'attachments' => [],
+                ])->toArray();
+
+            // Merge and sort chronologically
+            $merged = array_merge($commentNotes, $legacyNotes);
+            usort($merged, fn($a, $b) => ($a['created_at'] ?? '') <=> ($b['created_at'] ?? ''));
+            $notes = $merged;
+        } catch (\Throwable $e) {
+            Log::warning('ResellerDealController: notes load failed', ['error' => $e->getMessage()]);
+        }
 
         // Commission splits
         $splits = CommissionSplit::where('lead_id', $dealId)->get();
