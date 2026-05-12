@@ -329,6 +329,9 @@
 {{-- R Bunny Unified Assistant — bottom-left --}}
 <x-brand.r-bunny-assistant />
 
+{{-- Notification detail modal — reads sessionStorage set before navigation --}}
+<x-notification-detail-modal />
+
 @stack('scripts')
 <script>
 document.addEventListener('alpine:init', () => {

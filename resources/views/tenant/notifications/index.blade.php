@@ -196,7 +196,7 @@
                             <div class="mt-2.5" x-show="n.action_url && n.action_label">
                                 <a
                                     :href="n.action_url"
-                                    @click="markRead(n)"
+                                    @click.prevent="storeAndNavigate(n)"
                                     class="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B61FF] hover:text-purple-800 transition-colors"
                                     x-text="n.action_label"
                                 ></a>
@@ -311,6 +311,24 @@ function notificationCenter() {
                 this.unreadCount = Math.min(this.unreadCount + 1, 999);
                 window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: this.unreadCount } }));
             }
+        },
+
+        async storeAndNavigate(n) {
+            await this.markRead(n);
+            try {
+                sessionStorage.setItem('__notif_detail', JSON.stringify({
+                    id:          n.id,
+                    title:       n.title || n.message,
+                    message:     n.message,
+                    priority:    n.priority,
+                    category:    n.category,
+                    action_url:  n.action_url,
+                    action_label:n.action_label,
+                    created_ago: n.created_ago,
+                    metadata:    n.metadata || null,
+                }));
+            } catch(e) {}
+            if (n.action_url) window.location.href = n.action_url;
         },
 
         async archive(n) {
