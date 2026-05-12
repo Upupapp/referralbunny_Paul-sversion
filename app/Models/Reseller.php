@@ -19,9 +19,27 @@ class Reseller extends Authenticatable
     protected static function boot(): void
     {
         parent::boot();
+
         static::creating(function (self $model) {
             if (empty($model->id)) {
                 $model->id = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+
+        // Keep tenant contacts in sync whenever a referrer is created or updated.
+        static::created(function (self $model) {
+            if (!empty($model->email) && !$model->is_anonymous) {
+                try {
+                    app(\App\Services\ContactSyncService::class)->syncReseller($model);
+                } catch (\Throwable) {}
+            }
+        });
+
+        static::updated(function (self $model) {
+            if (!empty($model->email) && !$model->is_anonymous) {
+                try {
+                    app(\App\Services\ContactSyncService::class)->syncReseller($model);
+                } catch (\Throwable) {}
             }
         });
     }

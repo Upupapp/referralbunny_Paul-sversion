@@ -14,6 +14,28 @@ class Partner extends Authenticatable
     public $incrementing = false;
     protected $keyType  = 'string';
 
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Keep tenant contacts in sync whenever a partner is created or updated.
+        static::created(function (self $model) {
+            if (!empty($model->email)) {
+                try {
+                    app(\App\Services\ContactSyncService::class)->syncPartner($model);
+                } catch (\Throwable) {}
+            }
+        });
+
+        static::updated(function (self $model) {
+            if (!empty($model->email)) {
+                try {
+                    app(\App\Services\ContactSyncService::class)->syncPartner($model);
+                } catch (\Throwable) {}
+            }
+        });
+    }
+
     protected $fillable = [
         'id', 'tenant_id', 'email', 'password', 'setup_token', 'remember_token', 'status',
         'first_name', 'last_name', 'nickname', 'phone_number',
