@@ -78,8 +78,16 @@ class ResellerProfileController extends Controller
         $reseller = Auth::guard('reseller')->user();
         if (!$reseller) abort(403);
 
-        $isAnon = (bool) $request->input('is_anonymous');
-        $reseller->update(['is_anonymous' => $isAnon]);
+        $isAnon  = (bool) $request->input('is_anonymous');
+        $updates = ['is_anonymous' => $isAnon];
+
+        // Mark anonymous-mode onboarding as completed on first ever toggle,
+        // regardless of direction. This stops the recurring guide from showing.
+        if (!$reseller->anonymous_onboarded_at) {
+            $updates['anonymous_onboarded_at'] = now();
+        }
+
+        $reseller->update($updates);
         Auth::guard('reseller')->setUser($reseller->fresh());
 
         $msg = $isAnon

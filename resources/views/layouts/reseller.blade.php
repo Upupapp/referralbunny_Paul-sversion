@@ -65,6 +65,15 @@
         .rs-btn-primary { background:#0D9488;color:#fff;border:none;border-radius:.75rem;padding:.625rem 1rem;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:background .15s;font-family:'Inter',sans-serif; }
         .rs-btn-primary:hover { background:#0F766E; }
         .rs-page-bg { background:#F0FDFA; }
+        /* Anonymous-mode onboarding animations */
+        @keyframes rb-eye-pulse {
+            0%,100% { box-shadow:0 0 0 0 rgba(20,184,166,.55); }
+            50%      { box-shadow:0 0 0 6px rgba(20,184,166,.0); }
+        }
+        @keyframes rb-dot-ping {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%      { opacity:.4; transform:scale(1.5); }
+        }
     </style>
 </head>
 <body class="rs-page-bg font-sans antialiased">
@@ -148,12 +157,14 @@
             <div class="flex items-center gap-2">
                 @yield('topbar-actions')
 
-                {{-- Anonymous mode toggle --}}
+                {{-- Anonymous mode toggle + onboarding guide --}}
                 @if(isset($tenant) && $r)
+                @php $rsOnboardAnon = !($r->anonymous_onboarded_at ?? null); @endphp
                 <div x-data="{
                         open: false,
                         isAnon: {{ ($r->is_anonymous ?? false) ? 'true' : 'false' }},
                         busy: false,
+                        showGuide: {{ $rsOnboardAnon ? 'true' : 'false' }},
                         async toggle() {
                             this.busy = true;
                             const fd = new FormData();
@@ -163,6 +174,7 @@
                                 const res = await fetch('{{ route('reseller.profile.anonymous', $tenant->id) }}', { method: 'POST', body: fd });
                                 if (res.ok) {
                                     this.isAnon = !this.isAnon;
+                                    this.showGuide = false;
                                     window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: this.isAnon ? 'Anonymous mode enabled.' : 'Anonymous mode disabled.' } }));
                                     this.open = false;
                                 }
@@ -191,7 +203,41 @@
                         </svg>
                         {{-- Amber dot indicator when anonymous --}}
                         <span x-show="isAnon" class="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white"></span>
+                        {{-- Onboarding pulse ring — shown until user clicks the eye --}}
+                        <span x-show="showGuide && !isAnon" x-cloak
+                              class="absolute inset-0 rounded-xl pointer-events-none"
+                              style="box-shadow:0 0 0 0 rgba(20,184,166,.6);animation:rb-eye-pulse 1.8s ease-in-out infinite"></span>
                     </button>
+
+                    {{-- Onboarding guide tooltip --}}
+                    <div x-show="showGuide"
+                         x-cloak
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                         class="absolute right-0 z-50"
+                         style="top:calc(100% + 10px);width:230px">
+                        {{-- Upward arrow --}}
+                        <div style="position:absolute;top:-5px;right:10px;width:10px;height:10px;background:#1E1B4B;transform:rotate(45deg);border-radius:2px"></div>
+                        <div style="background:#1E1B4B;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.22)">
+                            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+                                <div style="width:30px;height:30px;border-radius:8px;background:rgba(20,184,166,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                    <svg style="width:15px;height:15px;color:#14B8A6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:700;color:#fff;margin:0 0 3px">Try Anonymous Mode</p>
+                                    <p style="font-size:11px;color:rgba(255,255,255,.65);margin:0;line-height:1.5">Click the eye button above to hide your identity from other referrers.</p>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1)">
+                                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#14B8A6;animation:rb-dot-ping 1.4s ease-in-out infinite"></span>
+                                <p style="font-size:10px;color:rgba(255,255,255,.45);margin:0">Required for all referrers — click the eye once to dismiss</p>
+                            </div>
+                        </div>
+                    </div>
 
                     {{-- Popover --}}
                     <div x-show="open" x-cloak

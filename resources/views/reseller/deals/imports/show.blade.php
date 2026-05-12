@@ -4,6 +4,10 @@
 
 @section('content')
 @php
+    $dupCrossReferrer = (int) ($batch->same_email_different_referrer_rows ?? 0);
+    $dupPossible      = (int) ($batch->possible_duplicate_rows ?? 0);
+    $hasDuplicates    = $dupCrossReferrer > 0 || $dupPossible > 0;
+
     $statusInfo = match($batch->status) {
         'completed'               => ['badge-green',  'Completed'],
         'completed_with_warnings' => ['badge-orange', 'Completed with Warnings'],
@@ -23,6 +27,85 @@
         'failed'    => ['bg-red-100 text-red-600',    'Failed'],
     ];
 @endphp
+
+{{-- ── Duplicate Deals Warning Modal ──────────────────────────────────── --}}
+@if($hasDuplicates)
+<div x-data="{ open: true }"
+     x-show="open"
+     x-cloak
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     style="position:fixed;inset:0;background:rgba(15,15,35,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+     role="dialog" aria-modal="true" aria-labelledby="dup-modal-title">
+    <div style="background:white;border-radius:20px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.2);overflow:hidden"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+
+        {{-- Header stripe --}}
+        <div style="background:linear-gradient(135deg,#FEF3C7,#FFF7ED);padding:20px 24px 16px;border-bottom:1px solid #FDE68A">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+                <div style="width:40px;height:40px;border-radius:12px;background:#FEF3C7;border:1.5px solid #FDE68A;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg style="width:20px;height:20px;color:#D97706" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="dup-modal-title" style="font-size:15px;font-weight:700;color:#92400E;margin:0 0 4px">Possible Duplicate Deals Detected</h3>
+                    <p style="font-size:12px;color:#B45309;margin:0;line-height:1.5">Some deals in this import may already exist in the system, possibly assigned to other referrers.</p>
+                </div>
+            </div>
+        </div>
+
+        {{-- Body --}}
+        <div style="padding:20px 24px">
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+                @if($dupCrossReferrer > 0)
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#FEF3C7;border-radius:10px;border:1px solid #FDE68A">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#FDE68A;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700;color:#92400E">
+                        {{ $dupCrossReferrer }}
+                    </div>
+                    <div>
+                        <p style="font-size:13px;font-weight:600;color:#92400E;margin:0">{{ Str::plural('deal', $dupCrossReferrer) }} matched another referrer's active deal</p>
+                        <p style="font-size:11px;color:#B45309;margin:2px 0 0">These deals may already be actively worked by another referrer in this workspace.</p>
+                    </div>
+                </div>
+                @endif
+
+                @if($dupPossible > 0)
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#F3F4F6;border-radius:10px;border:1px solid #E5E7EB">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700;color:#374151">
+                        {{ $dupPossible }}
+                    </div>
+                    <div>
+                        <p style="font-size:13px;font-weight:600;color:#374151;margin:0">{{ Str::plural('deal', $dupPossible) }} flagged as possible {{ Str::plural('duplicate', $dupPossible) }}</p>
+                        <p style="font-size:11px;color:#6B7280;margin:2px 0 0">These may be near-matches. Check the row details below for more information.</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            <div style="background:#F0FDFA;border-radius:10px;padding:10px 14px;margin-bottom:20px;border:1px solid #99F6E4">
+                <p style="font-size:12px;color:#0F766E;margin:0;line-height:1.5">
+                    <strong>What to do:</strong> Review the Row Details below. Deals marked "Already Exists" or "Updated" were matched to existing records. Contact your admin if you believe a deal conflict needs resolution.
+                </p>
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button @click="open = false"
+                        style="flex:1;padding:10px;border-radius:12px;background:linear-gradient(135deg,#0D9488,#0F766E);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(13,148,136,.25)">
+                    Review Import Details
+                </button>
+                <button @click="open = false"
+                        style="padding:10px 16px;border-radius:12px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 <div class="space-y-5 max-w-4xl mx-auto">
 

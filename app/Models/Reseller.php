@@ -29,7 +29,7 @@ class Reseller extends Authenticatable
     protected $fillable = [
         'tenant_id', 'name', 'email', 'status',
         'assigned_leads', 'closed_value', 'performance_score',
-        'joined_date', 'phone', 'territory', 'is_anonymous',
+        'joined_date', 'phone', 'territory', 'is_anonymous', 'anonymous_onboarded_at',
         'password', 'setup_token', 'remember_token',
         'nickname', 'job_title', 'department', 'organization',
         'location', 'timezone', 'language', 'bio', 'profile_photo_path',
@@ -53,7 +53,8 @@ class Reseller extends Authenticatable
         // Multi-role / invitation summary (v40)
         'invite_deal_ids'       => 'array',
         'invite_deal_count'     => 'integer',
-        'invite_sent_at'        => 'datetime',
+        'invite_sent_at'              => 'datetime',
+        'anonymous_onboarded_at'      => 'datetime',
     ];
 
     public function toAnonymousArray(): array
