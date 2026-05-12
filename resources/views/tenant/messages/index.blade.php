@@ -333,9 +333,8 @@
         </div>
     </div>
 
-    {{-- ── Compose Modal (send to anyone) ────────────────────── --}}
+    {{-- ── Compose Modal (send to anyone) — same messaging() scope, no nested x-data --}}
     <div x-show="openCompose" x-cloak
-         x-data="composeModal()"
          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
          @keydown.escape.window="openCompose = false; resetCompose()">
         <div @click="openCompose = false; resetCompose()" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
@@ -520,9 +519,13 @@ function messaging() {
 
         async init() {
             window.__messaging = this;
+            // Load recipient list built in the separate script block
+            this._allRecipients = window.__allRecipients ?? [];
             await this.loadThreads();
             await this.loadNeedsReplyCount();
         },
+
+        _allRecipients: [],
 
         setTab(tab) {
             this.activeTab = tab;
@@ -691,45 +694,22 @@ function messaging() {
             const el = this.$refs.messageArea;
             if (el) el.scrollTop = el.scrollHeight;
         },
-    };
-}
 
-function composeModal() {
-    const BROADCAST_URL = '{{ url("tenant/" . $tenant->id . "/messages/broadcast") }}';
-    const CSRF = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+        // ── Compose-to-anyone (broadcast) ─────────────────────────────────────
+        // State lives HERE in messaging() — no nested x-data on the modal element
+        // so openCompose reads/writes always go to this scope.
 
-    // Build the full recipient list from server-rendered Blade data
-    const allRecipients = [
-        @foreach($resellers as $r)
-        { token: 'reseller:{{ $r->id }}', name: @json($r->name), email: @json($r->email), role: 'reseller', roleLabel: 'Referrer',
-          initials: {{ json_encode(strtoupper(substr($r->name ?? 'R', 0, 2))) }}, color: '#7B61FF' },
-        @endforeach
-        @foreach($partners as $p)
-        { token: 'partner:{{ $p->id }}', name: @json($p->name), email: @json($p->email), role: 'partner', roleLabel: 'Partner',
-          initials: {{ json_encode(strtoupper(substr($p->name ?? 'P', 0, 2))) }}, color: '#0891b2' },
-        @endforeach
-        @foreach($tenantUsers as $u)
-        { token: '{{ $u->role }}:{{ $u->id }}', name: @json($u->name), email: @json($u->email), role: '{{ $u->role }}', roleLabel: '{{ ucfirst($u->role) }}',
-          initials: {{ json_encode(strtoupper(substr($u->name ?? 'A', 0, 2))) }}, color: '#059669' },
-        @endforeach
-        @foreach($contacts as $c)
-        { token: 'contact:{{ $c->id }}', name: @json($c->name), email: @json($c->email), role: 'contact', roleLabel: 'Contact',
-          initials: {{ json_encode(strtoupper(substr($c->name ?? 'C', 0, 2))) }}, color: '#d97706' },
-        @endforeach
-    ];
-
-    return {
-        roleFilter:      'all',
-        recipientSearch: '',
-        selectedTokens:  [],
-        broadcastBody:   '',
-        broadcastSending:false,
-        broadcastResult: null,
-        broadcastOk:     true,
+        roleFilter:       'all',
+        recipientSearch:  '',
+        selectedTokens:   [],
+        broadcastBody:    '',
+        broadcastSending: false,
+        broadcastResult:  null,
+        broadcastOk:      true,
 
         get visibleRecipients() {
             const q = this.recipientSearch.toLowerCase().trim();
-            return allRecipients.filter(r => {
+            return this._allRecipients.filter(r => {
                 const roleMatch = this.roleFilter === 'all'
                     || r.role === this.roleFilter
                     || (this.roleFilter === 'admin' && ['admin','manager','owner'].includes(r.role));
@@ -755,7 +735,7 @@ function composeModal() {
             this.broadcastSending = true;
             this.broadcastResult  = null;
             try {
-                const r = await fetch(BROADCAST_URL, {
+                const r = await fetch('{{ url("tenant/" . $tenant->id . "/messages/broadcast") }}', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
                     body:    JSON.stringify({ recipients: this.selectedTokens, body: this.broadcastBody }),
@@ -766,8 +746,7 @@ function composeModal() {
                     this.broadcastResult = d.message || 'Message sent!';
                     this.selectedTokens  = [];
                     this.broadcastBody   = '';
-                    // Reload threads after a short delay so new threads appear
-                    setTimeout(() => { if (window.__messaging) window.__messaging.loadThreads(); }, 1200);
+                    setTimeout(() => this.loadThreads(), 1500);
                 } else {
                     this.broadcastOk     = false;
                     this.broadcastResult = d.error || 'Failed to send. Please try again.';
@@ -789,6 +768,31 @@ function composeModal() {
         },
     };
 }
+</script>
+{{-- Recipient data injected separately so it doesn't break the messaging() function parse --}}
+<script>
+// Build recipient list from server data — defined AFTER messaging() so errors here
+// don't prevent the main Alpine component from initializing.
+document.addEventListener('alpine:init', () => {
+    window.__allRecipients = [
+        @foreach($resellers as $r)
+        { token: 'reseller:{{ $r->id }}', name: @json($r->name ?: $r->email), email: @json($r->email), role: 'reseller', roleLabel: 'Referrer',
+          initials: @json(strtoupper(substr($r->name ?: $r->email ?: 'R', 0, 2))), color: '#7B61FF' },
+        @endforeach
+        @foreach($partners as $p)
+        { token: 'partner:{{ $p->id }}', name: @json($p->name ?: $p->email), email: @json($p->email), role: 'partner', roleLabel: 'Partner',
+          initials: @json(strtoupper(substr($p->name ?: $p->email ?: 'P', 0, 2))), color: '#0891b2' },
+        @endforeach
+        @foreach($tenantUsers as $u)
+        { token: '{{ $u->role }}:{{ $u->id }}', name: @json($u->name ?: $u->email), email: @json($u->email), role: '{{ $u->role }}', roleLabel: '{{ ucfirst($u->role) }}',
+          initials: @json(strtoupper(substr($u->name ?: $u->email ?: 'A', 0, 2))), color: '#059669' },
+        @endforeach
+        @foreach($contacts as $c)
+        { token: 'contact:{{ $c->id }}', name: @json($c->name ?: $c->email), email: @json($c->email), role: 'contact', roleLabel: 'Contact',
+          initials: @json(strtoupper(substr($c->name ?: $c->email ?: 'C', 0, 2))), color: '#d97706' },
+        @endforeach
+    ];
+});
 </script>
 @endpush
 @endsection
