@@ -111,11 +111,11 @@ class ResellerPortalController extends Controller
             $unreadCount = $thread ? (int) $thread->reseller_unread : 0;
         } catch (\Throwable) {}
 
-        // ── Recent activity (Critical Actions for this referrer) ───────────
+        // ── Recent activity (Critical Actions for this referrer, including imports) ─
         $recentActivity = [];
         try {
             $recentActivity = app(CriticalActionService::class)
-                ->forReseller($tenantId, $reseller->name, 8);
+                ->forReseller($tenantId, $reseller->name, 8, $reseller->id);
         } catch (\Throwable) {}
 
         return view('reseller.dashboard', compact(

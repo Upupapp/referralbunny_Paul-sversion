@@ -83,7 +83,7 @@ class CriticalActionService
      * Reseller-scoped recent actions for their dashboard.
      * Only shows actions on the reseller's own accessible deals.
      */
-    public function forReseller(string $tenantId, string $resellerName, int $limit = 8): array
+    public function forReseller(string $tenantId, string $resellerName, int $limit = 8, ?string $resellerId = null): array
     {
         $sources = [
             fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
@@ -92,6 +92,10 @@ class CriticalActionService
             fn() => $this->resellerLeadHistory($tenantId, $resellerName),
             fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
         ];
+
+        if ($resellerId) {
+            $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
+        }
 
         $items = [];
         foreach ($sources as $source) {
@@ -540,6 +544,52 @@ class CriticalActionService
             'action_needed' => true,
             'source'        => 'leads',
         ]))->toArray();
+    }
+
+    private function resellerImportEvents(string $tenantId, string $resellerId): array
+    {
+        $rows = DB::table('activity_logs')
+            ->where('tenant_id', $tenantId)
+            ->where('entity', 'reseller')
+            ->where('entity_id', $resellerId)
+            ->whereIn('action', ['deal_import_completed', 'contacts_import_completed'])
+            ->where('created_at', '>', now()->subDays(30))
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        return $rows->map(function ($r) use ($tenantId) {
+            $meta       = is_string($r->metadata) ? json_decode($r->metadata, true) : (array) ($r->metadata ?? []);
+            $isContacts = $r->action === 'contacts_import_completed';
+            $typeLabel  = $isContacts ? 'Contacts import' : 'Deal import';
+            $fileName   = $meta['file_name'] ?? 'file';
+            $created    = (int) ($meta['created'] ?? 0);
+            $failed     = (int) ($meta['failed'] ?? 0);
+            $skipped    = (int) ($meta['skipped'] ?? 0);
+            $batchId    = $meta['batch_id'] ?? null;
+
+            $detail    = "{$created} imported" . ($skipped > 0 ? ", {$skipped} skipped" : '') . ($failed > 0 ? ", {$failed} failed" : '');
+            $actionUrl = $isContacts
+                ? "/reseller/{$tenantId}/contacts/imports" . ($batchId ? "/{$batchId}/report" : '')
+                : "/reseller/{$tenantId}/deals/imports"   . ($batchId ? "/{$batchId}/report" : '');
+
+            return $this->make([
+                'type'          => $r->action,
+                'category'      => 'import',
+                'severity'      => $failed > 0 ? 'medium' : 'info',
+                'summary'       => "{$typeLabel} completed: {$fileName} — {$detail}",
+                'actor_name'    => 'You',
+                'actor_role'    => 'Referrer',
+                'related_label' => $fileName,
+                'related_type'  => 'import',
+                'related_id'    => $batchId,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => $actionUrl,
+                'action_label'  => 'View Report',
+                'action_needed' => $failed > 0,
+                'source'        => 'activity_logs',
+            ]);
+        })->toArray();
     }
 
     private function pendingExportRequests(string $tenantId): array
