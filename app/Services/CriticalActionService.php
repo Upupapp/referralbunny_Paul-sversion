@@ -280,17 +280,24 @@ class CriticalActionService
             ->get();
 
         return $rows->map(function ($r) use ($tenantId) {
-            $isLguIds  = $r->import_type === 'lgu_ids_deals';
-            $batchBase = $isLguIds
-                ? "/tenant/{$tenantId}/imports/lgu-ids/{$r->id}"
-                : "/tenant/{$tenantId}/imports/deals/{$r->id}";
+            $batchBase = match($r->import_type ?? '') {
+                'lgu_ids_deals' => "/tenant/{$tenantId}/imports/lgu-ids/{$r->id}",
+                'contacts'      => "/tenant/{$tenantId}/imports/contacts/{$r->id}",
+                default         => "/tenant/{$tenantId}/imports/deals/{$r->id}",
+            };
+
+            $typeLabel = match($r->import_type ?? '') {
+                'lgu_ids_deals' => 'LGU IDS deal import',
+                'contacts'      => 'Contacts import',
+                default         => 'Deal import',
+            };
 
             [$severity, $summary, $actionUrl, $actionLabel, $actionNeeded] = match ($r->status) {
-                'previewed'               => ['high',   "Import ready to confirm: {$r->file_name}",       $batchBase,           'Confirm Import', true],
-                'previewing'             => ['medium', "Import upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',  true],
-                'failed'                  => ['high',   "Import failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',   true],
-                'completed_with_warnings' => ['medium', "Import with warnings: {$r->file_name}",          "{$batchBase}/report", 'View Report',   true],
-                default                   => ['info',   "Import completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',   false],
+                'previewed'               => ['high',   "{$typeLabel} ready to confirm: {$r->file_name}",       $batchBase,           'Confirm Import', true],
+                'previewing'             => ['medium', "{$typeLabel} upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',  true],
+                'failed'                  => ['high',   "{$typeLabel} failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',   true],
+                'completed_with_warnings' => ['medium', "{$typeLabel} completed with warnings: {$r->file_name}","{$batchBase}/report", 'View Report',   true],
+                default                   => ['info',   "{$typeLabel} completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',   false],
             };
 
             if (($r->unknown_referrer_rows ?? 0) > 0 && in_array($r->status, ['completed', 'completed_with_warnings'])) {

@@ -318,6 +318,7 @@ class ResellerPortalController extends Controller
                              'deal_extension_requested','deal_extension_approved','deal_extension_rejected','deal_extension_clarification_requested'],
             'commission' => ['partner_split_created','partner_split_removed'],
             'system'     => ['invite_accepted','invite.accepted','referrer_deactivated','referrer_double_auth_failed'],
+            'imports'    => ['deal_import_completed','deal_import_uploaded','contacts_import_completed','contacts_import_uploaded'],
             default      => [], // all — no action filter
         };
 
@@ -437,6 +438,31 @@ class ResellerPortalController extends Controller
             $action === 'partner_split_created'  => ['Commission split recorded', ($meta['deal_name'] ?? null) ? 'On deal ' . $meta['deal_name'] : null, 'commission', 'Commission'],
             $action === 'partner_split_removed'  => ['Commission split removed', null, 'commission', 'Commission'],
             in_array($action, ['invite_accepted','invite.accepted']) => ['You joined as a referrer', 'Welcome to ' . ($meta['tenant_name'] ?? 'the workspace') . '!', 'system', 'System'],
+            // ── Import events ─────────────────────────────────────────────
+            $action === 'deal_import_completed' => [
+                'Deal import completed',
+                isset($meta['file_name'])
+                    ? $meta['file_name'] . ' · ' . ($meta['created'] ?? 0) . ' created, ' . ($meta['skipped'] ?? 0) . ' skipped, ' . ($meta['failed'] ?? 0) . ' failed'
+                    : null,
+                'import', 'Imports',
+            ],
+            $action === 'deal_import_uploaded' => [
+                'Deal import file uploaded',
+                isset($meta['file_name']) ? $meta['file_name'] . ' — awaiting review' : null,
+                'import', 'Imports',
+            ],
+            $action === 'contacts_import_completed' => [
+                'Contacts import completed',
+                isset($meta['file_name'])
+                    ? $meta['file_name'] . ' · ' . ($meta['created'] ?? 0) . ' added, ' . ($meta['skipped'] ?? 0) . ' skipped, ' . ($meta['failed'] ?? 0) . ' failed'
+                    : null,
+                'import', 'Imports',
+            ],
+            $action === 'contacts_import_uploaded' => [
+                'Contacts import file uploaded',
+                isset($meta['file_name']) ? $meta['file_name'] . ' — awaiting review' : null,
+                'import', 'Imports',
+            ],
             str_contains($action, 'referrer_')   => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'system', 'System'],
             default                              => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'deal', 'Activity'],
         };

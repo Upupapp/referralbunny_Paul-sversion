@@ -363,6 +363,30 @@ class TenantDealImportController extends Controller
                 ->withErrors(['import' => 'Import failed. Please try again or contact support.']);
         }
 
+        // ── Activity log + critical-actions feed ──────────────────────
+        try {
+            $resellerId = $this->authResellerId();
+            \App\Models\ActivityLog::create([
+                'tenant_id' => $tenantId,
+                'user_id'   => null,
+                'action'    => 'deal_import_completed',
+                'entity'    => $resellerId ? 'reseller' : 'tenant_admin',
+                'entity_id' => (string) ($resellerId ?? $this->authId()),
+                'metadata'  => [
+                    'batch_id'    => $batchId,
+                    'file_name'   => $batch->file_name ?? 'import.csv',
+                    'import_type' => $batch->import_type ?? 'deals',
+                    'created'     => $result['created'],
+                    'updated'     => $result['updated'],
+                    'skipped'     => $result['skipped'],
+                    'failed'      => $result['failed'],
+                    'actor_role'  => $this->authRole(),
+                ],
+            ]);
+        } catch (\Throwable) {
+            // Never block the import redirect for a logging failure
+        }
+
         return redirect()
             ->route($routes['show'], [$tenantId, $batchId])
             ->with('success',

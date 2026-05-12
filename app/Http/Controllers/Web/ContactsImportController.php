@@ -360,6 +360,29 @@ class ContactsImportController extends Controller
                 ->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
         }
 
+        // ── Activity log + critical-actions feed ──────────────────────
+        try {
+            $resellerId = $this->authResellerId();
+            \App\Models\ActivityLog::create([
+                'tenant_id' => $tenantId,
+                'user_id'   => null,
+                'action'    => 'contacts_import_completed',
+                'entity'    => $resellerId ? 'reseller' : 'tenant_admin',
+                'entity_id' => (string) ($resellerId ?? $this->authId()),
+                'metadata'  => [
+                    'batch_id'   => $batchId,
+                    'file_name'  => $batch->file_name ?? 'contacts.csv',
+                    'created'    => $result['created'],
+                    'updated'    => $result['updated'],
+                    'skipped'    => $result['skipped'],
+                    'failed'     => $result['failed'],
+                    'actor_role' => $role,
+                ],
+            ]);
+        } catch (\Throwable) {
+            // Never block the import redirect for a logging failure
+        }
+
         $reportRoute = $role === 'reseller'
             ? 'reseller.contacts.imports.show'
             : 'tenant.imports.contacts.show';
