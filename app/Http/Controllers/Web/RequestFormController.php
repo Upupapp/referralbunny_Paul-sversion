@@ -392,6 +392,38 @@ class RequestFormController extends Controller
         ));
     }
 
+    // ── Bulk Destroy ──────────────────────────────────────────────────────────
+
+    public function bulkDestroy(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeAdmin($tenantId);
+        $ids = array_filter((array) $request->input('form_ids', []));
+
+        if (empty($ids)) {
+            return redirect()->route('tenant.request-forms', $tenantId)
+                ->with('error', 'No forms selected.');
+        }
+
+        $forms = RequestForm::where('tenant_id', $tenantId)->whereIn('id', $ids)->get();
+
+        DB::transaction(function () use ($forms) {
+            foreach ($forms as $form) {
+                $submissionIds = RequestFormSubmission::where('request_form_id', $form->id)->pluck('id');
+                if ($submissionIds->isNotEmpty()) {
+                    \App\Models\RequestFormSubmissionRecipient::whereIn('request_form_submission_id', $submissionIds)->delete();
+                }
+                RequestFormSubmission::where('request_form_id', $form->id)->delete();
+                RequestFormField::where('request_form_id', $form->id)->delete();
+                \App\Models\RequestFormRecipientOption::where('request_form_id', $form->id)->delete();
+                $form->forceDelete();
+            }
+        });
+
+        $count = $forms->count();
+        return redirect()->route('tenant.request-forms', $tenantId)
+            ->with('success', "Permanently deleted {$count} " . \Illuminate\Support\Str::plural('form', $count) . '.');
+    }
+
     // ── Destroy Submission ────────────────────────────────────────────────────
 
     public function destroySubmission(string $tenantId, string $formId, string $submissionId): \Illuminate\Http\RedirectResponse

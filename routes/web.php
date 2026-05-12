@@ -261,6 +261,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/request-forms/{formId}/submissions', [\App\Http\Controllers\Web\RequestFormController::class, 'submissions'])->name('request-forms.submissions');
     Route::get('/request-forms/{formId}/submissions/{submissionId}', [\App\Http\Controllers\Web\RequestFormController::class, 'submissionShow'])->name('request-forms.submissions.show');
     Route::delete('/request-forms/{formId}/submissions/{submissionId}', [\App\Http\Controllers\Web\RequestFormController::class, 'destroySubmission'])->name('request-forms.submissions.destroy');
+    Route::delete('/request-forms/bulk',        [\App\Http\Controllers\Web\RequestFormController::class, 'bulkDestroy'])->name('request-forms.bulk-destroy');
     Route::delete('/request-forms/{formId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'destroy'])->name('request-forms.destroy');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/agreements',      [TenantAdminController::class, 'agreements'])->name('agreements');

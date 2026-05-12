@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
-<div class="space-y-5">
+<div class="space-y-5" x-data="rfBulkSelect()">
 
     {{-- Header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -11,11 +11,40 @@
             <h1 style="font-size:20px;font-weight:700;color:#1E1B4B">Request Forms</h1>
             <p style="font-size:13px;color:#9ca3af;margin-top:2px">Create, manage, and review public request forms for your tenant.</p>
         </div>
-        <a href="{{ route('tenant.request-forms.create', $tenant->id) }}"
-           style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
-            <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            New Request Form
-        </a>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            {{-- Select-mode actions --}}
+            <template x-if="selectMode">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span x-text="selected.length + ' selected'" style="font-size:13px;color:#9ca3af;font-weight:500"></span>
+                    <button @click="selected.length > 0 && (showBulkConfirm = true)"
+                            :disabled="selected.length === 0"
+                            :style="selected.length === 0 ? 'opacity:.45;cursor:not-allowed' : ''"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;background:#dc2626;color:white;font-size:13px;font-weight:600;border:none;cursor:pointer">
+                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Delete Selected
+                    </button>
+                    <button @click="selectMode = false; selected = []"
+                            style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                        Cancel
+                    </button>
+                </div>
+            </template>
+            {{-- Normal-mode actions --}}
+            <template x-if="!selectMode">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button @click="selectMode = true"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;border:1.5px solid #fca5a5;background:white;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer">
+                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        Delete
+                    </button>
+                    <a href="{{ route('tenant.request-forms.create', $tenant->id) }}"
+                       style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
+                        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        New Request Form
+                    </a>
+                </div>
+            </template>
+        </div>
     </div>
 
     @if(session('success'))
@@ -27,14 +56,12 @@
     {{-- Search + Filters --}}
     <form method="GET" action="{{ route('tenant.request-forms', $tenant->id) }}"
           style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        {{-- Search --}}
         <div style="position:relative;flex:1;min-width:200px">
             <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#9ca3af" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="text" name="q" value="{{ $search }}"
                    placeholder="Search forms…"
                    style="width:100%;padding:8px 12px 8px 32px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box">
         </div>
-        {{-- Status filter --}}
         <div style="display:flex;gap:4px;background:white;border:1.5px solid #e5e7eb;border-radius:10px;padding:3px">
             @foreach([['all','All'],['draft','Draft'],['published','Published'],['unpublished','Unpublished'],['archived','Archived']] as [$val,$lbl])
             <a href="{{ request()->fullUrlWithQuery(['status'=>$val,'q'=>$search,'sort'=>$sort]) }}"
@@ -42,7 +69,6 @@
                       {{ $status === $val ? 'background:#7B61FF;color:white' : 'color:#9ca3af' }}">{{ $lbl }}</a>
             @endforeach
         </div>
-        {{-- Sort --}}
         <select name="sort" onchange="this.form.submit()"
                 style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;color:#374151;background:white;outline:none">
             <option value="updated"  {{ $sort==='updated'  ? 'selected' : '' }}>Recently Updated</option>
@@ -58,9 +84,9 @@
     </form>
 
     {{-- Forms List --}}
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow:visible">
         @if($forms->isEmpty())
-        <div style="text-align:center;padding:56px 24px">
+        <div style="text-align:center;padding:56px 24px;border-radius:inherit">
             <svg style="width:44px;height:44px;color:#d1d5db;margin:0 auto 14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
@@ -73,12 +99,18 @@
             </a>
         </div>
         @else
-        {{-- Desktop table --}}
-        <div style="display:none" class="hidden md:block" id="rf-table">
-        </div>
+        <div style="overflow:hidden;border-radius:inherit">
         <table style="width:100%;border-collapse:collapse">
             <thead>
                 <tr style="background:#f9fafb;border-bottom:1px solid #f3f4f6">
+                    {{-- Checkbox column (select mode) --}}
+                    <th x-show="selectMode" style="width:44px;padding:10px 4px 10px 16px">
+                        <input type="checkbox"
+                               @change="toggleAll($event.target.checked)"
+                               :checked="selected.length > 0 && selected.length === {{ $forms->count() }}"
+                               style="width:15px;height:15px;accent-color:#7B61FF;cursor:pointer"
+                               title="Select all">
+                    </th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Form</th>
                     <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Status</th>
                     <th style="text-align:center;padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Responses</th>
@@ -100,7 +132,28 @@
                     ? \Carbon\Carbon::parse($form->submissions_max_submitted_at)
                     : null;
                 @endphp
-                <tr style="border-bottom:1px solid #f9fafb" x-data="{ actionsOpen: false }" @click.outside="actionsOpen = false">
+                <tr style="border-bottom:1px solid #f9fafb;transition:background .1s"
+                    :style="selected.includes('{{ $form->id }}') ? 'background:#faf5ff' : ''"
+                    x-data="{
+                        actionsOpen: false,
+                        btnRect: { bottom: 0, right: 0 },
+                        toggle(btn) {
+                            this.btnRect = btn.getBoundingClientRect();
+                            this.actionsOpen = !this.actionsOpen;
+                        }
+                    }"
+                    @click.outside="actionsOpen = false"
+                    @keydown.escape.window="actionsOpen = false"
+                    @scroll.window="actionsOpen = false">
+
+                    {{-- Checkbox (select mode) --}}
+                    <td x-show="selectMode" style="padding:14px 4px 14px 16px;width:44px">
+                        <input type="checkbox"
+                               :value="'{{ $form->id }}'"
+                               x-model="selected"
+                               style="width:15px;height:15px;accent-color:#7B61FF;cursor:pointer">
+                    </td>
+
                     <td style="padding:14px 16px;max-width:280px">
                         <div style="display:flex;align-items:flex-start;gap:10px">
                             <div style="width:32px;height:32px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -137,29 +190,30 @@
                         {{ $lastResp ? $lastResp->format('M j, Y') : '—' }}
                     </td>
                     <td style="padding:14px 16px;text-align:right">
-                        <div style="position:relative;display:inline-block">
-                            <button @click.stop="actionsOpen = !actionsOpen"
+                        <div style="display:inline-block">
+                            <button @click.stop="toggle($el)"
                                     style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1.5px solid #e5e7eb;background:white;font-size:12px;font-weight:600;color:#374151;cursor:pointer">
                                 Actions
                                 <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
 
-                            {{-- Dropdown --}}
+                            {{-- Dropdown — position:fixed so it escapes overflow:hidden --}}
                             <div x-show="actionsOpen"
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
-                                 style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:200;background:white;border:1.5px solid #f3f4f6;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);min-width:210px;max-height:80vh;overflow-y:auto;padding:6px">
+                                 style="display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #f3f4f6;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.14);min-width:210px;padding:6px;overflow-y:auto"
+                                 :style="`right:${window.innerWidth - btnRect.right}px; top:${btnRect.bottom + 4}px; max-height:${Math.max(200, window.innerHeight - btnRect.bottom - 16)}px`">
 
                                 <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $form->id]) }}"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     Edit Form
                                 </a>
 
                                 <a href="{{ route('tenant.request-forms.submissions', [$tenant->id, $form->id]) }}"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     <span style="flex:1">View Responses</span>
@@ -171,15 +225,15 @@
                                 @if($form->status === 'published' && $form->public_token)
                                 <button type="button"
                                         onclick="rbCopyLink(this,'{{ $form->publicUrl() }}')"
-                                        style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
+                                        style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                         onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
-                                    <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                                    <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
                                     <span class="rb-copy-label">Copy Public Link</span>
                                 </button>
                                 @endif
 
                                 <a href="{{ $form->publicUrl() }}" target="_blank"
-                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;white-space:nowrap"
+                                   style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     Preview Form
@@ -192,9 +246,9 @@
                                 <form method="POST" action="{{ route('tenant.request-forms.publish', [$tenant->id, $form->id]) }}" style="margin:0">
                                     @csrf
                                     <button type="submit"
-                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#15803d;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
+                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#15803d;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                             onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='transparent'">
-                                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         Publish
                                     </button>
                                 </form>
@@ -202,9 +256,9 @@
                                 <form method="POST" action="{{ route('tenant.request-forms.unpublish', [$tenant->id, $form->id]) }}" style="margin:0">
                                     @csrf
                                     <button type="submit"
-                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#d97706;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
+                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#d97706;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                             onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='transparent'">
-                                        <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                        <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                         Unpublish
                                     </button>
                                 </form>
@@ -214,21 +268,21 @@
                                 <form method="POST" action="{{ route('tenant.request-forms.duplicate', [$tenant->id, $form->id]) }}" style="margin:0">
                                     @csrf
                                     <button type="submit"
-                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
+                                            style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                             onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
-                                        <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                         Duplicate
                                     </button>
                                 </form>
 
                                 <div style="height:1px;background:#f3f4f6;margin:4px 0"></div>
 
-                                {{-- Delete Form --}}
+                                {{-- Delete single --}}
                                 <button type="button"
                                         onclick="rbConfirmDeleteForm('{{ $form->id }}','{{ addslashes($form->title) }}','{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
-                                        style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#dc2626;background:none;border:none;cursor:pointer;width:100%;transition:background .1s;text-align:left"
+                                        style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#dc2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                         onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
-                                    <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     Delete Form
                                 </button>
 
@@ -239,9 +293,7 @@
                 @endforeach
             </tbody>
         </table>
-
-        {{-- Mobile cards --}}
-        {{-- (Same data shown as cards on small screens via the table's responsive behavior) --}}
+        </div>
 
         <div style="padding:12px 16px">{{ $forms->links() }}</div>
         @endif
@@ -249,9 +301,9 @@
 
 </div>
 
-{{-- Delete Form Confirmation Modal --}}
+{{-- ── Single-form delete modal ─────────────────────────────────────────── --}}
 <div id="rb-delete-form-modal"
-     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px">
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;padding:16px">
     <div style="background:white;border-radius:20px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
         <div style="width:52px;height:52px;border-radius:16px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
             <svg style="width:26px;height:26px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,19 +315,77 @@
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form, all its fields, and all submitted responses. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
             <button onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
-                    style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
-                Cancel
-            </button>
+                    style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
             <button id="rb-delete-form-btn"
+                    style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">Delete Form</button>
+        </div>
+    </div>
+</div>
+
+{{-- ── Bulk-delete confirm modal ────────────────────────────────────────── --}}
+<div x-show="showBulkConfirm"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;padding:16px"
+     :style="showBulkConfirm ? 'display:flex' : 'display:none'">
+    <div style="background:white;border-radius:20px;padding:32px;max-width:420px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        <div style="width:52px;height:52px;border-radius:16px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <svg style="width:26px;height:26px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#dc2626;margin-bottom:6px">Bulk Delete</p>
+        <h3 style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px">
+            Delete <span x-text="selected.length"></span> form<span x-text="selected.length === 1 ? '' : 's'"></span>?
+        </h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete all selected forms, their fields, and all submitted responses. This cannot be undone.</p>
+        <div style="display:flex;gap:10px">
+            <button @click="showBulkConfirm = false"
+                    style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+            <button @click="executeBulkDelete()"
                     style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
-                Delete Form
+                Delete All Selected
             </button>
         </div>
     </div>
 </div>
 
+{{-- Hidden form for bulk delete submission --}}
+<form id="rf-bulk-delete-form"
+      method="POST"
+      action="{{ route('tenant.request-forms.bulk-destroy', $tenant->id) }}"
+      style="display:none">
+    @csrf
+    @method('DELETE')
+</form>
+
 @push('scripts')
 <script>
+function rfBulkSelect() {
+    return {
+        selectMode: false,
+        selected: [],
+        showBulkConfirm: false,
+
+        toggleAll(checked) {
+            this.selected = checked
+                ? {!! $forms->pluck('id')->values()->toJson() !!}
+                : [];
+        },
+
+        executeBulkDelete() {
+            const form = document.getElementById('rf-bulk-delete-form');
+            form.querySelectorAll('input[name="form_ids[]"]').forEach(el => el.remove());
+            this.selected.forEach(id => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'form_ids[]';
+                inp.value = id;
+                form.appendChild(inp);
+            });
+            form.submit();
+        }
+    };
+}
+
 function rbConfirmDeleteForm(formId, title, actionUrl) {
     document.getElementById('rb-delete-form-title').textContent = title;
     document.getElementById('rb-delete-form-modal').style.display = 'flex';
