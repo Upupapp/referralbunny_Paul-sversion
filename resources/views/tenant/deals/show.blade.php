@@ -580,9 +580,8 @@
                                     : 'Pending'">{{ ucfirst($commStatus) }}</span>
                     </div>
 
-                    {{-- Referrer split rows --}}
-                    <div class="space-y-1.5"
-                         x-data="{ editSplitId: null, editPct: '', editSaving: false, editErr: '' }">
+                    {{-- Referrer split rows — editSplitId/editPct/editSaving/editErr are in dealDetail() scope --}}
+                    <div class="space-y-1.5">
                         <template x-for="split in (lead?.commission_splits||[])" :key="split.id">
                             <div style="background:#f9fafb;border-radius:12px;padding:10px 12px">
                                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -619,7 +618,7 @@
                                             <input x-model="editPct" type="number" min="0.01" max="100" step="0.01"
                                                    style="width:80px;padding:5px 8px;border:1.5px solid #bfdbfe;border-radius:7px;font-size:12px;text-align:center;outline:none">
                                             <span style="font-size:11px;color:#6b7280">%</span>
-                                            <button @click="adminSaveSplit(split, '{{ url('tenant/'.$tenantId.'/deals') }}/' + lead.id + '/splits/' + split.id, '{{ csrf_token() }}')"
+                                            <button @click="adminSaveSplit(split, '{{ url('tenant/'.$tenant->id.'/deals') }}/' + lead.id + '/splits/' + split.id, '{{ csrf_token() }}')"
                                                     :disabled="editSaving || !editPct"
                                                     style="padding:5px 12px;border-radius:7px;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;opacity:1"
                                                     x-text="editSaving ? 'Saving…' : 'Save'">Save</button>

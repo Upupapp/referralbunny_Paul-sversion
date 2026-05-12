@@ -142,31 +142,6 @@
             </form>
         </div>
 
-        {{-- Field data injected before Alpine init to avoid complex x-data attribute parsing --}}
-        @once
-        <script>
-        window.__rfFieldsData = @json($form->fields->sortBy('sort_order')->map(function($f) {
-            $typeLabel = match($f->field_type) {
-                'multi_select' => 'Multi-select',
-                default        => ucfirst(str_replace('_', ' ', $f->field_type)),
-            };
-            return [
-                'id'          => $f->id,
-                'label'       => $f->label,
-                'field_type'  => $f->field_type,
-                'type_label'  => $typeLabel,
-                'placeholder' => $f->placeholder,
-                'helper_text' => $f->helper_text,
-                'options'     => $f->options ?? [],
-                'is_required' => (bool) $f->is_required,
-            ];
-        })->values());
-        window.__rfAddUrl  = '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}';
-        window.__rfBaseUrl = '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}';
-        window.__rfCsrf    = '{{ csrf_token() }}';
-        </script>
-        @endonce
-
         {{-- Form Fields (editable) ─────────────────────────────────────────────── --}}
         <div class="card" x-data="rfFieldManager()">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -546,6 +521,28 @@
 </div>
 
 @push('scripts')
+<script>
+// Field manager globals — set before rfFieldManager() is called by Alpine
+window.__rfFieldsData = @json($form->fields->sortBy('sort_order')->map(function($f) {
+    $typeLabel = match($f->field_type) {
+        'multi_select' => 'Multi-select',
+        default        => ucfirst(str_replace('_', ' ', $f->field_type)),
+    };
+    return [
+        'id'          => $f->id,
+        'label'       => $f->label,
+        'field_type'  => $f->field_type,
+        'type_label'  => $typeLabel,
+        'placeholder' => $f->placeholder,
+        'helper_text' => $f->helper_text,
+        'options'     => $f->options ?? [],
+        'is_required' => (bool) $f->is_required,
+    ];
+})->values());
+window.__rfAddUrl  = '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}';
+window.__rfBaseUrl = '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}';
+window.__rfCsrf    = '{{ csrf_token() }}';
+</script>
 <script>
 function rbConfirmDeleteForm(formId, title, actionUrl) {
     document.getElementById('rb-delete-form-title').textContent = title;
