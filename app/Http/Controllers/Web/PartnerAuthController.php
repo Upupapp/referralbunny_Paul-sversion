@@ -91,7 +91,8 @@ class PartnerAuthController extends Controller
 
         $partner = Partner::where('setup_token', $data['token'])->first();
         if (!$partner) {
-            return back()->withErrors(['token' => 'Invalid or expired setup link.']);
+            // Check if already activated with this email (token was cleared after first activation)
+            return back()->withErrors(['token' => 'This setup link is no longer valid. If you already activated your account, please sign in. If not, contact the workspace administrator for a new invitation.']);
         }
 
         try {
@@ -155,6 +156,8 @@ class PartnerAuthController extends Controller
         } catch (\Throwable) {}
 
         Auth::guard('partner')->login($partner->fresh());
+        // Regenerate session after login to prevent session fixation
+        request()->session()->regenerate();
 
         // Fire unified invite-accepted event (ActivityLog + AuditLog + in-app notifications)
         try {
@@ -183,7 +186,7 @@ class PartnerAuthController extends Controller
         $partner = Partner::where('setup_token', $token)->first();
         if (!$partner) {
             return redirect()->route('partner.login')
-                ->withErrors(['token' => 'This invite link is invalid or has already been used.']);
+                ->with('info', 'This invite link has already been used or has expired. If you already set up your account, please sign in below.');
         }
 
         return view('auth.partner-setup', compact('partner', 'token'));

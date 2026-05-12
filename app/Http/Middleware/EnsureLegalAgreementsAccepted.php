@@ -16,6 +16,10 @@ class EnsureLegalAgreementsAccepted
         'tenant.legal-agreements.store-accept',
         'reseller.logout',
         'partner.logout',
+        'partner.login',
+        'partner.setup',
+        'partner.setup.post',
+        'partner.invite',
         'tenant.logout',
     ];
 
@@ -34,6 +38,11 @@ class EnsureLegalAgreementsAccepted
 
             // Owners and admins manage agreements — never gate them
             if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
+                return $next($request);
+            }
+
+            // Partners cannot access the tenant legal agreements page — skip for them
+            if ($userType === 'partner') {
                 return $next($request);
             }
 
