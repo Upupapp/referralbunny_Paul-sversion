@@ -48,6 +48,22 @@ $actIcons = [
     .task-hdr-actions { flex-direction:column !important; }
     .task-hdr-actions > * { width:100%; justify-content:center; }
 }
+
+/* ── Task completion modal overlay ─────────────────────────────────────
+   Define display:flex here so Alpine's x-show (which only toggles an
+   inline display:none) doesn't fall back to display:block on show.
+   The overlay must be fixed to the viewport — not the sidebar container. */
+.rb-complete-overlay {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15,15,35,.58);
+    z-index: 9999;
+    padding: 16px;
+    box-sizing: border-box;
+}
 </style>
 
 <div x-data="taskDetail('{{ $task->id }}', '{{ $tenant->id }}', {{ $canComplete ? 'true' : 'false' }}, {{ $completionEmailEnabled ? 'true' : 'false' }}, {{ $canAssignToSelf ? 'true' : 'false' }}, {{ $isCurrentAssignee ? 'true' : 'false' }})">
@@ -511,7 +527,7 @@ $actIcons = [
     $defaultSubject = 'Re: ' . $task->title;
 @endphp
 <div x-show="showCompleteModal" x-cloak
-     style="position:fixed;inset:0;background:rgba(15,15,35,.58);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box"
+     class="rb-complete-overlay"
      @keydown.escape.window="if(!completing){ showCompleteModal = false; resetModal(); }"
      @click.self="if(!completing){ showCompleteModal = false; resetModal(); }"
      role="dialog" aria-modal="true" aria-labelledby="complete-modal-title">
