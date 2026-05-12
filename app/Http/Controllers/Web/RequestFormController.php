@@ -398,8 +398,23 @@ class RequestFormController extends Controller
     {
         $this->authorizeAdmin($tenantId);
         $form = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
-        $form->delete();
-        return redirect()->route('tenant.request-forms', $tenantId)->with('success', 'Form archived.');
+
+        DB::transaction(function () use ($form) {
+            // Delete submission recipients before submissions
+            $submissionIds = RequestFormSubmission::where('request_form_id', $form->id)
+                ->pluck('id');
+            if ($submissionIds->isNotEmpty()) {
+                \App\Models\RequestFormSubmissionRecipient::whereIn('request_form_submission_id', $submissionIds)->delete();
+            }
+            RequestFormSubmission::where('request_form_id', $form->id)->delete();
+
+            RequestFormField::where('request_form_id', $form->id)->delete();
+            \App\Models\RequestFormRecipientOption::where('request_form_id', $form->id)->delete();
+
+            $form->forceDelete();
+        });
+
+        return redirect()->route('tenant.request-forms', $tenantId)->with('success', 'Form deleted permanently.');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

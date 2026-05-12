@@ -139,10 +139,64 @@
             </button>
         </div>
     </form>
+
+    {{-- Danger Zone --}}
+    <div style="margin-top:8px;padding:16px 20px;border:1.5px solid #fee2e2;border-radius:14px;background:#fff5f5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+            <p style="font-size:13px;font-weight:700;color:#dc2626;margin-bottom:2px">Delete this form</p>
+            <p style="font-size:12px;color:#9ca3af">Permanently removes the form, all fields, and all submitted responses.</p>
+        </div>
+        <button type="button"
+                onclick="rbConfirmDeleteForm('{{ $form->id }}','{{ addslashes($form->title) }}','{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
+                style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;border:1.5px solid #fca5a5;background:white;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+            <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete Form
+        </button>
+    </div>
+</div>
+
+{{-- Delete Confirmation Modal --}}
+<div id="rb-delete-form-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:white;border-radius:20px;padding:32px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.18)">
+        <div style="width:52px;height:52px;border-radius:16px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <svg style="width:26px;height:26px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#dc2626;margin-bottom:6px">Delete Form</p>
+        <h3 id="rb-delete-form-title" style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form, all its fields, and all submitted responses. This cannot be undone.</p>
+        <div style="display:flex;gap:10px">
+            <button onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
+                    style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                Cancel
+            </button>
+            <button id="rb-delete-form-btn"
+                    style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
+                Delete Form
+            </button>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
 <script>
+function rbConfirmDeleteForm(formId, title, actionUrl) {
+    document.getElementById('rb-delete-form-title').textContent = title;
+    document.getElementById('rb-delete-form-modal').style.display = 'flex';
+    document.getElementById('rb-delete-form-btn').onclick = function() {
+        this.textContent = 'Deleting…';
+        this.disabled = true;
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.action = actionUrl;
+        f.innerHTML = '<input name="_token" value="{{ csrf_token() }}"><input name="_method" value="DELETE">';
+        document.body.appendChild(f);
+        f.submit();
+    };
+}
+
 async function publishForm() {
     const btn = document.getElementById('created-publish-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Publishing…'; }

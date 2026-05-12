@@ -133,9 +133,6 @@
                             {{ $form->submissions_count ?? 0 }}
                         </a>
                     </td>
-                    <td style="padding:14px 16px;text-align:center;font-size:14px;font-weight:600;color:#374151">
-                        {{ $form->submissions_count ?? 0 }}
-                    </td>
                     <td style="padding:14px 16px;font-size:12px;color:#9ca3af;white-space:nowrap">
                         {{ $lastResp ? $lastResp->format('M j, Y') : '—' }}
                     </td>
@@ -263,7 +260,7 @@
         </div>
         <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#dc2626;margin-bottom:6px">Delete Form</p>
         <h3 id="rb-delete-form-title" style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
-        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form and stop it from accepting new submissions. Existing responses will also be removed.</p>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form, all its fields, and all submitted responses. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
             <button onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
                     style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
