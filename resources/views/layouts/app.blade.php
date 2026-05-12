@@ -805,8 +805,7 @@ function toastSystem() {
     <x-brand.r-bunny-assistant />
 @endauth
 
-{{-- Notification detail modal — reads sessionStorage set by markOneRead() before navigation --}}
-<x-notification-detail-modal />
+{{-- Notification detail modal removed — was causing persistent gray overlay after notification click --}}
 
 @stack('scripts')
 <script>

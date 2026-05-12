@@ -692,8 +692,7 @@
 
                 {{-- Add Co-Referrer modal — placed outside conditional wrapper so it can display regardless --}}
                 <div x-show="showAddCoRef" x-cloak
-                     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
-                     :style="showAddCoRef ? 'display:flex' : 'display:none'"
+                     style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
                      @keydown.escape.window="showAddCoRef = false">
                     <div style="background:white;border-radius:20px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
@@ -1071,8 +1070,7 @@
 
                 {{-- Add Partner modal --}}
                 <div x-show="showAdd"
-                     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:16px"
-                     :style="showAdd ? 'display:flex' : 'display:none'"
+                     style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px"
                      @keydown.escape.window="showAdd = false; clearContact(); formError = ''">
                     <div style="background:white;border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6;position:sticky;top:0;background:white;z-index:1">
