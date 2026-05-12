@@ -126,14 +126,18 @@ class ResellerDealController extends Controller
                 ->toArray();
         } catch (\Throwable) {}
 
-        // Financial breakdown
+        // Financial breakdown — always falls back to raw Lead fields if service fails
         $calc      = app(CommissionCalculationService::class);
         $breakdown = [];
         try {
             $breakdown = $calc->breakdownFromLead($lead);
         } catch (\Throwable) {}
 
-        $commissionPool = (float) ($breakdown['commission_pool'] ?? 0);
+        // Robust fallback: if breakdown service fails or returns 0, use DB columns directly.
+        // added_amount drives the commission pool (70%). Never let a service failure zero it out.
+        $addedAmountFallback = (float) ($lead->added_amount ?? 0);
+        $commissionPool = (float) ($breakdown['commission_pool']
+            ?? ($addedAmountFallback > 0 ? round($addedAmountFallback * 0.70, 2) : 0));
 
         // Partners Commission — computed FIRST so we can deduct from referrer's net.
         $partnersCommission = 0.0;

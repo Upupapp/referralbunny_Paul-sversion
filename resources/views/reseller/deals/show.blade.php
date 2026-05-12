@@ -180,9 +180,11 @@ window.__rsDeal = {
         {{-- ── Row 2: Commission Breakdown ── --}}
         <div class="mt-4 pt-4 border-t border-gray-100">
             @php
-                $bdv  = (float) ($breakdown['deal_value']   ?? $lead->deal_value ?? 0);
-                $bbc  = (float) ($breakdown['base_cost']    ?? 0);
-                $baa  = (float) ($breakdown['added_amount'] ?? 0);
+                // Always fall back to raw Lead DB columns — breakdown service failure
+                // must never zero-out the financial display.
+                $bdv  = (float) ($breakdown['deal_value']   ?? $lead->deal_value   ?? 0);
+                $bbc  = (float) ($breakdown['base_cost']    ?? $lead->base_cost    ?? 0);
+                $baa  = (float) ($breakdown['added_amount'] ?? $lead->added_amount ?? 0);
                 $basePct = $bdv > 0 ? round($bbc / $bdv * 100) : 0;
             @endphp
 

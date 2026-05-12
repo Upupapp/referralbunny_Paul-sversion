@@ -8,6 +8,14 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Task</span>
     </a>
+    {{-- Update Amount: opens the finance edit section directly --}}
+    <button onclick="window.dispatchEvent(new CustomEvent('open-update-amount-deal'))"
+            class="btn-secondary text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="hidden sm:inline">Update Amount</span>
+    </button>
     <button onclick="rbOpenMoveStage()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
@@ -35,7 +43,8 @@
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
      @open-reassign-deal.window="showReassign = true"
-     @open-delete-deal.window="showDeleteConfirm = true">
+     @open-delete-deal.window="showDeleteConfirm = true"
+     @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })">
 
     <a href="{{ route('tenant.deals', $tenant->id) }}"
        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
@@ -371,7 +380,7 @@
         {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
              FINANCIAL BREAKDOWN  Ã¢â€ Â the key feature
              â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-        <div class="card">
+        <div class="card" id="rb-finance-section">
 
             {{-- Header --}}
             <div class="flex items-center justify-between mb-5">
@@ -479,6 +488,12 @@
                 $bc = (float)($ssrLead['base_cost']    ?? 0);
                 $aa = (float)($ssrLead['added_amount'] ?? 0);
                 $dv = (float)($ssrLead['deal_value']   ?? 0);
+                // If only deal_value is set (no base_cost/added_amount split yet),
+                // derive added_amount for commission purposes to avoid showing ₱0 pool.
+                if ($aa <= 0 && $bc <= 0 && $dv > 0) {
+                    // Generic fallback — use full deal value as added_amount (conservative)
+                    $aa = $dv;
+                }
                 $cv = ($bc + $aa) ?: $dv;
                 // Formula: Company Share = 30%, Commission Pool = 70% of Added Amount
                 $co = round($aa * 0.30, 2);
@@ -2309,14 +2324,23 @@ function dealDetail(leadId, tenantId, ssrLead) {
             }
         },
 
-        // Ã¢"â‚¬Ã¢"â‚¬ Financial helpers Ã¢"â‚¬Ã¢"â‚¬
-        contractValue() {
+        // ── Financial helpers ──
+        // When only deal_value is set (no base/added split), use deal_value as aa
+        // so commission pool is never shown as ₱0.
+        _effectiveAa() {
             const bc = Number(this.lead?.base_cost    || 0);
             const aa = Number(this.lead?.added_amount || 0);
+            const dv = Number(this.lead?.deal_value   || 0);
+            if (aa <= 0 && bc <= 0 && dv > 0) return dv; // generic fallback
+            return aa;
+        },
+        contractValue() {
+            const bc = Number(this.lead?.base_cost || 0);
+            const aa = this._effectiveAa();
             return (bc + aa) || Number(this.lead?.deal_value || 0);
         },
-        companyShare() { return Number(this.lead?.added_amount || 0) * 0.30; },
-        commPool()     { return Number(this.lead?.added_amount || 0) * 0.70; },
+        companyShare() { return this._effectiveAa() * 0.30; },
+        commPool()     { return this._effectiveAa() * 0.70; },
 
         previewContract()     { return (Number(this.financeForm.base_cost)||0) + (Number(this.financeForm.added_amount)||0); },
         previewCompanyShare() { return (Number(this.financeForm.added_amount)||0) * 0.30; },
