@@ -140,11 +140,31 @@
             <tbody>
                 @foreach($submissions as $sub)
                 @php
-                $subStatus = match($sub->status) {
-                    'tasks_created' => ['background:#dcfce7;color:#15803d', 'Tasks Created'],
-                    'failed'        => ['background:#fee2e2;color:#dc2626', 'Failed'],
-                    default         => ['background:#f3f4f6;color:#6b7280', ucfirst(str_replace('_',' ',$sub->status))],
-                };
+                $tasksTotal     = (int) ($sub->tasks_count ?? 0);
+                $tasksDone      = (int) ($sub->completed_tasks_count ?? 0);
+                $latestStatus   = $sub->latest_task_status ?? null;
+
+                // Derive a meaningful status combining submission status + task completion state
+                if ($tasksTotal > 0 && $tasksDone >= $tasksTotal) {
+                    // All tasks completed
+                    $subStatus = ['background:#dcfce7;color:#15803d', 'Completed'];
+                } elseif ($tasksTotal > 0 && $tasksDone > 0) {
+                    // Partially completed
+                    $subStatus = ['background:#d1fae5;color:#065f46', 'Partially Done'];
+                } elseif ($latestStatus === 'in_progress') {
+                    $subStatus = ['background:#dbeafe;color:#1d4ed8', 'In Progress'];
+                } elseif ($latestStatus === 'cancelled') {
+                    $subStatus = ['background:#fef3c7;color:#92400e', 'Cancelled'];
+                } elseif ($latestStatus === 'archived') {
+                    $subStatus = ['background:#f3f4f6;color:#6b7280', 'Archived'];
+                } elseif ($sub->status === 'tasks_created') {
+                    // Tasks exist but none started or completed
+                    $subStatus = ['background:#ede9fe;color:#6d28d9', 'Tasks Created'];
+                } elseif ($sub->status === 'failed') {
+                    $subStatus = ['background:#fee2e2;color:#dc2626', 'Failed'];
+                } else {
+                    $subStatus = ['background:#f3f4f6;color:#6b7280', ucfirst(str_replace('_', ' ', $sub->status ?? 'pending'))];
+                }
                 @endphp
                 <tr style="border-bottom:1px solid #f9fafb;transition:background .1s"
                     onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background='white'">
@@ -164,10 +184,22 @@
                         @endif
                     </td>
                     <td style="padding:12px 16px;text-align:center">
-                        @if($sub->tasks_count)
-                        <span style="font-size:12px;font-weight:700;background:#ede9fe;color:#7B61FF;padding:2px 8px;border-radius:9999px">{{ $sub->tasks_count }}</span>
+                        @if($tasksTotal > 0)
+                            @if($tasksDone >= $tasksTotal)
+                            {{-- All done — green --}}
+                            <span style="font-size:11px;font-weight:700;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px">
+                                <svg style="width:10px;height:10px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                {{ $tasksDone }}/{{ $tasksTotal }}
+                            </span>
+                            @elseif($tasksDone > 0)
+                            {{-- Partial -- amber --}}
+                            <span style="font-size:11px;font-weight:700;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:9999px">{{ $tasksDone }}/{{ $tasksTotal }}</span>
+                            @else
+                            {{-- None done yet -- purple --}}
+                            <span style="font-size:11px;font-weight:700;background:#ede9fe;color:#7B61FF;padding:2px 8px;border-radius:9999px">{{ $tasksTotal }}</span>
+                            @endif
                         @else
-                        <span style="font-size:12px;color:#d1d5db">0</span>
+                        <span style="font-size:12px;color:#d1d5db">—</span>
                         @endif
                     </td>
                     <td style="padding:12px 16px">

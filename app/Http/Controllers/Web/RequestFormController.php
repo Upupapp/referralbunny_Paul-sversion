@@ -448,12 +448,27 @@ class RequestFormController extends Controller
                 \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'source_type')) {
                 $submissionsQuery->selectRaw(
                     '"request_form_submissions".*, ' .
+                    // Total tasks linked to this submission
                     '(SELECT COUNT(*) FROM "tasks" ' .
                     ' WHERE "tasks"."source_id" = CAST("request_form_submissions"."id" AS TEXT) ' .
                     ' AND "tasks"."source_type" = ? ' .
                     ' AND "tasks"."deleted_at" IS NULL' .
-                    ') AS "tasks_count"',
-                    ['request_form_submission']
+                    ') AS "tasks_count", ' .
+                    // Completed tasks
+                    '(SELECT COUNT(*) FROM "tasks" ' .
+                    ' WHERE "tasks"."source_id" = CAST("request_form_submissions"."id" AS TEXT) ' .
+                    ' AND "tasks"."source_type" = ? ' .
+                    ' AND "tasks"."status" = \'completed\' ' .
+                    ' AND "tasks"."deleted_at" IS NULL' .
+                    ') AS "completed_tasks_count", ' .
+                    // Status of the most recent linked task (for in-progress / cancelled detection)
+                    '(SELECT "tasks"."status" FROM "tasks" ' .
+                    ' WHERE "tasks"."source_id" = CAST("request_form_submissions"."id" AS TEXT) ' .
+                    ' AND "tasks"."source_type" = ? ' .
+                    ' AND "tasks"."deleted_at" IS NULL ' .
+                    ' ORDER BY "tasks"."created_at" DESC LIMIT 1' .
+                    ') AS "latest_task_status"',
+                    ['request_form_submission', 'request_form_submission', 'request_form_submission']
                 );
             }
 
