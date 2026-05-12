@@ -116,7 +116,7 @@ class ResellerDealController extends Controller
                     'original_filename' => $a->original_filename,
                     'file_type_group'   => $a->file_type_group ?? 'document',
                     'file_size'         => $a->file_size,
-                    'download_url'      => url("/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}"),
+                    'download_url'      => route('reseller.deals.notes.attachments.download', ['tenantId' => $tenantId, 'dealId' => $dealId, 'commentId' => $c->id, 'attachmentId' => $a->id]),
                 ])->toArray(),
             ])->toArray();
 

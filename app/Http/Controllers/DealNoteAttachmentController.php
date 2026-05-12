@@ -38,24 +38,40 @@ class DealNoteAttachmentController extends Controller
     private const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
     private const MAX_FILES_PER_NOTE = 5;
 
+    // ── GET /reseller/{tenantId}/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}
+    // ── GET /partner/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}
+    // Web-accessible download for session-authenticated resellers and partners.
+    // Opens inline in a new tab (Content-Disposition: inline).
+
+    public function downloadForWeb(Request $request, string $dealId, string $commentId, string $attachmentId): Response|JsonResponse
+    {
+        // Resolve tenant from session auth — TenantContext is not set on web routes
+        $tenantId = $this->resolveTenantIdFromSession($request);
+
+        return $this->serveAttachment($tenantId, $dealId, $commentId, $attachmentId, 'inline');
+    }
+
     // ── GET /api/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}
     // Authorized file download — tenant-scoped, role-enforced
 
     public function download(Request $request, string $dealId, string $commentId, string $attachmentId): Response|JsonResponse
     {
         $tenantId = TenantContext::requireId();
+        return $this->serveAttachment($tenantId, $dealId, $commentId, $attachmentId, 'attachment');
+    }
 
-        // Verify deal belongs to tenant
-        $deal = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+    // ── Shared file-serving logic ─────────────────────────────────────────────
 
-        // Verify comment belongs to deal + tenant
+    private function serveAttachment(string $tenantId, string $dealId, string $commentId, string $attachmentId, string $disposition): Response|JsonResponse
+    {
+        Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+
         $comment = DealComment::where('id', $commentId)
             ->where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->firstOrFail();
 
-        // Referrers/Partners only see shared notes
         [$actorId, $role] = $this->resolveActor();
         if (in_array($role, ['referrer', 'partner']) && $comment->isInternal()) {
             abort(403, 'You do not have access to this attachment.');
@@ -71,12 +87,28 @@ class DealNoteAttachmentController extends Controller
         }
 
         $content = Storage::disk($attachment->disk)->get($attachment->path);
+        $safe    = addslashes($attachment->original_filename);
 
         return response($content, 200, [
             'Content-Type'        => $attachment->mime_type,
-            'Content-Disposition' => 'attachment; filename="' . $attachment->original_filename . '"',
+            'Content-Disposition' => "{$disposition}; filename=\"{$safe}\"",
             'Content-Length'      => $attachment->file_size,
         ]);
+    }
+
+    private function resolveTenantIdFromSession(Request $request): string
+    {
+        if (Auth::guard('reseller')->check()) {
+            return Auth::guard('reseller')->user()->tenant_id;
+        }
+        if (Auth::guard('partner')->check()) {
+            return Auth::guard('partner')->user()->tenant_id;
+        }
+        if (Auth::guard('tenant')->check() || Auth::guard('web')->check()) {
+            $tid = $request->route('tenantId');
+            if ($tid) return $tid;
+        }
+        abort(403, 'Authentication required.');
     }
 
     // ── DELETE /api/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}

@@ -176,7 +176,7 @@ class PartnerPortalController extends Controller
                 'attachments'      => $c->attachments->map(fn($a) => [
                     'id'                => $a->id,
                     'original_filename' => $a->original_filename,
-                    'download_url'      => url("/api/deals/{$dealId}/comments/{$c->id}/attachments/{$a->id}"),
+                    'download_url'      => route('partner.deals.notes.attachments.download', ['dealId' => $dealId, 'commentId' => $c->id, 'attachmentId' => $a->id]),
                 ])->values(),
             ]);
 

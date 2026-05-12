@@ -160,6 +160,11 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/contacts/imports/{batchId}/execute',          [ContactsImportController::class, 'execute'])->name('contacts.imports.execute');
         Route::get('/contacts/imports/{batchId}/report',            [ContactsImportController::class, 'show'])->name('contacts.imports.show');
         Route::get('/contacts/imports/{batchId}/failed',            [ContactsImportController::class, 'downloadFailed'])->name('contacts.imports.failed');
+
+        // ── Note Attachment Download (session auth — opens inline in new tab) ──
+        Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
+            [\App\Http\Controllers\DealNoteAttachmentController::class, 'downloadForWeb'])
+            ->name('deals.notes.attachments.download');
     });
 
 // ── Partner Auth ──────────────────────────────────────────────
@@ -198,6 +203,11 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::post('/profile',                       [PartnerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',               [PartnerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+
+        // ── Note Attachment Download (session auth — opens inline in new tab) ──
+        Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
+            [\App\Http\Controllers\DealNoteAttachmentController::class, 'downloadForWeb'])
+            ->name('deals.notes.attachments.download');
     });
 
 // ── Super Admin Profile ───────────────────────────────────────
