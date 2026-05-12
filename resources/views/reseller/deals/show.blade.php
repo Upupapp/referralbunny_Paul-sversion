@@ -858,19 +858,19 @@
                  return this.remaining > 0 && this.pool > 0 ? Math.floor(this.remaining / this.pool * 10000) / 100 : 0;
              },
              async savePartner() {
-                 if (!this.partnerName || !this.partnerEmail || !this.partnerSplit || this.partnerSaving) return;
+                 if (!this.partnerName || !this.partnerSplit || this.partnerSaving) return;
                  if (this.overCap) { this.partnerError = 'Split exceeds remaining capacity of ₱' + Math.round(this.remaining).toLocaleString(); return; }
                  this.partnerSaving = true; this.partnerError = '';
                  const r = await fetch('{{ $BASE }}/partners', {
                      method: 'POST', credentials: 'same-origin',
                      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                     body: JSON.stringify({ partner_name: this.partnerName, partner_email: this.partnerEmail, split_share_value: parseFloat(this.partnerSplit), split_share_type: this.partnerType }),
+                     body: JSON.stringify({ partner_name: this.partnerName, partner_email: this.partnerEmail || null, split_share_value: parseFloat(this.partnerSplit), split_share_type: this.partnerType }),
                  });
                  const d = await r.json().catch(() => ({}));
                  this.partnerSaving = false;
                  if (!r.ok) { this.partnerError = d.error || 'Could not add partner.'; return; }
                  this.showAddPartner = false;
-                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Partner added. Admins have been notified.' } }));
+                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: d.message || 'Partner added.' } }));
                  setTimeout(() => window.location.reload(), 800);
              }
          }">
@@ -926,8 +926,19 @@
                         <input x-model="partnerName" type="text" class="form-input w-full text-sm" placeholder="Full name" {{ $poolLocked ? 'disabled' : '' }}>
                     </div>
                     <div>
-                        <label class="form-label">Partner Email <span class="text-red-400">*</span></label>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <label class="form-label mb-0">Partner Email</label>
+                            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">Optional</span>
+                        </div>
                         <input x-model="partnerEmail" type="email" class="form-input w-full text-sm" placeholder="email@example.com" {{ $poolLocked ? 'disabled' : '' }}>
+                        {{-- Live invite hint --}}
+                        <p x-show="partnerEmail && partnerEmail.includes('@')" x-cloak
+                           class="text-[10px] mt-1 font-medium" style="color:#0F766E">
+                            ✉ Invite email will be sent when saved.
+                        </p>
+                        <p x-show="!partnerEmail" class="text-[10px] mt-1 text-gray-400">
+                            Leave blank to add without a platform invite.
+                        </p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -971,9 +982,9 @@
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
                 <button @click="showAddPartner = false" class="btn-secondary text-sm">Cancel</button>
                 <button @click="savePartner()"
-                        :disabled="!partnerName || !partnerEmail || !partnerSplit || partnerSaving || overCap {{ $poolLocked ? '|| true' : '' }}"
+                        :disabled="!partnerName || !partnerSplit || partnerSaving || overCap {{ $poolLocked ? '|| true' : '' }}"
                         class="rs-btn-primary text-sm"
-                        x-text="partnerSaving ? 'Saving…' : 'Add Partner'"></button>
+                        x-text="partnerSaving ? 'Saving…' : (partnerEmail && partnerEmail.includes('@') ? 'Add & Send Invite' : 'Add Partner')"></button>
             </div>
         </div>
     </div>
