@@ -57,11 +57,11 @@ class HandleResellerJoined
             tenantId:       $event->tenantId,
         );
 
-        // 2. Alert tenant admins
+        // 2. Alert tenant admins and managers via email
         $admins = DB::table('tenant_memberships as tm')
             ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
             ->where('tm.tenant_id', $event->tenantId)
-            ->whereIn('tm.role', ['owner', 'admin'])
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
             ->where('tm.status', 'active')
             ->select('u.email', 'u.first_name', 'u.last_name')
             ->get();

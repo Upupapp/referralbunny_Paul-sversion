@@ -3,7 +3,9 @@
 namespace App\Listeners;
 
 use App\Events\InviteAcceptedEvent;
+use App\Mail\InviterActivationMail;
 use App\Models\ActivityLog;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -131,13 +133,14 @@ class HandleInviteAccepted
     private function notifyInviter(InviteAcceptedEvent $event, string $dedupBase): void
     {
         try {
-            // Verify inviter is active in the same tenant (security: same-tenant only)
+            // Verify inviter is active in the same tenant (security: same-tenant only).
+            // Include name for the email subject/body.
             $inviter = DB::table('tenant_memberships as tm')
                 ->join('tenant_users as u', 'u.id', '=', 'tm.tenant_user_id')
                 ->where('tm.tenant_id', $event->tenantId)
                 ->where('tm.tenant_user_id', $event->invitedById)
                 ->where('tm.status', 'active')
-                ->select('u.id', 'u.email')
+                ->selectRaw("u.id, u.email, TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) as name")
                 ->first();
 
             if (! $inviter) {
@@ -148,6 +151,7 @@ class HandleInviteAccepted
                 $event, forInviter: true
             );
 
+            // In-app notification to inviter
             $this->notifications->dispatch(
                 category:         $this->category($event),
                 priority:         'normal',
@@ -160,6 +164,33 @@ class HandleInviteAccepted
                 actionLabel:      $actionLabel,
                 deduplicationKey: "{$dedupBase}:inviter:{$inviter->id}",
             );
+
+            // Email to inviter — only for reseller/partner activations.
+            // tenant_user invitations already send TenantInvitationAcceptedMail
+            // from TenantInvitationController; sending here would duplicate that email.
+            if ($event->inviteType !== 'tenant_user' && $inviter->email) {
+                $tenantName      = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
+                $acceptedName    = $event->acceptedUserName ?: $event->acceptedUserEmail;
+                $roleLabel       = $this->roleLabel($event);
+
+                EmailLogger::send(
+                    mailable:       new InviterActivationMail(
+                        inviterName:       trim($inviter->name),
+                        inviterEmail:      $inviter->email,
+                        acceptedUserName:  $acceptedName,
+                        acceptedUserEmail: $event->acceptedUserEmail,
+                        roleLabel:         $roleLabel,
+                        tenantName:        $tenantName,
+                        actionUrl:         url($actionUrl),
+                        actionLabel:       $actionLabel,
+                    ),
+                    recipientEmail: $inviter->email,
+                    recipientType:  'tenant_admin',
+                    emailKey:       "inviter_activation.{$event->acceptedUserId}.{$inviter->id}",
+                    subject:        "{$acceptedName} has activated their {$roleLabel} account on {$tenantName}",
+                    tenantId:       $event->tenantId,
+                );
+            }
         } catch (\Throwable $e) {
             \Log::warning('HandleInviteAccepted: inviter notification failed: ' . $e->getMessage());
         }
@@ -240,6 +271,15 @@ class HandleInviteAccepted
             'reseller' => 'reseller_referrer',
             'partner'  => 'deal_pipeline',
             default    => 'tenant_workspace',
+        };
+    }
+
+    private function roleLabel(InviteAcceptedEvent $event): string
+    {
+        return match ($event->inviteType) {
+            'reseller' => 'Referrer',
+            'partner'  => 'Partner',
+            default    => ucfirst($event->acceptedRole),
         };
     }
 }
