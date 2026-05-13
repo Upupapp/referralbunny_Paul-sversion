@@ -190,7 +190,8 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('tenant.login.post') }}" class="form-wrap">
+            <form method="POST" action="{{ route('tenant.login.post') }}" class="form-wrap"
+                  x-data="{ submitting: false }" @submit="submitting = true">
                 @csrf
                 <div style="margin-bottom:1rem">
                     <label for="email" class="field-label">Email address</label>
@@ -210,7 +211,11 @@
                             <svg x-show="show"  width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
                         </button>
                     </div>
-                    <span class="forgot" style="cursor:default;color:#9ca3af" title="Contact your workspace administrator to reset your password.">Forgot password? Contact your admin.</span>
+                    <span style="display:block;text-align:right;font-size:.75rem;color:#9ca3af;margin-top:.375rem"
+                          title="To reset your password, contact your workspace owner or administrator.">
+                        Forgot password?
+                        <span style="color:#8b5cf6;font-weight:500">Contact your admin</span>
+                    </span>
                 </div>
 
                 <div style="display:flex;align-items:flex-start;gap:.625rem;margin:.875rem 0 .75rem">
@@ -226,7 +231,10 @@
                         </p>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Sign In</button>
+                <button type="submit" class="btn-primary"
+                        :disabled="submitting"
+                        :style="submitting ? 'opacity:.7;cursor:not-allowed' : ''"
+                        x-text="submitting ? 'Signing in…' : 'Sign In'"></button>
             </form>
 
             <div class="divider form-wrap"><span>or</span></div>

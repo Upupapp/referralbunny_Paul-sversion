@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────
 Route::get('/login',  [AuthWebController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthWebController::class, 'login']);
+Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
 // ── Root — always show portal selection (scrapers get OG landing) ────────
@@ -57,7 +57,7 @@ Route::get('/sign-in',       fn() => view('auth.signin-select'))->name('signin.s
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
-Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post');
+Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post')->middleware('throttle:10,1');
 Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
 
 // ── Tenant Invite Acceptance (public — no auth required) ──────
@@ -94,14 +94,14 @@ Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soo
 
 // ── Reseller Auth ────────────────────────────────────────────
 Route::get('/reseller/login',  [ResellerPortalAuthController::class, 'showLogin'])->name('reseller.login');
-Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post');
+Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post')->middleware('throttle:10,1');
 Route::post('/reseller/logout',[ResellerPortalAuthController::class, 'logout'])->name('reseller.logout');
 Route::get('/reseller/setup',          [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
 Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post')->middleware('throttle:10,1');
 Route::get('/reseller/forgot-password',[ResellerPortalAuthController::class, 'showForgotPassword'])->name('reseller.forgot-password');
-Route::post('/reseller/forgot-password',[ResellerPortalAuthController::class, 'forgotPassword'])->name('reseller.forgot-password.post');
+Route::post('/reseller/forgot-password',[ResellerPortalAuthController::class, 'forgotPassword'])->name('reseller.forgot-password.post')->middleware('throttle:5,1');
 Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'showResetPassword'])->name('reseller.reset-password');
-Route::post('/reseller/reset-password',[ResellerPortalAuthController::class, 'resetPassword'])->name('reseller.reset-password.post');
+Route::post('/reseller/reset-password',[ResellerPortalAuthController::class, 'resetPassword'])->name('reseller.reset-password.post')->middleware('throttle:5,1');
 
 // ── Reseller Portal ────────────────────────────────────────────
 Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
@@ -175,15 +175,15 @@ use App\Http\Controllers\Web\PartnerPortalController;
 use App\Http\Controllers\Web\PartnerProfileController;
 
 Route::get('/partner/login',            [PartnerAuthController::class, 'showLogin'])->name('partner.login');
-Route::post('/partner/login',           [PartnerAuthController::class, 'login'])->name('partner.login.post');
+Route::post('/partner/login',           [PartnerAuthController::class, 'login'])->name('partner.login.post')->middleware('throttle:10,1');
 Route::post('/partner/logout',          [PartnerAuthController::class, 'logout'])->name('partner.logout');
 Route::get('/partner/setup',            [PartnerAuthController::class, 'showSetup'])->name('partner.setup');
-Route::post('/partner/setup',           [PartnerAuthController::class, 'setup'])->name('partner.setup.post');
+Route::post('/partner/setup',           [PartnerAuthController::class, 'setup'])->name('partner.setup.post')->middleware('throttle:10,1');
 Route::get('/partner/invite/{token}',   [PartnerAuthController::class, 'showInvite'])->name('partner.invite');
 Route::get('/partner/forgot-password',  [PartnerAuthController::class, 'showForgotPassword'])->name('partner.forgot-password');
-Route::post('/partner/forgot-password', [PartnerAuthController::class, 'forgotPassword'])->name('partner.forgot-password.post');
+Route::post('/partner/forgot-password', [PartnerAuthController::class, 'forgotPassword'])->name('partner.forgot-password.post')->middleware('throttle:5,1');
 Route::get('/partner/reset-password',   [PartnerAuthController::class, 'showResetPassword'])->name('partner.reset-password');
-Route::post('/partner/reset-password',  [PartnerAuthController::class, 'resetPassword'])->name('partner.reset-password.post');
+Route::post('/partner/reset-password',  [PartnerAuthController::class, 'resetPassword'])->name('partner.reset-password.post')->middleware('throttle:5,1');
 
 // ── Partner Portal ────────────────────────────────────────────
 Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])

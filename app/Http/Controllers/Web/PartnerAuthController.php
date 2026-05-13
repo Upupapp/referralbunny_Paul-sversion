@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Web;
 
 use App\Events\InviteAcceptedEvent;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\TenantLegalAgreementController;
 use App\Mail\PartnerPasswordReset;
 use App\Models\DealPartner;
 use App\Models\Partner;
+use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +54,7 @@ class PartnerAuthController extends Controller
         }
 
         Auth::guard('partner')->login($partner, $request->boolean('remember'));
+        $request->session()->regenerate();
 
         return redirect()->route('partner.dashboard');
     }
@@ -97,7 +100,7 @@ class PartnerAuthController extends Controller
 
         try {
             $partner->update([
-                'password'           => $data['password'],
+                'password'           => Hash::make($data['password']),
                 'status'             => 'active',
                 'setup_completed_at' => now(),
                 'setup_token'        => null,
@@ -178,6 +181,29 @@ class PartnerAuthController extends Controller
             Log::warning('InviteAcceptedEvent dispatch failed for partner: ' . $e->getMessage());
         }
 
+        // Welcome in-app notification to the partner
+        try {
+            $tenantName = DB::table('tenants')->where('id', $partner->tenant_id)->value('name') ?? 'ReferralBunny';
+            app(NotificationDispatchService::class)->dispatchToPartner(
+                partnerId:    $partner->id,
+                tenantId:     $partner->tenant_id,
+                category:     'account_profile',
+                priority:     'normal',
+                title:        'Your Partner account is ready',
+                body:         "You can now access your Partner dashboard for {$tenantName}.",
+                actionUrl:    url('/partner/dashboard'),
+                actionLabel:  'Open Dashboard',
+                dedupeSuffix: $partner->id,
+            );
+        } catch (\Throwable) {}
+
+        // Check for pending required legal agreements (partner role)
+        if (TenantLegalAgreementController::hasPending(
+            $partner->tenant_id, 'partner', (string) $partner->id, 'partner'
+        )) {
+            return redirect()->route('tenant.legal-agreements.accept', $partner->tenant_id);
+        }
+
         return redirect()->route('partner.dashboard');
     }
 
@@ -255,7 +281,7 @@ class PartnerAuthController extends Controller
         }
 
         $partner->update([
-            'password'    => $data['password'],
+            'password'    => Hash::make($data['password']),
             'setup_token' => null,
         ]);
 

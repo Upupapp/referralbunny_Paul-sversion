@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -93,6 +94,27 @@ class TenantSignupWebController extends Controller
 
         // Log in as tenant user
         Auth::guard('tenant')->loginUsingId($userId, false);
+
+        // Notify super admins of the new tenant signup
+        try {
+            app(NotificationDispatchService::class)->dispatchToSuperAdmins(
+                category:     'system',
+                priority:     'normal',
+                title:        "New workspace created: {$data['workspace_name']}",
+                body:         "{$data['first_name']} {$data['last_name']} ({$data['email']}) just created a new workspace.",
+                actionUrl:    url("/platform/tenants/{$tenantId}"),
+                actionLabel:  'View Tenant',
+                dedupeSuffix: $tenantId,
+                metadata:     [
+                    'tenant_id'    => $tenantId,
+                    'tenant_name'  => $data['workspace_name'],
+                    'owner_name'   => "{$data['first_name']} {$data['last_name']}",
+                    'owner_email'  => $data['email'],
+                    'industry'     => $data['industry'],
+                    'country'      => $data['country'],
+                ],
+            );
+        } catch (\Throwable) {}
 
         return redirect()->route('tenant.dashboard', $tenantId)
             ->with('success', "Welcome! Your workspace \"{$data['workspace_name']}\" is ready.");
