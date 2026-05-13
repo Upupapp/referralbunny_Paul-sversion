@@ -88,7 +88,14 @@
 
     {{-- ── FILTERS (All Tasks tab only, admin only) ────────────────────────── --}}
     @if($isAdmin && $tab === 'all' && $tab !== 'responses')
-    <form method="GET" action="{{ request()->url() }}" class="flex flex-wrap items-center gap-2">
+    <form method="GET" action="{{ request()->url() }}" class="flex flex-wrap items-center gap-2"
+          x-data="{}"
+          @submit.prevent="
+            const f = $el;
+            // Remove empty inputs before submit so URL stays clean
+            [...f.querySelectorAll('input,select')].forEach(el => { if (el.name && el.value === '') el.disabled = true; });
+            f.submit();
+          ">
         <input type="hidden" name="tab" value="all">
         <input type="hidden" name="view" value="{{ $view }}">
 
@@ -707,20 +714,49 @@
                         </button>
                     </div>
                     <div x-show="loadingAssignees" class="text-xs text-gray-400 py-2">Loading team members…</div>
-                    <div x-show="!loadingAssignees" class="space-y-1.5 max-h-44 overflow-y-auto">
-                        <template x-for="m in sortedAssignees" :key="m.id">
-                            <label class="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all"
-                                   :class="createForm.assignee_ids.includes(m.id) ? 'border-purple-300 bg-purple-50' : 'border-transparent bg-gray-50 hover:border-gray-200'">
-                                <input type="checkbox" :value="m.id" x-model="createForm.assignee_ids" class="w-4 h-4 cursor-pointer accent-[#7B61FF]">
-                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                                     :style="m.is_me ? 'background:#7B61FF' : 'background:linear-gradient(135deg,#c4b5fd,#7B61FF)'"
-                                     x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="m.is_me ? m.name + ' (you)' : m.name"></p>
-                                    <p class="text-[10px] text-gray-400 truncate" x-text="m.email + ' · ' + (m.role ? m.role.charAt(0).toUpperCase()+m.role.slice(1) : '')"></p>
-                                </div>
-                            </label>
+                    <div x-show="!loadingAssignees" class="space-y-1 max-h-52 overflow-y-auto pr-0.5">
+
+                        {{-- Team members --}}
+                        <template x-if="teamMembers.length > 0">
+                            <div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-1 mb-1">Team</p>
+                                <template x-for="m in teamMembers" :key="m.id">
+                                    <label class="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                           :class="createForm.assignee_ids.includes(m.id) ? 'border-purple-300 bg-purple-50' : 'border-transparent bg-gray-50 hover:border-gray-200'">
+                                        <input type="checkbox" :value="m.id" x-model="createForm.assignee_ids" class="w-4 h-4 cursor-pointer accent-[#7B61FF]">
+                                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                                             :style="m.is_me ? 'background:#7B61FF' : 'background:linear-gradient(135deg,#c4b5fd,#7B61FF)'"
+                                             x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="m.is_me ? m.name + ' (you)' : m.name"></p>
+                                            <p class="text-[10px] text-gray-400 truncate" x-text="m.email + ' · ' + (m.role ? m.role.charAt(0).toUpperCase()+m.role.slice(1) : '')"></p>
+                                        </div>
+                                    </label>
+                                </template>
+                            </div>
                         </template>
+
+                        {{-- Referrers (assigned via reseller portal) --}}
+                        <template x-if="referrerAssignees.length > 0">
+                            <div :class="teamMembers.length > 0 ? 'mt-2' : ''">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-1 mb-1">Referrers</p>
+                                <template x-for="m in referrerAssignees" :key="m.id">
+                                    <label class="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                           :class="createForm.assignee_ids.includes(m.id) ? 'border-purple-300 bg-purple-50' : 'border-transparent bg-gray-50 hover:border-gray-200'">
+                                        <input type="checkbox" :value="m.id" x-model="createForm.assignee_ids" class="w-4 h-4 cursor-pointer accent-[#7B61FF]">
+                                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                                             style="background:linear-gradient(135deg,#14b8a6,#0d9488)"
+                                             x-text="(m.name||'?').slice(0,2).toUpperCase()"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="m.name"></p>
+                                            <p class="text-[10px] text-gray-400 truncate" x-text="m.email + ' · Referrer'"></p>
+                                        </div>
+                                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 shrink-0">Referrer</span>
+                                    </label>
+                                </template>
+                            </div>
+                        </template>
+
                         <template x-if="!loadingAssignees && assignees.length === 0">
                             <p class="text-xs text-amber-600 p-2">No eligible team members found.</p>
                         </template>
@@ -780,7 +816,14 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
         // Toasts
         toasts: [],
 
+        get teamMembers() {
+            return this.assignees.filter(m => m.type !== 'reseller');
+        },
+        get referrerAssignees() {
+            return this.assignees.filter(m => m.type === 'reseller');
+        },
         get sortedAssignees() {
+            // kept for backwards-compat; use teamMembers / referrerAssignees for grouped display
             return [...this.assignees.filter(m => m.id === currentUserId),
                     ...this.assignees.filter(m => m.id !== currentUserId)];
         },

@@ -273,7 +273,7 @@ $workspaceBadge += $criticalBadge;
                 </svg>
                 <span class="flex-1">Tasks</span>
                 @if($taskBadge > 0)
-                    <span class="nav-badge nav-badge-purple" aria-label="{{ $taskBadge }} open tasks">
+                    <span class="nav-badge nav-badge-purple" aria-label="{{ $taskBadge }} new {{ $taskBadge === 1 ? 'task' : 'tasks' }} since last visit">
                         {{ $taskBadge > 99 ? '99+' : $taskBadge }}
                     </span>
                 @endif
