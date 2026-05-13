@@ -346,7 +346,7 @@ class TaskController extends Controller
         $tasks = $query->orderByRaw("CASE WHEN status='open' THEN 0 WHEN status='in_progress' THEN 1 ELSE 2 END")
                        ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
                        ->orderBy('due_at')->orderByDesc('created_at')
-                       ->paginate(30)->withQueryString();
+                       ->paginate(30)->appends(request()->only(['tab', 'view', 'status', 'assignee']));
 
         $assigneeOptions = [];
         if ($isAdmin) {

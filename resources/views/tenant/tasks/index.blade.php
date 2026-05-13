@@ -3,14 +3,16 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
+{{-- Kanban / Responses data in a script block avoids large JSON in HTML attributes (Alpine x-data parsing issues) --}}
+<script>
+    window.__rbKanban = @json($kanbanColumns);
+</script>
 <div class="space-y-4"
      x-data="tasksPage(
          '{{ $tenant->id }}',
          '{{ $actorId }}',
          '{{ addslashes($actorName) }}',
          '{{ $view }}',
-         @json($kanbanColumns),
-         @json($responsesColumns),
          {{ $completionEmailEnabled ? 'true' : 'false' }},
          {{ $isAdmin ? 'true' : 'false' }}
      )"
@@ -72,7 +74,7 @@
                 ['completed', 'Completed'],
                 ['responses', 'View Responses'],
             ] as [$key, $label])
-            <a href="{{ request()->fullUrlWithQuery(['tab' => $key, 'assignee' => null, 'view' => $view]) }}"
+            <a href="{{ request()->url() }}?tab={{ $key }}&view={{ $view }}"
                class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all no-underline"
                style="{{ $tab === $key
                     ? 'background:#7B61FF;color:white;box-shadow:0 4px 12px rgba(123,97,255,.3)'
@@ -697,7 +699,8 @@
 
 @push('scripts')
 <script>
-function tasksPage(tenantId, currentUserId, currentUserName, initialView, kanbanData, responsesData, completionEmailEnabled, isAdmin) {
+function tasksPage(tenantId, currentUserId, currentUserName, initialView, completionEmailEnabled, isAdmin) {
+    const kanbanData = window.__rbKanban || [];
     const CSRF   = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
     const JSON_H = () => ({ 'Content-Type':'application/json','X-CSRF-TOKEN':CSRF(),'Accept':'application/json','X-Requested-With':'XMLHttpRequest' });
 
@@ -706,7 +709,7 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, kanban
         isAdmin: isAdmin,
 
         // Kanban
-        columns:   kanbanData || [],
+        columns:   kanbanData,
         dragTaskId: null, dragSourceCol: null, dragTask: null, dragOver: null,
         movingTaskId: null,
 
@@ -737,9 +740,13 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, kanban
         switchView(v) {
             if (this.view === v) return;
             localStorage.setItem('rb_tasks_view_' + tenantId, v);
-            const url = new URL(window.location.href);
-            url.searchParams.set('view', v);
-            window.location.href = url.toString();
+            const p = new URLSearchParams();
+            p.set('tab',  '{{ $tab }}');
+            p.set('view', v);
+            @if($assigneeFilter && $assigneeFilter !== 'all')
+            p.set('assignee', '{{ $assigneeFilter }}');
+            @endif
+            window.location.href = window.location.pathname + '?' + p.toString();
         },
 
         // ── Style helpers ────────────────────────────────────────────────────────
