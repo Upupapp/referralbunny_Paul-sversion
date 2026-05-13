@@ -26,8 +26,18 @@ class TenantContext
 
     public static function id(): ?string        { return static::$tenantId; }
     public static function tenant(): ?Tenant    { return static::$tenant; }
-    public static function role(): ?string      { return static::$userRole; }
     public static function isSuperAdmin(): bool { return static::$isSuperAdmin; }
+
+    /**
+     * Returns the current user's tenant role.
+     * Falls back to request attributes set by EnsureTenantAccess middleware
+     * when TenantContext::set() has not been explicitly called (web routes).
+     */
+    public static function role(): ?string
+    {
+        return static::$userRole
+            ?? request()->attributes->get('_tenant_role');
+    }
     public static function isReseller(): bool   { return static::$userRole === 'reseller'; }
     public static function isPartner(): bool    { return static::$userRole === 'partner'; }
 
