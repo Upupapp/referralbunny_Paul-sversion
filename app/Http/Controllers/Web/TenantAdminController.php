@@ -121,14 +121,15 @@ class TenantAdminController extends Controller
             $canSeeBilling = true;
         }
 
-        // Manager-scoped category gates for dashboard widget
+        // Manager-scoped category gates for dashboard widget.
+        // Use actual MANAGER_DEFAULTS keys — 'manage_exports'/'manage_deals'/'manage_team'
+        // were undefined, causing can() to always return false for managers.
         $canSeeExports = true;
         $canSeeUsers   = true;
         if (isset($actingMembership) && $actingMembership && $actingMembership->role === 'manager') {
             $permSvc       = app(\App\Services\PermissionService::class);
-            $canSeeExports = $permSvc->can($actingMembership, 'manage_exports')
-                          || $permSvc->can($actingMembership, 'manage_deals');
-            $canSeeUsers   = $permSvc->can($actingMembership, 'manage_team');
+            $canSeeExports = $permSvc->can($actingMembership, 'approve_export_requests');
+            $canSeeUsers   = $permSvc->can($actingMembership, 'invite_tenant_staff');
         }
 
         // Critical actions for dashboard widget — wrapped so any DB issue never breaks the dashboard

@@ -6,7 +6,7 @@
 @endsection
 
 @section('topbar-actions')
-    @if($isAdmin)
+    @if($isAdmin || $actingRole === 'manager')
         <button class="btn-primary" onclick="document.getElementById('invite-modal').classList.remove('hidden')">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -237,7 +237,7 @@
     </div>
 
     {{-- ── PENDING INVITATIONS TABLE ──────────────────────────────── --}}
-    @if($pendingInvites->count() > 0 || $isAdmin)
+    @if($pendingInvites->count() > 0 || $isAdmin || $actingRole === 'manager')
     <div id="pending-invitations" class="card">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2.5">
@@ -263,7 +263,7 @@
                 <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mb-3 opacity-60" loading="lazy">
                 <p class="text-sm font-semibold text-gray-500">No pending invitations</p>
                 <p class="text-xs text-gray-400 mt-1">All invitations have been accepted or you haven't sent any yet.</p>
-                @if($isAdmin)
+                @if($isAdmin || $actingRole === 'manager')
                     <button class="btn-primary mt-4 text-sm"
                             onclick="document.getElementById('invite-modal').classList.remove('hidden')">
                         Invite a Team Member
@@ -478,7 +478,7 @@
 </div>
 
 {{-- Invite Modal --}}
-@if($isAdmin)
+@if($isAdmin || $actingRole === 'manager')
 <div id="invite-modal"
      class="{{ $errors->any() ? '' : 'hidden' }} fixed inset-0 z-50 flex items-center justify-center p-4"
      style="background:rgba(0,0,0,.5)"

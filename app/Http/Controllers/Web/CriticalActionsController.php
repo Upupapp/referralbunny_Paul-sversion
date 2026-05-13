@@ -41,12 +41,15 @@ class CriticalActionsController extends Controller
             ? $this->permissions->can($membership, 'manage_billing_and_subscription')
             : $isSuperAdmin;
 
-        // Manager-scoped category gates: what categories this user may see
+        // Manager-scoped category gates: what categories this user may see.
+        // Use actual MANAGER_DEFAULTS keys: invite_tenant_staff (true by default) and
+        // approve_export_requests (false by default). The former 'manage_team',
+        // 'manage_exports', 'manage_deals' keys did not exist in MANAGER_DEFAULTS
+        // causing can() to always return false for managers.
         $canSeeUsers   = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
-            || $this->permissions->can($membership, 'manage_team');
+            || $this->permissions->can($membership, 'invite_tenant_staff');
         $canSeeExports = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
-            || $this->permissions->can($membership, 'manage_exports')
-            || $this->permissions->can($membership, 'manage_deals');
+            || $this->permissions->can($membership, 'approve_export_requests');
 
         $filters = [
             'search'           => $request->input('search'),
