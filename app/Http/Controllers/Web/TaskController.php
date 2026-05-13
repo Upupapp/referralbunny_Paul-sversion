@@ -363,7 +363,12 @@ class TaskController extends Controller
         $completionEmailEnabled = false;
 
         if ($view === 'kanban') {
-            $kanbanColumns          = $this->buildKanbanData($tenantId, $actorType, $actorId, $isAdmin, $tab, $assigneeFilter);
+            try {
+                $kanbanColumns = $this->buildKanbanData($tenantId, $actorType, $actorId, $isAdmin, $tab, $assigneeFilter);
+            } catch (\Throwable $e) {
+                \Log::error('TaskController: buildKanbanData failed: ' . $e->getMessage());
+                $kanbanColumns = [];
+            }
             $completionEmailEnabled = $this->tenantCompletionEmailEnabled($tenantId);
         }
 
@@ -486,6 +491,25 @@ class TaskController extends Controller
         });
 
         $statusLabel = ucwords(str_replace('_', ' ', $newStatus));
+
+        // Notify assignee if they didn't move it themselves
+        $isAssignee = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
+        if (!$isAssignee && $task->assigned_to_type === 'tenant_user' && $task->assigned_to_id) {
+            try {
+                app(\App\Services\NotificationDispatchService::class)->dispatch(
+                    category:         'task',
+                    priority:         'normal',
+                    title:            "Task status updated",
+                    body:             "{$actorName} moved \"{$task->title}\" to {$statusLabel}.",
+                    notifiableType:   'tenant_user',
+                    notifiableId:     $task->assigned_to_id,
+                    tenantId:         $tenantId,
+                    actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                    actionLabel:      'View Task',
+                    deduplicationKey: "task_status_{$task->id}_" . now()->format('YmdH'),
+                );
+            } catch (\Throwable) {}
+        }
 
         return response()->json([
             'status'  => $newStatus,
@@ -670,7 +694,7 @@ class TaskController extends Controller
     public function show(string $tenantId, string $taskId): \Illuminate\View\View
     {
         $tenant = Tenant::findOrFail($tenantId);
-        $task   = Task::where('tenant_id', $tenantId)->with(['activities','completionResponses'])->findOrFail($taskId);
+        $task   = Task::where('tenant_id', $tenantId)->whereNull('deleted_at')->with(['activities','completionResponses'])->findOrFail($taskId);
 
         $this->authorizeView($task, $tenantId);
 
@@ -680,6 +704,7 @@ class TaskController extends Controller
                 // Cast uuid PK to text to compare with varchar source_id — avoids
                 // "operator does not exist: uuid = character varying" in PostgreSQL.
                 $source = \App\Models\RequestFormSubmission::with('form')
+                    ->where('tenant_id', $tenantId)
                     ->whereRaw('"id"::text = ?', [$task->source_id])
                     ->first();
             } catch (\Throwable) {
@@ -742,7 +767,7 @@ class TaskController extends Controller
 
     public function complete(string $tenantId, string $taskId, TaskCompletionService $svc): \Illuminate\Http\JsonResponse
     {
-        $task = Task::where('tenant_id', $tenantId)->findOrFail($taskId);
+        $task = Task::where('tenant_id', $tenantId)->whereNull('deleted_at')->findOrFail($taskId);
         $this->authorizeComplete($task, $tenantId);
 
         if (!$task->isCompletable()) {
@@ -759,7 +784,7 @@ class TaskController extends Controller
 
     public function completeWithResponse(Request $request, string $tenantId, string $taskId, TaskCompletionService $svc): \Illuminate\Http\JsonResponse
     {
-        $task = Task::where('tenant_id', $tenantId)->findOrFail($taskId);
+        $task = Task::where('tenant_id', $tenantId)->whereNull('deleted_at')->findOrFail($taskId);
         $this->authorizeComplete($task, $tenantId);
 
         if (!$task->isCompletable()) {
@@ -894,8 +919,7 @@ class TaskController extends Controller
         if ($task->tenant_id !== $tenantId) abort(403);
         [$actorType, $actorId] = $this->resolveActor();
         $isAdmin    = Auth::guard('web')->check()
-            || TenantContext::role() === 'admin'
-            || TenantContext::role() === 'owner';
+            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
         $isAssignee = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
         if (!$isAdmin && !$isAssignee) abort(403, 'You cannot complete this task.');
     }
