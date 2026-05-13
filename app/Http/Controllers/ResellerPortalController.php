@@ -567,7 +567,7 @@ class ResellerPortalController extends Controller
             'created_by_type'  => 'reseller',
             'created_by_id'    => (string) $reseller->id,
             'due_at'           => !empty($data['due_at']) ? $data['due_at'] : null,
-            'visibility'       => 'tenant',
+            'visibility'       => 'tenant_team',
         ]);
 
         \App\Models\TaskActivity::create([

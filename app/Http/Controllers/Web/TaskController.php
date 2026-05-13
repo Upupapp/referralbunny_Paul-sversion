@@ -136,7 +136,7 @@ class TaskController extends Controller
                     'source_type'       => $data['source_type'] ?? null,
                     'source_id'         => $data['source_id'] ?? null,
                     'due_at'            => !empty($data['due_at']) ? $data['due_at'] : null,
-                    'visibility'        => 'tenant',
+                    'visibility'        => 'tenant_team',
                 ]);
 
                 TaskActivity::create([
@@ -179,7 +179,7 @@ class TaskController extends Controller
                     'source_type'       => $data['source_type'] ?? null,
                     'source_id'         => $data['source_id'] ?? null,
                     'due_at'            => !empty($data['due_at']) ? $data['due_at'] : null,
-                    'visibility'        => 'tenant',
+                    'visibility'        => 'tenant_team',
                 ]);
 
                 TaskActivity::create([
