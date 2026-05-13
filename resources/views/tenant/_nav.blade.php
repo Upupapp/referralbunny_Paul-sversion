@@ -57,10 +57,43 @@ if (request()->routeIs([
 // ── Badge counts (server-side, all try/catch so nav never crashes) ─────────
 $taskBadge = $msgBadge = 0;
 try {
-    $taskBadge = (int) \Illuminate\Support\Facades\DB::table('tasks')
-        ->where('tenant_id', $tenantId)
-        ->whereIn('status', ['open', 'pending'])
-        ->count();
+    // Resolve current actor for personalized task badge
+    $_navActorId   = auth('tenant')->id() ?? auth('web')->id();
+    $_navActorType = auth('tenant')->check() ? 'tenant_user' : 'web';
+
+    // Last time this user visited the tasks page — badge only shows NEW tasks
+    $_taskSeenKey = 'tenant_task_seen_' . $tenantId . '_' . $_navActorId;
+    $_taskLastSeen = session($_taskSeenKey);
+
+    if ($isAdminMgr) {
+        // Admins/managers: count ALL new open tasks in tenant since last visit
+        $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
+        if ($_taskLastSeen) {
+            $taskQ->where('created_at', '>', $_taskLastSeen);
+        }
+        $taskBadge = (int) $taskQ->count();
+    } else {
+        // Non-admins: count only tasks assigned to them since last visit
+        $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('assigned_to_type', $_navActorType)
+            ->where('assigned_to_id', $_navActorId)
+            ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
+        if ($_taskLastSeen) {
+            $taskQ->where('created_at', '>', $_taskLastSeen);
+        }
+        $taskBadge = (int) $taskQ->count();
+    }
+
+    // Reset badge when user is on the tasks page
+    if (request()->routeIs('tenant.tasks*')) {
+        session([$_taskSeenKey => now()->toIso8601String()]);
+        $taskBadge = 0;
+    }
 } catch (\Throwable) {}
 
 try {

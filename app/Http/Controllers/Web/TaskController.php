@@ -420,7 +420,6 @@ class TaskController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
-        $tab            = $request->query('tab', 'mine');
         $status         = $request->query('status');        // open|in_progress|waiting|completed
         $assigneeFilter = $request->query('assignee');      // tenant_user UUID or 'all'
         $priority       = $request->query('priority');      // urgent|high|medium|low
@@ -429,6 +428,11 @@ class TaskController extends Controller
         $view           = in_array($request->query('view'), ['list','kanban']) ? $request->query('view') : 'list';
         $isAdmin        = Auth::guard('web')->check()
             || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+
+        // Admins default to 'all' so they see every task immediately;
+        // non-admins default to 'mine' (their assigned tasks only).
+        $tab = $request->query('tab', $isAdmin ? 'all' : 'mine');
+
         $query          = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
 
         if ($tab === 'mine') {
