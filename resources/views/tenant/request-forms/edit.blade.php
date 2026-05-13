@@ -520,11 +520,11 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-// Field manager globals — set before rfFieldManager() is called by Alpine
-window.__rfFieldsData = @json($form->fields->sortBy('sort_order')->map(function($f) {
-    $typeLabel = match($f->field_type) {
+@php
+// Pre-compute field data outside @json() — multi-line closures inside @json() cause
+// PHP 8.4 parse errors in Blade-compiled output due to semicolons in nested expressions.
+$_rfFieldsData = $form->fields->sortBy('sort_order')->map(function ($f) {
+    $typeLabel = match ($f->field_type) {
         'multi_select' => 'Multi-select',
         default        => ucfirst(str_replace('_', ' ', $f->field_type)),
     };
@@ -538,7 +538,12 @@ window.__rfFieldsData = @json($form->fields->sortBy('sort_order')->map(function(
         'options'     => $f->options ?? [],
         'is_required' => (bool) $f->is_required,
     ];
-})->values());
+})->values()->all();
+@endphp
+@push('scripts')
+<script>
+// Field manager globals — set before rfFieldManager() is called by Alpine
+window.__rfFieldsData = @json($_rfFieldsData);
 window.__rfAddUrl  = '{{ route('tenant.request-forms.fields.store', [$tenant->id, $form->id]) }}';
 window.__rfBaseUrl = '{{ url('tenant/'.$tenant->id.'/request-forms/'.$form->id.'/fields') }}';
 window.__rfCsrf    = '{{ csrf_token() }}';
