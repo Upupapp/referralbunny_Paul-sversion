@@ -4,6 +4,16 @@
 
 @section('content')
 @php
+// ── Linkify helper: escape HTML then make URLs clickable ──────────────────
+function rb_linkify(string $text): string {
+    $e = htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return (string) preg_replace(
+        '/(https?:\/\/[^\s<>&"\'()\[\]{}]+)/i',
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>',
+        $e
+    );
+}
+
 // ── Derived display values ────────────────────────────────────────────────
 $isRequestTask  = $task->source_type === 'request_form_submission';
 $isTerminal     = in_array($task->status, ['completed', 'cancelled', 'archived']);
@@ -51,7 +61,7 @@ $actIcons = [
 
 /* ── Task completion modal overlay ────────────────────────────────────── */
 .rb-complete-overlay {
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
     position: fixed;
@@ -256,7 +266,7 @@ $actIcons = [
                 @if($source?->notes)
                 <div style="grid-column:1/-1">
                     <p style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;margin:0 0 6px">Notes</p>
-                    <div style="font-size:13px;color:#374151;line-height:1.75;background:#fafafa;border:1px solid #f3f4f6;border-radius:10px;padding:12px 14px;white-space:pre-line;word-break:break-word">{{ e($source->notes) }}</div>
+                    <div style="font-size:13px;color:#374151;line-height:1.75;background:#fafafa;border:1px solid #f3f4f6;border-radius:10px;padding:12px 14px;white-space:pre-line;word-break:break-word">{!! rb_linkify($source->notes) !!}</div>
                 </div>
                 @endif
 
@@ -277,7 +287,7 @@ $actIcons = [
                         @foreach($fVal as $v)<span style="font-size:11px;font-weight:600;background:#ede9fe;color:#7B61FF;padding:2px 8px;border-radius:9999px">{{ $v }}</span>@endforeach
                     </div>
                     @else
-                    <p style="font-size:13px;color:#374151;font-weight:500;margin:0;white-space:pre-line;word-break:break-word">{{ e($fVal) }}</p>
+                    <p style="font-size:13px;color:#374151;font-weight:500;margin:0;white-space:pre-line;word-break:break-word">{!! rb_linkify((string) $fVal) !!}</p>
                     @endif
                 </div>
                 @endforeach
@@ -309,7 +319,7 @@ $actIcons = [
                 </div>
                 <h3 style="font-size:14px;font-weight:700;color:#1E1B4B;margin:0">Task Description</h3>
             </div>
-            <div style="font-size:13px;color:#374151;line-height:1.75;white-space:pre-line;word-break:break-word">{{ e($task->description) }}</div>
+            <div style="font-size:13px;color:#374151;line-height:1.75;white-space:pre-line;word-break:break-word">{!! rb_linkify($task->description) !!}</div>
         </div>
         @endif
 

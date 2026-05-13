@@ -1501,7 +1501,7 @@
                                     <template x-if="c.is_deleted"><p class="text-sm text-gray-300 italic">This note was deleted.</p></template>
                                     <template x-if="!c.is_deleted">
                                         <div class="space-y-2">
-                                            <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-text="c.body"></p>
+                                            <p class="text-sm text-gray-700 whitespace-pre-wrap break-words" x-html="linkify(c.body)"></p>
                                             <div x-show="(c.mentions||[]).length > 0" class="flex flex-wrap gap-1">
                                                 <template x-for="m in (c.mentions||[])" :key="m.id">
                                                     <span class="text-xs px-1.5 rounded-full font-medium"
@@ -2150,6 +2150,16 @@ function dealComments(dealId, tenantId) {
         // â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         csrf() {
             return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        },
+
+        // Escape HTML then make URLs clickable — safe because we escape first
+        linkify(text) {
+            if (!text) return '';
+            const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            return e.replace(
+                /(https?:\/\/[^\s<>&"'()\[\]{}]+)/gi,
+                '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>'
+            );
         },
 
         // â"€â"€ Load notes â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
