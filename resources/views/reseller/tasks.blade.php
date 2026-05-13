@@ -11,14 +11,25 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h1 class="text-xl font-bold text-[#1E1B4B]">My Tasks</h1>
-            <p class="text-sm text-gray-400 mt-0.5">Tasks assigned to you by {{ $tenant->name }}.</p>
+            <p class="text-sm text-gray-400 mt-0.5">Tasks assigned to you by {{ $tenant->name }} or created by you.</p>
         </div>
-        @if($openCount > 0)
-        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shrink-0"
-              style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
-            {{ $openCount }} open {{ $openCount === 1 ? 'task' : 'tasks' }}
-        </span>
-        @endif
+        <div class="flex items-center gap-2 flex-wrap">
+            @if($openCount > 0)
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shrink-0"
+                  style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
+                {{ $openCount }} open {{ $openCount === 1 ? 'task' : 'tasks' }}
+            </span>
+            @endif
+            {{-- Add Task button --}}
+            <button @click="createOpen = true"
+                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                    style="background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,.25)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Task
+            </button>
+        </div>
     </div>
 
     {{-- ── TABS ────────────────────────────────────────────────────────────── --}}
@@ -206,6 +217,77 @@
     @endif
     @endif
 
+    {{-- ── CREATE TASK MODAL ──────────────────────────────────────────────── --}}
+    <template x-teleport="body">
+    <div x-show="createOpen" x-cloak
+         class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
+         style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)"
+         @keydown.escape.window="if(!createSubmitting) { createOpen = false; resetCreate(); }"
+         @click.self="if(!createSubmitting) { createOpen = false; resetCreate(); }">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" @click.stop
+             role="dialog" aria-modal="true" aria-labelledby="create-task-title">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 id="create-task-title" class="text-base font-bold text-[#1E1B4B]">Add Task</h3>
+                <button @click="createOpen = false; resetCreate()"
+                        :disabled="createSubmitting"
+                        class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div x-show="createError" class="flex items-center gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700" role="alert">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span x-text="createError"></span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Task Title <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="createForm.title" maxlength="200" placeholder="What needs to be done?"
+                           class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-purple-300 focus:ring-1 focus:ring-purple-100"
+                           @keydown.enter.prevent="if(createForm.title.trim()) submitCreate()">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Description <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea x-model="createForm.description" rows="3" maxlength="2000" placeholder="Add details or notes…"
+                              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-purple-300 focus:ring-1 focus:ring-purple-100"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Priority</label>
+                        <select x-model="createForm.priority"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-purple-300 cursor-pointer">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Due Date <span class="text-gray-400 font-normal">(optional)</span></label>
+                        <input type="date" x-model="createForm.due_at"
+                               class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-purple-300 cursor-pointer">
+                    </div>
+                </div>
+
+                <p class="text-[10px] text-gray-400">This task will be assigned to you. Admins and managers can also see and manage it.</p>
+            </div>
+            <div class="flex justify-end gap-2.5 px-5 py-4 border-t border-gray-100">
+                <button @click="createOpen = false; resetCreate()" :disabled="createSubmitting"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                <button @click="submitCreate()"
+                        :disabled="createSubmitting || !createForm.title.trim()"
+                        class="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
+                        style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
+                    <svg x-show="createSubmitting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="createSubmitting ? 'Creating…' : 'Create Task'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    </template>
+
     {{-- Toast --}}
     <div class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2 items-end pointer-events-none" aria-live="polite" style="max-width:320px">
         <template x-for="t in toasts" :key="t.id">
@@ -232,7 +314,40 @@ function referrerTasks(tenantId) {
     return {
         toasts: [],
 
+        // Create task modal
+        createOpen:       false,
+        createSubmitting: false,
+        createError:      '',
+        createForm:       { title: '', description: '', priority: 'medium', due_at: '' },
+
         init() {},
+
+        resetCreate() {
+            this.createForm = { title: '', description: '', priority: 'medium', due_at: '' };
+            this.createError = '';
+        },
+
+        async submitCreate() {
+            if (!this.createForm.title.trim()) return;
+            this.createSubmitting = true; this.createError = '';
+            try {
+                const res = await fetch(`/reseller/${tenantId}/tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF(), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify(this.createForm),
+                });
+                const json = await res.json();
+                if (!res.ok) { this.createError = json.message || json.error || 'Could not create task.'; return; }
+                this.createOpen = false;
+                this.resetCreate();
+                this.toast('Task created!', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (e) {
+                this.createError = 'Network error. Please try again.';
+            } finally {
+                this.createSubmitting = false;
+            }
+        },
 
         statusStyle(s) {
             return {

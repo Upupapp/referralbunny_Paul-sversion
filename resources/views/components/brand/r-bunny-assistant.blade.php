@@ -375,7 +375,7 @@
                     </div>
                     <div x-show="handoffDone" class="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
                         <p class="text-xs font-semibold text-emerald-700">Summary prepared!</p>
-                        <p class="text-xs text-emerald-600 mt-0.5" x-text="handoffRef ? `Reference: ${handoffRef}` : 'Share this with your admin or support.'"></p>
+                        <p class="text-xs text-emerald-600 mt-0.5">Share this summary with your admin or support team.</p>
                     </div>
                 </div>
             </div>

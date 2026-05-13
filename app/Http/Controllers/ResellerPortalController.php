@@ -537,6 +537,70 @@ class ResellerPortalController extends Controller
     }
 
     /**
+     * Referrer creates a task for themselves.
+     * Task is assigned to the referrer, visible to admins/managers + the referrer only.
+     * HARD RULE: always assigned_to_type='reseller', assigned_to_id=$reseller->id.
+     */
+    public function taskStore(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+
+        $data = $request->validate([
+            'title'       => 'required|string|max:200',
+            'description' => 'nullable|string|max:2000',
+            'priority'    => 'required|in:low,medium,high,urgent',
+            'due_at'      => 'nullable|date',
+        ]);
+
+        $task = \App\Models\Task::create([
+            'tenant_id'        => $tenantId,
+            'title'            => $data['title'],
+            'description'      => $data['description'] ?? null,
+            'status'           => 'open',
+            'priority'         => $data['priority'],
+            'category'         => 'manual',
+            'assigned_to_type' => 'reseller',
+            'assigned_to_id'   => (string) $reseller->id,
+            'assigned_by_type' => 'reseller',
+            'assigned_by_id'   => (string) $reseller->id,
+            'created_by_type'  => 'reseller',
+            'created_by_id'    => (string) $reseller->id,
+            'due_at'           => !empty($data['due_at']) ? $data['due_at'] : null,
+            'visibility'       => 'tenant',
+        ]);
+
+        \App\Models\TaskActivity::create([
+            'tenant_id'   => $tenantId,
+            'task_id'     => $task->id,
+            'actor_type'  => 'reseller',
+            'actor_id'    => (string) $reseller->id,
+            'actor_name'  => $reseller->name ?? $reseller->email,
+            'action_type' => 'task_created_self_assigned',
+            'new_values'  => ['title' => $task->title, 'priority' => $task->priority, 'self_assign' => true],
+        ]);
+
+        // Notify tenant admins that a referrer created a task
+        try {
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'task',
+                priority:     'normal',
+                title:        'Referrer created a task',
+                body:         ($reseller->name ?? $reseller->email) . " created a task: \"{$task->title}\".",
+                actionUrl:    "/tenant/{$tenantId}/tasks/{$task->id}",
+                actionLabel:  'View Task',
+                dedupeSuffix: "task_referrer_created_{$task->id}",
+            );
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'message' => 'Task created.',
+            'task_id' => $task->id,
+        ]);
+    }
+
+    /**
      * Mark a referrer's own task as completed.
      * HARD RULE: task must be owned by this reseller in this tenant.
      */

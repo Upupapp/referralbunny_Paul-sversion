@@ -421,8 +421,11 @@ class TaskController extends Controller
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
         $tab            = $request->query('tab', 'mine');
-        $status         = $request->query('status');
-        $assigneeFilter = $request->query('assignee');
+        $status         = $request->query('status');        // open|in_progress|waiting|completed
+        $assigneeFilter = $request->query('assignee');      // tenant_user UUID or 'all'
+        $priority       = $request->query('priority');      // urgent|high|medium|low
+        $search         = trim((string) $request->query('q', ''));
+        $dateFilter     = $request->query('date');          // overdue|today|week
         $view           = in_array($request->query('view'), ['list','kanban']) ? $request->query('view') : 'list';
         $isAdmin        = Auth::guard('web')->check()
             || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
@@ -442,15 +445,42 @@ class TaskController extends Controller
             if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         }
 
-        if ($status) $query->where('status', $status);
+        // Status filter: 'in_progress' also pulls waiting (they're both "processing")
+        if ($status === 'in_progress') {
+            $query->whereIn('status', ['in_progress', 'waiting']);
+        } elseif ($status) {
+            $query->where('status', $status);
+        }
+
         if ($isAdmin && $assigneeFilter && $assigneeFilter !== 'all') {
             $query->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user');
         }
+        if ($priority) {
+            $query->where('priority', $priority);
+        }
+        if ($search !== '') {
+            $query->where('title', 'ilike', '%' . $search . '%');
+        }
+        if ($dateFilter === 'overdue') {
+            $query->whereNotIn('status', ['completed','cancelled','archived'])->where('due_at', '<', now());
+        } elseif ($dateFilter === 'today') {
+            $query->whereDate('due_at', today());
+        } elseif ($dateFilter === 'week') {
+            $query->whereBetween('due_at', [now()->startOfDay(), now()->addWeek()->endOfDay()]);
+        }
 
-        $tasks = $query->orderByRaw("CASE WHEN status='open' THEN 0 WHEN status='in_progress' THEN 1 ELSE 2 END")
-                       ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
-                       ->orderBy('due_at')->orderByDesc('created_at')
-                       ->paginate(30)->appends(request()->only(['tab', 'view', 'status', 'assignee']));
+        $allowedSorts = ['priority_asc','due_asc','created_desc'];
+        $sort         = in_array($request->query('sort'), $allowedSorts) ? $request->query('sort') : null;
+        if ($sort === 'due_asc') {
+            $tasks = $query->orderBy('due_at')->orderByDesc('created_at');
+        } elseif ($sort === 'created_desc') {
+            $tasks = $query->orderByDesc('created_at');
+        } else {
+            $tasks = $query->orderByRaw("CASE WHEN status='open' THEN 0 WHEN status='in_progress' THEN 1 ELSE 2 END")
+                           ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
+                           ->orderBy('due_at')->orderByDesc('created_at');
+        }
+        $tasks = $tasks->paginate(30)->appends(request()->only(['tab','view','status','assignee','priority','q','date','sort']));
 
         $assigneeOptions = [];
         if ($isAdmin) {
@@ -484,7 +514,8 @@ class TaskController extends Controller
         return view('tenant.tasks.index', compact(
             'tenant', 'tasks', 'tab', 'actorId', 'actorName',
             'isAdmin', 'assigneeOptions', 'assigneeFilter',
-            'view', 'kanbanColumns', 'responsesColumns', 'completionEmailEnabled'
+            'view', 'kanbanColumns', 'responsesColumns', 'completionEmailEnabled',
+            'search', 'priority', 'status', 'dateFilter', 'sort'
         ));
     }
 
@@ -626,87 +657,85 @@ class TaskController extends Controller
 
     private function buildKanbanData(string $tenantId, string $actorType, string $actorId, bool $isAdmin, string $tab, ?string $assigneeFilter): array
     {
-        $query = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
+        // Base scope shared across all column queries
+        $base = fn() => Task::where('tenant_id', $tenantId)->whereNull('deleted_at')
+            ->when($tab === 'mine' || !$isAdmin, fn($q) => $q->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId))
+            ->when($tab === 'assigned_by_me', fn($q) => $q->where('assigned_by_type', $actorType)->where('assigned_by_id', $actorId))
+            ->when($isAdmin && $assigneeFilter && $assigneeFilter !== 'all', fn($q) => $q->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user'));
 
-        if ($tab === 'mine' || (!$isAdmin)) {
-            $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
-        } elseif ($tab === 'assigned_by_me') {
-            $query->where('assigned_by_type', $actorType)->where('assigned_by_id', $actorId);
-        }
-
-        if ($isAdmin && $assigneeFilter && $assigneeFilter !== 'all') {
-            $query->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user');
-        }
-
-        $query->whereNotIn('status', ['cancelled', 'archived']);
-
-        $tasks = $query
+        $orderFn = fn($q) => $q
             ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
-            ->orderBy('due_at')
-            ->orderByDesc('created_at')
-            ->limit(200)
-            ->get();
+            ->orderBy('due_at')->orderByDesc('created_at');
 
-        $tuIds = $tasks->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
+        // Per-column: count total + fetch top 10 — clean, accurate, capped
+        $colDefs = [
+            'new_tasks'  => ['statuses' => ['open'],                   'label' => 'New Tasks',       'status_for_drop' => 'open',        'view_all_status' => 'open'],
+            'processing' => ['statuses' => ['in_progress', 'waiting'], 'label' => 'Processing Tasks','status_for_drop' => 'in_progress',  'view_all_status' => 'in_progress'],
+            'completed'  => ['statuses' => ['completed'],              'label' => 'Completed Tasks', 'status_for_drop' => 'completed',    'view_all_status' => 'completed'],
+        ];
+
+        // Build tasks across all columns then resolve names in one pass
+        $allFetched = collect();
+        $colMeta    = [];
+        foreach ($colDefs as $key => $def) {
+            $q     = $base()->whereIn('status', $def['statuses']);
+            $total = $q->count();
+            $tasks = $orderFn(clone $q)->limit(10)->get();
+            $colMeta[$key] = ['total' => $total, 'tasks' => $tasks, 'def' => $def];
+            $allFetched = $allFetched->merge($tasks);
+        }
+
+        // Batch-resolve assignee names (tenant users + resellers)
+        $tuIds = $allFetched->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
             ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
-        $rsIds = $tasks->filter(fn($t) => $t->assigned_to_type === 'reseller' && $t->assigned_to_id)
+        $rsIds = $allFetched->filter(fn($t) => $t->assigned_to_type === 'reseller' && $t->assigned_to_id)
             ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
 
         $assigneeNames = array_merge(
-            !empty($tuIds)
-                ? TenantUser::whereIn('id', $tuIds)->get()
-                    ->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all()
-                : [],
-            !empty($rsIds)
-                ? \App\Models\Reseller::whereIn('id', $rsIds)->get()
-                    ->mapWithKeys(fn($r) => [$r->id => ($r->name ?: $r->email)])->all()
-                : [],
+            !empty($tuIds) ? TenantUser::whereIn('id', $tuIds)->get()->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all() : [],
+            !empty($rsIds) ? \App\Models\Reseller::whereIn('id', $rsIds)->get()->mapWithKeys(fn($r) => [$r->id => ($r->name ?: $r->email)])->all() : [],
         );
 
-        // Three columns: new_tasks (open), processing (in_progress + waiting), completed
-        $groups = ['new_tasks' => [], 'processing' => [], 'completed' => []];
-
-        foreach ($tasks as $task) {
-            $key = match($task->status) {
-                'open'                 => 'new_tasks',
-                'in_progress','waiting'=> 'processing',
-                'completed'            => 'completed',
-                default                => null,
-            };
-            if (!$key) continue;
-            if ($key === 'completed' && count($groups['completed']) >= 50) continue;
-
-            $assigneeName     = $task->assigned_to_id ? ($assigneeNames[$task->assigned_to_id] ?? null) : null;
-            $parts            = $assigneeName ? explode(' ', trim($assigneeName)) : [];
-            $assigneeInitials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: '--';
-            $isAssignee       = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
-
-            $groups[$key][] = [
-                'id'                   => $task->id,
-                'title'                => $task->title,
-                'status'               => $task->status,
-                'priority'             => $task->priority,
-                'category'             => $task->category ?? 'manual',
-                'source_type'          => $task->source_type,
-                'requestor_name'       => $task->requestor_name,
-                'assignee_name'        => $assigneeName,
-                'assignee_initials'    => $assigneeInitials,
-                'due_at'               => $task->due_at?->format('M j, Y'),
-                'due_at_raw'           => $task->due_at?->toDateString(),
-                'is_overdue'           => $task->isOverdue(),
-                'created_ago'          => $task->created_at->diffForHumans(),
-                'is_request_form_task' => $task->category === 'request_form',
-                'url'                  => "/tenant/{$tenantId}/tasks/{$task->id}",
-                'can_update_status'    => $isAdmin || $isAssignee,
-                'can_complete'         => ($isAdmin || $isAssignee) && $task->isCompletable(),
+        // Build column data
+        $result = [];
+        foreach ($colMeta as $key => ['total' => $total, 'tasks' => $tasks, 'def' => $def]) {
+            $cards = [];
+            foreach ($tasks as $task) {
+                $assigneeName     = $task->assigned_to_id ? ($assigneeNames[$task->assigned_to_id] ?? null) : null;
+                $parts            = $assigneeName ? explode(' ', trim($assigneeName)) : [];
+                $assigneeInitials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: '--';
+                $isAssignee       = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
+                $cards[] = [
+                    'id'                   => $task->id,
+                    'title'                => $task->title,
+                    'status'               => $task->status,
+                    'priority'             => $task->priority,
+                    'category'             => $task->category ?? 'manual',
+                    'source_type'          => $task->source_type,
+                    'requestor_name'       => $task->requestor_name,
+                    'assignee_name'        => $assigneeName,
+                    'assignee_initials'    => $assigneeInitials,
+                    'due_at'               => $task->due_at?->format('M j, Y'),
+                    'due_at_raw'           => $task->due_at?->toDateString(),
+                    'is_overdue'           => $task->isOverdue(),
+                    'created_ago'          => $task->created_at->diffForHumans(),
+                    'is_request_form_task' => $task->category === 'request_form',
+                    'url'                  => "/tenant/{$tenantId}/tasks/{$task->id}",
+                    'can_update_status'    => $isAdmin || $isAssignee,
+                    'can_complete'         => ($isAdmin || $isAssignee) && $task->isCompletable(),
+                ];
+            }
+            $result[] = [
+                'key'              => $key,
+                'label'            => $def['label'],
+                'status_for_drop'  => $def['status_for_drop'],
+                'view_all_status'  => $def['view_all_status'],
+                'tasks'            => $cards,
+                'count'            => $total,
+                'has_more'         => $total > 10,
             ];
         }
-
-        return [
-            ['key' => 'new_tasks',  'label' => 'New Tasks',        'status_for_drop' => 'open',        'tasks' => $groups['new_tasks'],  'count' => count($groups['new_tasks'])],
-            ['key' => 'processing', 'label' => 'Processing Tasks',  'status_for_drop' => 'in_progress', 'tasks' => $groups['processing'], 'count' => count($groups['processing'])],
-            ['key' => 'completed',  'label' => 'Completed Tasks',   'status_for_drop' => 'completed',   'tasks' => $groups['completed'],  'count' => count($groups['completed'])],
-        ];
+        return $result;
     }
 
     private function buildResponsesData(string $tenantId, string $actorType, string $actorId, bool $isAdmin): array
