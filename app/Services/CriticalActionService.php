@@ -117,7 +117,7 @@ class CriticalActionService
     }
 
     /**
-     * Critical actions for a Partner — only their own deals and unread messages.
+     * Critical actions for a Partner — unread messages + expiring deals.
      */
     public function forPartner(string $partnerId, string $tenantId, int $limit = 6): array
     {
@@ -156,6 +156,54 @@ class CriticalActionService
             }
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] forPartner:messages failed', ['partner_id' => $partnerId, 'error' => $e->getMessage()]);
+        }
+
+        // Expiring deals this partner has a split on
+        try {
+            $partnerEmail = DB::table('partner_users')->where('id', $partnerId)->value('email');
+
+            if ($partnerEmail) {
+                $dealIds = DB::table('deal_partner_splits')
+                    ->where('tenant_id', $tenantId)
+                    ->whereRaw('LOWER(partner_email) = ?', [strtolower($partnerEmail)])
+                    ->whereNull('deleted_at')
+                    ->where('status', '!=', 'removed')
+                    ->pluck('deal_id')
+                    ->toArray();
+
+                if (!empty($dealIds)) {
+                    $expiring = DB::table('leads')
+                        ->where('tenant_id', $tenantId)
+                        ->whereIn('id', $dealIds)
+                        ->where('status', 'expiring')
+                        ->select('id', 'name', 'days_left', 'updated_at')
+                        ->orderBy('days_left')
+                        ->limit(3)
+                        ->get();
+
+                    foreach ($expiring as $deal) {
+                        $actions[] = $this->make([
+                            'type'          => 'deal_expiring',
+                            'category'      => 'deal',
+                            'severity'      => ($deal->days_left ?? 21) <= 2 ? 'urgent' : 'high',
+                            'summary'       => "Your deal is expiring soon: {$deal->name}",
+                            'actor_name'    => 'System',
+                            'actor_role'    => 'System',
+                            'related_label' => $deal->name,
+                            'related_type'  => 'deal',
+                            'related_id'    => $deal->id,
+                            'occurred_at'   => $deal->updated_at ?? now(),
+                            'action_url'    => "/partner/deals/{$deal->id}",
+                            'action_label'  => 'View Deal',
+                            'action_needed' => true,
+                            'source'        => 'leads',
+                            'meta'          => ['days_left' => $deal->days_left],
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] forPartner:expiring failed', ['partner_id' => $partnerId, 'error' => $e->getMessage()]);
         }
 
         usort($actions, fn($a, $b) =>

@@ -1,3 +1,17 @@
+@php
+// Compute unread count here so it shows on every page, not just dashboard
+$_partnerUser = auth('partner')->user();
+try {
+    $partnerUnread = $_partnerUser
+        ? (int) \App\Models\PartnerThread::where('partner_id', $_partnerUser->id)
+               ->where('tenant_id', $_partnerUser->tenant_id)
+               ->sum('partner_unread')
+        : 0;
+} catch (\Throwable) {
+    $partnerUnread = 0;
+}
+@endphp
+
 {{-- Dashboard --}}
 <a href="{{ route('partner.dashboard') }}"
    class="pt-sidebar-link {{ request()->routeIs('partner.dashboard') ? 'active' : '' }}">
