@@ -33,9 +33,28 @@ class TaskController extends Controller
             ->orderBy('tm.role')
             ->orderBy('tu.first_name')
             ->get()
-            ->map(fn ($m) => array_merge((array) $m, ['is_me' => ($m->id === $actorId)]));
+            ->map(fn ($m) => array_merge((array) $m, [
+                'is_me' => ($m->id === $actorId),
+                'type'  => 'tenant_user',
+            ]));
 
-        return response()->json($members);
+        // Active referrers for this tenant — prefixed with 'reseller:' so store() can distinguish them
+        $referrers = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($r) => [
+                'id'    => 'reseller:' . $r->id,
+                'name'  => $r->name ?: $r->email,
+                'email' => $r->email,
+                'role'  => 'referrer',
+                'type'  => 'reseller',
+                'is_me' => false,
+            ]);
+
+        return response()->json($members->concat($referrers)->values());
     }
 
     // ── Store (manual task creation) ──────────────────────────────────────────
@@ -58,36 +77,46 @@ class TaskController extends Controller
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
         // Resolve 'me' to the authenticated user's ID (server-side — never trust frontend user ID alone)
-        $rawIds = collect($data['assignee_ids'])->map(fn ($id) => $id === 'me' ? $actorId : $id);
+        $rawIds = collect($data['assignee_ids'])->map(fn ($id) => $id === 'me' ? $actorId : $id)->unique()->filter();
 
-        // Verify all assignees belong to this tenant
-        $assigneeIds    = $rawIds->unique()->values()->filter(fn ($id) => !empty($id));
-        $validAssignees = DB::table('tenant_users as tu')
-            ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
-            ->where('tm.tenant_id', $tenantId)
-            ->where('tm.status', 'active')
-            ->whereIn('tu.id', $assigneeIds->toArray())
-            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email")
-            ->get()
-            ->keyBy('id');
+        // Split into tenant_user IDs and reseller IDs (resellers use 'reseller:UUID' prefix from eligibleAssignees API)
+        $resellerRawIds  = $rawIds->filter(fn ($id) => str_starts_with((string) $id, 'reseller:'))
+                                  ->map(fn ($id) => substr($id, strlen('reseller:')));
+        $tenantUserIds   = $rawIds->reject(fn ($id) => str_starts_with((string) $id, 'reseller:'));
 
-        // Super admins (web guard) assigning to self are always valid
-        if (Auth::guard('web')->check() && $validAssignees->isEmpty() && $assigneeIds->contains($actorId)) {
-            return response()->json(['error' => 'Super Admin self-assignment is not supported in this context.'], 422);
-        }
+        // Validate tenant_user assignees — must be active members of this tenant
+        $validAssignees = $tenantUserIds->isNotEmpty()
+            ? DB::table('tenant_users as tu')
+                ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tu.id', $tenantUserIds->toArray())
+                ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, 'tenant_user' as assignee_type")
+                ->get()->keyBy('id')
+            : collect();
 
-        if ($validAssignees->isEmpty()) {
+        // Validate reseller assignees — must be active resellers for this tenant
+        $validResellers = $resellerRawIds->isNotEmpty()
+            ? \App\Models\Reseller::where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->whereIn('id', $resellerRawIds->toArray())
+                ->get()->keyBy('id')
+            : collect();
+
+        if ($validAssignees->isEmpty() && $validResellers->isEmpty()) {
             return response()->json(['error' => 'No valid assignees found.'], 422);
         }
 
-        $createdTasks = [];
-        $isSelfAssign = $assigneeIds->count() === 1 && $assigneeIds->first() === $actorId;
+        $createdTasks   = [];
+        $isSelfAssign   = $tenantUserIds->count() === 1 && $resellerRawIds->isEmpty() && $tenantUserIds->first() === $actorId;
 
         DB::transaction(function () use (
             $data, $tenantId, $actorType, $actorId, $actorName,
-            $assigneeIds, $validAssignees, $isSelfAssign, &$createdTasks
+            $tenantUserIds, $validAssignees, $resellerRawIds, $validResellers,
+            $isSelfAssign, &$createdTasks
         ) {
-            foreach ($assigneeIds as $assigneeId) {
+            // ── Tenant user tasks ──────────────────────────────────────────────
+            foreach ($tenantUserIds as $assigneeId) {
                 $assignee = $validAssignees->get($assigneeId);
                 if (!$assignee) continue;
 
@@ -110,15 +139,13 @@ class TaskController extends Controller
                     'visibility'        => 'tenant',
                 ]);
 
-                $actionType = ($assigneeId === $actorId) ? 'task_created_self_assigned' : 'task_created';
-
                 TaskActivity::create([
                     'tenant_id'   => $tenantId,
                     'task_id'     => $task->id,
                     'actor_type'  => $actorType,
                     'actor_id'    => $actorId,
                     'actor_name'  => $actorName,
-                    'action_type' => $actionType,
+                    'action_type' => ($assigneeId === $actorId) ? 'task_created_self_assigned' : 'task_created',
                     'new_values'  => [
                         'title'       => $task->title,
                         'priority'    => $task->priority,
@@ -128,61 +155,138 @@ class TaskController extends Controller
                     ],
                 ]);
 
-                $createdTasks[] = $task;
+                $createdTasks[] = ['task' => $task, 'assignee_type' => 'tenant_user', 'assignee' => $assignee];
+            }
+
+            // ── Reseller tasks ─────────────────────────────────────────────────
+            foreach ($resellerRawIds as $resellerId) {
+                $reseller = $validResellers->get($resellerId);
+                if (!$reseller) continue;
+
+                $task = Task::create([
+                    'tenant_id'         => $tenantId,
+                    'title'             => $data['title'],
+                    'description'       => $data['description'] ?? null,
+                    'status'            => 'open',
+                    'priority'          => $data['priority'],
+                    'category'          => 'manual',
+                    'assigned_to_type'  => 'reseller',
+                    'assigned_to_id'    => (string) $resellerId,
+                    'assigned_by_type'  => $actorType,
+                    'assigned_by_id'    => $actorId,
+                    'created_by_type'   => $actorType,
+                    'created_by_id'     => $actorId,
+                    'source_type'       => $data['source_type'] ?? null,
+                    'source_id'         => $data['source_id'] ?? null,
+                    'due_at'            => !empty($data['due_at']) ? $data['due_at'] : null,
+                    'visibility'        => 'tenant',
+                ]);
+
+                TaskActivity::create([
+                    'tenant_id'   => $tenantId,
+                    'task_id'     => $task->id,
+                    'actor_type'  => $actorType,
+                    'actor_id'    => $actorId,
+                    'actor_name'  => $actorName,
+                    'action_type' => 'task_created',
+                    'new_values'  => [
+                        'title'        => $task->title,
+                        'priority'     => $task->priority,
+                        'assignee'     => $reseller->name ?? $reseller->email,
+                        'assignee_type'=> 'reseller',
+                        'due_at'       => $task->due_at?->toDateString(),
+                    ],
+                ]);
+
+                $createdTasks[] = ['task' => $task, 'assignee_type' => 'reseller', 'assignee' => $reseller];
             }
         });
 
-        // After commit: send in-app + email notifications (notifications must never run inside a transaction)
-        foreach ($createdTasks as $task) {
-            if ($task->assigned_to_id === $actorId) continue; // skip self-assign
+        // After commit: notifications (never inside a transaction)
+        $notifSvc = app(\App\Services\NotificationDispatchService::class);
 
-            // In-app notification to assignee
-            try {
-                app(\App\Services\NotificationDispatchService::class)->dispatch(
-                    category:         'task',
-                    priority:         $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal'),
-                    title:            'New Task: ' . $task->title,
-                    body:             "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : ''),
-                    notifiableType:   'tenant_user',
-                    notifiableId:     $task->assigned_to_id,
-                    tenantId:         $tenantId,
-                    actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
-                    actionLabel:      'View Task',
-                    deduplicationKey: "task_assigned_{$task->id}",
-                );
-            } catch (\Throwable) {}
-        }
+        foreach ($createdTasks as $entry) {
+            $task         = $entry['task'];
+            $assigneeType = $entry['assignee_type'];
+            $assignee     = $entry['assignee'];
 
-        // After commit: send email notifications (skip self-assign)
-        foreach ($createdTasks as $task) {
-            if ($task->assigned_to_id === $actorId) continue; // don't email yourself
+            // Skip self-assign notification
+            if ($assigneeType === 'tenant_user' && $task->assigned_to_id === $actorId) continue;
 
-            $assignee = $validAssignees->get($task->assigned_to_id);
-            if (!$assignee || !$assignee->email) continue;
+            $notifPriority = $task->priority === 'urgent' ? 'urgent' : ($task->priority === 'high' ? 'high' : 'normal');
+            $notifBody     = "Assigned by {$actorName}." . ($task->due_at ? " Due {$task->due_at->format('M j, Y')}." : '');
 
-            try {
-                Mail::to($assignee->email)
-                    ->queue(new ManualTaskAssignedMail(
-                        assigneeName: $assignee->name,
-                        senderName:   $actorName,
-                        taskTitle:    $task->title,
-                        taskPriority: $task->priority,
-                        dueAt:        $task->due_at?->format('M j, Y'),
-                        taskUrl:      url("/tenant/{$tenantId}/tasks/{$task->id}"),
-                    ));
-            } catch (\Throwable) {}
+            if ($assigneeType === 'tenant_user') {
+                // In-app notification to tenant user
+                try {
+                    $notifSvc->dispatch(
+                        category:         'task',
+                        priority:         $notifPriority,
+                        title:            'New Task: ' . $task->title,
+                        body:             $notifBody,
+                        notifiableType:   'tenant_user',
+                        notifiableId:     $task->assigned_to_id,
+                        tenantId:         $tenantId,
+                        actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
+                        actionLabel:      'View Task',
+                        deduplicationKey: "task_assigned_{$task->id}",
+                    );
+                } catch (\Throwable) {}
+
+                // Email to tenant user
+                if ($assignee->email) {
+                    try {
+                        Mail::to($assignee->email)->queue(new ManualTaskAssignedMail(
+                            assigneeName: $assignee->name,
+                            senderName:   $actorName,
+                            taskTitle:    $task->title,
+                            taskPriority: $task->priority,
+                            dueAt:        $task->due_at?->format('M j, Y'),
+                            taskUrl:      url("/tenant/{$tenantId}/tasks/{$task->id}"),
+                        ));
+                    } catch (\Throwable) {}
+                }
+            } elseif ($assigneeType === 'reseller') {
+                // In-app notification to referrer portal
+                try {
+                    $notifSvc->dispatchToReseller(
+                        resellerId:       (string) $assignee->id,
+                        tenantId:         $tenantId,
+                        category:         'task',
+                        priority:         $notifPriority,
+                        title:            'New Task: ' . $task->title,
+                        body:             $notifBody,
+                        actionUrl:        "/reseller/{$tenantId}/tasks",
+                        actionLabel:      'View Task',
+                        deduplicationKey: "task_assigned_{$task->id}",
+                    );
+                } catch (\Throwable) {}
+
+                // Email to referrer
+                if ($assignee->email) {
+                    try {
+                        Mail::to($assignee->email)->queue(new ManualTaskAssignedMail(
+                            assigneeName: $assignee->name ?? $assignee->email,
+                            senderName:   $actorName,
+                            taskTitle:    $task->title,
+                            taskPriority: $task->priority,
+                            dueAt:        $task->due_at?->format('M j, Y'),
+                            taskUrl:      url("/reseller/{$tenantId}/tasks"),
+                        ));
+                    } catch (\Throwable) {}
+                }
+            }
         }
 
         $selfMsg  = $isSelfAssign ? 'Task created and assigned to you.' : null;
-        $multiMsg = count($createdTasks) === 1
-            ? 'Task created and assignee notified.'
-            : count($createdTasks) . ' tasks created and assignees notified.';
+        $total    = count($createdTasks);
+        $multiMsg = $total === 1 ? 'Task created and assignee notified.' : "{$total} tasks created and assignees notified.";
 
         return response()->json([
-            'created'   => count($createdTasks),
-            'task_ids'  => collect($createdTasks)->pluck('id'),
-            'self_assigned' => $isSelfAssign,
-            'message'   => $selfMsg ?? $multiMsg,
+            'created'      => $total,
+            'task_ids'     => collect($createdTasks)->pluck('task.id'),
+            'self_assigned'=> $isSelfAssign,
+            'message'      => $selfMsg ?? $multiMsg,
         ]);
     }
 
@@ -543,14 +647,21 @@ class TaskController extends Controller
             ->limit(200)
             ->get();
 
-        $assigneeIds = $tasks
-            ->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
+        $tuIds = $tasks->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
+            ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
+        $rsIds = $tasks->filter(fn($t) => $t->assigned_to_type === 'reseller' && $t->assigned_to_id)
             ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
 
-        $assigneeNames = !empty($assigneeIds)
-            ? TenantUser::whereIn('id', $assigneeIds)->get()
-                ->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all()
-            : [];
+        $assigneeNames = array_merge(
+            !empty($tuIds)
+                ? TenantUser::whereIn('id', $tuIds)->get()
+                    ->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all()
+                : [],
+            !empty($rsIds)
+                ? \App\Models\Reseller::whereIn('id', $rsIds)->get()
+                    ->mapWithKeys(fn($r) => [$r->id => ($r->name ?: $r->email)])->all()
+                : [],
+        );
 
         // Three columns: new_tasks (open), processing (in_progress + waiting), completed
         $groups = ['new_tasks' => [], 'processing' => [], 'completed' => []];

@@ -498,4 +498,131 @@ class ResellerPortalController extends Controller
             default                              => [ucfirst(str_replace(['_','.'], ' ', $action)), null, 'deal', 'Activity'],
         };
     }
+
+    // ── Referrer Tasks ────────────────────────────────────────────────────────
+
+    /**
+     * List tasks assigned to this referrer.
+     * HARD RULE: always double-scoped to assigned_to_type='reseller' + assigned_to_id=$reseller->id.
+     * Referrers can NEVER see or manage tasks belonging to other users.
+     */
+    public function tasks(string $tenantId): \Illuminate\View\View
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+        $tab      = request('tab', 'open'); // open | completed
+
+        // HARD RULE base scope — never changes
+        $base = fn() => \App\Models\Task::where('tenant_id', $tenantId)
+            ->where('assigned_to_type', 'reseller')
+            ->where('assigned_to_id', $reseller->id)
+            ->whereNull('deleted_at');
+
+        if ($tab === 'completed') {
+            $tasks = $base()->where('status', 'completed')
+                ->orderByDesc('completed_at')
+                ->paginate(25)->appends(['tab' => 'completed']);
+        } else {
+            $tasks = $base()->whereIn('status', ['open', 'in_progress', 'waiting'])
+                ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
+                ->orderByRaw("CASE WHEN status='in_progress' THEN 0 WHEN status='waiting' THEN 1 ELSE 2 END")
+                ->orderBy('due_at')
+                ->orderByDesc('created_at')
+                ->paginate(25)->appends(['tab' => 'open']);
+        }
+
+        $openCount = $base()->whereIn('status', ['open', 'in_progress', 'waiting'])->count();
+
+        return view('reseller.tasks', compact('reseller', 'tenant', 'tasks', 'tab', 'openCount'));
+    }
+
+    /**
+     * Mark a referrer's own task as completed.
+     * HARD RULE: task must be owned by this reseller in this tenant.
+     */
+    public function taskComplete(Request $request, string $tenantId, string $taskId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = $this->reseller();
+
+        $task = \App\Models\Task::where('tenant_id', $tenantId)
+            ->where('assigned_to_type', 'reseller')
+            ->where('assigned_to_id', $reseller->id)
+            ->whereNull('deleted_at')
+            ->findOrFail($taskId);
+
+        if (!$task->isCompletable()) {
+            return response()->json(['error' => 'Task is already completed.'], 422);
+        }
+
+        app(\App\Services\TaskCompletionService::class)
+            ->complete($task, 'reseller', (string) $reseller->id, $reseller->name ?? $reseller->email);
+
+        try {
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'task',
+                priority:     'normal',
+                title:        'Task completed by Referrer',
+                body:         ($reseller->name ?? $reseller->email) . " completed: \"{$task->title}\".",
+                actionUrl:    "/tenant/{$tenantId}/tasks/{$task->id}",
+                actionLabel:  'View Task',
+                dedupeSuffix: "task_referrer_done_{$task->id}",
+            );
+        } catch (\Throwable) {}
+
+        return response()->json(['status' => 'completed', 'message' => 'Task marked as complete.']);
+    }
+
+    /**
+     * Update status of a referrer's own task (open ↔ in_progress ↔ waiting).
+     * HARD RULE: task must be owned by this reseller in this tenant.
+     * Completion is handled separately by taskComplete(); not allowed here.
+     */
+    public function taskUpdateStatus(Request $request, string $tenantId, string $taskId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = $this->reseller();
+
+        $task = \App\Models\Task::where('tenant_id', $tenantId)
+            ->where('assigned_to_type', 'reseller')
+            ->where('assigned_to_id', $reseller->id)
+            ->whereNull('deleted_at')
+            ->findOrFail($taskId);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:open,in_progress,waiting'],
+        ]);
+
+        $oldStatus = $task->status;
+        $newStatus = $data['status'];
+
+        if ($oldStatus === $newStatus) {
+            return response()->json(['status' => $oldStatus]);
+        }
+
+        if (in_array($oldStatus, ['completed', 'cancelled', 'archived'])) {
+            return response()->json(['error' => 'Cannot reopen a closed task.'], 422);
+        }
+
+        DB::transaction(function () use ($task, $newStatus, $oldStatus, $reseller, $tenantId) {
+            $updateData = ['status' => $newStatus];
+            if ($newStatus === 'in_progress' && !$task->started_at) {
+                $updateData['started_at'] = now();
+            }
+            $task->update($updateData);
+
+            \App\Models\TaskActivity::create([
+                'tenant_id'   => $tenantId,
+                'task_id'     => $task->id,
+                'actor_type'  => 'reseller',
+                'actor_id'    => (string) $reseller->id,
+                'actor_name'  => $reseller->name ?? $reseller->email,
+                'action_type' => 'task_status_changed',
+                'old_values'  => ['status' => $oldStatus],
+                'new_values'  => ['status' => $newStatus],
+                'metadata'    => ['source' => 'referrer_portal'],
+            ]);
+        });
+
+        return response()->json(['status' => $newStatus]);
+    }
 }

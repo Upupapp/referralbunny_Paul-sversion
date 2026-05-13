@@ -145,6 +145,10 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::delete('/partners/splits/{splitId}',[\App\Http\Controllers\ReferrerPartnerController::class, 'removeFromDeal'])->name('partners.remove');
         Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
+        // ── Tasks (Referrer — own tasks only) ────────────────────
+        Route::get('/tasks',                      [ResellerPortalController::class, 'tasks'])->name('tasks');
+        Route::post('/tasks/{taskId}/complete',   [ResellerPortalController::class, 'taskComplete'])->name('tasks.complete');
+        Route::patch('/tasks/{taskId}/status',    [ResellerPortalController::class, 'taskUpdateStatus'])->name('tasks.update-status');
         Route::get('/activity',       [ResellerPortalController::class, 'activityLog'])->name('activity');
         Route::get('/notifications',  [ResellerPortalController::class, 'notifications'])->name('notifications'); // redirects → activity
         Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');

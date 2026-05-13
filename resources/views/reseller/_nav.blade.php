@@ -51,6 +51,23 @@
         session(["rs_activity_seen_" . auth('reseller')->id() => now()->toIso8601String()]);
     }
 
+    // Open task badge for this reseller
+    $_taskBadge = 0;
+    if (!request()->routeIs('reseller.tasks')) {
+        try {
+            $_rsId2 = auth('reseller')->id();
+            $_taskBadge = (int) \App\Models\Task::where('tenant_id', $tid)
+                ->where('assigned_to_type', 'reseller')
+                ->where('assigned_to_id', $_rsId2)
+                ->whereNull('deleted_at')
+                ->whereIn('status', ['open', 'in_progress', 'waiting'])
+                ->count();
+            $_taskBadge = min($_taskBadge, 99);
+        } catch (\Throwable) {
+            $_taskBadge = 0;
+        }
+    }
+
     // Active-group detection
     $_networkActive = request()->routeIs('reseller.partners*')
                    || request()->routeIs('reseller.contacts*');
@@ -248,6 +265,23 @@
 
     </div>
 </div>
+
+{{-- ── My Tasks ─────────────────────────────────────────────── --}}
+<a href="{{ route('reseller.tasks', $tid) }}"
+   class="rs-sidebar-link {{ request()->routeIs('reseller.tasks') ? 'active' : '' }}"
+   @if(request()->routeIs('reseller.tasks')) aria-current="page" @endif>
+    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 17h.01"/>
+    </svg>
+    <span class="flex-1">My Tasks</span>
+    @if($_taskBadge > 0)
+        <span class="min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none shrink-0"
+              style="background:#7B61FF"
+              aria-label="{{ $_taskBadge }} open {{ $_taskBadge === 1 ? 'task' : 'tasks' }}">
+            {{ $_taskBadge > 9 ? '9+' : $_taskBadge }}
+        </span>
+    @endif
+</a>
 
 {{-- ── Activity Log ─────────────────────────────────────────── --}}
 <a href="{{ route('reseller.activity', $tid) }}"
