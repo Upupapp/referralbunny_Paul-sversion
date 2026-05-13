@@ -117,7 +117,7 @@
                     </div>
                     <div><label class="form-label">Deal Value (₱)</label><input type="number" x-model="form.deal_value" class="form-input" placeholder="0" min="0"></div>
                 </div>
-                <div><label class="form-label">Reseller Name *</label><input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned reseller"></div>
+                <div><label class="form-label">Referrer Name *</label><input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned referrer"></div>
                 <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
                 <div class="flex justify-end gap-3">
                     <button @click="showAdd = false; formError = ''" class="btn-secondary">Cancel</button>
@@ -169,7 +169,7 @@ function leadsPage(tenantId, showLocation) {
             if (showLocation && !this.form.province)     { this.formError = 'Province is required.'; return; }
             if (showLocation && !this.form.municipality) { this.formError = 'Municipality / City is required.'; return; }
             if (!this.form.name)         { this.formError = 'Lead name is required.'; return; }
-            if (!this.form.reseller_name){ this.formError = 'Reseller name is required.'; return; }
+            if (!this.form.reseller_name){ this.formError = 'Referrer name is required.'; return; }
             this.saving = true;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';

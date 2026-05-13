@@ -82,11 +82,11 @@
     <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-[#1E1B4B]">Invite Reseller</h3>
+                <h3 class="font-semibold text-[#1E1B4B]">Invite Referrer</h3>
                 <button @click="showAdd = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="form-label">Full Name *</label><input type="text" x-model="form.name" class="form-input" placeholder="Reseller full name"></div>
+                <div><label class="form-label">Full Name *</label><input type="text" x-model="form.name" class="form-input" placeholder="Referrer full name"></div>
                 <div><label class="form-label">Email *</label><input type="email" x-model="form.email" class="form-input" placeholder="reseller@email.com"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="form-label">Phone</label><input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX"></div>

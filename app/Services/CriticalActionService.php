@@ -13,17 +13,17 @@ use Illuminate\Support\Facades\Schema;
  */
 class CriticalActionService
 {
-    // Severity ordering for sorting
-    private const SEVERITY_ORDER = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'info' => 4];
+    // Severity ordering for sorting — 'normal' treated as alias for 'low'
+    private const SEVERITY_ORDER = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'normal' => 3, 'info' => 4];
 
     // ── Public API ─────────────────────────────────────────────────
 
     /**
      * Top N actions for the dashboard widget (admin/manager view).
      */
-    public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false): array
+    public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
     {
-        $all = $this->forTenant($tenantId, ['billing' => $canSeeBilling, 'limit_per_source' => 5]);
+        $all = $this->forTenant($tenantId, ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'limit_per_source' => 5]);
         usort($all, fn($a, $b) =>
             (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
             ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
@@ -38,6 +38,8 @@ class CriticalActionService
     {
         $all = $this->forTenant($tenantId, [
             'billing'          => $filters['can_see_billing'] ?? false,
+            'exports'          => $filters['can_see_exports']  ?? true,
+            'users'            => $filters['can_see_users']    ?? true,
             'limit_per_source' => 50,
             'since'            => $filters['since'] ?? null,
             'until'            => $filters['until'] ?? null,
@@ -167,9 +169,11 @@ class CriticalActionService
 
     private function forTenant(string $tenantId, array $opts = []): array
     {
-        $limitPer    = $opts['limit_per_source'] ?? 10;
-        $since       = $opts['since'] ?? now()->subDays(30);
-        $canBilling  = $opts['billing'] ?? false;
+        $limitPer   = $opts['limit_per_source'] ?? 10;
+        $since      = $opts['since'] ?? now()->subDays(30);
+        $canBilling = $opts['billing']  ?? false;
+        $canExports = $opts['exports']  ?? true;
+        $canUsers   = $opts['users']    ?? true;
 
         $sources = [
             fn() => $this->expiringDeals($tenantId),
@@ -181,12 +185,9 @@ class CriticalActionService
             fn() => $this->failedRollbacks($tenantId),
             fn() => $this->recentLeadHistory($tenantId, $limitPer, $since),
             fn() => $this->importEvents($tenantId, $limitPer),
-            fn() => $this->pendingInvites($tenantId),
-            fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since),
             fn() => $this->unrepliedMessages($tenantId),
             fn() => $this->unreadPartnerMessages($tenantId),
             fn() => $this->recentActivityLogs($tenantId, $limitPer, $since),
-            fn() => $this->pendingExportRequests($tenantId),
             fn() => $this->overdueOpenTasks($tenantId),
             fn() => $this->openRequestFormTasks($tenantId),
             fn() => $this->pendingDefaultAmounts($tenantId),
@@ -194,6 +195,15 @@ class CriticalActionService
             fn() => $this->stalledDeals($tenantId),
             fn() => $this->commissionReviewQueue($tenantId),
         ];
+
+        if ($canUsers) {
+            $sources[] = fn() => $this->pendingInvites($tenantId);
+            $sources[] = fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since);
+        }
+
+        if ($canExports) {
+            $sources[] = fn() => $this->pendingExportRequests($tenantId);
+        }
 
         if ($canBilling) {
             $sources[] = fn() => $this->billingIssues($tenantId);
@@ -799,7 +809,7 @@ class CriticalActionService
                 return $this->make([
                     'type'          => 'stage_move_request_pending',
                     'category'      => 'deal',
-                    'severity'      => $missingCount > 0 ? 'high' : 'normal',
+                    'severity'      => $missingCount > 0 ? 'high' : 'low',
                     'summary'       => $summary,
                     'actor_name'    => $referrerName,
                     'actor_role'    => 'Referrer',
@@ -1199,7 +1209,7 @@ class CriticalActionService
                 return $this->make([
                     'type'          => 'referrer_amount_change',
                     'category'      => 'deal',
-                    'severity'      => 'normal',
+                    'severity'      => 'low',
                     'summary'       => 'Referrer updated deal amount: ' . $r->lead_name,
                     'actor_name'    => $r->actor_name ?? 'Referrer',
                     'actor_role'    => 'Referrer',

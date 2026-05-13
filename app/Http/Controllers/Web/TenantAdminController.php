@@ -121,10 +121,20 @@ class TenantAdminController extends Controller
             $canSeeBilling = true;
         }
 
+        // Manager-scoped category gates for dashboard widget
+        $canSeeExports = true;
+        $canSeeUsers   = true;
+        if (isset($actingMembership) && $actingMembership && $actingMembership->role === 'manager') {
+            $permSvc       = app(\App\Services\PermissionService::class);
+            $canSeeExports = $permSvc->can($actingMembership, 'manage_exports')
+                          || $permSvc->can($actingMembership, 'manage_deals');
+            $canSeeUsers   = $permSvc->can($actingMembership, 'manage_team');
+        }
+
         // Critical actions for dashboard widget — wrapped so any DB issue never breaks the dashboard
         try {
             $criticalActions = app(CriticalActionService::class)
-                ->dashboardSummary($tenantId, 6, $canSeeBilling);
+                ->dashboardSummary($tenantId, 6, $canSeeBilling, $canSeeExports, $canSeeUsers);
         } catch (\Throwable) {
             $criticalActions = [];
         }

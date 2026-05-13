@@ -36,6 +36,9 @@ class NotificationsController extends Controller
             Notification::where('notifiable_type', $type)
                 ->where('notifiable_id', $id)
                 ->where('is_read', false)
+                ->where(fn($q) =>
+                    $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')
+                )
                 ->update(['is_read' => true]);
         }
         return response()->json(['ok' => true]);
@@ -44,9 +47,13 @@ class NotificationsController extends Controller
     private function findUserNotification(string $notificationId): Notification
     {
         [$type, $id] = $this->resolveCurrentUser();
+        $tenantId = request()->route('tenantId');
         return Notification::where('id', $notificationId)
             ->where('notifiable_type', $type)
             ->where('notifiable_id', $id)
+            ->when($tenantId, fn($q) =>
+                $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id'))
+            )
             ->firstOrFail();
     }
 

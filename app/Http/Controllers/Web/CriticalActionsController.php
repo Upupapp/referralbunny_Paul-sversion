@@ -35,20 +35,31 @@ class CriticalActionsController extends Controller
             abort(403, 'Access to the critical actions list requires Admin or Manager access.');
         }
 
+        $isSuperAdmin = Auth::guard('web')->check();
+
         $canSeeBilling = $membership
             ? $this->permissions->can($membership, 'manage_billing_and_subscription')
-            : (bool) Auth::guard('web')->check();
+            : $isSuperAdmin;
+
+        // Manager-scoped category gates: what categories this user may see
+        $canSeeUsers   = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
+            || $this->permissions->can($membership, 'manage_team');
+        $canSeeExports = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
+            || $this->permissions->can($membership, 'manage_exports')
+            || $this->permissions->can($membership, 'manage_deals');
 
         $filters = [
-            'search'          => $request->input('search'),
-            'severity'        => $request->input('severity'),
-            'category'        => $request->input('category'),
-            'page'            => (int) $request->input('page', 1),
-            'can_see_billing' => $canSeeBilling,
-            'since'           => $request->filled('since')
+            'search'           => $request->input('search'),
+            'severity'         => $request->input('severity'),
+            'category'         => $request->input('category'),
+            'page'             => (int) $request->input('page', 1),
+            'can_see_billing'  => $canSeeBilling,
+            'can_see_users'    => $canSeeUsers,
+            'can_see_exports'  => $canSeeExports,
+            'since'            => $request->filled('since')
                 ? now()->parse($request->input('since'))->startOfDay()
                 : null,
-            'until'           => $request->filled('until')
+            'until'            => $request->filled('until')
                 ? now()->parse($request->input('until'))->endOfDay()
                 : null,
         ];
