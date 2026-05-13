@@ -309,7 +309,7 @@ class TaskController extends Controller
         ]);
     }
 
-    // ── List ─────────────────────────────────────────────────────────────────
+    // ── List / Kanban index ───────────────────────────────────────────────────
 
     public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
@@ -318,7 +318,8 @@ class TaskController extends Controller
 
         $tab            = $request->query('tab', 'mine');
         $status         = $request->query('status');
-        $assigneeFilter = $request->query('assignee');     // admin-only filter
+        $assigneeFilter = $request->query('assignee');
+        $view           = in_array($request->query('view'), ['list','kanban']) ? $request->query('view') : 'list';
         $isAdmin        = Auth::guard('web')->check()
             || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
         $query          = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
@@ -331,47 +332,274 @@ class TaskController extends Controller
             $query->where('status', 'completed');
             if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'overdue') {
-            $query->whereNotIn('status', ['completed','cancelled','archived'])
-                  ->where('due_at', '<', now());
+            $query->whereNotIn('status', ['completed','cancelled','archived'])->where('due_at', '<', now());
             if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'all') {
-            if (!$isAdmin) {
-                $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
-            }
+            if (!$isAdmin) $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         }
 
         if ($status) $query->where('status', $status);
-
-        // Admin-only: filter by assigned user
         if ($isAdmin && $assigneeFilter && $assigneeFilter !== 'all') {
-            $query->where('assigned_to_id', $assigneeFilter)
-                  ->where('assigned_to_type', 'tenant_user');
+            $query->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user');
         }
 
         $tasks = $query->orderByRaw("CASE WHEN status='open' THEN 0 WHEN status='in_progress' THEN 1 ELSE 2 END")
                        ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
-                       ->orderBy('due_at')
-                       ->orderByDesc('created_at')
-                       ->paginate(30)
-                       ->withQueryString();
+                       ->orderBy('due_at')->orderByDesc('created_at')
+                       ->paginate(30)->withQueryString();
 
-        // Build assignee list for admin filter dropdown
         $assigneeOptions = [];
         if ($isAdmin) {
             $assigneeOptions = DB::table('tenant_users as tu')
                 ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
-                ->where('tm.tenant_id', $tenantId)
-                ->where('tm.status', 'active')
+                ->where('tm.tenant_id', $tenantId)->where('tm.status', 'active')
                 ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tm.role")
-                ->orderBy('tu.first_name')
-                ->get()
-                ->toArray();
+                ->orderBy('tu.first_name')->get()->toArray();
+        }
+
+        // Build kanban data (used when view=kanban, passed as JSON for Alpine)
+        $kanbanColumns        = [];
+        $completionEmailEnabled = false;
+        if ($view === 'kanban') {
+            $kanbanColumns        = $this->buildKanbanData($tenantId, $actorType, $actorId, $isAdmin, $tab, $assigneeFilter);
+            $completionEmailEnabled = $this->tenantCompletionEmailEnabled($tenantId);
         }
 
         return view('tenant.tasks.index', compact(
             'tenant', 'tasks', 'tab', 'actorId', 'actorName',
-            'isAdmin', 'assigneeOptions', 'assigneeFilter'
+            'isAdmin', 'assigneeOptions', 'assigneeFilter',
+            'view', 'kanbanColumns', 'completionEmailEnabled'
         ));
+    }
+
+    // ── Update Status (Kanban drag-and-drop + quick actions) ─────────────────
+
+    public function updateStatus(Request $request, string $tenantId, string $taskId, TaskCompletionService $svc): \Illuminate\Http\JsonResponse
+    {
+        $task = Task::where('tenant_id', $tenantId)->whereNull('deleted_at')->findOrFail($taskId);
+        $this->authorizeComplete($task, $tenantId);
+
+        $data = $request->validate([
+            'status'            => ['required', 'in:open,in_progress,waiting,completed'],
+            'note'              => 'nullable|string|max:1000',
+            'send_email'        => 'nullable|boolean',
+            'subject'           => 'nullable|string|max:150',
+            'body'              => 'nullable|string|max:20000',
+            'attachments'       => 'nullable|array|max:5',
+            'attachments.*'     => 'file|max:51200|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
+            'client_request_id' => 'nullable|string|max:64',
+        ]);
+
+        $newStatus = $data['status'];
+        $oldStatus = $task->status;
+
+        if ($newStatus === $oldStatus) {
+            return response()->json(['message' => 'Status unchanged.', 'status' => $oldStatus]);
+        }
+
+        [$actorType, $actorId, $actorName] = $this->resolveActorFull();
+        $isAdmin = Auth::guard('web')->check() || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+
+        // Block reopening completed/cancelled/archived for non-admins
+        if (in_array($oldStatus, ['completed', 'cancelled', 'archived']) && !$isAdmin) {
+            return response()->json(['error' => 'You cannot reopen a completed or closed task.'], 403);
+        }
+
+        // Completion path — delegate to TaskCompletionService
+        if ($newStatus === 'completed') {
+            if (!$task->isCompletable()) {
+                return response()->json(['error' => 'Task is already completed or cannot be completed.'], 422);
+            }
+
+            $wantsEmail     = filter_var($data['send_email'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $requestorEmail = $task->resolveRequestorEmail();
+            if ($requestorEmail && !filter_var($requestorEmail, FILTER_VALIDATE_EMAIL)) {
+                $requestorEmail = null;
+            }
+            $sendEmail = $wantsEmail && !empty($requestorEmail);
+
+            if ($sendEmail) {
+                if (empty(trim($data['subject'] ?? ''))) {
+                    return response()->json(['error' => 'Email subject is required when sending a reply.'], 422);
+                }
+                if (empty(trim($data['body'] ?? ''))) {
+                    return response()->json(['error' => 'Email body is required when sending a reply.'], 422);
+                }
+            }
+
+            $attachmentPaths = !empty($data['attachments'])
+                ? $svc->storeAttachments($tenantId, $taskId, $data['attachments'])
+                : [];
+
+            $result = $svc->completeWithResponse(
+                task:            $task,
+                actorType:       $actorType,
+                actorId:         $actorId,
+                actorName:       $actorName,
+                subject:         $data['subject'] ?? null,
+                body:            $data['body'] ?? null,
+                attachmentPaths: $attachmentPaths,
+                clientRequestId: $data['client_request_id'] ?? null,
+                sendEmail:       $sendEmail,
+            );
+
+            $msg = match($result['email_status'] ?? 'skipped') {
+                'sent'    => 'Task completed and reply sent.',
+                'skipped' => 'Task marked as done.',
+                default   => 'Task completed. Email could not be sent.',
+            };
+
+            return response()->json([
+                'status'       => 'completed',
+                'email_status' => $result['email_status'] ?? 'skipped',
+                'message'      => $msg,
+                'card'         => $this->buildTaskCard($task->fresh(), $tenantId, $actorType, $actorId),
+            ]);
+        }
+
+        // Non-completion status change (open / in_progress / waiting)
+        DB::transaction(function () use ($task, $newStatus, $oldStatus, $actorType, $actorId, $actorName, $tenantId, $data) {
+            $updateData = ['status' => $newStatus];
+            if ($newStatus === 'in_progress' && !$task->started_at) {
+                $updateData['started_at'] = now();
+            }
+            $task->update($updateData);
+
+            TaskActivity::create([
+                'tenant_id'   => $tenantId,
+                'task_id'     => $task->id,
+                'actor_type'  => $actorType,
+                'actor_id'    => $actorId,
+                'actor_name'  => $actorName,
+                'action_type' => 'task_status_changed',
+                'old_values'  => ['status' => $oldStatus],
+                'new_values'  => ['status' => $newStatus, 'note' => $data['note'] ?? null],
+                'metadata'    => ['source' => 'kanban'],
+            ]);
+        });
+
+        $statusLabel = ucwords(str_replace('_', ' ', $newStatus));
+
+        return response()->json([
+            'status'  => $newStatus,
+            'message' => "Task moved to {$statusLabel}.",
+            'card'    => $this->buildTaskCard($task->fresh(), $tenantId, $actorType, $actorId),
+        ]);
+    }
+
+    // ── Build Kanban column data ───────────────────────────────────────────────
+
+    private function buildKanbanData(string $tenantId, string $actorType, string $actorId, bool $isAdmin, string $tab, ?string $assigneeFilter): array
+    {
+        $query = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
+
+        // Apply same scope as list view
+        if ($tab === 'mine' || (!$isAdmin)) {
+            $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
+        } elseif ($tab === 'assigned_by_me') {
+            $query->where('assigned_by_type', $actorType)->where('assigned_by_id', $actorId);
+        }
+
+        if ($isAdmin && $assigneeFilter && $assigneeFilter !== 'all') {
+            $query->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user');
+        }
+
+        // Kanban shows open/in_progress/waiting/completed; hide cancelled+archived
+        $query->whereNotIn('status', ['cancelled', 'archived']);
+
+        $tasks = $query
+            ->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
+            ->orderBy('due_at')
+            ->orderByDesc('created_at')
+            ->limit(200)
+            ->get();
+
+        // Batch-resolve assignee names (avoids N+1)
+        $assigneeIds = $tasks
+            ->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
+            ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
+
+        $assigneeNames = !empty($assigneeIds)
+            ? TenantUser::whereIn('id', $assigneeIds)->get()
+                ->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all()
+            : [];
+
+        $groups = ['open' => [], 'in_progress' => [], 'waiting' => [], 'completed' => []];
+
+        foreach ($tasks as $task) {
+            $key = $task->status;
+            if (!isset($groups[$key])) continue;
+            if ($key === 'completed' && count($groups['completed']) >= 50) continue;
+
+            $assigneeName     = $task->assigned_to_id ? ($assigneeNames[$task->assigned_to_id] ?? null) : null;
+            $parts            = $assigneeName ? explode(' ', trim($assigneeName)) : [];
+            $assigneeInitials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: '--';
+            $isAssignee       = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
+
+            $groups[$key][] = [
+                'id'                   => $task->id,
+                'title'                => $task->title,
+                'status'               => $task->status,
+                'priority'             => $task->priority,
+                'category'             => $task->category ?? 'manual',
+                'source_type'          => $task->source_type,
+                'requestor_name'       => $task->requestor_name,
+                'assignee_name'        => $assigneeName,
+                'assignee_initials'    => $assigneeInitials,
+                'due_at'               => $task->due_at?->format('M j, Y'),
+                'due_at_raw'           => $task->due_at?->toDateString(),
+                'is_overdue'           => $task->isOverdue(),
+                'created_ago'          => $task->created_at->diffForHumans(),
+                'is_request_form_task' => $task->category === 'request_form',
+                'url'                  => "/tenant/{$tenantId}/tasks/{$task->id}",
+                'can_update_status'    => $isAdmin || $isAssignee,
+                'can_complete'         => ($isAdmin || $isAssignee) && $task->isCompletable(),
+            ];
+        }
+
+        return [
+            ['key' => 'open',        'label' => 'Open',        'tasks' => $groups['open'],        'count' => count($groups['open'])],
+            ['key' => 'in_progress', 'label' => 'In Progress', 'tasks' => $groups['in_progress'], 'count' => count($groups['in_progress'])],
+            ['key' => 'waiting',     'label' => 'Waiting',     'tasks' => $groups['waiting'],     'count' => count($groups['waiting'])],
+            ['key' => 'completed',   'label' => 'Completed',   'tasks' => $groups['completed'],   'count' => count($groups['completed'])],
+        ];
+    }
+
+    private function buildTaskCard(Task $task, string $tenantId, string $actorType, string $actorId): array
+    {
+        $isAdmin    = Auth::guard('web')->check() || in_array(TenantContext::role(), ['admin','owner','manager']);
+        $isAssignee = $task->assigned_to_type === $actorType && $task->assigned_to_id === $actorId;
+
+        $assigneeName     = null;
+        $assigneeInitials = '--';
+        if ($task->assigned_to_id && $task->assigned_to_type === 'tenant_user') {
+            $u = TenantUser::find($task->assigned_to_id);
+            $assigneeName = $u?->full_name;
+            if ($assigneeName) {
+                $parts = explode(' ', trim($assigneeName));
+                $assigneeInitials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: '--';
+            }
+        }
+
+        return [
+            'id'                   => $task->id,
+            'title'                => $task->title,
+            'status'               => $task->status,
+            'priority'             => $task->priority,
+            'category'             => $task->category ?? 'manual',
+            'source_type'          => $task->source_type,
+            'requestor_name'       => $task->requestor_name,
+            'assignee_name'        => $assigneeName,
+            'assignee_initials'    => $assigneeInitials,
+            'due_at'               => $task->due_at?->format('M j, Y'),
+            'due_at_raw'           => $task->due_at?->toDateString(),
+            'is_overdue'           => $task->isOverdue(),
+            'created_ago'          => $task->created_at->diffForHumans(),
+            'is_request_form_task' => $task->category === 'request_form',
+            'url'                  => "/tenant/{$tenantId}/tasks/{$task->id}",
+            'can_update_status'    => $isAdmin || $isAssignee,
+            'can_complete'         => ($isAdmin || $isAssignee) && $task->isCompletable(),
+        ];
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────
