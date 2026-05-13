@@ -357,18 +357,25 @@ class TaskController extends Controller
                 ->orderBy('tu.first_name')->get()->toArray();
         }
 
-        // Build kanban data (used when view=kanban, passed as JSON for Alpine)
-        $kanbanColumns        = [];
+        // Build kanban data (passed as JSON for Alpine when view=kanban)
+        $kanbanColumns          = [];
+        $responsesColumns       = [];
         $completionEmailEnabled = false;
+
         if ($view === 'kanban') {
-            $kanbanColumns        = $this->buildKanbanData($tenantId, $actorType, $actorId, $isAdmin, $tab, $assigneeFilter);
+            $kanbanColumns          = $this->buildKanbanData($tenantId, $actorType, $actorId, $isAdmin, $tab, $assigneeFilter);
             $completionEmailEnabled = $this->tenantCompletionEmailEnabled($tenantId);
+        }
+
+        // Responses tab always loads regardless of view mode
+        if ($tab === 'responses') {
+            $responsesColumns = $this->buildResponsesData($tenantId, $actorType, $actorId, $isAdmin);
         }
 
         return view('tenant.tasks.index', compact(
             'tenant', 'tasks', 'tab', 'actorId', 'actorName',
             'isAdmin', 'assigneeOptions', 'assigneeFilter',
-            'view', 'kanbanColumns', 'completionEmailEnabled'
+            'view', 'kanbanColumns', 'responsesColumns', 'completionEmailEnabled'
         ));
     }
 
@@ -493,7 +500,6 @@ class TaskController extends Controller
     {
         $query = Task::where('tenant_id', $tenantId)->whereNull('deleted_at');
 
-        // Apply same scope as list view
         if ($tab === 'mine' || (!$isAdmin)) {
             $query->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId);
         } elseif ($tab === 'assigned_by_me') {
@@ -504,7 +510,6 @@ class TaskController extends Controller
             $query->where('assigned_to_id', $assigneeFilter)->where('assigned_to_type', 'tenant_user');
         }
 
-        // Kanban shows open/in_progress/waiting/completed; hide cancelled+archived
         $query->whereNotIn('status', ['cancelled', 'archived']);
 
         $tasks = $query
@@ -514,7 +519,6 @@ class TaskController extends Controller
             ->limit(200)
             ->get();
 
-        // Batch-resolve assignee names (avoids N+1)
         $assigneeIds = $tasks
             ->filter(fn($t) => $t->assigned_to_type === 'tenant_user' && $t->assigned_to_id)
             ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
@@ -524,11 +528,17 @@ class TaskController extends Controller
                 ->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all()
             : [];
 
-        $groups = ['open' => [], 'in_progress' => [], 'waiting' => [], 'completed' => []];
+        // Three columns: new_tasks (open), processing (in_progress + waiting), completed
+        $groups = ['new_tasks' => [], 'processing' => [], 'completed' => []];
 
         foreach ($tasks as $task) {
-            $key = $task->status;
-            if (!isset($groups[$key])) continue;
+            $key = match($task->status) {
+                'open'                 => 'new_tasks',
+                'in_progress','waiting'=> 'processing',
+                'completed'            => 'completed',
+                default                => null,
+            };
+            if (!$key) continue;
             if ($key === 'completed' && count($groups['completed']) >= 50) continue;
 
             $assigneeName     = $task->assigned_to_id ? ($assigneeNames[$task->assigned_to_id] ?? null) : null;
@@ -558,10 +568,63 @@ class TaskController extends Controller
         }
 
         return [
-            ['key' => 'open',        'label' => 'Open',        'tasks' => $groups['open'],        'count' => count($groups['open'])],
-            ['key' => 'in_progress', 'label' => 'In Progress', 'tasks' => $groups['in_progress'], 'count' => count($groups['in_progress'])],
-            ['key' => 'waiting',     'label' => 'Waiting',     'tasks' => $groups['waiting'],     'count' => count($groups['waiting'])],
-            ['key' => 'completed',   'label' => 'Completed',   'tasks' => $groups['completed'],   'count' => count($groups['completed'])],
+            ['key' => 'new_tasks',  'label' => 'New Tasks',        'status_for_drop' => 'open',        'tasks' => $groups['new_tasks'],  'count' => count($groups['new_tasks'])],
+            ['key' => 'processing', 'label' => 'Processing Tasks',  'status_for_drop' => 'in_progress', 'tasks' => $groups['processing'], 'count' => count($groups['processing'])],
+            ['key' => 'completed',  'label' => 'Completed Tasks',   'status_for_drop' => 'completed',   'tasks' => $groups['completed'],  'count' => count($groups['completed'])],
+        ];
+    }
+
+    private function buildResponsesData(string $tenantId, string $actorType, string $actorId, bool $isAdmin): array
+    {
+        $query = \App\Models\RequestFormSubmission::where('tenant_id', $tenantId)
+            ->with(['form:id,title', 'tasks' => fn($q) => $q->whereNull('deleted_at')->orderByDesc('created_at')->limit(1)])
+            ->orderByDesc('submitted_at');
+
+        if (!$isAdmin) {
+            // Non-admins only see submissions where a linked task is assigned to them
+            $myTaskSourceIds = Task::where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('assigned_to_type', $actorType)
+                ->where('assigned_to_id', $actorId)
+                ->where('source_type', 'request_form_submission')
+                ->pluck('source_id')
+                ->toArray();
+            $query->whereIn('id', $myTaskSourceIds);
+        }
+
+        $submissions = $query->limit(150)->get();
+
+        $groups = ['new' => [], 'processing' => [], 'completed' => []];
+
+        foreach ($submissions as $sub) {
+            $task       = $sub->tasks->first();
+            $taskStatus = $task?->status;
+            $col = match(true) {
+                $taskStatus === 'completed'                       => 'completed',
+                in_array($taskStatus, ['in_progress','waiting'])  => 'processing',
+                $taskStatus === 'open'                            => 'processing',
+                default                                           => 'new',
+            };
+
+            $groups[$col][] = [
+                'id'             => $sub->id,
+                'form_title'     => $sub->form?->title ?? 'Untitled Form',
+                'submitter_name' => $sub->submitter_name ?: ($sub->submitter_email ?: 'Anonymous'),
+                'submitter_email'=> $sub->submitter_email,
+                'submitted_ago'  => $sub->submitted_at?->diffForHumans() ?? $sub->created_at->diffForHumans(),
+                'status'         => $sub->status ?? 'pending',
+                'task_id'        => $task?->id,
+                'task_title'     => $task?->title,
+                'task_status'    => $taskStatus,
+                'task_url'       => $task ? "/tenant/{$tenantId}/tasks/{$task->id}" : null,
+                'has_task'       => (bool) $task,
+            ];
+        }
+
+        return [
+            ['key' => 'new',        'label' => 'New Requests',     'items' => $groups['new'],        'count' => count($groups['new'])],
+            ['key' => 'processing', 'label' => 'In Progress',       'items' => $groups['processing'], 'count' => count($groups['processing'])],
+            ['key' => 'completed',  'label' => 'Resolved',          'items' => $groups['completed'],  'count' => count($groups['completed'])],
         ];
     }
 
