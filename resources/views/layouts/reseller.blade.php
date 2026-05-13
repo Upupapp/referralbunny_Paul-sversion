@@ -311,16 +311,38 @@
 </div>
 
 {{-- Toast --}}
-<div x-data="{ toasts: [] }"
-     @show-toast.window="toasts.push({...$event.detail, _id: Date.now()}); setTimeout(() => toasts.shift(), 4000)"
+<div x-data="{ toasts: [], add(d){ const id=Date.now()+Math.random(); this.toasts.push({...d,id}); setTimeout(()=>this.remove(id), d.duration||4000); }, remove(id){ this.toasts=this.toasts.filter(t=>t.id!==id); } }"
+     @show-toast.window="add($event.detail)"
      aria-live="polite"
      aria-atomic="true"
-     class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none">
-    <template x-for="(t, i) in toasts" :key="t._id ?? i">
-        <div class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium pointer-events-auto"
+     class="fixed bottom-5 right-5 z-[200] flex flex-col gap-2 items-end pointer-events-none"
+     style="max-width:360px">
+    <template x-for="toast in toasts" :key="toast.id">
+        <div class="pointer-events-auto flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl shadow-2xl text-sm font-medium"
              role="alert"
-             :class="t.type === 'success' ? 'bg-[#0D9488] text-white' : (t.type === 'warning' ? 'bg-orange-500 text-white' : 'bg-red-500 text-white')"
-             x-text="t.message"></div>
+             :class="{
+                 'bg-emerald-600 text-white': toast.type === 'success',
+                 'bg-red-600 text-white':     toast.type === 'error',
+                 'bg-orange-500 text-white':  toast.type === 'warning',
+                 'bg-[#0D9488] text-white':   toast.type === 'info',
+             }"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="opacity-0 translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-x-0"
+             x-transition:leave-end="opacity-0 translate-x-4">
+            <div class="shrink-0">
+                <svg x-show="toast.type==='success'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                <svg x-show="toast.type==='error'"   class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                <svg x-show="toast.type==='warning'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <svg x-show="toast.type==='info'"    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="flex-1 leading-relaxed" x-text="toast.message"></span>
+            <button @click="remove(toast.id)" class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
     </template>
 </div>
 

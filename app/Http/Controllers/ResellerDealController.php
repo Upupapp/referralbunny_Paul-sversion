@@ -629,7 +629,7 @@ class ResellerDealController extends Controller
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'high',
-                title:        '⚠️ Archive approval needed: ' . $lead->name,
+                title:        'Archive approval needed: ' . $lead->name,
                 body:         $reseller->name . ' wants to archive "' . $lead->name . '". Reason: ' . \Illuminate\Support\Str::limit($data['reason'], 120),
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'Review & Decide',
@@ -1047,16 +1047,26 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
 
         } else {
-            // Not found — send referrer invite by email.
-            // Direct to the admin's reseller invite flow so the contact gets a proper setup link.
+            // Not found — create a pending Reseller record and send a proper setup invite.
+            // /reseller/setup?token={token} is the correct activation URL (not /reseller/register).
             try {
-                $tenant    = Tenant::find($tenantId);
-                $setupUrl  = url("/reseller/register?tenant={$tenantId}&invite_email=" . urlencode($email)
-                    . '&deal=' . urlencode($lead->name));
+                $inviteToken = \Illuminate\Support\Str::random(64);
+                $tenant      = Tenant::find($tenantId);
+
+                $newReseller = Reseller::create([
+                    'tenant_id'   => $tenantId,
+                    'name'        => $displayName !== $email ? $displayName : $email,
+                    'email'       => $email,
+                    'status'      => 'invited',
+                    'setup_token' => $inviteToken,
+                ]);
+
+                $setupUrl = url("/reseller/setup?token={$inviteToken}");
+
                 Mail::to($email)->send(new ResellerInvitation(
-                    resellerName:  $email,
+                    resellerName:  $newReseller->name,
                     resellerEmail: $email,
-                    tenantName:    $tenant->name ?? 'ReferralBunny',
+                    tenantName:    $tenant?->name ?? 'ReferralBunny',
                     setupUrl:      $setupUrl,
                     dealName:      $lead->name,
                     dealCount:     1,
@@ -1135,13 +1145,6 @@ class ResellerDealController extends Controller
 
         DB::beginTransaction();
         try {
-            $approval->update([
-                'status'       => 'approved',
-                'reviewer_note'=> $data['reviewer_note'] ?? null,
-                'approved_at'  => now(),
-            ]);
-
-            // SWEEP — capture reviewer identity for audit trail
             $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
             $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
 
