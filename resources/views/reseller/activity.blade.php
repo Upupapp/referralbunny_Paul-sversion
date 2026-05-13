@@ -3,7 +3,7 @@
 @section('nav') @include('reseller._nav') @endsection
 
 @section('content')
-<div class="max-w-2xl mx-auto space-y-4">
+<div class="max-w-2xl mx-auto space-y-4" x-data="{ navigating: false }">
 
     {{-- Header --}}
     <div class="flex items-start justify-between gap-3">
@@ -24,9 +24,10 @@
         'system'     => 'System',
     ];
     @endphp
-    <div class="flex gap-2 flex-wrap">
+    <div class="flex gap-2 flex-wrap items-center">
         @foreach($filters as $key => $label)
         <a href="{{ route('reseller.activity', $tenant->id) }}?filter={{ $key }}"
+           @click="navigating = true"
            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all
                   {{ $filter === $key
                        ? 'text-white shadow-sm'
@@ -35,10 +36,34 @@
             {{ $label }}
         </a>
         @endforeach
+        {{-- Loading indicator shown while navigating --}}
+        <span x-show="navigating" x-cloak class="flex items-center gap-1.5 text-xs text-gray-400 ml-1">
+            <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Loading…
+        </span>
+    </div>
+
+    {{-- Skeleton loader while filter navigating --}}
+    <div x-show="navigating" x-cloak
+         class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+        @for($i = 0; $i < 5; $i++)
+        <div class="flex items-start gap-3.5 px-5 py-4 animate-pulse">
+            <div class="w-8 h-8 rounded-xl bg-gray-100 shrink-0"></div>
+            <div class="flex-1 space-y-2 py-0.5">
+                <div class="h-3 bg-gray-200 rounded-full w-3/5"></div>
+                <div class="h-2.5 bg-gray-100 rounded-full w-4/5"></div>
+                <div class="h-2 bg-gray-100 rounded-full w-24"></div>
+            </div>
+        </div>
+        @endfor
     </div>
 
     {{-- Activity list --}}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+         x-show="!navigating">
 
         @if($paged->isEmpty())
         <div class="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -109,7 +134,8 @@
                     @endif
 
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="text-[10px] text-gray-400">{{ $item['time_ago'] }}</span>
+                        <span class="text-[10px] text-gray-400"
+                              title="{{ $item['time_fmt'] ?? '' }}">{{ $item['time_ago'] }}</span>
                         <span class="w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
                         <span class="text-[10px] text-gray-400">{{ $item['category'] }}</span>
                     </div>
@@ -117,7 +143,7 @@
 
                 {{-- Deal link --}}
                 @if($item['lead_id'])
-                <a href="{{ route('reseller.deals', $tenant->id) }}#{{ $item['lead_id'] }}"
+                <a href="{{ route('reseller.deals.show', [$tenant->id, $item['lead_id']]) }}"
                    class="text-[10px] font-semibold shrink-0 mt-1 transition-colors hover:opacity-70"
                    style="color:#0D9488" title="View deal">
                     View →

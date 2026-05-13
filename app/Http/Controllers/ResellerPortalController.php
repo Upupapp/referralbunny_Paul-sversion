@@ -268,10 +268,18 @@ class ResellerPortalController extends Controller
         // Build activity from two sources then merge
         $items = collect();
 
-        // ── Source 1: lead_history (stage changes, status updates) ────────
-        if (in_array($filter, ['all', 'deals']) && count($leadIds) > 0) {
+        // ── Source 1: lead_history (stage changes, status updates, commission) ─
+        // 'commission' filter also pulls lead_history rows with category commission/financial
+        $lhCategories = match($filter) {
+            'commission' => ['commission', 'financial'],
+            'all', 'deals' => null, // null = no category filter
+            default => null,
+        };
+        $lhShouldRun = in_array($filter, ['all', 'deals', 'commission']) && count($leadIds) > 0;
+
+        if ($lhShouldRun) {
             try {
-                $rows = DB::table('lead_history')
+                $lhQuery = DB::table('lead_history')
                     ->leftJoin('leads', 'lead_history.lead_id', '=', 'leads.id')
                     ->where('lead_history.tenant_id', $tenantId)
                     ->whereIn('lead_history.lead_id', $leadIds)
@@ -287,7 +295,13 @@ class ResellerPortalController extends Controller
                         'lead_history.created_at',
                         'leads.name as lead_name',
                         'leads.deal_value',
-                    )
+                    );
+
+                if ($lhCategories !== null) {
+                    $lhQuery->whereIn('lead_history.category', $lhCategories);
+                }
+
+                $rows = $lhQuery
                     ->orderByDesc('lead_history.created_at')
                     ->limit(300)
                     ->get();
@@ -367,9 +381,12 @@ class ResellerPortalController extends Controller
         // Humanise timestamps
         $paged = $paged->map(function ($item) {
             try {
-                $item['time_ago'] = \Carbon\Carbon::parse($item['created_at'])->diffForHumans();
+                $dt = \Carbon\Carbon::parse($item['created_at']);
+                $item['time_ago'] = $dt->diffForHumans();
+                $item['time_fmt'] = $dt->format('M j, Y g:i A');
             } catch (\Throwable) {
                 $item['time_ago'] = '—';
+                $item['time_fmt'] = '';
             }
             return $item;
         });
@@ -395,6 +412,18 @@ class ResellerPortalController extends Controller
             $status = ucfirst($new['status']);
             return ["Status changed to {$status}", "By {$actor}{$role}"];
         }
+        if ($category === 'commission' || str_contains($action, 'commission')) {
+            $status = $new['status'] ?? null;
+            if ($status === 'locked') return ['Commission approved', "By {$actor}{$role}"];
+            if ($status === 'paid')   return ['Commission paid',     "By {$actor}{$role}"];
+            return [ucfirst(str_replace(['_', '.'], ' ', $action)), "By {$actor}{$role}"];
+        }
+        if ($category === 'financial' || str_contains($action, 'financial')) {
+            return ['Contract value updated', "By {$actor}{$role}"];
+        }
+        if ($category === 'partner') {
+            return [ucfirst(str_replace(['_', '.'], ' ', $action)), "By {$actor}{$role}"];
+        }
         if (str_contains($action, 'comment')) {
             return ['Comment added on deal', "By {$actor}{$role}"];
         }
@@ -407,10 +436,12 @@ class ResellerPortalController extends Controller
 
     private function leadHistoryIconType(?string $category, string $action): string
     {
-        if (str_contains($action, 'stage') || str_contains((string)$category, 'stage')) return 'stage';
-        if (str_contains($action, 'status'))                                              return 'status';
-        if (str_contains($action, 'comment'))                                             return 'comment';
-        if (str_contains($action, 'extension'))                                           return 'extension';
+        if (str_contains($action, 'stage') || str_contains((string)$category, 'stage'))       return 'stage';
+        if (str_contains($action, 'status'))                                                    return 'status';
+        if (str_contains($action, 'comment'))                                                   return 'comment';
+        if (str_contains($action, 'extension'))                                                 return 'extension';
+        if (in_array($category, ['commission', 'financial']) || str_contains($action, 'commission')) return 'commission';
+        if ($category === 'partner')                                                            return 'commission';
         return 'deal';
     }
 

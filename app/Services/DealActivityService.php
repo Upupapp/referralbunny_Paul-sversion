@@ -249,7 +249,7 @@ class DealActivityService
     {
         if (Auth::guard('tenant')->check()) {
             $u = Auth::guard('tenant')->user();
-            return [$u->name ?? $u->email ?? 'Tenant Admin', 'Tenant Admin'];
+            return [$u->full_name ?? $u->email ?? 'Tenant Admin', 'Tenant Admin'];
         }
         if (Auth::guard('web')->check()) {
             $u = Auth::guard('web')->user();

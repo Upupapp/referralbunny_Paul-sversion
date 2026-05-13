@@ -12,6 +12,45 @@
         $_rsUnread = 0;
     }
 
+    // New activity badge — count events since last time this reseller visited the activity log
+    $_activityBadge = 0;
+    if (!request()->routeIs('reseller.activity')) {
+        try {
+            $_rsId      = auth('reseller')->id();
+            $_lastSeen  = session("rs_activity_seen_{$_rsId}", now()->subHours(24)->toIso8601String());
+            $_leadIds   = \Illuminate\Support\Facades\DB::table('leads')
+                ->where('tenant_id', $tid)
+                ->where('reseller_name', auth('reseller')->user()?->name)
+                ->pluck('id')
+                ->map(fn($x) => (string) $x)
+                ->toArray();
+
+            if (count($_leadIds) > 0) {
+                $_lhNew = (int) \Illuminate\Support\Facades\DB::table('lead_history')
+                    ->where('tenant_id', $tid)
+                    ->whereIn('lead_id', $_leadIds)
+                    ->where('created_at', '>', $_lastSeen)
+                    ->count();
+
+                $_alNew = (int) \Illuminate\Support\Facades\DB::table('activity_logs')
+                    ->where('tenant_id', $tid)
+                    ->where(fn($q) =>
+                        $q->where(fn($q2) => $q2->where('entity', 'reseller')->where('entity_id', (string) $_rsId))
+                          ->orWhere(fn($q2) => $q2->where('entity', 'lead')->whereIn('entity_id', $_leadIds))
+                    )
+                    ->where('created_at', '>', $_lastSeen)
+                    ->count();
+
+                $_activityBadge = min($_lhNew + $_alNew, 99);
+            }
+        } catch (\Throwable) {
+            $_activityBadge = 0;
+        }
+    } else {
+        // Visiting the activity log — reset the seen timestamp
+        session(["rs_activity_seen_" . auth('reseller')->id() => now()->toIso8601String()]);
+    }
+
     // Active-group detection
     $_networkActive = request()->routeIs('reseller.partners*')
                    || request()->routeIs('reseller.contacts*');
@@ -217,7 +256,14 @@
     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
     </svg>
-    Activity Log
+    <span class="flex-1">Activity Log</span>
+    @if($_activityBadge > 0)
+        <span class="min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none shrink-0"
+              style="background:#0D9488"
+              aria-label="{{ $_activityBadge }} new {{ $_activityBadge === 1 ? 'event' : 'events' }}">
+            {{ $_activityBadge > 9 ? '9+' : $_activityBadge }}
+        </span>
+    @endif
 </a>
 
 {{-- ── Divider ──────────────────────────────────────────────── --}}
