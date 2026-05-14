@@ -475,7 +475,10 @@ class TaskController extends Controller
 
         $allowedSorts = ['priority_asc','due_asc','created_desc'];
         $sort         = in_array($request->query('sort'), $allowedSorts) ? $request->query('sort') : null;
-        if ($sort === 'due_asc') {
+        if ($sort === 'priority_asc') {
+            $tasks = $query->orderByRaw("CASE WHEN priority='urgent' THEN 0 WHEN priority='high' THEN 1 WHEN priority='medium' THEN 2 ELSE 3 END")
+                           ->orderBy('due_at')->orderByDesc('created_at');
+        } elseif ($sort === 'due_asc') {
             $tasks = $query->orderBy('due_at')->orderByDesc('created_at');
         } elseif ($sort === 'created_desc') {
             $tasks = $query->orderByDesc('created_at');

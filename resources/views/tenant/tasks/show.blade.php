@@ -644,7 +644,7 @@ $actIcons = [
                 </svg>
             </div>
             <p style="font-size:18px;font-weight:700;color:#1E1B4B;margin:0" x-text="successMessage"></p>
-            <p style="font-size:13px;color:#9ca3af;margin:0">Refreshing page…</p>
+            <p style="font-size:13px;color:#9ca3af;margin:0">Moving to Completed…</p>
         </div>
 
         {{-- ── Form content (hidden after success) ── --}}
@@ -846,7 +846,10 @@ function taskDetail(taskId, tenantId, canComplete, completionEmailEnabled, canAs
         showSuccess(msg) {
             this.successState   = true;
             this.successMessage = msg;
-            setTimeout(() => window.location.reload(), 2000);
+            // Redirect to Completed tab so user sees the task moved there
+            setTimeout(() => {
+                window.location.href = `/tenant/${tenantId}/tasks?tab=completed`;
+            }, 1500);
         },
 
         handleFiles(event) {
