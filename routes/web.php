@@ -266,6 +266,8 @@ Route::get('/google-calendar/callback', [\App\Http\Controllers\Web\GoogleCalenda
 use App\Http\Controllers\Web\TenantUserManagementController;
 Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/calendar',        [\App\Http\Controllers\Web\TenantCalendarController::class, 'index'])->name('calendar');
+    Route::get('/calendar/events', [\App\Http\Controllers\Web\TenantCalendarController::class, 'events'])->name('calendar.events');
     Route::get('/critical-actions', [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
