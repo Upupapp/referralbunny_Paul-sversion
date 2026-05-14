@@ -108,6 +108,21 @@ class RequestFormController extends Controller
                 'published_at'              => now(),
             ]);
 
+            // System field: Deadline — always present and required on every form
+            RequestFormField::create([
+                'tenant_id'       => $tenantId,
+                'request_form_id' => $form->id,
+                'label'           => 'Deadline',
+                'field_key'       => 'deadline',
+                'field_type'      => 'date',
+                'placeholder'     => null,
+                'helper_text'     => 'When do you need this completed?',
+                'options'         => null,
+                'is_required'     => true,
+                'sort_order'      => 0,
+                'is_system_field' => true,
+            ]);
+
             foreach (($data['fields'] ?? []) as $idx => $field) {
                 $options = null;
                 if (!empty($field['options'])) {
@@ -130,7 +145,7 @@ class RequestFormController extends Controller
                     'helper_text'     => $field['helper_text'] ?? null,
                     'options'         => $options,
                     'is_required'     => (bool) ($field['is_required'] ?? false),
-                    'sort_order'      => $idx,
+                    'sort_order'      => $idx + 1, // +1 because deadline takes sort_order 0
                 ]);
             }
 
@@ -315,6 +330,11 @@ class RequestFormController extends Controller
         $this->authorizeAdmin($tenantId);
         $form  = RequestForm::where('tenant_id', $tenantId)->findOrFail($formId);
         $field = RequestFormField::where('request_form_id', $form->id)->findOrFail($fieldId);
+
+        if ($field->is_system_field) {
+            return response()->json(['error' => 'The Deadline field is required on all forms and cannot be removed.'], 422);
+        }
+
         $field->delete();
         return response()->json(['deleted' => true]);
     }
@@ -340,16 +360,17 @@ class RequestFormController extends Controller
             'multi_select' => 'Multi-select', default => ucfirst(str_replace('_', ' ', $f->field_type))
         };
         return [
-            'id'          => $f->id,
-            'label'       => $f->label,
-            'field_key'   => $f->field_key,
-            'field_type'  => $f->field_type,
-            'type_label'  => $typeLabel,
-            'placeholder' => $f->placeholder,
-            'helper_text' => $f->helper_text,
-            'options'     => $f->options ?? [],
-            'is_required' => (bool) $f->is_required,
-            'sort_order'  => $f->sort_order,
+            'id'              => $f->id,
+            'label'           => $f->label,
+            'field_key'       => $f->field_key,
+            'field_type'      => $f->field_type,
+            'type_label'      => $typeLabel,
+            'placeholder'     => $f->placeholder,
+            'helper_text'     => $f->helper_text,
+            'options'         => $f->options ?? [],
+            'is_required'     => (bool) $f->is_required,
+            'is_system_field' => (bool) $f->is_system_field,
+            'sort_order'      => $f->sort_order,
         ];
     }
 

@@ -244,6 +244,7 @@
                                     <span style="font-size:13px;font-weight:600;color:#1E1B4B" x-text="field.label"></span>
                                     <span style="font-size:10px;font-weight:600;color:#7B61FF;background:#ede9fe;padding:1px 7px;border-radius:9999px" x-text="field.type_label"></span>
                                     <span x-show="field.is_required" style="font-size:10px;font-weight:700;color:#ef4444;background:#fef2f2;padding:1px 7px;border-radius:9999px">Required</span>
+                                    <span x-show="field.is_system_field" style="font-size:10px;font-weight:700;color:#0d9488;background:#f0fdfa;border:1px solid #99f6e4;padding:1px 7px;border-radius:9999px">🔒 System</span>
                                 </div>
                                 <p x-show="field.helper_text" style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="field.helper_text"></p>
                             </div>
@@ -251,7 +252,7 @@
                                 <button type="button" @click="field._editing = !field._editing"
                                         style="padding:4px 10px;border-radius:7px;border:1px solid #e5e7eb;background:white;font-size:11px;font-weight:600;color:#374151;cursor:pointer"
                                         x-text="field._editing ? 'Close' : 'Edit'">Edit</button>
-                                <button type="button" @click="confirmDelete(field)"
+                                <button x-show="!field.is_system_field" type="button" @click="confirmDelete(field)"
                                         style="padding:4px 8px;border-radius:7px;border:1px solid #fee2e2;background:white;font-size:11px;font-weight:600;color:#dc2626;cursor:pointer">✕</button>
                             </div>
                         </div>
@@ -529,14 +530,15 @@ $_rfFieldsData = $form->fields->sortBy('sort_order')->map(function ($f) {
         default        => ucfirst(str_replace('_', ' ', $f->field_type)),
     };
     return [
-        'id'          => $f->id,
-        'label'       => $f->label,
-        'field_type'  => $f->field_type,
-        'type_label'  => $typeLabel,
-        'placeholder' => $f->placeholder,
-        'helper_text' => $f->helper_text,
-        'options'     => $f->options ?? [],
-        'is_required' => (bool) $f->is_required,
+        'id'              => $f->id,
+        'label'           => $f->label,
+        'field_type'      => $f->field_type,
+        'type_label'      => $typeLabel,
+        'placeholder'     => $f->placeholder,
+        'helper_text'     => $f->helper_text,
+        'options'         => $f->options ?? [],
+        'is_required'     => (bool) $f->is_required,
+        'is_system_field' => (bool) $f->is_system_field,
     ];
 })->values()->all();
 @endphp
