@@ -679,11 +679,12 @@
     @if($isAdmin)
     <template x-teleport="body">
     <div x-show="createOpen"
-         class="fixed inset-0 z-[9998] flex items-center justify-center p-4"
+         class="fixed inset-0 z-[9998] flex items-start justify-center p-4 pt-8 overflow-y-auto"
          style="background:rgba(0,0,0,.45);backdrop-filter:blur(2px)"
          @keydown.escape.window="createOpen = false"
+         @click.self="createOpen = false"
          x-cloak>
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[540px] max-h-[90vh] overflow-y-auto"
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-[540px] my-auto"
              @click.stop role="dialog" aria-modal="true" aria-labelledby="create-task-title">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 id="create-task-title" class="text-base font-bold text-[#1E1B4B]">New Task</h2>
@@ -821,6 +822,7 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
         view:                   initialView || 'list',
         isAdmin:                isAdmin,
         completionEmailEnabled: completionEmailEnabled,
+        currentUserId:          currentUserId,
 
         // Kanban
         columns:   kanbanData,
@@ -1020,8 +1022,9 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
 
         // ── Create task ───────────────────────────────────────────────────────
         toggleAssignToMe() {
-            const idx = this.createForm.assignee_ids.indexOf(currentUserId);
-            if (idx === -1) this.createForm.assignee_ids.push(currentUserId);
+            const me = this.currentUserId || currentUserId;
+            const idx = this.createForm.assignee_ids.indexOf(me);
+            if (idx === -1) this.createForm.assignee_ids.push(me);
             else this.createForm.assignee_ids.splice(idx, 1);
         },
         async fetchAssignees() {
