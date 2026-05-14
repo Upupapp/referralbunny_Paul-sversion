@@ -136,7 +136,7 @@ class TaskCompletionService
                     ->queue(new TaskCompletionResponseMail(
                         recipientName: $requestorName ?? $requestorEmail,
                         senderName:    $actorName,
-                        subject:       $subject,
+                        emailSubject:  $subject,
                         bodyPlain:     EmailContentFormatter::sanitizePlainText($body),
                         bodyHtml:      $bodyHtml,
                         attachments:   $attachmentPaths,

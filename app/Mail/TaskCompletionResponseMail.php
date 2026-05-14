@@ -16,7 +16,7 @@ class TaskCompletionResponseMail extends Mailable implements ShouldQueue
     public function __construct(
         public readonly string  $recipientName,
         public readonly string  $senderName,
-        public readonly string  $subject,
+        public readonly string  $emailSubject,
         public readonly string  $bodyPlain,
         public readonly string  $bodyHtml,
         public readonly array   $attachments,
@@ -28,7 +28,7 @@ class TaskCompletionResponseMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->subject);
+        return new Envelope(subject: $this->emailSubject);
     }
 
     public function content(): Content
