@@ -171,13 +171,16 @@ function partnerMessages() {
     const hdrs = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
     const postHdrs = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF });
 
-    const serverThreads = @json($threads->map(fn($t) => [
-        'id'             => $t->id,
-        'deal_id'        => $t->deal_id,
-        'deal_name'      => $t->deal?->name ?? 'Deal',
-        'last_preview'   => $t->last_message_preview,
-        'partner_unread' => $t->partner_unread ?? 0,
-    ]));
+    @php
+        $threadData = $threads->map(fn($t) => [
+            'id'             => $t->id,
+            'deal_id'        => $t->deal_id,
+            'deal_name'      => optional($t->deal)->name ?? 'Deal',
+            'last_preview'   => $t->last_message_preview,
+            'partner_unread' => $t->partner_unread ?? 0,
+        ])->values()->all();
+    @endphp
+    const serverThreads = @json($threadData);
 
     // Pending deal = deal_id param was provided but no thread exists yet
     const pendingDeal = @json($pendingDeal);

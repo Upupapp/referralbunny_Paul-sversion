@@ -339,6 +339,32 @@
                 {{-- Divider --}}
                 <div class="w-px h-5 bg-gray-200 mx-1.5"></div>
 
+                {{-- Google Calendar quick-connect --}}
+                @if(isset($tenant) && (auth('tenant')->check() || auth('web')->check()))
+                    @php
+                        $gcalUserId = auth('tenant')->id() ?? auth('web')->id();
+                        $gcalConnected = $gcalUserId
+                            ? \App\Models\GoogleCalendarIntegration::where('tenant_user_id', $gcalUserId)->where('is_active', true)->exists()
+                            : false;
+                    @endphp
+                    <a href="{{ $gcalConnected ? route('tenant.integrations', $tenant->id) : route('tenant.google.calendar.connect', $tenant->id) }}"
+                       title="{{ $gcalConnected ? 'Google Calendar connected — manage integration' : 'Connect Google Calendar' }}"
+                       class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors flex items-center justify-center">
+                        {{-- Google Calendar icon --}}
+                        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none">
+                            <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M3 9h18" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M8 2v3M16 2v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                            <path d="M8 13h2v3H8z" fill="currentColor" opacity=".5"/>
+                            <path d="M11 13h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <path d="M11 16h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                        @if($gcalConnected)
+                            <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+                        @endif
+                    </a>
+                @endif
+
                 {{-- Notifications --}}
                 <div x-data="notifPanel()" x-init="init()"
                      x-effect="if(open && count > 0) markAllRead()"

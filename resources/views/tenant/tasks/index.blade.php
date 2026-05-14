@@ -581,10 +581,29 @@
                 </button>
             </div>
             <div class="p-5 space-y-4">
-                <div x-show="completionSuccess" class="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700" role="status">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span x-text="completionSuccess"></span>
+
+                {{-- ── TASK DONE SUCCESS SCREEN ─────────────────────────────────── --}}
+                <div x-show="completionDone" class="text-center py-6 space-y-5">
+                    <div class="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center ring-4 ring-emerald-50">
+                        <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <div class="space-y-1.5">
+                        <h3 class="text-xl font-bold text-[#1E1B4B]">Task Done!</h3>
+                        <p class="text-sm font-medium text-gray-600 line-clamp-2" x-text="completionTask?.title"></p>
+                        <p class="text-xs text-emerald-600" x-text="completionSuccess || 'Task marked as completed.'"></p>
+                    </div>
+                    <button @click="cancelCompletion()"
+                            class="inline-flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                            style="background:linear-gradient(135deg,#10b981,#059669)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        Excellent!
+                    </button>
                 </div>
+
+                {{-- ── COMPLETION FORM (hidden after done) ──────────────────────── --}}
+                <div x-show="!completionDone" class="space-y-4">
                 <div x-show="completionError" class="flex items-center gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700" role="alert">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span x-text="completionError"></span>
@@ -670,6 +689,7 @@
                         </button>
                     </template>
                 </div>
+                </div>{{-- end !completionDone wrapper --}}
             </div>
         </div>
     </div>
@@ -833,7 +853,7 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
         completionOpen: false, completionTask: null, completionSourceCol: null,
         sendEmail: false, completionSubject: '', completionBody: '',
         completionFiles: [],
-        completionSubmitting: false, completionSuccess: '', completionError: '',
+        completionSubmitting: false, completionSuccess: '', completionError: '', completionDone: false,
 
         // Create modal
         createOpen: false, loadingAssignees: false, createSubmitting: false,
@@ -965,12 +985,12 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
             this.completionTask = task; this.completionSourceCol = sourceColKey;
             this.sendEmail = false; this.completionSubject = ''; this.completionBody = '';
             this.completionFiles = [];
-            this.completionSuccess = ''; this.completionError = '';
+            this.completionSuccess = ''; this.completionError = ''; this.completionDone = false;
             this.completionOpen = true;
         },
         cancelCompletion() {
             this.completionOpen = false; this.completionTask = null;
-            this.completionError = ''; this.completionSuccess = '';
+            this.completionError = ''; this.completionSuccess = ''; this.completionDone = false;
             this.completionFiles = [];
         },
         async submitCompletion(withEmail) {
@@ -1011,9 +1031,9 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
                     return;
                 }
                 this.addTaskToCol({ ...(data.card || removed), status: 'completed' }, 'completed');
-                this.completionSuccess = data.message || 'Task completed.';
-                setTimeout(() => this.cancelCompletion(), 1500);
-                this.toast(data.message || 'Task completed.', 'success');
+                this.completionSuccess = data.message || 'Task marked as done.';
+                this.completionDone = true;
+                this.toast(data.message || 'Task completed!', 'success');
             } catch(e) {
                 if (removed) this.addTaskToCol({ ...removed }, this.completionSourceCol);
                 this.completionError = 'Network error. Please try again.';

@@ -50,9 +50,9 @@ class TaskCompletionService
         string $actorType,
         string $actorId,
         string $actorName,
-        string $subject,
-        string $body,
-        array  $attachmentPaths = [],
+        ?string $subject = null,
+        ?string $body = null,
+        array   $attachmentPaths = [],
         ?string $clientRequestId = null,
         bool   $sendEmail = true,
     ): array {

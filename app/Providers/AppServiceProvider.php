@@ -14,6 +14,10 @@ use App\Listeners\HandleDealExpired;
 use App\Listeners\HandleDealReferrerAssigned;
 use App\Listeners\HandleInviteAccepted;
 use App\Listeners\HandleResellerJoined;
+use App\Models\Lead;
+use App\Models\Task;
+use App\Observers\LeadGoogleCalendarObserver;
+use App\Observers\TaskGoogleCalendarObserver;
 use App\Services\PermissionService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -41,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(CommissionStatusChanged::class,  HandleCommissionStatusChanged::class);
         Event::listen(DealExpired::class,              HandleDealExpired::class);
         Event::listen(InviteAcceptedEvent::class,      HandleInviteAccepted::class);
+
+        // Google Calendar sync observers
+        Task::observe(TaskGoogleCalendarObserver::class);
+        Lead::observe(LeadGoogleCalendarObserver::class);
 
         // View composer — inject partner unread count into all partner views
         View::composer(['partner.*', 'layouts.partner'], function ($view) {

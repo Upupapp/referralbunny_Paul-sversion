@@ -55,7 +55,9 @@ class PartnerPortalController extends Controller
         $partner    = $this->partner();
         $dealIds    = $this->authorizedDealIds();
 
-        $dealCount     = count($dealIds);
+        $dealCount     = Lead::whereIn('id', $dealIds)
+            ->where('tenant_id', $partner->tenant_id)
+            ->count();
         $unreadCount   = (int) PartnerThread::where('partner_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)->sum('partner_unread');
         $completion    = UserDisplayNameService::completionPercent($partner);

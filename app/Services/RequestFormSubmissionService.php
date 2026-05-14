@@ -152,19 +152,29 @@ class RequestFormSubmissionService
         $recipientCount  = $allowedRecipients->count();
         $requestLabel    = $requestFor ?: 'General';
 
+        // Build recipient_id → task_id map so notifications can link to the specific task
+        $recipientTaskIds = RequestFormSubmissionRecipient::where('request_form_submission_id', $submission->id)
+            ->whereNotNull('task_id')
+            ->pluck('task_id', 'recipient_id')
+            ->toArray();
+
         // ── 1. Notify each assigned recipient (in-app + email) ──────────────
         foreach ($allowedRecipients as $recipient) {
             if ($recipient->recipient_id) {
+                $taskId  = $recipientTaskIds[$recipient->recipient_id] ?? null;
+                $taskUrl = $taskId
+                    ? "/tenant/{$tenantId}/tasks/{$taskId}"
+                    : "/tenant/{$tenantId}/tasks";
                 try {
                     $notifService->dispatch(
                         category:         'request_form',
-                        priority:         'high',
-                        title:            'New request assigned to you',
-                        body:             "\"{$submitterName}\" submitted a {$requestLabel} request via \"{$form->title}\".",
+                        priority:         'urgent',
+                        title:            "New request: {$requestLabel}",
+                        body:             "\"{$submitterName}\" submitted a request via \"{$form->title}\". Review and respond.",
                         notifiableType:   'tenant_user',
                         notifiableId:     $recipient->recipient_id,
                         tenantId:         $tenantId,
-                        actionUrl:        "/tenant/{$tenantId}/tasks",
+                        actionUrl:        $taskUrl,
                         actionLabel:      'View Task',
                         deduplicationKey: "req-form-assignee:{$submission->id}:{$recipient->recipient_id}",
                     );

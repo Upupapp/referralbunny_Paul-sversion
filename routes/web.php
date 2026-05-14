@@ -257,6 +257,9 @@ Route::middleware(['auth:tenant,reseller,web'])
         Route::post('/broadcast',                  [MessageController::class, 'broadcastMessage'])->name('broadcast')->middleware('throttle:10,1');
     });
 
+// ── Google Calendar OAuth callback (global — fixed redirect URI for Google Cloud Console) ──
+Route::get('/google-calendar/callback', [\App\Http\Controllers\Web\GoogleCalendarController::class, 'callback'])->name('google.calendar.callback');
+
 // ── Tenant app ────────────────────────────────────────────────
 use App\Http\Controllers\Web\TenantUserManagementController;
 Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->prefix('tenant/{tenantId}')->name('tenant.')->group(function () {
@@ -307,8 +310,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/commission',      [\App\Http\Controllers\Web\TenantCommissionController::class, 'index'])->name('commission');
     Route::get('/commission/export', [\App\Http\Controllers\Web\TenantCommissionController::class, 'export'])->name('commission.export');
     Route::get('/imports',         [TenantAdminController::class, 'imports'])->name('imports');
-    Route::get('/billing',         [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('billing');
-    Route::get('/settings',        [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('settings');
+    Route::get('/billing',         [TenantAdminController::class, 'billing'])->name('billing');
+    Route::get('/settings',        [TenantAdminController::class, 'settings'])->name('settings');
     Route::post('/settings',       [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('settings.update');
 
     // ── Export Approval Center ────────────────────────────────────
@@ -342,6 +345,13 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/leads/{leadId}', fn($tenantId, $leadId) => view('tenant.leads.show', ['tenantId' => $tenantId, 'leadId' => $leadId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('leads.show');
     Route::get('/resellers',      fn($tenantId) => view('tenant.resellers.index', ['tenantId' => $tenantId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('resellers');
     Route::get('/notifications',  [NotificationsController::class, 'index'])->name('notifications');
+
+    // ── Integrations ──────────────────────────────────────────────
+    Route::get('/integrations',                    [\App\Http\Controllers\Web\GoogleCalendarController::class, 'index'])->name('integrations');
+    Route::get('/google-calendar/connect',         [\App\Http\Controllers\Web\GoogleCalendarController::class, 'redirect'])->name('google.calendar.connect');
+    Route::delete('/google-calendar/disconnect',   [\App\Http\Controllers\Web\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
+    Route::post('/google-calendar/sync-now',       [\App\Http\Controllers\Web\GoogleCalendarController::class, 'syncNow'])->name('google.calendar.sync-now');
+
     Route::get('/profile',              [TenantProfileController::class, 'show'])->name('profile');
     Route::post('/profile',             [TenantProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/photo',       [TenantProfileController::class, 'updatePhoto'])->name('profile.photo');
@@ -441,8 +451,8 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
         Route::get('/reports',     [TenantAdminController::class, 'reports'])->name('tenant.sub.reports');
         Route::get('/imports',     [TenantAdminController::class, 'imports'])->name('tenant.sub.imports');
         Route::get('/users',       [TenantAdminController::class, 'users'])->name('tenant.sub.users');
-        Route::get('/billing',     [TenantAdminController::class, 'billing'])->middleware('password.confirm')->name('tenant.sub.billing');
-        Route::get('/settings',    [TenantAdminController::class, 'settings'])->middleware('password.confirm')->name('tenant.sub.settings');
+        Route::get('/billing',     [TenantAdminController::class, 'billing'])->name('tenant.sub.billing');
+        Route::get('/settings',    [TenantAdminController::class, 'settings'])->name('tenant.sub.settings');
         Route::post('/settings',   [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('tenant.sub.settings.update');
     });
 

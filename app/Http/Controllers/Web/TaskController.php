@@ -603,11 +603,62 @@ class TaskController extends Controller
                 default   => 'Task completed. Email could not be sent.',
             };
 
+            // Dispatch task-completed notifications
+            $freshTask = $task->fresh();
+            $notifSvc  = app(\App\Services\NotificationDispatchService::class);
+
+            $isAssignee = $freshTask->assigned_to_type === $actorType && $freshTask->assigned_to_id === $actorId;
+            if (!$isAssignee && $freshTask->assigned_to_type && $freshTask->assigned_to_id) {
+                try {
+                    if ($freshTask->assigned_to_type === 'tenant_user') {
+                        $notifSvc->dispatch(
+                            category:         'task',
+                            priority:         'normal',
+                            title:            "Task completed: {$freshTask->title}",
+                            body:             "{$actorName} marked this task as done.",
+                            notifiableType:   'tenant_user',
+                            notifiableId:     $freshTask->assigned_to_id,
+                            tenantId:         $tenantId,
+                            actionUrl:        "/tenant/{$tenantId}/tasks/{$freshTask->id}",
+                            actionLabel:      'View Task',
+                            deduplicationKey: "task_completed_{$freshTask->id}",
+                        );
+                    } elseif ($freshTask->assigned_to_type === 'reseller') {
+                        $notifSvc->dispatchToReseller(
+                            resellerId:   (string) $freshTask->assigned_to_id,
+                            tenantId:     $tenantId,
+                            category:     'task',
+                            priority:     'normal',
+                            title:        "Task completed: {$freshTask->title}",
+                            body:         "{$actorName} marked this task as done.",
+                            actionUrl:    "/reseller/{$tenantId}/tasks",
+                            actionLabel:  'View Task',
+                            dedupeSuffix: "task_completed_{$freshTask->id}",
+                        );
+                    }
+                } catch (\Throwable) {}
+            }
+
+            if (!$isAdmin) {
+                try {
+                    $notifSvc->dispatchToTenantAdmins(
+                        tenantId:     $tenantId,
+                        category:     'task',
+                        priority:     'normal',
+                        title:        'Task completed',
+                        body:         "{$actorName} completed: \"{$freshTask->title}\".",
+                        actionUrl:    "/tenant/{$tenantId}/tasks/{$freshTask->id}",
+                        actionLabel:  'View Task',
+                        dedupeSuffix: "task_completed_{$freshTask->id}",
+                    );
+                } catch (\Throwable) {}
+            }
+
             return response()->json([
                 'status'       => 'completed',
                 'email_status' => $result['email_status'] ?? 'skipped',
                 'message'      => $msg,
-                'card'         => $this->buildTaskCard($task->fresh(), $tenantId, $actorType, $actorId),
+                'card'         => $this->buildTaskCard($freshTask, $tenantId, $actorType, $actorId),
             ]);
         }
 
@@ -680,6 +731,11 @@ class TaskController extends Controller
             'processing' => ['statuses' => ['in_progress', 'waiting'], 'label' => 'Processing Tasks','status_for_drop' => 'in_progress',  'view_all_status' => 'in_progress'],
             'completed'  => ['statuses' => ['completed'],              'label' => 'Completed Tasks', 'status_for_drop' => 'completed',    'view_all_status' => 'completed'],
         ];
+
+        // On the "completed" tab show only the completed column — other columns would be empty
+        if ($tab === 'completed') {
+            $colDefs = ['completed' => $colDefs['completed']];
+        }
 
         // Build tasks across all columns then resolve names in one pass
         $allFetched = collect();

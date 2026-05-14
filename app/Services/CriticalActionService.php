@@ -1159,16 +1159,15 @@ class CriticalActionService
             ->whereNull('deleted_at')
             ->where('status', 'open')
             ->where('category', 'request_form')
-            ->where('created_at', '>', now()->subDays(3))
             ->select('id', 'title', 'requestor_name', 'created_at')
             ->orderByDesc('created_at')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
         return $tasks->map(fn($t) => $this->make([
             'type'          => 'new_request_form_task',
             'category'      => 'task',
-            'severity'      => 'medium',
+            'severity'      => 'high',
             'summary'       => "New request from {$t->requestor_name}: {$t->title}",
             'actor_name'    => $t->requestor_name ?? 'Public',
             'actor_role'    => 'Public',
