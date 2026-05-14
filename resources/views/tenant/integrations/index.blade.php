@@ -2,6 +2,10 @@
 
 @section('title', 'Integrations')
 
+@section('nav')
+    @include('tenant._nav')
+@endsection
+
 @section('content')
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
