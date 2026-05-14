@@ -3,202 +3,163 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
-<div x-data="rbCalendar('{{ $tenantId }}')" x-init="init()" class="h-full flex flex-col">
+<div x-data="rbCalendar('{{ $tenantId }}')" x-init="init()" class="flex flex-col h-full -mx-4 sm:-mx-6 lg:-mx-8 -mt-4">
 
-    {{-- ── Header ──────────────────────────────────────────────────────────── --}}
-    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div class="flex items-center gap-3">
-            <h1 class="text-xl font-bold text-[#1E1B4B]" x-text="monthLabel"></h1>
-            <div class="flex items-center gap-1">
-                <button @click="prevMonth()" :disabled="loading"
-                        :class="loading ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100'"
-                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                </button>
-                <button @click="goToToday()" :disabled="loading"
-                        class="px-3 py-1 rounded-lg text-xs font-semibold text-[#7B61FF] hover:bg-purple-50 transition-colors border border-purple-200 disabled:opacity-40">
-                    Today
-                </button>
-                <button @click="nextMonth()" :disabled="loading"
-                        :class="loading ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100'"
-                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </button>
-            </div>
+    {{-- ── Toolbar ──────────────────────────────────────────────────────────── --}}
+    <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-white border-b border-gray-200 shrink-0 flex-wrap gap-y-2">
+
+        <div class="flex items-center gap-2">
+            {{-- Prev/Today/Next --}}
+            <button @click="prevMonth()" :disabled="loading"
+                    class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button @click="nextMonth()" :disabled="loading"
+                    class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <button @click="goToToday()" :disabled="loading"
+                    class="px-4 py-1.5 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40">
+                Today
+            </button>
+            <h1 class="text-lg font-semibold text-gray-800 ml-1" x-text="monthLabel"></h1>
+            <svg x-show="loading" class="w-4 h-4 animate-spin text-gray-400 ml-1" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
         </div>
 
         {{-- Filter chips --}}
         <div class="flex items-center gap-2">
-            <button @click="filter = 'all'"
-                    :class="filter === 'all' ? 'bg-[#1E1B4B] text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-[#7B61FF] hover:text-[#7B61FF]'"
-                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all">All</button>
-            <button @click="filter = 'task'"
-                    :class="filter === 'task' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-purple-400 hover:text-purple-600'"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all">
-                <span class="w-2 h-2 rounded-full bg-purple-500"></span>Tasks
+            <button @click="setFilter('all')"
+                    :class="filter==='all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                    class="px-3 py-1 rounded-full border text-xs font-medium transition-all">All</button>
+            <button @click="setFilter('task')"
+                    :class="filter==='task' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                    class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium transition-all">
+                <span class="w-2 h-2 rounded-full bg-current opacity-70"></span>Tasks
             </button>
-            <button @click="filter = 'deal'"
-                    :class="filter === 'deal' ? 'bg-orange-500 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-400 hover:text-orange-600'"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all">
+            <button @click="setFilter('deal')"
+                    :class="filter==='deal' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                    class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium transition-all">
                 <span class="w-2 h-2 rounded-full bg-orange-400"></span>Deal Expiry
             </button>
         </div>
     </div>
 
-    {{-- ── Error state ──────────────────────────────────────────────────────── --}}
-    <div x-show="fetchError" class="flex items-center gap-3 p-4 mb-3 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-700">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span>Couldn't load calendar events. </span>
-        <button @click="fetchEvents()" class="underline font-semibold hover:text-red-800">Retry</button>
+    {{-- ── Error banner ─────────────────────────────────────────────────────── --}}
+    <div x-show="fetchError" class="mx-4 sm:mx-6 mt-3 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 shrink-0">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Couldn't load events.</span>
+        <button @click="fetchEvents()" class="underline font-semibold ml-1">Retry</button>
     </div>
 
-    {{-- ── Loading ───────────────────────────────────────────────────────────── --}}
-    <div x-show="loading" class="flex items-center justify-center py-16">
-        <svg class="w-6 h-6 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-    </div>
+    {{-- ── Calendar + Detail panel ──────────────────────────────────────────── --}}
+    <div class="flex flex-1 min-h-0 overflow-hidden">
 
-    {{-- ── Empty month state ────────────────────────────────────────────────── --}}
-    <div x-show="!loading && !fetchError && events.length === 0" class="text-center py-10 text-gray-400">
-        <svg class="w-10 h-10 mx-auto mb-2 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        <p class="text-sm">Nothing scheduled this month.</p>
-    </div>
+        {{-- Month grid --}}
+        <div class="flex-1 flex flex-col overflow-hidden">
 
-    <div x-show="!loading" class="flex gap-4 flex-1 min-h-0 flex-col lg:flex-row">
-
-        {{-- ── Month Grid ──────────────────────────────────────────────────── --}}
-        <div class="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-            {{-- Day-of-week headers --}}
-            <div class="grid grid-cols-7 border-b border-gray-100">
-                <template x-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d">
-                    <div class="py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide" x-text="d"></div>
-                </template>
+            {{-- Day-of-week header --}}
+            <div class="bg-white border-b border-gray-200 shrink-0"
+                 style="display:grid; grid-template-columns:repeat(7,1fr)">
+                @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $d)
+                <div class="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ $d }}</div>
+                @endforeach
             </div>
 
-            {{-- Calendar grid --}}
-            <div class="grid grid-cols-7 flex-1" style="grid-auto-rows: minmax(80px, 1fr)">
+            {{-- Grid cells --}}
+            <div class="flex-1 overflow-y-auto bg-white"
+                 style="display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:minmax(90px,1fr); align-content:start">
                 <template x-for="cell in cells" :key="cell.key">
                     <div @click="selectDay(cell)"
                          :class="{
-                             'bg-gray-50 text-gray-300': !cell.inMonth,
-                             'ring-2 ring-[#7B61FF] ring-inset': cell.isSelected && cell.inMonth,
-                             'cursor-pointer hover:bg-[#F5F3FF]': cell.inMonth,
+                             'bg-gray-50/60': !cell.inMonth,
+                             'cursor-pointer': true,
                          }"
-                         class="border-r border-b border-gray-100 p-1.5 transition-colors relative">
+                         class="border-r border-b border-gray-200 relative group transition-colors hover:bg-blue-50/30"
+                         style="min-height:90px">
 
                         {{-- Date number --}}
-                        <div class="flex items-center justify-between mb-1">
+                        <div class="flex justify-end px-1.5 pt-1 pb-0.5">
                             <span :class="{
-                                      'w-6 h-6 rounded-full bg-[#7B61FF] text-white flex items-center justify-center': cell.isToday,
-                                      'text-gray-800 font-medium': cell.inMonth && !cell.isToday,
-                                      'text-gray-300': !cell.inMonth,
-                                  }"
-                                  class="text-xs leading-none"
-                                  x-text="cell.day"></span>
-                            <span x-show="cell.moreCount > 0"
-                                  class="text-[9px] font-bold text-[#7B61FF] bg-purple-50 px-1 rounded"
-                                  x-text="'+' + cell.moreCount"></span>
+                                      'w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold': cell.isToday,
+                                      'text-xs font-medium text-gray-800': cell.inMonth && !cell.isToday,
+                                      'text-xs text-gray-300': !cell.inMonth,
+                                  }" x-text="cell.day"></span>
                         </div>
 
-                        {{-- Event pills (max 3) --}}
-                        <div class="space-y-0.5">
+                        {{-- Event pills --}}
+                        <div class="px-1 pb-1 space-y-0.5">
                             <template x-for="evt in cell.visibleEvents" :key="evt.id">
-                                <a :href="evt.url"
-                                   @click.stop
-                                   :title="evt.title"
+                                <a :href="evt.url" @click.stop
                                    :class="pillClass(evt)"
-                                   class="block w-full truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight transition-opacity hover:opacity-80">
-                                    <span x-text="evt.title"></span>
+                                   :title="evt.title"
+                                   class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium leading-snug truncate w-full hover:opacity-80 transition-opacity">
+                                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="dotClass(evt)"></span>
+                                    <span class="truncate" x-text="evt.title"></span>
                                 </a>
                             </template>
+                            <button x-show="cell.moreCount > 0"
+                                    @click.stop="selectDay(cell)"
+                                    class="text-[11px] text-blue-600 hover:text-blue-800 font-medium px-1.5 w-full text-left"
+                                    x-text="'+' + cell.moreCount + ' more'"></button>
                         </div>
                     </div>
                 </template>
             </div>
         </div>
 
-        {{-- ── Day Detail Panel ─────────────────────────────────────────────── --}}
-        <div x-show="selectedDay"
-             x-cloak
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-x-4"
+        {{-- Day detail sidebar --}}
+        <div x-show="selectedDay" x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 translate-x-2"
              x-transition:enter-end="opacity-100 translate-x-0"
-             class="w-full lg:w-72 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden shrink-0">
+             class="w-64 xl:w-72 border-l border-gray-200 bg-white flex flex-col shrink-0 overflow-hidden">
 
-            {{-- Panel header --}}
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div>
-                    <p class="text-xs text-gray-400 font-medium" x-text="selectedDayLabel"></p>
-                    <p class="text-sm font-bold text-[#1E1B4B]"
-                       x-text="selectedDayEvents.length + (selectedDayEvents.length === 1 ? ' event' : ' events')"></p>
+                    <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide" x-text="selectedDayWeekday"></p>
+                    <p class="text-2xl font-bold text-gray-800 leading-none mt-0.5" x-text="selectedDayNum"
+                       :class="selectedDayIsToday ? 'text-blue-600' : ''"></p>
                 </div>
                 <button @click="selectedDay = null"
-                        class="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
+                        class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            {{-- Empty state --}}
-            <div x-show="selectedDayEvents.length === 0" class="flex-1 flex flex-col items-center justify-center py-10 px-4 text-center">
-                <svg class="w-10 h-10 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div x-show="selectedDayEvents.length === 0" class="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
+                <svg class="w-8 h-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
                 <p class="text-sm text-gray-400">Nothing scheduled</p>
             </div>
 
-            {{-- Event list --}}
-            <div class="flex-1 overflow-y-auto divide-y divide-gray-50 px-2 py-1">
+            <div class="flex-1 overflow-y-auto">
                 <template x-for="evt in selectedDayEvents" :key="evt.id">
                     <a :href="evt.url"
-                       class="flex items-start gap-3 px-2 py-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                        {{-- Color dot --}}
-                        <span class="mt-0.5 w-2.5 h-2.5 rounded-full shrink-0"
-                              :class="dotClass(evt)"></span>
+                       class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 group">
+                        <div class="w-3 h-3 rounded-full mt-1 shrink-0" :class="dotClass(evt)"></div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs font-semibold text-[#1E1B4B] group-hover:text-[#7B61FF] transition-colors leading-snug"
+                            <p class="text-xs font-semibold text-gray-800 group-hover:text-blue-600 transition-colors leading-snug"
                                :class="{ 'line-through text-gray-400': evt.done }"
                                x-text="evt.title"></p>
-                            <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                                      :class="labelClass(evt)"
-                                      x-text="evt.label"></span>
-                                <span x-show="evt.type === 'deal'" class="text-[10px] text-gray-400"
-                                      x-text="evt.days_left + ' day' + (evt.days_left === 1 ? '' : 's') + ' left'"></span>
-                                <span x-show="evt.type === 'task' && evt.priority" class="text-[10px] text-gray-400 capitalize"
-                                      x-text="evt.priority"></span>
+                            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full" :class="labelClass(evt)" x-text="evt.label"></span>
+                                <span x-show="evt.type==='deal' && evt.days_left !== undefined"
+                                      class="text-[10px] text-gray-400"
+                                      x-text="evt.days_left + 'd left'"></span>
+                                <span x-show="evt.type==='task' && !evt.done"
+                                      class="text-[10px] text-gray-400 capitalize" x-text="evt.priority"></span>
                             </div>
-                            <p x-show="evt.type === 'deal' && evt.referrer"
-                               class="text-[10px] text-gray-400 mt-0.5 truncate"
-                               x-text="'Referrer: ' + evt.referrer"></p>
+                            <p x-show="evt.referrer" class="text-[10px] text-gray-400 mt-0.5 truncate" x-text="evt.referrer"></p>
                         </div>
-                        <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B61FF] shrink-0 mt-0.5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
+                        <svg class="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0 mt-1 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
                 </template>
             </div>
         </div>
-    </div>
-
-    {{-- ── Legend ───────────────────────────────────────────────────────────── --}}
-    <div class="flex items-center gap-5 mt-3 pt-3 border-t border-gray-100 flex-wrap">
-        @foreach([
-            ['color' => 'bg-red-500',    'label' => 'Urgent task / Deal expiring ≤3d'],
-            ['color' => 'bg-orange-400', 'label' => 'High task / Deal expiring ≤7d'],
-            ['color' => 'bg-purple-500', 'label' => 'Medium task'],
-            ['color' => 'bg-blue-400',   'label' => 'Low task'],
-            ['color' => 'bg-yellow-400', 'label' => 'Deal expiry'],
-            ['color' => 'bg-gray-300',   'label' => 'Completed'],
-        ] as $item)
-        <div class="flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full {{ $item['color'] }}"></span>
-            <span class="text-[11px] text-gray-400">{{ $item['label'] }}</span>
-        </div>
-        @endforeach
     </div>
 
 </div>
@@ -209,8 +170,8 @@
 function rbCalendar(tenantId) {
     return {
         tenantId,
-        today:      null,
-        current:    null,   // { year, month } being displayed
+        today:      '',
+        current:    null,
         events:     [],
         grouped:    {},
         cells:      [],
@@ -218,49 +179,55 @@ function rbCalendar(tenantId) {
         fetchError: false,
         filter:     'all',
 
-        selectedDay:       null,   // 'YYYY-MM-DD'
-        selectedDayLabel:  '',
-        selectedDayEvents: [],
+        selectedDay:        null,
+        selectedDayNum:     '',
+        selectedDayWeekday: '',
+        selectedDayIsToday: false,
+        selectedDayEvents:  [],
 
         get monthLabel() {
             if (!this.current) return '';
-            const d = new Date(this.current.year, this.current.month - 1, 1);
-            return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+            return new Date(this.current.year, this.current.month - 1, 1)
+                .toLocaleString('default', { month: 'long', year: 'numeric' });
         },
 
         init() {
-            const now  = new Date();
-            this.today = this.fmt(now);
+            const now = new Date();
+            this.today   = this.fmt(now);
             this.current = { year: now.getFullYear(), month: now.getMonth() + 1 };
             this.fetchEvents();
         },
 
         fmt(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2,'0');
-            const dd = String(d.getDate()).padStart(2,'0');
-            return `${y}-${m}-${dd}`;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        },
+
+        setFilter(f) {
+            this.filter = f;
+            this.buildCells();
+            if (this.selectedDay) this.refreshPanel();
         },
 
         prevMonth() {
+            if (this.loading) return;
             let { year, month } = this.current;
-            month--;
-            if (month < 1) { month = 12; year--; }
+            if (--month < 1) { month = 12; year--; }
             this.current = { year, month };
             this.selectedDay = null;
             this.fetchEvents();
         },
 
         nextMonth() {
+            if (this.loading) return;
             let { year, month } = this.current;
-            month++;
-            if (month > 12) { month = 1; year++; }
+            if (++month > 12) { month = 1; year++; }
             this.current = { year, month };
             this.selectedDay = null;
             this.fetchEvents();
         },
 
         goToToday() {
+            if (this.loading) return;
             const now = new Date();
             this.current = { year: now.getFullYear(), month: now.getMonth() + 1 };
             this.selectedDay = null;
@@ -268,22 +235,21 @@ function rbCalendar(tenantId) {
         },
 
         async fetchEvents() {
-            this.loading    = true;
-            this.fetchError = false;
+            this.loading = true; this.fetchError = false;
             const { year, month } = this.current;
             const from = `${year}-${String(month).padStart(2,'0')}-01`;
-            const lastDay = new Date(year, month, 0).getDate();
-            const to   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+            const last = new Date(year, month, 0).getDate();
+            const to   = `${year}-${String(month).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
             try {
-                const res  = await fetch(`/tenant/${tenantId}/calendar/events?from=${from}&to=${to}`, {
+                const res = await fetch(`/tenant/${tenantId}/calendar/events?from=${from}&to=${to}`, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                 });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data   = await res.json();
-                this.events  = data.events  || [];
-                this.grouped = data.grouped || {};
-            } catch(e) {
+                if (!res.ok) throw new Error(res.status);
+                const d = await res.json();
+                this.events  = d.events  || [];
+                this.grouped = d.grouped || {};
+            } catch {
                 this.fetchError = true;
                 this.events = []; this.grouped = {};
             } finally {
@@ -294,92 +260,70 @@ function rbCalendar(tenantId) {
 
         buildCells() {
             const { year, month } = this.current;
-            const firstDay  = new Date(year, month - 1, 1).getDay(); // 0=Sun
+            const firstDow   = new Date(year, month - 1, 1).getDay();
             const daysInMonth = new Date(year, month, 0).getDate();
-            const prevDays    = new Date(year, month - 1, 0).getDate();
-
+            const prevTotal  = new Date(year, month - 1, 0).getDate();
+            const MAX = 3;
             const cells = [];
-            const MAX_VISIBLE = 3;
 
-            // Leading days from previous month
-            for (let i = firstDay - 1; i >= 0; i--) {
-                cells.push(this.makeCell(year, month - 1, prevDays - i, false, MAX_VISIBLE));
-            }
-            // Current month
-            for (let d = 1; d <= daysInMonth; d++) {
-                cells.push(this.makeCell(year, month, d, true, MAX_VISIBLE));
-            }
-            // Trailing days to fill 6-row grid (42 cells)
-            let trailing = 1;
-            while (cells.length < 42) {
-                cells.push(this.makeCell(year, month + 1, trailing++, false, MAX_VISIBLE));
-            }
+            for (let i = firstDow - 1; i >= 0; i--)
+                cells.push(this.mkCell(year, month - 1, prevTotal - i, false, MAX));
+            for (let d = 1; d <= daysInMonth; d++)
+                cells.push(this.mkCell(year, month, d, true, MAX));
+            let t = 1;
+            while (cells.length % 7 !== 0 || cells.length < 35)
+                cells.push(this.mkCell(year, month + 1, t++, false, MAX));
+
             this.cells = cells;
         },
 
-        makeCell(year, month, day, inMonth, maxVisible) {
-            // Normalise month overflow
+        mkCell(year, month, day, inMonth, max) {
             let y = year, m = month;
             if (m < 1)  { m = 12; y--; }
             if (m > 12) { m = 1;  y++; }
-            const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-            const allEvts  = this.eventsForDate(dateStr);
-            const visible  = allEvts.slice(0, maxVisible);
+            const key  = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const all  = this.eventsForDate(key);
             return {
-                key:           dateStr,
-                day,
-                inMonth,
-                isToday:       dateStr === this.today,
-                isSelected:    dateStr === this.selectedDay,
-                visibleEvents: visible,
-                moreCount:     Math.max(0, allEvts.length - maxVisible),
+                key, day, inMonth,
+                isToday:       key === this.today,
+                isSelected:    key === this.selectedDay,
+                visibleEvents: all.slice(0, max),
+                moreCount:     Math.max(0, all.length - max),
             };
         },
 
-        eventsForDate(dateStr) {
-            const all = (this.grouped[dateStr] || []);
-            if (this.filter === 'all') return all;
-            return all.filter(e => e.type === this.filter);
+        eventsForDate(key) {
+            const all = this.grouped[key] || [];
+            return this.filter === 'all' ? all : all.filter(e => e.type === this.filter);
         },
 
         selectDay(cell) {
             if (!cell.inMonth) return;
             this.selectedDay = cell.key;
-            const d = new Date(cell.key + 'T00:00:00');
-            this.selectedDayLabel = d.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' });
-            this.selectedDayEvents = this.eventsForDate(cell.key);
-            // Re-build cells to reflect selection
+            const d = new Date(cell.key + 'T12:00:00');
+            this.selectedDayNum     = d.getDate();
+            this.selectedDayWeekday = d.toLocaleString('default', { weekday: 'long' });
+            this.selectedDayIsToday = cell.key === this.today;
+            this.refreshPanel();
             this.buildCells();
         },
 
+        refreshPanel() {
+            this.selectedDayEvents = this.eventsForDate(this.selectedDay);
+        },
+
+        // ── Styling helpers ────────────────────────────────────────────────────
         pillClass(evt) {
-            const map = {
-                red:    'bg-red-100 text-red-700',
-                orange: 'bg-orange-100 text-orange-700',
-                yellow: 'bg-yellow-100 text-yellow-700',
-                purple: 'bg-purple-100 text-purple-700',
-                blue:   'bg-blue-100 text-blue-700',
-                gray:   'bg-gray-100 text-gray-400 line-through',
-            };
-            return map[evt.color] || 'bg-gray-100 text-gray-500';
+            if (evt.done) return 'bg-gray-100 text-gray-400';
+            const m = { red:'bg-red-100 text-red-700', orange:'bg-orange-100 text-orange-700', yellow:'bg-yellow-100 text-yellow-800', purple:'bg-purple-100 text-purple-700', blue:'bg-blue-100 text-blue-700', gray:'bg-gray-100 text-gray-400' };
+            return m[evt.color] || 'bg-gray-100 text-gray-500';
         },
-
         dotClass(evt) {
-            const map = {
-                red:    'bg-red-500',
-                orange: 'bg-orange-400',
-                yellow: 'bg-yellow-400',
-                purple: 'bg-purple-500',
-                blue:   'bg-blue-400',
-                gray:   'bg-gray-300',
-            };
-            return map[evt.color] || 'bg-gray-300';
+            const m = { red:'bg-red-500', orange:'bg-orange-400', yellow:'bg-yellow-400', purple:'bg-purple-500', blue:'bg-blue-500', gray:'bg-gray-300' };
+            return m[evt.color] || 'bg-gray-300';
         },
-
         labelClass(evt) {
-            if (evt.type === 'deal') return 'bg-orange-100 text-orange-700';
-            if (evt.type === 'task') return 'bg-purple-100 text-purple-700';
-            return 'bg-gray-100 text-gray-500';
+            return evt.type === 'deal' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700';
         },
     };
 }
