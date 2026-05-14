@@ -355,6 +355,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/google-calendar/connect',         [\App\Http\Controllers\Web\GoogleCalendarController::class, 'redirect'])->name('google.calendar.connect');
     Route::delete('/google-calendar/disconnect',   [\App\Http\Controllers\Web\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
     Route::post('/google-calendar/sync-now',       [\App\Http\Controllers\Web\GoogleCalendarController::class, 'syncNow'])->name('google.calendar.sync-now');
+    Route::get('/google-calendar/sync-now',        fn($tenantId) => redirect()->route('tenant.integrations', $tenantId));
 
     Route::get('/profile',              [TenantProfileController::class, 'show'])->name('profile');
     Route::post('/profile',             [TenantProfileController::class, 'update'])->name('profile.update');

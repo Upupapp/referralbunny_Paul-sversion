@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\Task;
 use App\Models\Tenant;
-use App\Services\TenantContext;
+use App\Models\TenantMembership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,103 +19,117 @@ class TenantCalendarController extends Controller
         return view('tenant.calendar.index', compact('tenant', 'tenantId'));
     }
 
-    /**
-     * JSON endpoint: return all calendar events for a date window.
-     * Used by Alpine.js when navigating months.
-     */
     public function events(Request $request, string $tenantId): JsonResponse
     {
-        $from    = Carbon::parse($request->query('from', now()->startOfMonth()))->startOfDay();
-        $to      = Carbon::parse($request->query('to',   now()->endOfMonth()))->endOfDay();
-        $isAdmin = Auth::guard('web')->check()
-            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
+        // Validate date params — Carbon::parse throws on garbage input
+        try {
+            $tz   = config('app.timezone', 'UTC');
+            $from = Carbon::parse($request->query('from', now($tz)->startOfMonth()->toDateString()), $tz)->startOfDay();
+            $to   = Carbon::parse($request->query('to',   now($tz)->endOfMonth()->toDateString()), $tz)->endOfDay();
+        } catch (\Throwable) {
+            return response()->json(['error' => 'Invalid date range.'], 400);
+        }
 
-        [$actorType, $actorId] = $this->resolveActor();
+        // Clamp range to max 3 months to prevent abuse
+        if ($to->diffInDays($from) > 92) {
+            return response()->json(['error' => 'Date range too large.'], 400);
+        }
+
+        [$isAdmin, $actorType, $actorId] = $this->resolveRole($tenantId);
 
         $events = collect();
 
         // ── Tasks with due dates ──────────────────────────────────────────────
-        $taskQuery = Task::where('tenant_id', $tenantId)
+        $taskRows = DB::table('tasks')
+            ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->whereNotNull('due_at')
             ->whereBetween('due_at', [$from, $to])
-            ->whereNotIn('status', ['cancelled', 'archived']);
-
-        if (!$isAdmin) {
-            $taskQuery->where('assigned_to_type', $actorType)
-                      ->where('assigned_to_id', $actorId);
-        }
-
-        $taskQuery->select('id', 'title', 'status', 'priority', 'category', 'due_at', 'assigned_to_id', 'assigned_to_type')
+            ->whereNotIn('status', ['cancelled', 'archived'])
+            ->when(!$isAdmin, fn($q) => $q->where('assigned_to_type', $actorType)->where('assigned_to_id', $actorId))
+            ->select('id', 'title', 'status', 'priority', 'category', 'due_at')
             ->orderBy('due_at')
-            ->each(function ($task) use ($tenantId, &$events) {
-                $isComplete = $task->status === 'completed';
-                $events->push([
-                    'id'       => 'task-' . $task->id,
-                    'entity_id'=> $task->id,
-                    'type'     => 'task',
-                    'label'    => $task->category === 'request_form' ? 'Request' : 'Task',
-                    'title'    => $task->title,
-                    'date'     => $task->due_at->toDateString(),
-                    'status'   => $task->status,
-                    'priority' => $task->priority,
-                    'done'     => $isComplete,
-                    'color'    => $this->taskColor($task->priority, $isComplete),
-                    'url'      => "/tenant/{$tenantId}/tasks/{$task->id}",
-                ]);
-            });
+            ->get();
+
+        foreach ($taskRows as $task) {
+            $done   = $task->status === 'completed';
+            $events->push([
+                'id'       => 'task-' . $task->id,
+                'entity_id'=> $task->id,
+                'type'     => 'task',
+                'label'    => $task->category === 'request_form' ? 'Request' : 'Task',
+                'title'    => $task->title,
+                'date'     => Carbon::parse($task->due_at, $tz)->toDateString(),
+                'status'   => $task->status,
+                'priority' => $task->priority,
+                'done'     => $done,
+                'color'    => $this->taskColor($task->priority, $done),
+                'url'      => "/tenant/{$tenantId}/tasks/{$task->id}",
+            ]);
+        }
 
         // ── Deal expiry dates (admins only) ───────────────────────────────────
         if ($isAdmin) {
-            DB::table('leads')
+            $today = Carbon::today($tz);
+
+            $dealRows = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'expiring'])
                 ->whereNotNull('days_left')
-                ->where('days_left', '>', 0)
+                ->where('days_left', '>=', 0)
                 ->whereNull('deleted_at')
-                ->select('id', 'name', 'days_left', 'stage', 'status', 'reseller_name', 'deal_value')
+                ->select('id', 'name', 'days_left', 'stage', 'status', 'reseller_name')
                 ->orderBy('days_left')
-                ->each(function ($deal) use ($from, $to, $tenantId, &$events) {
-                    $expiryDate = Carbon::today()->addDays($deal->days_left);
-                    if (!$expiryDate->between($from, $to)) return;
+                ->get();
 
-                    $events->push([
-                        'id'        => 'deal-' . $deal->id,
-                        'entity_id' => $deal->id,
-                        'type'      => 'deal',
-                        'label'     => 'Deal Expiry',
-                        'title'     => $deal->name,
-                        'date'      => $expiryDate->toDateString(),
-                        'status'    => $deal->status,
-                        'priority'  => $deal->days_left <= 3 ? 'urgent' : ($deal->days_left <= 7 ? 'high' : 'medium'),
-                        'done'      => false,
-                        'color'     => $deal->days_left <= 3 ? 'red' : ($deal->days_left <= 7 ? 'orange' : 'yellow'),
-                        'days_left' => $deal->days_left,
-                        'referrer'  => $deal->reseller_name,
-                        'stage'     => ucwords(str_replace('_', ' ', $deal->stage ?? '')),
-                        'url'       => "/tenant/{$tenantId}/deals/{$deal->id}",
-                    ]);
-                });
+            foreach ($dealRows as $deal) {
+                $expiryDate = $today->copy()->addDays((int) $deal->days_left);
+                if (!$expiryDate->between($from, $to)) continue;
+
+                $daysLeft = (int) $deal->days_left;
+                $events->push([
+                    'id'        => 'deal-' . $deal->id,
+                    'entity_id' => $deal->id,
+                    'type'      => 'deal',
+                    'label'     => 'Deal Expiry',
+                    'title'     => $deal->name,
+                    'date'      => $expiryDate->toDateString(),
+                    'status'    => $deal->status,
+                    'priority'  => $daysLeft <= 3 ? 'urgent' : ($daysLeft <= 7 ? 'high' : 'medium'),
+                    'done'      => false,
+                    'color'     => $daysLeft <= 3 ? 'red' : ($daysLeft <= 7 ? 'orange' : 'yellow'),
+                    'days_left' => $daysLeft,
+                    'referrer'  => $deal->reseller_name,
+                    'stage'     => ucwords(str_replace('_', ' ', $deal->stage ?? '')),
+                    'url'       => "/tenant/{$tenantId}/deals/{$deal->id}",
+                ]);
+            }
         }
 
-        // Group by date for efficient frontend rendering
-        $grouped = $events->groupBy('date')->map(fn($items) => $items->values())->all();
+        $sorted  = $events->sortBy('date')->values();
+        $grouped = $sorted->groupBy('date')->map(fn($items) => $items->values())->all();
 
-        return response()->json([
-            'events'  => $events->sortBy('date')->values(),
-            'grouped' => $grouped,
-        ]);
+        return response()->json(['events' => $sorted, 'grouped' => $grouped]);
     }
 
-    private function resolveActor(): array
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function resolveRole(string $tenantId): array
     {
-        if ($user = Auth::guard('tenant')->user()) {
-            return ['tenant_user', (string) $user->id];
+        if (Auth::guard('web')->check()) {
+            return [true, 'super_admin', (string) Auth::guard('web')->id()];
         }
-        if ($user = Auth::guard('web')->user()) {
-            return ['super_admin', (string) $user->id];
-        }
-        return ['guest', ''];
+
+        $user = Auth::guard('tenant')->user();
+        if (!$user) return [false, 'guest', ''];
+
+        $role = TenantMembership::where('tenant_user_id', $user->id)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role');
+
+        $isAdmin = in_array($role, ['owner', 'admin', 'manager']);
+        return [$isAdmin, 'tenant_user', (string) $user->id];
     }
 
     private function taskColor(string $priority, bool $done): string

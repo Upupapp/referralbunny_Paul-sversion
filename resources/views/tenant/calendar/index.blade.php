@@ -10,16 +10,18 @@
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold text-[#1E1B4B]" x-text="monthLabel"></h1>
             <div class="flex items-center gap-1">
-                <button @click="prevMonth()"
-                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                <button @click="prevMonth()" :disabled="loading"
+                        :class="loading ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100'"
+                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <button @click="goToToday()"
-                        class="px-3 py-1 rounded-lg text-xs font-semibold text-[#7B61FF] hover:bg-purple-50 transition-colors border border-purple-200">
+                <button @click="goToToday()" :disabled="loading"
+                        class="px-3 py-1 rounded-lg text-xs font-semibold text-[#7B61FF] hover:bg-purple-50 transition-colors border border-purple-200 disabled:opacity-40">
                     Today
                 </button>
-                <button @click="nextMonth()"
-                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                <button @click="nextMonth()" :disabled="loading"
+                        :class="loading ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100'"
+                        class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
             </div>
@@ -43,6 +45,13 @@
         </div>
     </div>
 
+    {{-- ── Error state ──────────────────────────────────────────────────────── --}}
+    <div x-show="fetchError" class="flex items-center gap-3 p-4 mb-3 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-700">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Couldn't load calendar events. </span>
+        <button @click="fetchEvents()" class="underline font-semibold hover:text-red-800">Retry</button>
+    </div>
+
     {{-- ── Loading ───────────────────────────────────────────────────────────── --}}
     <div x-show="loading" class="flex items-center justify-center py-16">
         <svg class="w-6 h-6 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
@@ -51,7 +60,15 @@
         </svg>
     </div>
 
-    <div x-show="!loading" class="flex gap-4 flex-1 min-h-0">
+    {{-- ── Empty month state ────────────────────────────────────────────────── --}}
+    <div x-show="!loading && !fetchError && events.length === 0" class="text-center py-10 text-gray-400">
+        <svg class="w-10 h-10 mx-auto mb-2 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <p class="text-sm">Nothing scheduled this month.</p>
+    </div>
+
+    <div x-show="!loading" class="flex gap-4 flex-1 min-h-0 flex-col lg:flex-row">
 
         {{-- ── Month Grid ──────────────────────────────────────────────────── --}}
         <div class="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
@@ -110,7 +127,7 @@
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-x-4"
              x-transition:enter-end="opacity-100 translate-x-0"
-             class="w-72 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden shrink-0">
+             class="w-full lg:w-72 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden shrink-0">
 
             {{-- Panel header --}}
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -192,13 +209,14 @@
 function rbCalendar(tenantId) {
     return {
         tenantId,
-        today:    null,
-        current:  null,   // { year, month } being displayed
-        events:   [],
-        grouped:  {},
-        cells:    [],
-        loading:  false,
-        filter:   'all',
+        today:      null,
+        current:    null,   // { year, month } being displayed
+        events:     [],
+        grouped:    {},
+        cells:      [],
+        loading:    false,
+        fetchError: false,
+        filter:     'all',
 
         selectedDay:       null,   // 'YYYY-MM-DD'
         selectedDayLabel:  '',
@@ -250,7 +268,8 @@ function rbCalendar(tenantId) {
         },
 
         async fetchEvents() {
-            this.loading = true;
+            this.loading    = true;
+            this.fetchError = false;
             const { year, month } = this.current;
             const from = `${year}-${String(month).padStart(2,'0')}-01`;
             const lastDay = new Date(year, month, 0).getDate();
@@ -260,10 +279,12 @@ function rbCalendar(tenantId) {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                 });
-                const data = await res.json();
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data   = await res.json();
                 this.events  = data.events  || [];
                 this.grouped = data.grouped || {};
             } catch(e) {
+                this.fetchError = true;
                 this.events = []; this.grouped = {};
             } finally {
                 this.loading = false;
@@ -364,4 +385,3 @@ function rbCalendar(tenantId) {
 }
 </script>
 @endpush
-@endsection
