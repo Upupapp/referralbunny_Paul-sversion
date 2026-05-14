@@ -370,7 +370,7 @@ document.addEventListener('alpine:init', () => {
             </div>
 
             <div class="space-y-1 overflow-y-auto" style="max-height:220px" x-show="resellers.length>0">
-                <template x-for="(r,i) in resellers.slice(0,8)" :key="r.id">
+                <template x-for="(r,i) in sortedResellers.slice(0,8)" :key="r.id">
                     <div class="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
                         {{-- Avatar --}}
                         <div class="relative shrink-0">
@@ -392,11 +392,11 @@ document.addEventListener('alpine:init', () => {
                             <p class="text-xs text-gray-400 truncate mt-0.5"
                                x-text="(r.assigned_leads||0)+' deals · '+(r.performance_score!=null?r.performance_score+'% rate':'not rated')"></p>
                         </div>
-                        {{-- Value + time --}}
+                        {{-- Pipeline value --}}
                         <div class="text-right shrink-0">
                             <p class="text-xs font-bold text-[#1E1B4B]"
-                               x-text="r.closed_value?'₱'+(Number(r.closed_value)/1000).toFixed(0)+'K':'₱0'"></p>
-                            <p class="text-[10px] text-gray-400 mt-0.5">active</p>
+                               x-text="formatPipeline(resellerPipeline(r))"></p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">pipeline</p>
                         </div>
                     </div>
                 </template>
@@ -1079,6 +1079,24 @@ function tenantDashboard(tenantId, currentResellerName) {
 
             this.maxCount     = Math.max(...(this.funnel.map(f=>f.count)), 1);
             this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
+        },
+
+        // ── Top Referrers: pipeline per reseller + sorted ─────
+        resellerPipeline(r) {
+            return this.leads
+                .filter(l => l.reseller_name === r.name && !['cancelled','archived'].includes(l.status))
+                .reduce((sum, l) => sum + (parseFloat(l.deal_value) || 0), 0);
+        },
+        formatPipeline(v) {
+            if (!v) return '₱0';
+            if (v >= 1000000) return '₱' + (v / 1000000).toFixed(1) + 'M';
+            if (v >= 1000) return '₱' + Math.round(v / 1000) + 'K';
+            return '₱' + v.toLocaleString();
+        },
+        get sortedResellers() {
+            return [...this.resellers].sort((a, b) =>
+                this.resellerPipeline(b) - this.resellerPipeline(a)
+            );
         },
 
         // ── Computed ──────────────────────────────────────────

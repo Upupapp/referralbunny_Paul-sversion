@@ -130,7 +130,22 @@
                             <th style="width:90px">Severity</th>
                             <th>Action</th>
                             <th>Actor</th>
-                            <th style="width:140px">When</th>
+                            <th style="width:140px">
+                                @php
+                                    $currentSort = $filters['sort'] ?? 'recency_desc';
+                                    $nextSort    = $currentSort === 'recency_desc' ? 'recency_asc' : 'recency_desc';
+                                @endphp
+                                <a href="{{ request()->url() }}?{{ http_build_query(array_merge(request()->except(['sort','page']), ['sort' => $nextSort])) }}"
+                                   class="inline-flex items-center gap-1 hover:text-[#7B61FF] transition-colors"
+                                   title="{{ $currentSort === 'recency_desc' ? 'Showing newest first — click for oldest first' : 'Showing oldest first — click for newest first' }}">
+                                    When
+                                    @if($currentSort === 'recency_desc')
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                                    @else
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>
+                                    @endif
+                                </a>
+                            </th>
                             <th style="width:80px"></th>
                         </tr>
                     </thead>

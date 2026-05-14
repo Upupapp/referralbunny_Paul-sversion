@@ -24,9 +24,10 @@ class CriticalActionService
     public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
     {
         $all = $this->forTenant($tenantId, ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'limit_per_source' => 5]);
+        // Dashboard widget: most recent first, severity as tiebreaker
         usort($all, fn($a, $b) =>
-            (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
-            ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+            $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+            ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
         );
         return array_slice($all, 0, $limit);
     }
@@ -61,11 +62,19 @@ class CriticalActionService
             );
         }
 
-        // Sort by severity then recency
-        usort($all, fn($a, $b) =>
-            (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
-            ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
-        );
+        // Sort: default most-recent-first; 'recency_asc' = oldest-first; 'severity' = severity-first
+        $sort = $filters['sort'] ?? 'recency_desc';
+        if ($sort === 'recency_asc') {
+            usort($all, fn($a, $b) =>
+                $a['occurred_at']->timestamp <=> $b['occurred_at']->timestamp
+                ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+            );
+        } else {
+            usort($all, fn($a, $b) =>
+                $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+                ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+            );
+        }
 
         $all   = array_values($all);
         $total = count($all);

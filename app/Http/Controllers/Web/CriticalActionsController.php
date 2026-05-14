@@ -51,10 +51,13 @@ class CriticalActionsController extends Controller
         $canSeeExports = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
             || $this->permissions->can($membership, 'approve_export_requests');
 
+        $validSorts = ['recency_desc', 'recency_asc'];
         $filters = [
             'search'           => $request->input('search'),
             'severity'         => $request->input('severity'),
             'category'         => $request->input('category'),
+            'sort'             => in_array($request->input('sort'), $validSorts)
+                                    ? $request->input('sort') : 'recency_desc',
             'page'             => (int) $request->input('page', 1),
             'can_see_billing'  => $canSeeBilling,
             'can_see_users'    => $canSeeUsers,
