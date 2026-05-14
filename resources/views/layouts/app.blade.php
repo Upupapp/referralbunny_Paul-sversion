@@ -343,9 +343,15 @@
                 @if(isset($tenant) && (auth('tenant')->check() || auth('web')->check()))
                     @php
                         $gcalUserId = auth('tenant')->id() ?? auth('web')->id();
-                        $gcalConnected = $gcalUserId
-                            ? \App\Models\GoogleCalendarIntegration::where('tenant_user_id', $gcalUserId)->where('is_active', true)->exists()
-                            : false;
+                        $gcalConnected = false;
+                        if ($gcalUserId) {
+                            try {
+                                $gcalConnected = \App\Models\GoogleCalendarIntegration::where('tenant_user_id', $gcalUserId)
+                                    ->where('is_active', true)->exists();
+                            } catch (\Throwable) {
+                                $gcalConnected = false;
+                            }
+                        }
                     @endphp
                     <a href="{{ $gcalConnected ? route('tenant.integrations', $tenant->id) : route('tenant.google.calendar.connect', $tenant->id) }}"
                        title="{{ $gcalConnected ? 'Google Calendar connected — manage integration' : 'Connect Google Calendar' }}"
