@@ -623,7 +623,15 @@ class ResellerDealController extends Controller
                     'referrer_name' => $reseller->name,
                 ],
             ]);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController requestArchive failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
+        }
 
+        // Activity log + notification AFTER commit — never let these roll back the business record
+        try {
             app(DealActivityService::class)->record($lead, 'Archive request submitted by referrer — reason: ' . \Illuminate\Support\Str::limit($data['reason'], 100), 'archive', [
                 'category'   => 'archive',
                 'reseller'   => $reseller->name,
@@ -631,7 +639,9 @@ class ResellerDealController extends Controller
                 'actor_role' => 'referrer',
                 'new_values' => ['approval_id' => $approval->id, 'reason' => $data['reason']],
             ]);
+        } catch (\Throwable) {}
 
+        try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
@@ -642,13 +652,7 @@ class ResellerDealController extends Controller
                 actionLabel:  'Review & Decide',
                 dedupeSuffix: $dealId . ':archive:' . $approval->id,
             );
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController requestArchive failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
-        }
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'approval_id' => $approval->id]);
     }

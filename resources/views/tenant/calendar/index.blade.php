@@ -123,17 +123,57 @@
                     <p class="text-2xl font-bold text-gray-800 leading-none mt-0.5" x-text="selectedDayNum"
                        :class="selectedDayIsToday ? 'text-blue-600' : ''"></p>
                 </div>
-                <button @click="selectedDay = null"
-                        class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <div class="flex items-center gap-1.5">
+                    {{-- Add Task button --}}
+                    <button @click="openNewTask()"
+                            title="Add task on this day"
+                            class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 hover:bg-purple-200 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    </button>
+                    <button @click="selectedDay = null"
+                            class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
             </div>
 
-            <div x-show="selectedDayEvents.length === 0" class="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
+            {{-- Quick create task inline form --}}
+            <div x-show="newTaskOpen" x-cloak class="px-3 pt-3 pb-2 border-b border-gray-100 space-y-2 bg-purple-50/50">
+                <p class="text-[10px] font-semibold text-purple-600 uppercase tracking-wide">New Task — <span x-text="selectedDayLabel"></span></p>
+                <input x-model="newTaskTitle" type="text" placeholder="Task title *" maxlength="200"
+                       class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-100"
+                       @keydown.enter="submitNewTask()" @keydown.escape="newTaskOpen=false">
+                <select x-model="newTaskPriority"
+                        class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:border-purple-400">
+                    <option value="medium">Medium priority</option>
+                    <option value="high">High priority</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="low">Low priority</option>
+                </select>
+                <p x-show="newTaskError" class="text-[10px] text-red-500" x-text="newTaskError"></p>
+                <div class="flex gap-1.5">
+                    <button @click="newTaskOpen = false; newTaskError = ''"
+                            class="flex-1 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="submitNewTask()" :disabled="newTaskSaving"
+                            class="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-60"
+                            style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)"
+                            x-text="newTaskSaving ? 'Adding…' : 'Add Task'">
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="selectedDayEvents.length === 0 && !newTaskOpen" class="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center">
                 <svg class="w-8 h-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <p class="text-sm text-gray-400">Nothing scheduled</p>
+                <p class="text-sm text-gray-400 mb-2">Nothing scheduled</p>
+                <button @click="openNewTask()"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    Add a task
+                </button>
             </div>
 
             <div class="flex-1 overflow-y-auto">
@@ -182,8 +222,16 @@ function rbCalendar(tenantId) {
         selectedDay:        null,
         selectedDayNum:     '',
         selectedDayWeekday: '',
+        selectedDayLabel:   '',
         selectedDayIsToday: false,
         selectedDayEvents:  [],
+
+        // Quick-create task
+        newTaskOpen:     false,
+        newTaskTitle:    '',
+        newTaskPriority: 'medium',
+        newTaskSaving:   false,
+        newTaskError:    '',
 
         get monthLabel() {
             if (!this.current) return '';
@@ -303,13 +351,54 @@ function rbCalendar(tenantId) {
             const d = new Date(cell.key + 'T12:00:00');
             this.selectedDayNum     = d.getDate();
             this.selectedDayWeekday = d.toLocaleString('default', { weekday: 'long' });
+            this.selectedDayLabel   = d.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
             this.selectedDayIsToday = cell.key === this.today;
+            this.newTaskOpen        = false;
+            this.newTaskTitle       = '';
+            this.newTaskError       = '';
             this.refreshPanel();
             this.buildCells();
         },
 
         refreshPanel() {
             this.selectedDayEvents = this.eventsForDate(this.selectedDay);
+        },
+
+        openNewTask() {
+            this.newTaskOpen  = true;
+            this.newTaskTitle = '';
+            this.newTaskError = '';
+            this.$nextTick(() => this.$el.querySelector('input[x-model="newTaskTitle"]')?.focus());
+        },
+
+        async submitNewTask() {
+            if (!this.newTaskTitle.trim()) { this.newTaskError = 'Title is required.'; return; }
+            this.newTaskSaving = true; this.newTaskError = '';
+            const csrf = document.querySelector('meta[name=csrf-token]')?.content ?? '';
+            try {
+                const res = await fetch(`/tenant/${tenantId}/tasks`, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest' },
+                    body: JSON.stringify({
+                        title:       this.newTaskTitle.trim(),
+                        priority:    this.newTaskPriority,
+                        due_at:      this.selectedDay,
+                        assignee_ids: [],   // assigns to self (handled server-side for self-assign)
+                    }),
+                });
+                if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    this.newTaskError = d.message || d.error || 'Could not create task.';
+                    return;
+                }
+                this.newTaskOpen  = false;
+                this.newTaskTitle = '';
+                // Re-fetch events so the new task appears on the calendar
+                await this.fetchEvents();
+                this.$dispatch('show-toast', { type: 'success', message: 'Task added to calendar.' });
+            } catch {
+                this.newTaskError = 'Network error. Please try again.';
+            } finally { this.newTaskSaving = false; }
         },
 
         // ── Styling helpers ────────────────────────────────────────────────────
