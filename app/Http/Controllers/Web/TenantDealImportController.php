@@ -387,6 +387,44 @@ class TenantDealImportController extends Controller
             // Never block the import redirect for a logging failure
         }
 
+        // Notify admins + managers that an import was completed
+        try {
+            // Resolve actor display name
+            if ($this->isReseller()) {
+                $rs         = \App\Models\Reseller::find($this->authResellerId());
+                $actorName  = $rs?->name ?: 'Referrer';
+            } elseif (Auth::guard('tenant')->check()) {
+                $tu        = Auth::guard('tenant')->user();
+                $actorName = trim(($tu->first_name ?? '') . ' ' . ($tu->last_name ?? '')) ?: ($tu->email ?? 'Team member');
+            } else {
+                $actorName = 'Admin';
+            }
+
+            $fileName = $batch->file_name ?? 'import file';
+            $summary  = "Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}.";
+
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        "Deal import completed",
+                body:         "{$actorName} imported deals from {$fileName}. {$summary}",
+                actionUrl:    "/tenant/{$tenantId}/imports",
+                actionLabel:  'View Import',
+                dedupeSuffix: "import_done_{$batchId}",
+                metadata:     [
+                    'batch_id'  => $batchId,
+                    'file_name' => $fileName,
+                    'created'   => $result['created'],
+                    'updated'   => $result['updated'],
+                    'skipped'   => $result['skipped'],
+                    'failed'    => $result['failed'],
+                ],
+            );
+        } catch (\Throwable) {
+            // Notification failure must never block the import redirect
+        }
+
         return redirect()
             ->route($routes['show'], [$tenantId, $batchId])
             ->with('success',
