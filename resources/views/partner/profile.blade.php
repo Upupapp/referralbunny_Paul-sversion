@@ -214,7 +214,7 @@
                 {{ session('password_success') }}
             </div>
             @endif
-            <form method="POST" action="{{ route('partner.profile.password', $tenantId) }}" class="space-y-3">
+            <form method="POST" action="{{ route('partner.profile.password') }}" class="space-y-3">
                 @csrf
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Current Password</label>
