@@ -194,8 +194,12 @@ class TaskCompletionService
         $stored = [];
         foreach ($files as $file) {
             try {
-                $original  = $file->getClientOriginalName();
-                $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+                $original = $file->getClientOriginalName();
+                // Reject filenames with path separators or excessive length (path traversal guard)
+                if (str_contains($original, '/') || str_contains($original, '\\') || strlen($original) > 255) {
+                    continue;
+                }
+                $sanitized   = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
                 $stored_name = Str::uuid() . '_' . $sanitized;
                 $path  = "tenants/{$tenantId}/tasks/{$taskId}/responses/{$stored_name}";
 

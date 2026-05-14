@@ -614,6 +614,29 @@
                                               class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm bg-gray-50 outline-none focus:border-[#7B61FF] focus:ring-2 focus:ring-purple-100 transition-all resize-none"
                                               placeholder="Write your reply…"></textarea>
                                 </div>
+                                {{-- File attachments --}}
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Attachments <span class="text-gray-400 font-normal">(optional, max 5 files · 50 MB each)</span></label>
+                                    <label class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50 hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-colors">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                        <span class="text-xs text-gray-400" x-text="completionFiles.length ? completionFiles.length + ' file(s) selected' : 'Click to attach files'"></span>
+                                        <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.webp,.txt"
+                                               class="sr-only"
+                                               @change="completionFiles = Array.from($event.target.files).slice(0, 5)"
+                                               :disabled="completionSubmitting">
+                                    </label>
+                                    <template x-if="completionFiles.length > 0">
+                                        <ul class="mt-1.5 space-y-1">
+                                            <template x-for="(f,i) in completionFiles" :key="i">
+                                                <li class="flex items-center gap-2 text-[11px] text-gray-500">
+                                                    <svg class="w-3 h-3 shrink-0 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                                    <span x-text="f.name" class="truncate max-w-[200px]"></span>
+                                                    <button type="button" @click="completionFiles = completionFiles.filter((_,j) => j !== i)" class="text-gray-300 hover:text-red-400 ml-auto shrink-0">✕</button>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </template>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -806,6 +829,7 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
         // Completion modal
         completionOpen: false, completionTask: null, completionSourceCol: null,
         sendEmail: false, completionSubject: '', completionBody: '',
+        completionFiles: [],
         completionSubmitting: false, completionSuccess: '', completionError: '',
 
         // Create modal
@@ -937,10 +961,15 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
             if (!task.can_complete) { this.toast('You cannot complete this task.', 'error'); return; }
             this.completionTask = task; this.completionSourceCol = sourceColKey;
             this.sendEmail = false; this.completionSubject = ''; this.completionBody = '';
+            this.completionFiles = [];
             this.completionSuccess = ''; this.completionError = '';
             this.completionOpen = true;
         },
-        cancelCompletion() { this.completionOpen = false; this.completionTask = null; this.completionError = ''; this.completionSuccess = ''; },
+        cancelCompletion() {
+            this.completionOpen = false; this.completionTask = null;
+            this.completionError = ''; this.completionSuccess = '';
+            this.completionFiles = [];
+        },
         async submitCompletion(withEmail) {
             if (this.completionSubmitting) return;
             const task = this.completionTask;
@@ -951,23 +980,39 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
             this.completionSubmitting = true; this.completionError = ''; this.completionSuccess = '';
             const removed = this.removeTaskFromCol(task.id, this.completionSourceCol);
             try {
-                const payload = { status:'completed', send_email: withEmail };
-                if (withEmail) { payload.subject = this.completionSubject.trim(); payload.body = this.completionBody.trim(); }
-                const res = await fetch(`/tenant/${tenantId}/tasks/${task.id}/status`, {
-                    method:'PATCH', headers:JSON_H(), body:JSON.stringify(payload),
-                });
+                let res;
+                if (withEmail) {
+                    // Use FormData (multipart) so file attachments can be included
+                    const fd = new FormData();
+                    fd.append('status', 'completed');
+                    fd.append('send_email', '1');
+                    fd.append('subject', this.completionSubject.trim());
+                    fd.append('body', this.completionBody.trim());
+                    fd.append('client_request_id', 'cr_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+                    this.completionFiles.forEach((f, i) => fd.append(`attachments[${i}]`, f));
+                    res = await fetch(`/tenant/${tenantId}/tasks/${task.id}/status`, {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': CSRF(), 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd,
+                    });
+                } else {
+                    res = await fetch(`/tenant/${tenantId}/tasks/${task.id}/status`, {
+                        method: 'PATCH', headers: JSON_H(), body: JSON.stringify({ status: 'completed', send_email: false }),
+                    });
+                }
                 const data = await res.json();
                 if (!res.ok) {
-                    if (removed) this.addTaskToCol(removed, this.completionSourceCol);
-                    this.completionError = data.error || 'Could not complete task.';
+                    // Restore card fully on error
+                    if (removed) this.addTaskToCol({ ...removed }, this.completionSourceCol);
+                    this.completionError = data.error || (data.errors ? Object.values(data.errors).flat().join(' ') : 'Could not complete task.');
                     return;
                 }
-                this.addTaskToCol({ ...(data.card || removed) }, 'completed');
+                this.addTaskToCol({ ...(data.card || removed), status: 'completed' }, 'completed');
                 this.completionSuccess = data.message || 'Task completed.';
                 setTimeout(() => this.cancelCompletion(), 1500);
                 this.toast(data.message || 'Task completed.', 'success');
             } catch(e) {
-                if (removed) this.addTaskToCol(removed, this.completionSourceCol);
+                if (removed) this.addTaskToCol({ ...removed }, this.completionSourceCol);
                 this.completionError = 'Network error. Please try again.';
             } finally { this.completionSubmitting = false; }
         },

@@ -538,7 +538,7 @@ class TaskController extends Controller
             'body'              => 'nullable|string|max:20000',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
-            'client_request_id' => 'nullable|string|max:64',
+            'client_request_id' => ['nullable', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
         ]);
 
         $newStatus = $data['status'];
@@ -941,7 +941,7 @@ class TaskController extends Controller
             'send_email'        => 'nullable|boolean',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200|mimes:pdf,doc,docx,xls,xlsx,csv,jpg,jpeg,png,webp,txt',
-            'client_request_id' => 'nullable|string|max:64',
+            'client_request_id' => ['nullable', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_.\-]+$/'],
         ]);
 
         $wantsEmail     = filter_var($data['send_email'] ?? false, FILTER_VALIDATE_BOOLEAN);
