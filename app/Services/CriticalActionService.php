@@ -106,6 +106,7 @@ class CriticalActionService
 
         if ($resellerId) {
             $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
+            $sources[] = fn() => $this->resellerOverdueTasks($tenantId, $resellerId);
         }
 
         $items = [];
@@ -618,11 +619,15 @@ class CriticalActionService
 
     private function resellerExpiringDeals(string $tenantId, string $resellerName): array
     {
+        // Show deals already marked expiring OR still active but with ≤5 days left
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->where('reseller_name', $resellerName)
-            ->where('status', 'expiring')
-            ->select('id', 'name', 'days_left', 'updated_at')
+            ->where(fn($q) =>
+                $q->where('status', 'expiring')
+                  ->orWhere(fn($q2) => $q2->where('status', 'active')->where('days_left', '<=', 5))
+            )
+            ->select('id', 'name', 'days_left', 'status', 'updated_at')
             ->orderBy('days_left')
             ->limit(5)
             ->get();
@@ -1029,6 +1034,45 @@ class CriticalActionService
             return $actions;
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] billingIssues failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    private function resellerOverdueTasks(string $tenantId, string $resellerId): array
+    {
+        if (!Schema::hasTable('tasks')) return [];
+
+        try {
+            $tasks = DB::table('tasks')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('assigned_to_type', 'reseller')
+                ->where('assigned_to_id', $resellerId)
+                ->whereNotIn('status', ['completed', 'cancelled', 'archived'])
+                ->where('due_at', '<', now())
+                ->select('id', 'title', 'priority', 'due_at', 'created_at')
+                ->orderBy('due_at')
+                ->limit(5)
+                ->get();
+
+            return $tasks->map(fn($t) => $this->make([
+                'type'          => 'overdue_task',
+                'category'      => 'task',
+                'severity'      => in_array($t->priority, ['urgent', 'high']) ? 'high' : 'medium',
+                'summary'       => "Overdue task: {$t->title}",
+                'actor_name'    => 'You',
+                'actor_role'    => 'Referrer',
+                'related_label' => $t->title,
+                'related_type'  => 'task',
+                'related_id'    => $t->id,
+                'occurred_at'   => $t->due_at ?? $t->created_at,
+                'action_url'    => "/reseller/{$tenantId}/tasks",
+                'action_label'  => 'View Tasks',
+                'action_needed' => true,
+                'source'        => 'tasks',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerOverdueTasks failed', ['error' => $e->getMessage()]);
             return [];
         }
     }

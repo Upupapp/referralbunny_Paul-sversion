@@ -65,6 +65,13 @@ class GoogleCalendarController extends Controller
 
         ['tenant_id' => $tenantId, 'user_id' => $userId] = $cached;
 
+        // Validate the authenticated user matches the state — prevents session fixation
+        $currentUser = $this->resolveUser();
+        if ((string) $currentUser->id !== (string) $userId) {
+            return redirect("/tenant/{$tenantId}/integrations")
+                ->withErrors(['Google Calendar connection failed: session mismatch. Please try again.']);
+        }
+
         try {
             $tokens = $this->svc->exchangeCode($code);
 
@@ -82,7 +89,7 @@ class GoogleCalendarController extends Controller
                 : $existingRefreshToken;
 
             GoogleCalendarIntegration::updateOrCreate(
-                ['tenant_user_id' => $userId],
+                ['tenant_id' => $tenantId, 'tenant_user_id' => $userId],
                 [
                     'tenant_id'        => $tenantId,
                     'access_token'     => Crypt::encryptString($tokens['access_token'] ?? ''),
@@ -117,6 +124,10 @@ class GoogleCalendarController extends Controller
             ->first();
 
         if ($integration) {
+            // Delete from Google Calendar first, then purge DB records
+            foreach ($integration->calendarEvents as $evt) {
+                \App\Jobs\DeleteGoogleCalendarEvent::dispatch($evt->entity_type, $evt->entity_id);
+            }
             $integration->calendarEvents()->delete();
             $integration->delete();
         }

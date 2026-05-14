@@ -178,7 +178,8 @@
     </div>
 
     {{-- Edit form --}}
-    <form method="POST" action="{{ route('reseller.profile.update', $tenantId) }}">
+    <form method="POST" action="{{ route('reseller.profile.update', $tenantId) }}"
+          x-data="{ saving: false }" @submit="saving = true">
         @csrf
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
             <h2 class="text-sm font-bold text-[#1E1B4B]">My Information</h2>
@@ -256,10 +257,11 @@
                    class="px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                     Cancel
                 </a>
-                <button type="submit"
-                        class="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md"
+                <button type="submit" :disabled="saving"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md disabled:opacity-60"
                         style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
-                    Save Changes
+                    <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="saving ? 'Saving…' : 'Save Changes'">Save Changes</span>
                 </button>
             </div>
         </div>
@@ -300,7 +302,8 @@
                 {{ session('password_success') }}
             </div>
             @endif
-            <form method="POST" action="{{ route('reseller.profile.password', $tenantId) }}" class="space-y-3">
+            <form method="POST" action="{{ route('reseller.profile.password', $tenantId) }}" class="space-y-3"
+                  x-data="{ pwSaving: false }" @submit="pwSaving = true">
                 @csrf
                 <div>
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Current Password</label>
@@ -320,9 +323,11 @@
                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-teal-300">
                 </div>
                 <div class="flex justify-end">
-                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all"
+                    <button type="submit" :disabled="pwSaving"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-60"
                             style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
-                        Update Password
+                        <svg x-show="pwSaving" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="pwSaving ? 'Updating…' : 'Update Password'">Update Password</span>
                     </button>
                 </div>
             </form>

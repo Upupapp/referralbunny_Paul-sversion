@@ -137,10 +137,14 @@ class MessageController extends Controller
     public function threadMessages($tenantId, $threadId)
     {
         try {
-            $thread = MessageThread::where('tenant_id', $tenantId)
-                ->where('id', $threadId)
-                ->with('reseller:id,name,email')
-                ->firstOrFail();
+            $q = MessageThread::where('tenant_id', $tenantId)->where('id', $threadId);
+
+            // Resellers may only access their own thread — prevent IDOR
+            if (auth('reseller')->check()) {
+                $q->where('reseller_id', auth('reseller')->id());
+            }
+
+            $thread = $q->with('reseller:id,name,email')->firstOrFail();
 
             ThreadMessage::where('thread_id', $threadId)
                 ->where('sender_type', 'reseller')

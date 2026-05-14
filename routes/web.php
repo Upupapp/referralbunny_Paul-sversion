@@ -257,8 +257,10 @@ Route::middleware(['auth:tenant,reseller,web'])
         Route::post('/broadcast',                  [MessageController::class, 'broadcastMessage'])->name('broadcast')->middleware('throttle:10,1');
     });
 
-// ── Google Calendar OAuth callback (global — fixed redirect URI for Google Cloud Console) ──
-Route::get('/google-calendar/callback', [\App\Http\Controllers\Web\GoogleCalendarController::class, 'callback'])->name('google.calendar.callback');
+// ── Google Calendar OAuth callback — must be authenticated; Google preserves session cookies ──
+Route::get('/google-calendar/callback', [\App\Http\Controllers\Web\GoogleCalendarController::class, 'callback'])
+    ->middleware('auth:tenant,web')
+    ->name('google.calendar.callback');
 
 // ── Tenant app ────────────────────────────────────────────────
 use App\Http\Controllers\Web\TenantUserManagementController;
