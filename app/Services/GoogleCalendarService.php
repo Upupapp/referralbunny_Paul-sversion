@@ -12,9 +12,13 @@ use Illuminate\Support\Facades\Log;
 class GoogleCalendarService
 {
     // Google Calendar color IDs
-    private const COLOR_TASK = '3';    // Grape (purple)
-    private const COLOR_DEAL = '11';   // Tomato (red) for urgent
-    private const COLOR_DEAL_ACTIVE = '5'; // Banana (yellow)
+    private const COLOR_TASK        = '3';  // Grape (purple)
+    private const COLOR_DEAL_URGENT = '11'; // Tomato (red) — ≤3 days left
+    private const COLOR_DEAL_NORMAL = '5';  // Banana (yellow)
+
+    // Entity type constants used across jobs, observers, and service
+    public const ENTITY_TASK = 'task';
+    public const ENTITY_DEAL = 'deal';
 
     // ── OAuth Client ─────────────────────────────────────────────────────────
 
@@ -43,6 +47,17 @@ class GoogleCalendarService
         return $client->fetchAccessTokenWithAuthCode($code);
     }
 
+    public function fetchUserEmail(string $accessToken): ?string
+    {
+        try {
+            $client = $this->buildClient();
+            $client->setAccessToken(['access_token' => $accessToken, 'token_type' => 'Bearer']);
+            return (new \Google\Service\Oauth2($client))->userinfo->get()->getEmail();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     // ── Authenticated client for a stored integration ─────────────────────────
 
     public function clientFor(GoogleCalendarIntegration $integration): ?\Google\Client
@@ -52,15 +67,16 @@ class GoogleCalendarService
 
         $client = $this->buildClient();
 
-        // Reconstruct the token array
+        // Reconstruct the token array — use actual expiry time to avoid premature refresh loops
+        $expiresIn   = 3600;
         $accessToken = [
             'access_token'  => $integration->access_token_plain ?? '',
             'refresh_token' => $refreshToken,
-            'expires_in'    => 3600,
+            'expires_in'    => $expiresIn,
             'token_type'    => 'Bearer',
             'created'       => $integration->token_expires_at
-                ? $integration->token_expires_at->subHour()->timestamp
-                : (time() - 7200),
+                ? $integration->token_expires_at->subSeconds($expiresIn)->timestamp
+                : (time() - $expiresIn * 2),
         ];
         $client->setAccessToken($accessToken);
 
@@ -215,12 +231,13 @@ class GoogleCalendarService
 
     // ── Event Builders ────────────────────────────────────────────────────────
 
-    private const TZ = 'Asia/Manila';
+    private function tz(): string { return config('app.timezone', 'Asia/Manila'); }
 
     private function buildTaskEvent(Task $task, string $tenantId): \Google\Service\Calendar\Event
     {
-        $start       = $task->due_at->setTimezone(self::TZ)->startOfDay()->addHours(6)->toRfc3339String();
-        $end         = $task->due_at->setTimezone(self::TZ)->startOfDay()->addHours(7)->toRfc3339String();
+        $tz    = $this->tz();
+        $start = $task->due_at->setTimezone($tz)->startOfDay()->addHours(6)->toRfc3339String();
+        $end   = $task->due_at->setTimezone($tz)->startOfDay()->addHours(7)->toRfc3339String();
         $priorityMap = ['urgent' => '🔴', 'high' => '🟠', 'medium' => '🟡', 'low' => '🟢'];
         $icon        = $priorityMap[$task->priority] ?? '📋';
         $taskUrl     = rtrim(config('app.url'), '/') . "/tenant/{$tenantId}/tasks/{$task->id}";
@@ -236,8 +253,8 @@ class GoogleCalendarService
             'summary'     => "{$icon} Task: {$task->title}",
             'description' => $description,
             'colorId'     => self::COLOR_TASK,
-            'start'       => ['dateTime' => $start, 'timeZone' => self::TZ],
-            'end'         => ['dateTime' => $end,   'timeZone' => self::TZ],
+            'start'       => ['dateTime' => $start, 'timeZone' => $tz],
+            'end'         => ['dateTime' => $end,   'timeZone' => $tz],
             'source'      => [
                 'title' => 'Referral Bunny',
                 'url'   => $taskUrl,
@@ -247,12 +264,12 @@ class GoogleCalendarService
 
     private function buildDealEvent(object $deal, Carbon $expiryDate): \Google\Service\Calendar\Event
     {
-        $tz       = self::TZ;
+        $tz       = $this->tz();
         $start    = $expiryDate->copy()->setTimezone($tz)->startOfDay()->addHours(6)->toRfc3339String();
         $end      = $expiryDate->copy()->setTimezone($tz)->startOfDay()->addHours(7)->toRfc3339String();
         $daysLeft = (int) ($deal->days_left ?? 0);
         $isUrgent = $daysLeft <= 3;
-        $colorId  = $isUrgent ? self::COLOR_DEAL : self::COLOR_DEAL_ACTIVE;
+        $colorId  = $isUrgent ? self::COLOR_DEAL_URGENT : self::COLOR_DEAL_NORMAL;
         $icon     = $isUrgent ? '🚨' : '⏰';
         $stage    = ucwords(str_replace('_', ' ', $deal->stage ?? ''));
         $dealUrl  = rtrim(config('app.url'), '/') . "/tenant/{$deal->tenant_id}/deals/{$deal->id}";

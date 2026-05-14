@@ -111,12 +111,13 @@
             {{-- Actions --}}
             <div class="flex items-center gap-2.5 mt-5 pt-4 border-t border-gray-100">
                 @if($integration && $integration->is_active)
-                    <form method="POST" action="{{ route('tenant.google.calendar.sync-now', $tenantId) }}">
+                    <form method="POST" action="{{ route('tenant.google.calendar.sync-now', $tenantId) }}"
+                          x-data="{ syncing: false }" @submit="syncing = true">
                         @csrf
-                        <button type="submit"
-                                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#7B61FF] text-[#7B61FF] text-sm font-semibold hover:bg-purple-50 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Sync Now
+                        <button type="submit" :disabled="syncing"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#7B61FF] text-[#7B61FF] text-sm font-semibold hover:bg-purple-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                            <svg class="w-4 h-4" :class="syncing ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span x-text="syncing ? 'Syncing…' : 'Sync Now'">Sync Now</span>
                         </button>
                     </form>
                     <form method="POST" action="{{ route('tenant.google.calendar.disconnect', $tenantId) }}" onsubmit="return confirm('Disconnect Google Calendar? Synced events will be removed from your calendar.')">

@@ -4,32 +4,31 @@ namespace App\Observers;
 
 use App\Jobs\DeleteGoogleCalendarEvent;
 use App\Jobs\SyncEntityToGoogleCalendar;
+use App\Models\Lead;
 
 class LeadGoogleCalendarObserver
 {
-    public function updated(object $lead): void
+    private const TERMINAL = ['expired', 'archived', 'paid', 'declined'];
+    private const SYNCABLE  = ['active', 'expiring'];
+
+    public function updated(Lead $lead): void
     {
-        if (!isset($lead->id) || !isset($lead->tenant_id)) return;
-
-        $terminalStatuses = ['expired', 'archived', 'paid', 'declined'];
-
-        // Remove calendar event when deal closes
-        if (in_array($lead->status ?? '', $terminalStatuses)) {
+        if (in_array($lead->status, self::TERMINAL)) {
             DeleteGoogleCalendarEvent::dispatch('deal', (string) $lead->id);
             return;
         }
 
-        // Sync when deal becomes expiring or days_left changes
-        $daysLeft = (int) ($lead->days_left ?? 0);
-        if ($daysLeft > 0 && in_array($lead->status ?? '', ['active', 'expiring'])) {
+        if (
+            in_array($lead->status, self::SYNCABLE) &&
+            (int) ($lead->days_left ?? 0) > 0 &&
+            ($lead->wasChanged('days_left') || $lead->wasChanged('status'))
+        ) {
             SyncEntityToGoogleCalendar::dispatch('deal', (string) $lead->id);
         }
     }
 
-    public function deleted(object $lead): void
+    public function deleted(Lead $lead): void
     {
-        if (isset($lead->id)) {
-            DeleteGoogleCalendarEvent::dispatch('deal', (string) $lead->id);
-        }
+        DeleteGoogleCalendarEvent::dispatch('deal', (string) $lead->id);
     }
 }

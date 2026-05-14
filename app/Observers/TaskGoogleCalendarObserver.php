@@ -8,6 +8,8 @@ use App\Models\Task;
 
 class TaskGoogleCalendarObserver
 {
+    private const TERMINAL = ['completed', 'cancelled', 'archived'];
+
     public function created(Task $task): void
     {
         if ($task->due_at && $task->assigned_to_type === 'tenant_user') {
@@ -17,26 +19,24 @@ class TaskGoogleCalendarObserver
 
     public function updated(Task $task): void
     {
-        // Stop sync if task is now terminal
-        if (in_array($task->status, ['completed', 'cancelled', 'archived'])) {
+        // Terminal status always deletes — nothing else should fire after this
+        if (in_array($task->status, self::TERMINAL)) {
             DeleteGoogleCalendarEvent::dispatch('task', $task->id);
             return;
         }
 
-        // Sync if due_at or title changed and task has a due date
-        if ($task->due_at && $task->assigned_to_type === 'tenant_user') {
-            if ($task->wasChanged('due_at') || $task->wasChanged('title') || $task->wasChanged('priority')) {
-                SyncEntityToGoogleCalendar::dispatch('task', $task->id);
-            }
-        }
-
-        // Remove calendar event if due_at was cleared
+        // due_at cleared — remove event
         if (!$task->due_at && $task->wasChanged('due_at')) {
             DeleteGoogleCalendarEvent::dispatch('task', $task->id);
+            return;
         }
 
-        // Sync if task is re-assigned (new assignee might have calendar connected)
-        if ($task->due_at && $task->wasChanged('assigned_to_id')) {
+        // Sync if a calendar-relevant field changed and task still has a due date
+        if (
+            $task->due_at &&
+            $task->assigned_to_type === 'tenant_user' &&
+            $task->wasChanged(['due_at', 'title', 'priority', 'assigned_to_id'])
+        ) {
             SyncEntityToGoogleCalendar::dispatch('task', $task->id);
         }
     }

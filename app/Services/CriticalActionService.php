@@ -251,6 +251,7 @@ class CriticalActionService
             fn() => $this->recentReferrerAmountChanges($tenantId, $since),
             fn() => $this->stalledDeals($tenantId),
             fn() => $this->commissionReviewQueue($tenantId),
+            fn() => $this->staleGoogleCalendarIntegrations($tenantId),
         ];
 
         if ($canUsers) {
@@ -1375,6 +1376,51 @@ class CriticalActionService
             })->all();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] commissionReviewQueue failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Surface Google Calendar integrations that haven't synced in > 24h or whose token has likely expired.
+     * Helps admins spot broken integrations before tasks/deals go unsynced.
+     */
+    private function staleGoogleCalendarIntegrations(string $tenantId): array
+    {
+        if (!Schema::hasTable('google_calendar_integrations')) return [];
+
+        try {
+            $stale = DB::table('google_calendar_integrations')
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->where(fn($q) =>
+                    $q->where('token_expires_at', '<', now())
+                      ->orWhere(fn($q2) =>
+                          $q2->whereNotNull('last_synced_at')
+                             ->where('last_synced_at', '<', now()->subHours(24))
+                      )
+                )
+                ->select('id', 'google_email', 'token_expires_at', 'last_synced_at', 'tenant_user_id')
+                ->limit(5)
+                ->get();
+
+            return $stale->map(fn($r) => $this->make([
+                'type'          => 'gcal_integration_stale',
+                'category'      => 'task',
+                'severity'      => 'medium',
+                'summary'       => "Google Calendar integration may need reconnecting" . ($r->google_email ? " ({$r->google_email})" : ''),
+                'actor_name'    => $r->google_email ?? 'Team member',
+                'actor_role'    => 'Admin',
+                'related_label' => 'Google Calendar',
+                'related_type'  => 'integration',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->token_expires_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/integrations",
+                'action_label'  => 'Manage Integration',
+                'action_needed' => true,
+                'source'        => 'google_calendar_integrations',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] staleGoogleCalendarIntegrations failed', ['error' => $e->getMessage()]);
             return [];
         }
     }

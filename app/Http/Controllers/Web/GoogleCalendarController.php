@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\DeleteGoogleCalendarEvent;
 use App\Jobs\SyncEntityToGoogleCalendar;
 use App\Models\GoogleCalendarIntegration;
 use App\Models\Task;
+use App\Models\Tenant;
 use App\Services\GoogleCalendarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,30 +23,28 @@ class GoogleCalendarController extends Controller
 
     public function index(string $tenantId)
     {
-        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
-        if (!$user) abort(401);
+        $user        = $this->resolveUser();
+        $tenant      = Tenant::findOrFail($tenantId);
+        $integration = GoogleCalendarIntegration::where('tenant_user_id', $user->id)
+            ->where('tenant_id', $tenantId)
+            ->first();
 
-        $integration = GoogleCalendarIntegration::where('tenant_user_id', $user->id)->first();
-
-        return view('tenant.integrations.index', compact('tenantId', 'integration'));
+        return view('tenant.integrations.index', compact('tenantId', 'tenant', 'integration'));
     }
 
     // ── OAuth: redirect to Google ─────────────────────────────────────────────
 
     public function redirect(string $tenantId)
     {
-        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
-        if (!$user) abort(401);
-
-        // Generate a random state and store tenant_id + user_id in cache (5 min TTL)
+        $user  = $this->resolveUser();
         $state = Str::random(40);
+
         Cache::put("gcal_oauth_state_{$state}", [
             'tenant_id' => $tenantId,
             'user_id'   => $user->id,
         ], now()->addMinutes(5));
 
-        $authUrl = $this->svc->getAuthUrl($state);
-        return redirect()->away($authUrl);
+        return redirect()->away($this->svc->getAuthUrl($state));
     }
 
     // ── OAuth: callback from Google ───────────────────────────────────────────
@@ -65,61 +63,65 @@ class GoogleCalendarController extends Controller
             return redirect('/')->withErrors(['Google Calendar connection failed: invalid or expired state.']);
         }
 
-        $tenantId = $cached['tenant_id'];
-        $userId   = $cached['user_id'];
+        ['tenant_id' => $tenantId, 'user_id' => $userId] = $cached;
 
         try {
             $tokens = $this->svc->exchangeCode($code);
 
             if (isset($tokens['error'])) {
-                return redirect("/tenant/{$tenantId}/integrations")->withErrors(['Google Calendar: ' . $tokens['error_description'] ?? $tokens['error']]);
+                return redirect("/tenant/{$tenantId}/integrations")
+                    ->withErrors(['Google Calendar: ' . ($tokens['error_description'] ?? $tokens['error'])]);
             }
 
-            // Fetch the user's Google email for display
-            $googleEmail = $this->fetchGoogleEmail($tokens['access_token'] ?? '');
+            // Preserve existing refresh_token if Google didn't issue a new one
+            $existingRefreshToken = GoogleCalendarIntegration::where('tenant_user_id', $userId)
+                ->value('refresh_token');
+
+            $refreshToken = isset($tokens['refresh_token'])
+                ? Crypt::encryptString($tokens['refresh_token'])
+                : $existingRefreshToken;
 
             GoogleCalendarIntegration::updateOrCreate(
                 ['tenant_user_id' => $userId],
                 [
                     'tenant_id'        => $tenantId,
                     'access_token'     => Crypt::encryptString($tokens['access_token'] ?? ''),
-                    'refresh_token'    => isset($tokens['refresh_token'])
-                        ? Crypt::encryptString($tokens['refresh_token'])
-                        : DB::table('google_calendar_integrations')->where('tenant_user_id', $userId)->value('refresh_token'),
+                    'refresh_token'    => $refreshToken,
                     'token_expires_at' => now()->addSeconds($tokens['expires_in'] ?? 3600),
                     'scopes'           => $tokens['scope'] ?? null,
-                    'google_email'     => $googleEmail,
+                    'google_email'     => $this->svc->fetchUserEmail($tokens['access_token'] ?? ''),
                     'is_active'        => true,
                     'connected_at'     => now(),
                 ],
             );
 
-            // Kick off a background sync of open tasks assigned to this user
+            Cache::forget("gcal_connected_{$userId}");
             $this->dispatchInitialSync($tenantId, $userId);
 
         } catch (\Throwable $e) {
-            return redirect("/tenant/{$tenantId}/integrations")->withErrors(['Google Calendar connection failed: ' . $e->getMessage()]);
+            return redirect("/tenant/{$tenantId}/integrations")
+                ->withErrors(['Google Calendar connection failed: ' . $e->getMessage()]);
         }
 
-        return redirect("/tenant/{$tenantId}/integrations")->with('success', 'Google Calendar connected successfully.');
+        return redirect("/tenant/{$tenantId}/integrations")
+            ->with('success', 'Google Calendar connected successfully.');
     }
 
     // ── Disconnect ────────────────────────────────────────────────────────────
 
     public function disconnect(Request $request, string $tenantId)
     {
-        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
-        if (!$user) abort(401);
-
+        $user        = $this->resolveUser();
         $integration = GoogleCalendarIntegration::where('tenant_user_id', $user->id)
             ->where('tenant_id', $tenantId)
             ->first();
 
         if ($integration) {
-            // Delete all synced calendar events for this integration
             $integration->calendarEvents()->delete();
             $integration->delete();
         }
+
+        Cache::forget("gcal_connected_{$user->id}");
 
         return back()->with('success', 'Google Calendar disconnected.');
     }
@@ -128,9 +130,7 @@ class GoogleCalendarController extends Controller
 
     public function syncNow(Request $request, string $tenantId)
     {
-        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
-        if (!$user) abort(401);
-
+        $user        = $this->resolveUser();
         $integration = GoogleCalendarIntegration::where('tenant_user_id', $user->id)
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -147,35 +147,25 @@ class GoogleCalendarController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private function fetchGoogleEmail(string $accessToken): ?string
+    private function resolveUser(): mixed
     {
-        try {
-            $client   = new \Google\Client();
-            $client->setAccessToken(['access_token' => $accessToken, 'token_type' => 'Bearer']);
-            $oauth    = new \Google\Service\Oauth2($client);
-            $info     = $oauth->userinfo->get();
-            return $info->getEmail();
-        } catch (\Throwable) {
-            return null;
-        }
+        $user = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        if (!$user) abort(401);
+        return $user;
     }
 
     private function dispatchInitialSync(string $tenantId, string $userId): void
     {
         // Sync open tasks with due dates assigned to this user
-        $tasks = Task::where('tenant_id', $tenantId)
+        Task::where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->where('assigned_to_type', 'tenant_user')
             ->where('assigned_to_id', $userId)
             ->whereNotNull('due_at')
             ->whereNotIn('status', ['completed', 'cancelled', 'archived'])
-            ->pluck('id');
+            ->pluck('id')
+            ->each(fn($id) => SyncEntityToGoogleCalendar::dispatch('task', $id));
 
-        foreach ($tasks as $taskId) {
-            SyncEntityToGoogleCalendar::dispatch('task', $taskId);
-        }
-
-        // Sync active/expiring deals to admins
         $isAdmin = DB::table('tenant_memberships')
             ->where('tenant_user_id', $userId)
             ->where('tenant_id', $tenantId)
@@ -184,16 +174,13 @@ class GoogleCalendarController extends Controller
             ->exists();
 
         if ($isAdmin) {
-            $deals = DB::table('leads')
+            DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'expiring'])
                 ->where('days_left', '>', 0)
                 ->whereNull('deleted_at')
-                ->pluck('id');
-
-            foreach ($deals as $dealId) {
-                SyncEntityToGoogleCalendar::dispatch('deal', $dealId);
-            }
+                ->pluck('id')
+                ->each(fn($id) => SyncEntityToGoogleCalendar::dispatch('deal', $id));
         }
     }
 }
