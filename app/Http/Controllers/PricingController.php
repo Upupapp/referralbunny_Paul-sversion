@@ -14,7 +14,14 @@ class PricingController extends Controller
     // GET /api/pricing/plans
     public function plans(): JsonResponse
     {
-        return response()->json(Plan::orderByRaw("CASE name WHEN 'Free' THEN 1 WHEN 'Starter' THEN 2 WHEN 'Pro' THEN 3 WHEN 'Enterprise' THEN 4 ELSE 5 END")->get());
+        $plans = Plan::where('is_active', true)
+            ->orderByRaw("CASE name WHEN 'Free' THEN 1 WHEN 'Basic' THEN 2 WHEN 'Starter' THEN 3 WHEN 'Growth' THEN 4 WHEN 'Pro' THEN 5 WHEN 'Max' THEN 6 WHEN 'Enterprise' THEN 7 ELSE 8 END")
+            ->orderByDesc('price_monthly')
+            ->get()
+            ->unique('name')   // deduplicate — keep first (highest price) per name
+            ->values();
+
+        return response()->json($plans);
     }
 
     // GET /api/pricing/plans/{plan}

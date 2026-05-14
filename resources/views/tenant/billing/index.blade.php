@@ -419,7 +419,15 @@ function billingUsage(tenantId) {
             ]);
 
             this.subscription = await subRes.json();
-            this.plans         = await plansRes.json();
+            const rawPlans = await plansRes.json();
+            // Deduplicate by name — keep one entry per plan tier
+            const seen = new Set();
+            this.plans = (Array.isArray(rawPlans) ? rawPlans : []).filter(p => {
+                const key = (p.name || '').toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
             const md           = await metricsRes.json();
             this.metric        = md.metric ?? {};
 
