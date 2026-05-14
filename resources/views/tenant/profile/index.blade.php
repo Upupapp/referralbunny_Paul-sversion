@@ -169,22 +169,62 @@
         </div>
     </form>
 
-    {{-- Section 3: Security Links --}}
-    <div class="card">
+    {{-- Section 3: Security --}}
+    <div class="card" x-data="{ pwOpen: {{ $errors->has('current_password') || $errors->has('new_password') ? 'true' : 'false' }} }">
         <h2 class="text-sm font-bold text-[#1E1B4B] mb-3">Security</h2>
         <div class="space-y-2">
-            <a href="{{ route('tenant.settings', $tenantId) }}" class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+
+            {{-- Change Password accordion --}}
+            <div class="rounded-xl border border-gray-100 overflow-hidden">
+                <button type="button" @click="pwOpen = !pwOpen"
+                        class="flex items-center justify-between w-full p-3 hover:bg-gray-50 transition-colors text-left">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-[#1E1B4B]">Change Password</p>
+                            <p class="text-xs text-gray-400">Update your account password</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-[#1E1B4B]">Change Password</p>
-                        <p class="text-xs text-gray-400">Update your account password</p>
+                    <svg class="w-4 h-4 text-gray-400 transition-transform" :class="pwOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+
+                <div x-show="pwOpen" x-cloak class="px-4 pb-4 pt-1 border-t border-gray-50">
+                    @if(session('password_success'))
+                    <div class="mb-3 flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        {{ session('password_success') }}
                     </div>
+                    @endif
+                    <form method="POST" action="{{ route('tenant.profile.password', $tenantId) }}" class="space-y-3">
+                        @csrf
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Current Password</label>
+                            <input type="password" name="current_password"
+                                   class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:border-purple-300 @error('current_password') border-red-400 @else border-gray-200 @enderror">
+                            @error('current_password')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">New Password <span class="text-gray-400 font-normal">(min 8 chars)</span></label>
+                            <input type="password" name="new_password"
+                                   class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-purple-300 @error('new_password') border-red-400 @enderror">
+                            @error('new_password')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                            <input type="password" name="new_password_confirmation"
+                                   class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-purple-300">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all"
+                                    style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
+                                Update Password
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <svg class="w-4 h-4 text-gray-400 group-hover:text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </a>
+            </div>
             <a href="{{ route('tenant.notifications', $tenantId) }}" class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">

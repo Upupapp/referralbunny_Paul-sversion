@@ -285,5 +285,49 @@
         <p class="text-xs text-gray-400 mt-3">Joined: {{ $reseller->joined_date?->format('M j, Y') ?? '—' }} · {{ $tenant->name }}</p>
     </div>
 
+    {{-- Change Password --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5" x-data="{ pwOpen: {{ $errors->has('current_password') || $errors->has('new_password') ? 'true' : 'false' }} }">
+        <button type="button" @click="pwOpen = !pwOpen"
+                class="flex items-center justify-between w-full text-left">
+            <h2 class="text-sm font-bold text-[#1E1B4B]">Change Password</h2>
+            <svg class="w-4 h-4 text-gray-400 transition-transform" :class="pwOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+
+        <div x-show="pwOpen" x-cloak class="mt-4 space-y-3">
+            @if(session('password_success'))
+            <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-medium">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                {{ session('password_success') }}
+            </div>
+            @endif
+            <form method="POST" action="{{ route('reseller.profile.password', $tenantId) }}" class="space-y-3">
+                @csrf
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Current Password</label>
+                    <input type="password" name="current_password"
+                           class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:border-teal-300 @error('current_password') border-red-400 @else border-gray-200 @enderror">
+                    @error('current_password')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">New Password <span class="text-gray-400 font-normal">(min 8 chars)</span></label>
+                    <input type="password" name="new_password"
+                           class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-teal-300 @error('new_password') border-red-400 @enderror">
+                    @error('new_password')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Confirm New Password</label>
+                    <input type="password" name="new_password_confirmation"
+                           class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-teal-300">
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all"
+                            style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
+                        Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
 @endsection

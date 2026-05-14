@@ -138,6 +138,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/profile/photo',    [ResellerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',  [ResellerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
         Route::post('/profile/anonymous', [ResellerProfileController::class, 'toggleAnonymous'])->name('profile.anonymous');
+        Route::post('/profile/password', [ResellerProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
         // ── My Partners ──────────────────────────────────────────────
         Route::get('/partners',                    [\App\Http\Controllers\ReferrerPartnerController::class, 'index'])->name('partners');
         Route::get('/partners/{partnerSlug}',      [\App\Http\Controllers\ReferrerPartnerController::class, 'show'])->name('partners.show')->where('partnerSlug', '.+');
@@ -211,6 +212,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::post('/profile',                       [PartnerProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',               [PartnerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+        Route::post('/profile/password',              [PartnerProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
 
         // ── Note Attachment Download (session auth — opens inline in new tab) ──
         Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
@@ -342,6 +344,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::post('/profile',             [TenantProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/photo',       [TenantProfileController::class, 'updatePhoto'])->name('profile.photo');
     Route::delete('/profile/photo',     [TenantProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+    Route::post('/profile/password',    [TenantProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
     Route::post('/notifications/{notificationId}/read',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/{notificationId}/archive', [NotificationsController::class, 'archive'])->name('notifications.archive');
     Route::post('/notifications/mark-all-read',            [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');

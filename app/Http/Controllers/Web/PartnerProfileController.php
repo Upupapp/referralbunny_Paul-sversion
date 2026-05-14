@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\UserDisplayNameService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -87,5 +88,28 @@ class PartnerProfileController extends Controller
         }
 
         return back()->with('success', 'Profile photo removed.');
+    }
+
+    public function changePassword(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
+    {
+        $partner = Auth::guard('partner')->user();
+        if (!$partner) abort(403);
+
+        $request->validate([
+            'current_password'          => 'required|string',
+            'new_password'              => 'required|string|min:8|confirmed',
+            'new_password_confirmation' => 'required|string',
+        ]);
+
+        if (!Hash::check($request->current_password, $partner->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
+        }
+
+        $partner->update(['password' => Hash::make($request->new_password)]);
+
+        $request->session()->regenerate();
+        Auth::guard('partner')->setUser($partner->fresh());
+
+        return back()->with('password_success', 'Password changed successfully.');
     }
 }

@@ -8,6 +8,7 @@ use App\Models\TenantMembership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class TenantProfileController extends Controller
@@ -82,5 +83,28 @@ class TenantProfileController extends Controller
         }
 
         return back()->with('success', 'Profile photo removed.');
+    }
+
+    public function changePassword(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
+    {
+        $user = Auth::guard('tenant')->user();
+        if (!$user) abort(403);
+
+        $request->validate([
+            'current_password'          => 'required|string',
+            'new_password'              => 'required|string|min:8|confirmed',
+            'new_password_confirmation' => 'required|string',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
+        }
+
+        $user->update(['password' => Hash::make($request->new_password)]);
+
+        $request->session()->regenerate();
+        Auth::guard('tenant')->setUser($user->fresh());
+
+        return back()->with('password_success', 'Password changed successfully.');
     }
 }
