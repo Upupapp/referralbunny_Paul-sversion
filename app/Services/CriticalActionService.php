@@ -922,11 +922,11 @@ class CriticalActionService
                 'related_type'  => 'deal',
                 'related_id'    => $r->lead_id,
                 'occurred_at'   => $r->created_at ?? now(),
-                'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}",
+                'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}?extension_request_id={$r->id}",
                 'action_label'  => 'Review Request',
                 'action_needed' => true,
                 'source'        => 'deal_assignment_extension_requests',
-                'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days],
+                'meta'          => ['status' => $r->status, 'requested_days' => $r->requested_days, 'extension_request_id' => $r->id],
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] pendingExtensionRequests failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);

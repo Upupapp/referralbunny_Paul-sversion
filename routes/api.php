@@ -99,6 +99,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('leads/{lead}/extension-requests',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'forDeal']);
     Route::post('leads/{lead}/extension-requests',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'store']);
     Route::get('extension-requests',                         [\App\Http\Controllers\DealAssignmentExtensionController::class, 'index']);
+    Route::get('extension-requests/{id}',                    [\App\Http\Controllers\DealAssignmentExtensionController::class, 'show']);
     Route::post('extension-requests/{id}/approve',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'approve']);
     Route::post('extension-requests/{id}/reject',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'reject']);
     Route::post('extension-requests/{id}/clarify',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'clarify']);

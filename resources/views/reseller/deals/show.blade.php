@@ -228,16 +228,23 @@ window.__rsDeal = {
 
             {{-- Pool bar --}}
             @php
-                $poolPct   = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
-                $myCommPct = $commissionPool > 0 ? min(100 - $poolPct, round(($myCommission / $commissionPool) * 100)) : 0;
+                // Co-referrer commission: secondary splits share of the remaining pool
+                $coRefSplitsForPanel = collect($splits)->where('role', 'secondary');
+                $coRefCommission     = $coRefSplitsForPanel->sum(fn($s) => round($remainingPool * (float)($s->percentage ?? 0) / 100, 2));
+                $hasCoRefs           = $coRefSplitsForPanel->count() > 0;
+
+                $poolPct    = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
+                $coRefPct   = $commissionPool > 0 ? min(100 - $poolPct, round(($coRefCommission / $commissionPool) * 100)) : 0;
+                $myCommPct  = $commissionPool > 0 ? min(100 - $poolPct - $coRefPct, round(($myCommission / $commissionPool) * 100)) : 0;
             @endphp
             <div class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden flex mb-3">
                 <div class="h-full rounded-l-full" style="width:{{ $poolPct }}%;background:#7B61FF"></div>
+                <div class="h-full" style="width:{{ $coRefPct }}%;background:#3B82F6"></div>
                 <div class="h-full" style="width:{{ $myCommPct }}%;background:#0D9488"></div>
             </div>
 
             {{-- Commission pool split --}}
-            <div class="grid grid-cols-3 gap-2">
+            <div class="{{ $hasCoRefs ? 'grid-cols-4' : 'grid-cols-3' }} grid gap-2">
                 <div class="bg-gray-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool <span class="text-gray-300">(70%)</span></p>
                     <p id="rs-pool-display" class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
@@ -250,6 +257,14 @@ window.__rsDeal = {
                         ₱{{ number_format($partnersCommission, 0) }}
                     </p>
                 </div>
+                @if($hasCoRefs)
+                <div class="bg-blue-50 rounded-xl px-3 py-2.5">
+                    <p class="text-[10px] text-blue-400 font-medium mb-0.5">
+                        Co-Referrers <span class="font-normal">({{ $coRefSplitsForPanel->count() }})</span>
+                    </p>
+                    <p class="text-sm font-bold text-blue-600 tabular-nums">₱{{ number_format($coRefCommission, 0) }}</p>
+                </div>
+                @endif
                 <div class="bg-teal-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-teal-500 font-medium mb-0.5">My Share</p>
                     <p id="rs-myshare-display" class="text-sm font-bold text-[#0D9488] tabular-nums">₱{{ number_format($myCommission, 0) }}</p>

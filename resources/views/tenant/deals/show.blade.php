@@ -3309,7 +3309,262 @@ function rbApprovalPanel() {
         },
     };
 }
+
+// ── Extension Request Review Modal ────────────────────────────────────────
+// Auto-opens when URL contains ?extension_request_id=xxx (from notification click)
+function extensionReviewModal() {
+    const CSRF = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
+    const hdrs = () => ({ 'Content-Type':'application/json','X-CSRF-TOKEN':CSRF(),'Accept':'application/json','X-Requested-With':'XMLHttpRequest' });
+
+    return {
+        open:       false,
+        loading:    false,
+        saving:     false,
+        request:    null,
+        error:      '',
+        mode:       'view',        // 'view' | 'approve' | 'reject'
+        approvedDays: '',
+        adminNote:  '',
+        rejectReason: '',
+
+        init() {
+            const params = new URLSearchParams(window.location.search);
+            const id     = params.get('extension_request_id');
+            if (id) this.fetchRequest(id);
+        },
+
+        async fetchRequest(id) {
+            this.loading = true; this.open = true; this.error = '';
+            try {
+                const res = await fetch(`/api/extension-requests/${id}`, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept':'application/json','X-Requested-With':'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error('Request not found.');
+                this.request = await res.json();
+                this.approvedDays = this.request.requested_days ?? '';
+            } catch(e) {
+                this.error = e.message || 'Could not load extension request.';
+            } finally { this.loading = false; }
+        },
+
+        close() {
+            this.open = false; this.request = null; this.mode = 'view';
+            this.error = ''; this.approvedDays = ''; this.adminNote = ''; this.rejectReason = '';
+            // Remove param from URL without reloading
+            const url = new URL(window.location.href);
+            url.searchParams.delete('extension_request_id');
+            window.history.replaceState({}, '', url.toString());
+        },
+
+        async approve() {
+            if (!this.approvedDays || parseInt(this.approvedDays) < 1) {
+                this.error = 'Enter a valid number of days to approve.'; return;
+            }
+            this.saving = true; this.error = '';
+            try {
+                const res = await fetch(`/api/extension-requests/${this.request.id}/approve`, {
+                    method: 'POST', credentials: 'same-origin', headers: hdrs(),
+                    body: JSON.stringify({ approved_days: parseInt(this.approvedDays), admin_note: this.adminNote || null }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Approval failed.');
+                this.$dispatch('show-toast', { type:'success', message:'Extension approved — referrer notified.' });
+                setTimeout(() => { this.close(); window.location.reload(); }, 800);
+            } catch(e) {
+                this.error = e.message || 'Could not approve. Please try again.';
+            } finally { this.saving = false; }
+        },
+
+        async reject() {
+            if (!this.rejectReason.trim()) { this.error = 'Please provide a reason for rejection.'; return; }
+            this.saving = true; this.error = '';
+            try {
+                const res = await fetch(`/api/extension-requests/${this.request.id}/reject`, {
+                    method: 'POST', credentials: 'same-origin', headers: hdrs(),
+                    body: JSON.stringify({ reason: this.rejectReason.trim() }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Rejection failed.');
+                this.$dispatch('show-toast', { type:'success', message:'Extension request denied — referrer notified.' });
+                setTimeout(() => { this.close(); window.location.reload(); }, 800);
+            } catch(e) {
+                this.error = e.message || 'Could not reject. Please try again.';
+            } finally { this.saving = false; }
+        },
+    };
+}
 </script>
+
+{{-- ── Extension Request Review Modal (global, auto-opens from notification) ─ --}}
+<div x-data="extensionReviewModal()" x-init="init()"
+     x-show="open" x-cloak
+     class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,.55);backdrop-filter:blur(4px)"
+     @keydown.escape.window="close()">
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+         @click.stop>
+
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div>
+                <h2 class="text-base font-bold text-[#1E1B4B]">Extension Request</h2>
+                <p class="text-xs text-gray-400 mt-0.5" x-show="request"
+                   x-text="request?.deal_name ?? request?.lead?.name ?? ''"></p>
+            </div>
+            <button @click="close()"
+                    class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+
+            {{-- Loading --}}
+            <div x-show="loading" class="flex items-center justify-center py-10">
+                <svg class="w-6 h-6 animate-spin text-[#7B61FF]" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+            </div>
+
+            {{-- Error --}}
+            <div x-show="error && !loading"
+                 class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span x-text="error"></span>
+            </div>
+
+            {{-- Request details --}}
+            <template x-if="request && !loading">
+                <div class="space-y-4">
+
+                    {{-- Status badge --}}
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full capitalize"
+                              :class="{
+                                  'bg-amber-100 text-amber-700': request.status === 'pending_review',
+                                  'bg-green-100 text-green-700':  request.status === 'approved',
+                                  'bg-red-100 text-red-700':      request.status === 'rejected',
+                                  'bg-gray-100 text-gray-500':    !['pending_review','approved','rejected'].includes(request.status),
+                              }"
+                              x-text="(request.status ?? '').replace(/_/g,' ')"></span>
+                        <span class="text-xs text-gray-400"
+                              x-text="request.created_at ? new Date(request.created_at).toLocaleDateString('default',{month:'short',day:'numeric',year:'numeric'}) : ''"></span>
+                    </div>
+
+                    {{-- Details grid --}}
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gray-50 rounded-xl px-3 py-2.5">
+                            <p class="text-[10px] text-gray-400 font-medium mb-0.5">Referrer</p>
+                            <p class="text-sm font-semibold text-[#1E1B4B] truncate"
+                               x-text="request.requested_by_name ?? request.reseller_name ?? '—'"></p>
+                        </div>
+                        <div class="bg-amber-50 rounded-xl px-3 py-2.5">
+                            <p class="text-[10px] text-amber-500 font-medium mb-0.5">Days Requested</p>
+                            <p class="text-sm font-bold text-amber-700" x-text="(request.requested_days ?? 0) + ' days'"></p>
+                        </div>
+                    </div>
+
+                    <div x-show="request.reason" class="bg-gray-50 rounded-xl px-3 py-2.5">
+                        <p class="text-[10px] text-gray-400 font-medium mb-1">Reason from Referrer</p>
+                        <p class="text-sm text-gray-700 leading-relaxed" x-text="request.reason"></p>
+                    </div>
+
+                    <div x-show="request.admin_note" class="bg-blue-50 rounded-xl px-3 py-2.5">
+                        <p class="text-[10px] text-blue-400 font-medium mb-1">Admin Note</p>
+                        <p class="text-sm text-blue-700 leading-relaxed" x-text="request.admin_note"></p>
+                    </div>
+
+                    {{-- Already decided --}}
+                    <template x-if="request.status !== 'pending_review'">
+                        <p class="text-xs text-center text-gray-400 py-2">
+                            This request has already been <span class="font-semibold" x-text="request.status.replace(/_/g,' ')"></span>.
+                        </p>
+                    </template>
+
+                    {{-- Approve form --}}
+                    <template x-if="request.status === 'pending_review' && mode === 'approve'">
+                        <div class="space-y-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                            <p class="text-sm font-semibold text-green-800">Approve Extension</p>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Days to approve *</label>
+                                <input type="number" x-model.number="approvedDays" min="1" max="90"
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100">
+                                <p class="text-[10px] text-gray-400 mt-1">Requested: <span x-text="request.requested_days"></span> days</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Admin note <span class="font-normal text-gray-400">(optional)</span></label>
+                                <textarea x-model="adminNote" rows="2" maxlength="500"
+                                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 resize-none"
+                                          placeholder="Internal note for this decision…"></textarea>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="mode = 'view'"
+                                        class="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                                    Back
+                                </button>
+                                <button @click="approve()" :disabled="saving"
+                                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
+                                        style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                                    <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    <svg x-show="!saving" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    <span x-text="saving ? 'Approving…' : 'Confirm Approval'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Reject form --}}
+                    <template x-if="request.status === 'pending_review' && mode === 'reject'">
+                        <div class="space-y-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                            <p class="text-sm font-semibold text-red-800">Deny Extension</p>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Reason for denial *</label>
+                                <textarea x-model="rejectReason" rows="3" maxlength="500"
+                                          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none"
+                                          placeholder="Explain why the extension is being denied…"></textarea>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="mode = 'view'"
+                                        class="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                                    Back
+                                </button>
+                                <button @click="reject()" :disabled="saving"
+                                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
+                                        style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+                                    <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    <span x-text="saving ? 'Denying…' : 'Confirm Denial'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Action buttons (main view, pending only) --}}
+                    <template x-if="request.status === 'pending_review' && mode === 'view'">
+                        <div class="flex gap-2.5 pt-1">
+                            <button @click="mode = 'approve'"
+                                    class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                                    style="background:linear-gradient(135deg,#16a34a,#15803d)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                Approve
+                            </button>
+                            <button @click="mode = 'reject'"
+                                    class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                                    style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                Deny
+                            </button>
+                        </div>
+                    </template>
+
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 

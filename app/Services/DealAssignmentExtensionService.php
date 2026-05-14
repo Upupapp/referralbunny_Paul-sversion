@@ -235,7 +235,7 @@ class DealAssignmentExtensionService
                 priority:     'high',
                 title:        "Extension request: {$deal->name}",
                 body:         "A Referrer requested {$request->requested_days} extra days for deal \"{$deal->name}\". Reason: {$request->reason}",
-                actionUrl:    url("/tenant/{$tenantId}/deals/{$deal->id}"),
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$deal->id}?extension_request_id={$request->id}"),
                 actionLabel:  'Review Request',
                 dedupeSuffix: "ext_req:{$request->id}",
                 metadata:     ['extension_request_id' => $request->id, 'deal_id' => $deal->id],
