@@ -209,7 +209,18 @@
                         </td>
                         <td class="px-4 py-3 text-xs text-gray-400 max-w-[200px]">
                             @if($row->error_message)
-                                <span class="text-red-500">{{ Str::limit($row->error_message, 60) }}</span>
+                                @php
+                                    $rawErr = $row->error_message;
+                                    $friendlyErr = $rawErr;
+                                    if (str_contains($rawErr, 'SQLSTATE') || str_contains($rawErr, 'Integrity constraint') || str_contains($rawErr, 'Undefined column')) {
+                                        if (str_contains($rawErr, 'Unique violation') || str_contains($rawErr, '23505')) $friendlyErr = 'Duplicate record — this entry already exists.';
+                                        elseif (str_contains($rawErr, 'not-null') || str_contains($rawErr, '23502')) $friendlyErr = 'A required field is missing a value.';
+                                        elseif (str_contains($rawErr, 'foreign key') || str_contains($rawErr, '23503')) $friendlyErr = 'Linked record not found.';
+                                        elseif (str_contains($rawErr, 'Undefined column') || str_contains($rawErr, '42703')) $friendlyErr = 'Internal configuration error — please contact support.';
+                                        else $friendlyErr = 'Database error — please contact support.';
+                                    }
+                                @endphp
+                                <span class="text-red-500">{{ Str::limit($friendlyErr, 80) }}</span>
                             @else
                                 —
                             @endif

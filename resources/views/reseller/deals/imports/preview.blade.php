@@ -13,6 +13,7 @@
     $executeUrl  = route('reseller.deals.imports.execute',     [$tenant->id, $batch->id]);
     $bulkUrl     = route('reseller.deals.imports.bulk-approve',[$tenant->id, $batch->id]);
     $approveBase = url("reseller/{$tenant->id}/deals/imports/{$batch->id}/rows");
+    $correctBase = url("reseller/{$tenant->id}/deals/imports/{$batch->id}/rows");
     $backUrl     = route('reseller.deals.imports', $tenant->id);
     $isLguIds  = $isLguIds ?? false;
     $provinces = $provinces ?? [];
@@ -157,6 +158,11 @@
                             municipality: '{{ addslashes($rowMunicipality) }}',
                             municipalities: [],
                             loading: false,
+                            saving: false,
+                            saved: false,
+                            saveError: false,
+                            validationStatus: '{{ $row->validation_status }}',
+                            rowAction: '{{ $row->row_action ?? '' }}',
                             async loadMunicipalities(prov) {
                                 if (!prov) { this.municipalities = []; return; }
                                 this.loading = true;
@@ -166,6 +172,26 @@
                                 } catch(e) { this.municipalities = []; }
                                 this.loading = false;
                             },
+                            async saveCorrection() {
+                                this.saving = true; this.saved = false; this.saveError = false;
+                                try {
+                                    const res = await fetch('{{ $correctBase }}/{{ $row->id }}/correct', {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $CSRF }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                        body: JSON.stringify({ province: this.province, municipality: this.municipality }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.saved) {
+                                        this.saved = true;
+                                        this.validationStatus = data.validation_status;
+                                        this.rowAction = data.row_action;
+                                        setTimeout(() => { this.saved = false; }, 3000);
+                                    } else {
+                                        this.saveError = true;
+                                    }
+                                } catch(e) { this.saveError = true; }
+                                this.saving = false;
+                            },
                             init() { this.loadMunicipalities(this.province); },
                         }"
                         x-init="init()">
@@ -173,18 +199,21 @@
                         <td class="px-4 py-3 min-w-[160px]">
                             <select x-model="province"
                                     @change="municipality = ''; loadMunicipalities(province)"
-                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700">
+                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
+                                    :class="saved ? 'border-emerald-400' : saveError ? 'border-red-400' : ''">
                                 <option value="">— Select Province —</option>
                                 @foreach($provinces as $prov)
                                     <option value="{{ $prov }}" @if($rowProvince === $prov) selected @endif>{{ $prov }}</option>
                                 @endforeach
                             </select>
                         </td>
-                        <td class="px-4 py-3 min-w-[180px]">
+                        <td class="px-4 py-3 min-w-[200px]">
                             <select x-model="municipality"
+                                    @change="saveCorrection()"
                                     :disabled="loading"
-                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 disabled:opacity-50">
-                                <option value="" x-text="loading ? 'Loading…' : '— Select Municipality —'"></option>
+                                    class="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 disabled:opacity-50"
+                                    :class="saved ? 'border-emerald-400' : saveError ? 'border-red-400' : ''">
+                                <option value="" x-text="loading ? 'Loading…' : '— Select Municipality / City —'"></option>
                                 <template x-for="mun in municipalities" :key="mun">
                                     <option :value="mun" :selected="mun === municipality" x-text="mun"></option>
                                 </template>
@@ -193,6 +222,13 @@
                                     <option :value="municipality" selected x-text="municipality"></option>
                                 </template>
                             </select>
+                            {{-- Save feedback --}}
+                            <div class="mt-1 flex items-center gap-1 text-[10px] font-semibold min-h-[14px]">
+                                <span x-show="saving" class="text-gray-400">Saving…</span>
+                                <span x-show="saved" class="text-emerald-600">✓ Saved — row marked for import</span>
+                                <span x-show="saveError" class="text-red-500">✗ Could not save — try again</span>
+                                <span x-show="!saving && !saved && !saveError && validationStatus === 'valid'" class="text-emerald-600">✓ Ready to import</span>
+                            </div>
                         </td>
                     @else
                     {{-- Generic: Deal/Org row --}}

@@ -116,6 +116,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/imports/upload',                           [\App\Http\Controllers\Web\TenantDealImportController::class, 'upload'])->name('deals.imports.upload');
         Route::get('/deals/imports/{batchId}',                         [\App\Http\Controllers\Web\TenantDealImportController::class, 'preview'])->name('deals.imports.preview');
         Route::post('/deals/imports/{batchId}/rows/{rowId}',           [\App\Http\Controllers\Web\TenantDealImportController::class, 'approveRow'])->name('deals.imports.approve-row');
+        Route::patch('/deals/imports/{batchId}/rows/{rowId}/correct',  [\App\Http\Controllers\Web\TenantDealImportController::class, 'correctRow'])->name('deals.imports.correct-row');
         Route::post('/deals/imports/{batchId}/bulk-approve',           [\App\Http\Controllers\Web\TenantDealImportController::class, 'bulkApprove'])->name('deals.imports.bulk-approve');
         Route::post('/deals/imports/{batchId}/execute',                [\App\Http\Controllers\Web\TenantDealImportController::class, 'execute'])->name('deals.imports.execute');
         Route::get('/deals/imports/{batchId}/report',                  [\App\Http\Controllers\Web\TenantDealImportController::class, 'show'])->name('deals.imports.show');
@@ -354,7 +355,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/imports/lgu-ids/template',                [LguIdsImportController::class, 'downloadTemplate'])->name('imports.lgu-ids.template');
     Route::post('/imports/lgu-ids/upload',                 [LguIdsImportController::class, 'upload'])->name('imports.lgu-ids.upload')->middleware('throttle:20,60');
     Route::get('/imports/lgu-ids/{batchId}',               [LguIdsImportController::class, 'preview'])->name('imports.lgu-ids.preview');
-    Route::post('/imports/lgu-ids/{batchId}/rows/{rowId}', [LguIdsImportController::class, 'approveRow'])->name('imports.lgu-ids.approve-row');
+    Route::post('/imports/lgu-ids/{batchId}/rows/{rowId}',          [LguIdsImportController::class, 'approveRow'])->name('imports.lgu-ids.approve-row');
+    Route::patch('/imports/lgu-ids/{batchId}/rows/{rowId}/correct', [LguIdsImportController::class, 'correctRow'])->name('imports.lgu-ids.correct-row');
     Route::post('/imports/lgu-ids/{batchId}/bulk-approve', [LguIdsImportController::class, 'bulkApprove'])->name('imports.lgu-ids.bulk-approve');
     Route::post('/imports/lgu-ids/{batchId}/execute',      [LguIdsImportController::class, 'execute'])->name('imports.lgu-ids.execute');
     Route::get('/imports/lgu-ids/{batchId}/report',        [LguIdsImportController::class, 'show'])->name('imports.lgu-ids.show');
@@ -368,7 +370,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/imports/deals/settings',                [TenantDealImportController::class, 'showSettings'])->name('imports.deals.settings');
     Route::post('/imports/deals/settings',               [TenantDealImportController::class, 'updateSettings'])->name('imports.deals.settings.update');
     Route::get('/imports/deals/{batchId}',               [TenantDealImportController::class, 'preview'])->name('imports.deals.preview');
-    Route::post('/imports/deals/{batchId}/rows/{rowId}', [TenantDealImportController::class, 'approveRow'])->name('imports.deals.approve-row');
+    Route::post('/imports/deals/{batchId}/rows/{rowId}',          [TenantDealImportController::class, 'approveRow'])->name('imports.deals.approve-row');
+    Route::patch('/imports/deals/{batchId}/rows/{rowId}/correct', [TenantDealImportController::class, 'correctRow'])->name('imports.deals.correct-row');
     Route::post('/imports/deals/{batchId}/bulk-approve', [TenantDealImportController::class, 'bulkApprove'])->name('imports.deals.bulk-approve');
     Route::post('/imports/deals/{batchId}/execute',      [TenantDealImportController::class, 'execute'])->name('imports.deals.execute');
     Route::get('/imports/deals/{batchId}/report',        [TenantDealImportController::class, 'show'])->name('imports.deals.show');

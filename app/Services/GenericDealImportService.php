@@ -834,8 +834,9 @@ class GenericDealImportService
                 DB::commit();
             } catch (\Throwable $e) {
                 DB::rollBack();
-                $row->update(['error_message' => $e->getMessage()]);
-                $errors[] = "Row {$row->row_number}: {$e->getMessage()}";
+                $friendly = $this->friendlyError($e->getMessage());
+                $row->update(['error_message' => $friendly]);
+                $errors[] = "Row {$row->row_number}: {$friendly}";
                 $failed++;
             }
         }
@@ -939,5 +940,18 @@ class GenericDealImportService
         }
 
         return implode("\n", $lines);
+    }
+
+    private function friendlyError(string $message): string
+    {
+        if (str_contains($message, 'SQLSTATE')) {
+            if (str_contains($message, '42703')) return 'System error: a required database column is missing. Please contact support.';
+            if (str_contains($message, '23505')) return 'This record already exists and could not be inserted again (duplicate).';
+            if (str_contains($message, '23503')) return 'A linked record could not be found.';
+            if (str_contains($message, '42P01')) return 'System error: required database table not found. Please contact support.';
+            return 'A database error prevented this row from being imported. Please contact support.';
+        }
+        if (strlen($message) > 150) return 'An unexpected error occurred while importing this row. Please check the data and try again.';
+        return $message;
     }
 }

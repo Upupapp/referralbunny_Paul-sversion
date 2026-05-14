@@ -384,8 +384,18 @@
                     @php
                         $statusKey = $row->status ?? 'ready';
                         $computed     = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
-                        $errorMessage = $row->error_message ?? null;
-                        $errors       = $errorMessage ? [$errorMessage] : [];
+                        $rawError = $row->error_message ?? null;
+                        // Sanitise legacy raw SQL errors stored before the friendly-error update
+                        $errorMessage = $rawError ? (function(string $m): string {
+                            if (str_contains($m, 'SQLSTATE')) {
+                                if (str_contains($m, '42703')) return 'System error: a required database column is missing. Please contact support.';
+                                if (str_contains($m, '23505')) return 'This record already exists (duplicate).';
+                                if (str_contains($m, '23503')) return 'A linked record could not be found.';
+                                return 'A database error occurred. Please contact support.';
+                            }
+                            return strlen($m) > 200 ? 'An unexpected error occurred. Please contact support.' : $m;
+                        })($rawError) : null;
+                        $errors = $errorMessage ? [$errorMessage] : [];
                         $rowBorder = match($statusKey) {
                             'completed','created' => 'border-l-2 border-l-[#7B61FF]',
                             'updated'             => 'border-l-2 border-l-blue-400',

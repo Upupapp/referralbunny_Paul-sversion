@@ -253,6 +253,51 @@ class TenantDealImportController extends Controller
         return view($view, compact('tenant', 'batch', 'rows', 'grouped', 'summary', 'knownFields', 'isLguIds', 'provinces'));
     }
 
+    // ── Correct province / municipality for a row (JSON) ─────────
+
+    public function correctRow(string $tenantId, string $batchId, string $rowId, Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->guardCheck();
+        $this->resolveTenant($tenantId);
+
+        $data = $request->validate([
+            'province'     => 'nullable|string|max:120',
+            'municipality' => 'nullable|string|max:120',
+        ]);
+
+        $row = ImportBatchRow::where('import_batch_id', $batchId)->findOrFail($rowId);
+
+        $normalized = is_array($row->normalized_data) ? $row->normalized_data : [];
+
+        if (array_key_exists('province', $data)) {
+            $normalized['province'] = $data['province'] ?? '';
+        }
+        if (array_key_exists('municipality', $data)) {
+            $normalized['municipality_or_city'] = $data['municipality'] ?? '';
+        }
+
+        $updates = ['normalized_data' => $normalized];
+
+        // If the row was previously 'unknown_lgu' and now has both fields,
+        // mark it as ready to import (action=create, status=valid)
+        $hasBoth = !empty($normalized['province']) && !empty($normalized['municipality_or_city']);
+        if ($hasBoth && in_array($row->validation_status, ['unknown_lgu', 'failed', 'needs_review'], true)) {
+            $updates['validation_status'] = 'valid';
+            if (!$row->row_action || in_array($row->row_action, ['skip', 'blocked', null], true)) {
+                $updates['row_action'] = 'create';
+            }
+        }
+
+        $row->update($updates);
+        $row->refresh();
+
+        return response()->json([
+            'saved'             => true,
+            'validation_status' => $row->validation_status,
+            'row_action'        => $row->row_action,
+        ]);
+    }
+
     // ── Approve single row (JSON) ─────────────────────────────────
 
     public function approveRow(string $tenantId, string $batchId, string $rowId, Request $request)

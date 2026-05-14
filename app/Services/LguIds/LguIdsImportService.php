@@ -852,8 +852,9 @@ class LguIdsImportService
                     } catch (\Throwable) {}
                 }
             } catch (\Throwable $e) {
-                $row->update(['error_message' => $e->getMessage()]);
-                $errors[] = "Row {$row->row_number}: {$e->getMessage()}";
+                $friendly = $this->friendlyError($e->getMessage());
+                $row->update(['error_message' => $friendly]);
+                $errors[] = "Row {$row->row_number}: {$friendly}";
                 $failed++;
             }
         }
@@ -991,5 +992,34 @@ class LguIdsImportService
         $lines[] = implode(',', array_map(fn ($h) => '"' . $h . '"', $headers));
         $lines[] = implode(',', array_map(fn ($v) => '"' . $v . '"', $sampleRow));
         return implode("\n", $lines);
+    }
+
+    /**
+     * Convert a raw exception message into plain-language user-facing text.
+     */
+    private function friendlyError(string $message): string
+    {
+        if (str_contains($message, 'SQLSTATE')) {
+            if (str_contains($message, '42703')) {
+                return 'System error: a required database column is missing. Please contact support.';
+            }
+            if (str_contains($message, '23505')) {
+                return 'This record already exists and could not be inserted again (duplicate).';
+            }
+            if (str_contains($message, '23503')) {
+                return 'A linked record (such as a referrer or organisation) could not be found.';
+            }
+            if (str_contains($message, '42P01')) {
+                return 'System error: required database table not found. Please contact support.';
+            }
+            return 'A database error prevented this row from being imported. Please contact support.';
+        }
+        if (str_contains($message, 'Undefined property') || str_contains($message, 'null')) {
+            return 'A required value was missing or invalid in this row.';
+        }
+        if (strlen($message) > 150) {
+            return 'An unexpected error occurred while importing this row. Please check the data and try again.';
+        }
+        return $message;
     }
 }

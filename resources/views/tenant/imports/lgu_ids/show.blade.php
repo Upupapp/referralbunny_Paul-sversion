@@ -275,7 +275,15 @@
                     @forelse($rows as $row)
                     @php
                         $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
-                        $errorMsg  = $row->error_message;
+                        $rawErrorMsg = $row->error_message;
+                        if ($rawErrorMsg) {
+                            if (str_contains($rawErrorMsg, 'Unique violation') || str_contains($rawErrorMsg, '23505')) $errorMsg = 'Duplicate record — this entry already exists.';
+                            elseif (str_contains($rawErrorMsg, 'not-null') || str_contains($rawErrorMsg, '23502')) $errorMsg = 'A required field is missing a value.';
+                            elseif (str_contains($rawErrorMsg, 'foreign key') || str_contains($rawErrorMsg, '23503')) $errorMsg = 'Linked record not found.';
+                            elseif (str_contains($rawErrorMsg, 'Undefined column') || str_contains($rawErrorMsg, '42703')) $errorMsg = 'Internal configuration error — please contact support.';
+                            elseif (str_contains($rawErrorMsg, 'SQLSTATE') || str_contains($rawErrorMsg, 'Integrity constraint')) $errorMsg = 'Database error — please contact support.';
+                            else $errorMsg = $rawErrorMsg;
+                        } else { $errorMsg = null; }
                         $rowErrors = $errorMsg ? [$errorMsg] : [];
                         $hasLead   = !empty($row->created_deal_id);
                         $statusKey = match(true) {
