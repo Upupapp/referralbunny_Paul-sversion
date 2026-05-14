@@ -219,12 +219,19 @@ class ResellerDealController extends Controller
         $remainingPool = max(0.0, round($commissionPool - $partnersCommission, 2));
 
         // My Commission — applied against the remaining pool, not the gross pool.
+        // When the primary referrer has no explicit CommissionSplit record, their share
+        // is 100% minus whatever was allocated to co-referrers (secondary splits).
         $myCommission = 0.0;
         $myPct        = 100.0;
         try {
             $mySplitRecord = $splits->firstWhere('reseller_name', $reseller->name);
-            $myPct         = $mySplitRecord ? (float) ($mySplitRecord->percentage ?? 100.0) : 100.0;
-            $myCommission  = $calc->referrerShare($remainingPool, $myPct);
+            if ($mySplitRecord) {
+                $myPct = (float) ($mySplitRecord->percentage ?? 100.0);
+            } else {
+                $coReferrerTotal = $splits->where('role', 'secondary')->sum('percentage');
+                $myPct = max(0.0, 100.0 - (float) $coReferrerTotal);
+            }
+            $myCommission = $calc->referrerShare($remainingPool, $myPct);
         } catch (\Throwable) {}
 
         // Stage requirements: defines what each transition requires before moving.

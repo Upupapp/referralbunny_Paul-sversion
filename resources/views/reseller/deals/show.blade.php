@@ -477,10 +477,21 @@ window.__rsDeal = {
         </div>
 
         {{-- ── Primary Referrer(s) ── --}}
-        @if($primarySplits->count())
+        @php
+            // If no explicit primary split record exists, show the current referrer
+            // with their implicit share (100% minus all co-referrer percentages).
+            $coReferrerPctTotal  = $secondarySplits->sum('percentage');
+            $implicitPrimaryPct  = max(0.0, 100.0 - (float) $coReferrerPctTotal);
+            $showImplicitPrimary = $primarySplits->isEmpty();
+        @endphp
+        @if($primarySplits->count() || $showImplicitPrimary)
         <div class="divide-y divide-gray-50">
+            {{-- Explicit primary split records --}}
             @foreach($primarySplits as $split)
-            @php $rAmt = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0); @endphp
+            @php
+                $splitPct = (float)($split->percentage ?? 0);
+                $rAmt = round($remainingPool * $splitPct / 100, 0);
+            @endphp
             <div class="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
@@ -497,7 +508,7 @@ window.__rsDeal = {
                     </div>
                 </div>
                 <div class="text-right shrink-0">
-                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format((float)($split->percentage ?? 0), 1) }}%</p>
+                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format($splitPct, 1) }}%</p>
                     <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
                 </div>
                 <div class="text-right shrink-0 min-w-[90px]">
@@ -506,6 +517,33 @@ window.__rsDeal = {
                 </div>
             </div>
             @endforeach
+
+            {{-- Implicit primary row — shown when no explicit record, shows deducted share --}}
+            @if($showImplicitPrimary)
+            @php $rAmt = round($remainingPool * $implicitPrimaryPct / 100, 0); @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
+                        {{ strtoupper(substr($reseller->name ?? '?', 0, 2)) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $reseller->name }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Primary Referrer</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">You</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-sm font-bold text-[#1E1B4B]">{{ number_format($implicitPrimaryPct, 1) }}%</p>
+                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                </div>
+                <div class="text-right shrink-0 min-w-[90px]">
+                    <p class="text-sm font-bold text-green-700">₱{{ number_format($rAmt, 0) }}</p>
+                    <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
+                </div>
+            </div>
+            @endif
         </div>
         @endif
 
@@ -524,7 +562,7 @@ window.__rsDeal = {
         <div class="divide-y divide-gray-50">
             @foreach($secondarySplits as $split)
             @php
-                $rAmt          = round($commissionPool * (float)($split->percentage ?? 0) / 100, 0);
+                $rAmt          = round($remainingPool * (float)($split->percentage ?? 0) / 100, 0);
                 $otherTotal    = $splits->reject(fn($s) => $s === $split)->sum('percentage');
                 $maxForSplit   = max(0.0, round(100.0 - (float)$otherTotal, 2));
                 // Use url() not route() — avoids UrlGenerationException if split has no id
