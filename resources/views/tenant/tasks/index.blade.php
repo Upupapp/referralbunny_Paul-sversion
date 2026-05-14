@@ -818,8 +818,9 @@ function tasksPage(tenantId, currentUserId, currentUserName, initialView, comple
     const JSON_H = () => ({ 'Content-Type':'application/json','X-CSRF-TOKEN':CSRF(),'Accept':'application/json','X-Requested-With':'XMLHttpRequest' });
 
     return {
-        view:    initialView || 'list',
-        isAdmin: isAdmin,
+        view:                   initialView || 'list',
+        isAdmin:                isAdmin,
+        completionEmailEnabled: completionEmailEnabled,
 
         // Kanban
         columns:   kanbanData,
