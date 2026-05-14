@@ -215,10 +215,12 @@ class GoogleCalendarService
 
     // ── Event Builders ────────────────────────────────────────────────────────
 
+    private const TZ = 'Asia/Manila';
+
     private function buildTaskEvent(Task $task, string $tenantId): \Google\Service\Calendar\Event
     {
-        $dueDate     = $task->due_at->toDateString();
-        $endDate     = $task->due_at->addDay()->toDateString(); // all-day events: end = start + 1
+        $start       = $task->due_at->setTimezone(self::TZ)->startOfDay()->addHours(6)->toRfc3339String();
+        $end         = $task->due_at->setTimezone(self::TZ)->startOfDay()->addHours(7)->toRfc3339String();
         $priorityMap = ['urgent' => '🔴', 'high' => '🟠', 'medium' => '🟡', 'low' => '🟢'];
         $icon        = $priorityMap[$task->priority] ?? '📋';
         $taskUrl     = rtrim(config('app.url'), '/') . "/tenant/{$tenantId}/tasks/{$task->id}";
@@ -234,8 +236,8 @@ class GoogleCalendarService
             'summary'     => "{$icon} Task: {$task->title}",
             'description' => $description,
             'colorId'     => self::COLOR_TASK,
-            'start'       => ['date' => $dueDate],
-            'end'         => ['date' => $endDate],
+            'start'       => ['dateTime' => $start, 'timeZone' => self::TZ],
+            'end'         => ['dateTime' => $end,   'timeZone' => self::TZ],
             'source'      => [
                 'title' => 'Referral Bunny',
                 'url'   => $taskUrl,
@@ -245,12 +247,15 @@ class GoogleCalendarService
 
     private function buildDealEvent(object $deal, Carbon $expiryDate): \Google\Service\Calendar\Event
     {
-        $daysLeft    = (int) ($deal->days_left ?? 0);
-        $isUrgent    = $daysLeft <= 3;
-        $colorId     = $isUrgent ? self::COLOR_DEAL : self::COLOR_DEAL_ACTIVE;
-        $icon        = $isUrgent ? '🚨' : '⏰';
-        $stage       = ucwords(str_replace('_', ' ', $deal->stage ?? ''));
-        $dealUrl     = rtrim(config('app.url'), '/') . "/tenant/{$deal->tenant_id}/deals/{$deal->id}";
+        $tz       = self::TZ;
+        $start    = $expiryDate->copy()->setTimezone($tz)->startOfDay()->addHours(6)->toRfc3339String();
+        $end      = $expiryDate->copy()->setTimezone($tz)->startOfDay()->addHours(7)->toRfc3339String();
+        $daysLeft = (int) ($deal->days_left ?? 0);
+        $isUrgent = $daysLeft <= 3;
+        $colorId  = $isUrgent ? self::COLOR_DEAL : self::COLOR_DEAL_ACTIVE;
+        $icon     = $isUrgent ? '🚨' : '⏰';
+        $stage    = ucwords(str_replace('_', ' ', $deal->stage ?? ''));
+        $dealUrl  = rtrim(config('app.url'), '/') . "/tenant/{$deal->tenant_id}/deals/{$deal->id}";
 
         $description = implode("\n", array_filter([
             "Referrer: " . ($deal->reseller_name ?? 'Unassigned'),
@@ -265,8 +270,8 @@ class GoogleCalendarService
             'summary'     => "{$icon} Deal Expiry: {$deal->name}",
             'description' => $description,
             'colorId'     => $colorId,
-            'start'       => ['date' => $expiryDate->toDateString()],
-            'end'         => ['date' => $expiryDate->addDay()->toDateString()],
+            'start'       => ['dateTime' => $start, 'timeZone' => $tz],
+            'end'         => ['dateTime' => $end,   'timeZone' => $tz],
             'source'      => [
                 'title' => 'Referral Bunny',
                 'url'   => $dealUrl,
