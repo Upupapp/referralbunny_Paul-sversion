@@ -89,16 +89,16 @@
                                   }" x-text="cell.day"></span>
                         </div>
 
-                        {{-- Event pills --}}
+                        {{-- Event pills — click opens day panel; navigate from panel --}}
                         <div class="px-1 pb-1 space-y-0.5">
                             <template x-for="evt in cell.visibleEvents" :key="evt.id">
-                                <a :href="evt.url" @click.stop
-                                   :class="pillClass(evt)"
-                                   :title="evt.title"
-                                   class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium leading-snug truncate w-full hover:opacity-80 transition-opacity">
+                                <button @click.stop="selectDay(cell)"
+                                        :class="pillClass(evt)"
+                                        :title="evt.title"
+                                        class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium leading-snug truncate w-full text-left hover:opacity-80 transition-opacity">
                                     <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="dotClass(evt)"></span>
                                     <span class="truncate" x-text="evt.title"></span>
-                                </a>
+                                </button>
                             </template>
                             <button x-show="cell.moreCount > 0"
                                     @click.stop="selectDay(cell)"
