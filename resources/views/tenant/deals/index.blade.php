@@ -132,8 +132,34 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <template x-if="filterStage || filterStatus || filterCommission || filterProvince || search">
-            <button @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; search=''; applyFilters()"
+            {{-- Referrer filter (admin/managers only) --}}
+            <template x-if="canViewReferrers && uniqueReferrers.length > 0">
+            <label class="filter-pill" :class="filterReseller !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <select x-model="filterReseller" @change="applyFilters()">
+                    <option value="">All Referrers</option>
+                    <template x-for="r in uniqueReferrers" :key="r">
+                        <option :value="r" x-text="r"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            </template>
+            {{-- Partner filter --}}
+            <template x-if="uniquePartners.length > 0">
+            <label class="filter-pill" :class="filterPartner !== '' ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+                <select x-model="filterPartner" @change="applyFilters()">
+                    <option value="">All Partners</option>
+                    <template x-for="p in uniquePartners" :key="p">
+                        <option :value="p.toLowerCase()" x-text="p"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            </template>
+            <template x-if="filterStage || filterStatus || filterCommission || filterProvince || filterReseller || filterPartner || search">
+            <button @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Clear
@@ -154,7 +180,7 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-sm font-semibold text-[#1E1B4B]">
                     <span x-text="filtered.length"></span> deals
-                    <span x-show="filterStage || filterStatus || filterCommission || filterProvince || search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
+                    <span x-show="filterStage || filterStatus || filterCommission || filterProvince || filterReseller || filterPartner || search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
                 </p>
                 <span x-show="sortCol !== 'created_at'"
                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 text-xs font-medium">
@@ -916,7 +942,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         canViewReferrers,
         showLocation,
         viewMode: 'table',
-        search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '',
+        search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '', filterPartner: '',
         sortCol: 'created_at', sortDir: 'desc',
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         showSuccessState: false, createdDeal: null,
@@ -959,7 +985,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 this.filterReseller = decodeURIComponent(preReseller);
             }
             try {
-                const res  = await fetch(`/api/leads?tenant_id=${tenantId}`, {
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&include_partners=1`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -1059,8 +1085,22 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
         },
 
+        get uniqueReferrers() {
+            return [...new Set(this.leads.map(l => l.reseller_name).filter(Boolean))].sort();
+        },
+
+        get uniquePartners() {
+            const names = new Set();
+            this.leads.forEach(l => (l.partners || []).forEach(p => {
+                const label = p.display_name || p.email;
+                if (label) names.add(label);
+            }));
+            return [...names].sort();
+        },
+
         applyFilters() {
-            const q = this.search.toLowerCase();
+            const q  = this.search.toLowerCase();
+            const fp = this.filterPartner.toLowerCase();
             this.filtered = this.leads.filter(l => {
                 const matchQ  = !q || (l.name||'').toLowerCase().includes(q)
                                    || (this.canViewReferrers && (l.reseller_name||'').toLowerCase().includes(q))
@@ -1071,7 +1111,8 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 const matchCo = !this.filterCommission || l.commission_status  === this.filterCommission;
                 const matchPr = !this.filterProvince   || (l.data?.province||'') === this.filterProvince;
                 const matchRs = !this.filterReseller   || (l.reseller_name||'') === this.filterReseller;
-                return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs;
+                const matchPa = !fp || (l.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
+                return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs && matchPa;
             });
         },
 

@@ -7,6 +7,18 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         <span class="hidden sm:inline">All Referrers</span>
     </a>
+    {{-- Resend Invite — only for referrers who haven't set up yet --}}
+    @if(in_array($reseller->status, ['invited']) || (!$reseller->password && $reseller->status !== 'deactivated'))
+    <form method="POST" action="{{ route('tenant.referrers.resend-invite', [$tenant->id, $reseller->id]) }}" class="inline">
+        @csrf
+        <button type="submit"
+                class="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100"
+                onclick="return confirm('Resend invite to {{ addslashes($reseller->email) }}?')">
+            <span class="hidden sm:inline">Resend Invite</span>
+            <span class="sm:hidden">Invite</span>
+        </button>
+    </form>
+    @endif
     @if($reseller->status !== 'deactivated')
     <button onclick="document.getElementById('deactivate-section').scrollIntoView({behavior:'smooth'})"
             class="px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-100">
@@ -17,6 +29,19 @@
 
 @section('content')
 <div class="space-y-5">
+
+    @if(session('success'))
+    <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+        <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <p class="text-sm font-medium text-emerald-700">{{ session('success') }}</p>
+    </div>
+    @endif
+    @if($errors->has('invite'))
+    <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-red-50 border border-red-200">
+        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p class="text-sm font-medium text-red-700">{{ $errors->first('invite') }}</p>
+    </div>
+    @endif
 
     {{-- ── Agreement Compliance Alert (top of page if non-compliant) ────── --}}
     @if($requiredTotal > 0 && !$agreementCompliant)
@@ -163,7 +188,7 @@
         <div class="kpi-card">
             <div class="flex-1 min-w-0">
                 <span class="text-gray-400 text-xs font-medium uppercase tracking-wide">Expiring Deals</span>
-                <p class="text-2xl font-bold mt-1.5" :class="{{ $performance['expiring_deals'] > 0 ? 'text-red-500' : 'text-[#1E1B4B]' }}">
+                <p class="text-2xl font-bold mt-1.5 {{ $performance['expiring_deals'] > 0 ? 'text-red-500' : 'text-[#1E1B4B]' }}">
                     {{ $performance['expiring_deals'] }}
                 </p>
             </div>

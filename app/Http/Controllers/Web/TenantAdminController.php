@@ -281,10 +281,13 @@ class TenantAdminController extends Controller
             $recentDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->where('reseller_name', $reseller->name)
+                ->whereNull('deleted_at')
                 ->orderByDesc('created_at')
                 ->limit(10)
                 ->get();
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            \Log::warning('referrerDetail: failed to load recent deals', ['error' => $e->getMessage(), 'tenant' => $tenantId]);
+        }
 
         // Recent activity from CriticalActionService
         $recentActivity = [];
@@ -358,6 +361,49 @@ class TenantAdminController extends Controller
             ],
             $this->configMeta($tenantId)
         ));
+    }
+
+    public function resendReferrerInvite(string $tenantId, string $referrerId): \Illuminate\Http\RedirectResponse
+    {
+        $tenant   = Tenant::findOrFail($tenantId);
+        $reseller = Reseller::where('id', $referrerId)->where('tenant_id', $tenantId)->firstOrFail();
+
+        if (!in_array($reseller->status, ['invited', 'active'])) {
+            return back()->withErrors(['invite' => 'Invite can only be resent for referrers with Invited or Active status.']);
+        }
+
+        // Regenerate setup token and resend invitation email
+        $setupToken = \Illuminate\Support\Str::random(64);
+        $reseller->update(['setup_token' => $setupToken, 'status' => 'invited']);
+
+        $setupUrl = url('/reseller/setup?token=' . $setupToken);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($reseller->email)->send(new \App\Mail\ResellerInvitation(
+                resellerName:  $reseller->name,
+                resellerEmail: $reseller->email,
+                tenantName:    $tenant->name ?? 'ReferralBunny',
+                setupUrl:      $setupUrl,
+            ));
+        } catch (\Throwable $e) {
+            \Log::error('resendReferrerInvite: mail failed', ['reseller_id' => $referrerId, 'error' => $e->getMessage()]);
+            return back()->withErrors(['invite' => 'Could not send invite email. Please try again or check your mail configuration.']);
+        }
+
+        try {
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'team',
+                priority:     'normal',
+                title:        'Referrer invite resent',
+                body:         'Invite resent to ' . $reseller->name . ' (' . $reseller->email . ').',
+                actionUrl:    url("/tenant/{$tenantId}/referrers/{$referrerId}"),
+                actionLabel:  'View Referrer',
+                dedupeSuffix: $referrerId . ':invite_resent:' . now()->format('YmdH'),
+            );
+        } catch (\Throwable) {}
+
+        return back()->with('success', 'Invite resent to ' . $reseller->email . '.');
     }
 
     public function tasks($tenantId)

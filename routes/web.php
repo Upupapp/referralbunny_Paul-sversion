@@ -271,6 +271,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
     Route::get('/referrers',               [TenantAdminController::class, 'referrers'])->name('referrers');
     Route::get('/referrers/{referrerId}',  [TenantAdminController::class, 'referrerDetail'])->name('referrers.show');
+    Route::post('/referrers/{referrerId}/resend-invite', [TenantAdminController::class, 'resendReferrerInvite'])->name('referrers.resend-invite')->middleware('throttle:5,1');
     // Tasks
     Route::get('/tasks',                  [\App\Http\Controllers\Web\TaskController::class, 'index'])->name('tasks');
     Route::post('/tasks',                 [\App\Http\Controllers\Web\TaskController::class, 'store'])->name('tasks.store');

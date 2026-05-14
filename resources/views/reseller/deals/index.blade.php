@@ -52,8 +52,21 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <template x-if="filterStatus || filterStage || search">
-                <button @click="filterStatus=''; filterStage=''; search=''; applyFilters()"
+            {{-- Partner filter — only shown when at least one deal has a partner --}}
+            <template x-if="uniquePartners.length > 0">
+            <label class="filter-pill" :class="filterPartner ? 'active' : ''">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+                <select x-effect="$el.value = filterPartner" @change="filterPartner = $event.target.value; applyFilters()">
+                    <option value="">All Partners</option>
+                    <template x-for="p in uniquePartners" :key="p">
+                        <option :value="p.toLowerCase()" x-text="p"></option>
+                    </template>
+                </select>
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </label>
+            </template>
+            <template x-if="filterStatus || filterStage || filterPartner || search">
+                <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; applyFilters()"
                         class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     Clear
@@ -414,7 +427,7 @@ const CLAIM_PROMPTS = [
 function resellerDeals(tenantId, resellerName) {
     return {
         leads: [], filtered: [], loading: true,
-        search: '', filterStatus: '', filterStage: '',
+        search: '', filterStatus: '', filterStage: '', filterPartner: '',
         showClaim: false, claimStep: 1, dealMode: 'standard',
         claimProvince: '', availableOrgs: [], loadingOrgs: false,
         selectedOrg: null, saving: false, claimError: '',
@@ -461,13 +474,24 @@ function resellerDeals(tenantId, resellerName) {
             return p.length === 1 ? first : first + ' +' + (p.length - 1) + ' more';
         },
 
+        get uniquePartners() {
+            const names = new Set();
+            this.leads.forEach(d => (d.partners || []).forEach(p => {
+                const label = p.display_name || p.email;
+                if (label) names.add(label);
+            }));
+            return [...names].sort();
+        },
+
         applyFilters() {
-            const q = this.search.toLowerCase();
+            const q  = this.search.toLowerCase();
+            const fp = this.filterPartner.toLowerCase();
             this.filtered = this.leads.filter(d => {
-                const matchQ  = !q || (d.name||'').toLowerCase().includes(q);
+                const matchQ  = !q  || (d.name||'').toLowerCase().includes(q);
                 const matchSt = !this.filterStatus || d.status === this.filterStatus;
                 const matchSg = !this.filterStage  || d.stage  === this.filterStage;
-                return matchQ && matchSt && matchSg;
+                const matchPa = !fp || (d.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
+                return matchQ && matchSt && matchSg && matchPa;
             });
         },
 

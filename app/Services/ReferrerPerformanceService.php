@@ -17,6 +17,7 @@ class ReferrerPerformanceService
             $leads = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->where('reseller_name', $resellerName)
+                ->whereNull('deleted_at')
                 ->get();
         } catch (\Throwable) {
             $leads = collect();
@@ -30,10 +31,17 @@ class ReferrerPerformanceService
         $avgValue         = $total > 0 ? round($totalValue / $total, 2) : 0;
         $conversionRate   = $total > 0 ? round($paid / $total * 100, 1) : null;
 
-        // Commission summary — read existing columns, never recompute
-        $pendingCommission = $leads->where('commission_status', 'pending')->sum('deal_value');
-        $lockedCommission  = $leads->where('commission_status', 'locked')->sum('deal_value');
-        $paidCommission    = $leads->where('commission_status', 'paid')->sum('deal_value');
+        // Commission summary — use commission_pool (70% of added_amount), not deal_value
+        $calc = new \App\Services\CommissionCalculationService();
+        $pendingCommission = $leads->where('commission_status', 'pending')->sum(
+            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
+        );
+        $lockedCommission = $leads->where('commission_status', 'locked')->sum(
+            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
+        );
+        $paidCommission = $leads->where('commission_status', 'paid')->sum(
+            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
+        );
 
         // Recent activity
         $lastDeal = $leads->sortByDesc('created_at')->first();
@@ -56,6 +64,7 @@ class ReferrerPerformanceService
                 ->where('reseller_name', $resellerName)
                 ->whereIn('status', ['active', 'expiring'])
                 ->where('updated_at', '<', now()->subDays(14))
+                ->whereNull('deleted_at')
                 ->count();
         } catch (\Throwable) {}
 
