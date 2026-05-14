@@ -8,7 +8,9 @@ use App\Models\TenantMembership;
 use App\Services\CriticalActionService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class CriticalActionsController extends Controller
 {
@@ -72,6 +74,19 @@ class CriticalActionsController extends Controller
 
         $result = $this->service->masterList($tenantId, $filters, 25);
 
+        // Track "last seen" so new items can be highlighted.
+        // Read the previous timestamp BEFORE updating it.
+        $userId      = $actingUser?->id ?? ($isSuperAdmin ? Auth::guard('web')->id() : null);
+        $seenCacheKey = "ca_last_seen_{$tenantId}_{$userId}";
+        $lastSeenAt   = $userId ? Cache::get($seenCacheKey) : null;
+
+        // Record that the user has now seen all current items.
+        // Also bust the badge cache so the counter resets in the nav.
+        if ($userId) {
+            Cache::put($seenCacheKey, now()->toIso8601String(), now()->addDays(30));
+            Cache::forget("ca_badge_{$tenantId}");
+        }
+
         $categories = [
             ''          => 'All Categories',
             'deal'      => 'Deals',
@@ -100,6 +115,7 @@ class CriticalActionsController extends Controller
             'categories'  => $categories,
             'severities'  => $severities,
             'actingRole'  => $membership?->role ?? ($canSeeBilling ? 'super_admin' : 'admin'),
+            'lastSeenAt'  => $lastSeenAt ? Carbon::parse($lastSeenAt) : null,
         ]);
     }
 }

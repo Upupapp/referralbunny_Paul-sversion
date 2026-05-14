@@ -265,7 +265,8 @@
     {{-- ════════════════════════════════════════════════════════════════════════ --}}
     {{-- LIST VIEW                                                               --}}
     {{-- ════════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="view === 'list'" x-cloak>
+    @if($view === 'list')
+    <div>
         <div class="card" style="padding:0;overflow:hidden">
             @if($tasks->isEmpty())
             <div class="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -340,11 +341,13 @@
             @endif
         </div>
     </div>
+    @endif
 
     {{-- ════════════════════════════════════════════════════════════════════════ --}}
     {{-- KANBAN VIEW — 3 columns: New Tasks / Processing Tasks / Completed Tasks --}}
     {{-- ════════════════════════════════════════════════════════════════════════ --}}
-    <div x-show="view === 'kanban'" x-cloak>
+    @if($view === 'kanban')
+    <div>
 
         @if(empty($kanbanColumns))
         {{-- Kanban data not loaded — redirect via JS --}}
@@ -538,6 +541,7 @@
         </div>{{-- board --}}
         @endif
     </div>{{-- kanban view --}}
+    @endif {{-- kanban view --}}
 
     @endif {{-- responses vs tasks tabs --}}
 

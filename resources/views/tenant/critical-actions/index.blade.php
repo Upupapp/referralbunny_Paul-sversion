@@ -152,20 +152,28 @@
                     <tbody>
                         @foreach($result['items'] as $action)
                             @php
-                                $sev = $severityConfig[$action['severity']] ?? $severityConfig['info'];
-                                $icon = $categoryIcons[$action['category']] ?? $categoryIcons['activity'];
+                                $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
+                                $icon   = $categoryIcons[$action['category']] ?? $categoryIcons['activity'];
+                                // An item is "new" if the user has never visited this page,
+                                // or if the action occurred after their last visit.
+                                $isNew  = !$lastSeenAt || (isset($action['occurred_at']) && $action['occurred_at']->isAfter($lastSeenAt));
                             @endphp
-                            <tr class="table-row">
+                            <tr class="table-row {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
                                 <td>
-                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $sev['dot'] }}"></span>
-                                        {{ $sev['label'] }}
-                                    </span>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
+                                            <span class="w-1.5 h-1.5 rounded-full {{ $sev['dot'] }}"></span>
+                                            {{ $sev['label'] }}
+                                        </span>
+                                        @if($isNew)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide">New</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="flex items-start gap-2.5">
-                                        <div class="w-7 h-7 rounded-lg bg-[#EDE9FE] flex items-center justify-center shrink-0 mt-0.5">
-                                            <svg class="w-3.5 h-3.5 text-[#7B61FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div class="w-7 h-7 rounded-lg {{ $isNew ? 'bg-amber-100' : 'bg-[#EDE9FE]' }} flex items-center justify-center shrink-0 mt-0.5">
+                                            <svg class="w-3.5 h-3.5 {{ $isNew ? 'text-amber-600' : 'text-[#7B61FF]' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $icon }}"/>
                                             </svg>
                                         </div>
@@ -210,13 +218,21 @@
             {{-- Mobile cards --}}
             <div class="md:hidden divide-y divide-gray-50">
                 @foreach($result['items'] as $action)
-                    @php $sev = $severityConfig[$action['severity']] ?? $severityConfig['info']; @endphp
-                    <div class="p-4 space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $sev['dot'] }}"></span>
-                                {{ $sev['label'] }}
-                            </span>
+                    @php
+                        $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
+                        $isNew  = !$lastSeenAt || (isset($action['occurred_at']) && $action['occurred_at']->isAfter($lastSeenAt));
+                    @endphp
+                    <div class="p-4 space-y-2 {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $sev['dot'] }}"></span>
+                                    {{ $sev['label'] }}
+                                </span>
+                                @if($isNew)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide">New</span>
+                                @endif
+                            </div>
                             <span class="text-[10px] text-gray-400">{{ $action['occurred_ago'] }}</span>
                         </div>
                         <p class="text-sm font-medium text-[#1E1B4B]">{{ $action['summary'] }}</p>
