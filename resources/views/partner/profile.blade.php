@@ -106,7 +106,7 @@
                 <p class="text-xs text-gray-400 mt-1">Your email cannot be changed. Contact your referrer to update it.</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">First Name *</label>
                     <input name="first_name" type="text" value="{{ old('first_name', $partner->first_name) }}" required
@@ -127,7 +127,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Nickname</label>
                     <input name="nickname" type="text" value="{{ old('nickname', $partner->nickname) }}"
@@ -146,7 +146,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Organization</label>
                     <input name="organization" type="text" value="{{ old('organization', $partner->organization) }}"
@@ -173,7 +173,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5 mt-4">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Contact & Preferences</h2>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Timezone</label>
                     <select name="timezone"

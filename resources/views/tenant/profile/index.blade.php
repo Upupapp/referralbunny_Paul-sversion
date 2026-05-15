@@ -84,7 +84,7 @@
         <div class="card space-y-5">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Basic Information</h2>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">First name</label>
                     <input name="first_name" type="text" value="{{ old('first_name', $user->first_name) }}" class="form-input" placeholder="Jane">
@@ -104,7 +104,7 @@
                 @error('nickname') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Job title</label>
                     <input name="job_title" type="text" value="{{ old('job_title', $user->job_title) }}" class="form-input" placeholder="Sales Manager">
@@ -115,7 +115,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Organization</label>
                     <input name="organization" type="text" value="{{ old('organization', $user->organization) }}" class="form-input">
@@ -146,7 +146,7 @@
                     </div>
                     <p class="text-xs text-gray-400 mt-1">Contact your administrator to update your email address.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="form-label">Phone number</label>
                         <input name="phone_number" type="tel" value="{{ old('phone_number', $user->phone_number) }}" class="form-input" placeholder="+63 9XX XXX XXXX">

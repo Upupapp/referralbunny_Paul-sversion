@@ -184,7 +184,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
             <h2 class="text-sm font-bold text-[#1E1B4B]">My Information</h2>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Display name *</label>
                     <input name="name" type="text" value="{{ old('name', $reseller->name) }}" required
@@ -199,7 +199,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Phone</label>
                     <input name="phone" type="tel" value="{{ old('phone', $reseller->phone) }}"
@@ -213,7 +213,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Territory / Service area</label>
                     <input name="territory" type="text" value="{{ old('territory', $reseller->territory) }}"
@@ -234,7 +234,7 @@
                           placeholder="A short intro about yourself...">{{ old('bio', $reseller->bio) }}</textarea>
             </div>
 
-            <div class="pt-3 border-t border-gray-100 grid grid-cols-2 gap-4">
+            <div class="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">Timezone</label>
                     <select name="timezone" class="w-full border border-gray-200 bg-gray-50 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all">

@@ -230,6 +230,8 @@
 
     {{-- Deals table --}}
     <div class="card" style="padding:0;overflow:hidden">
+        <div style="overflow-x:auto">
+        <div style="min-width:720px">
 
         {{-- Table header --}}
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:0;padding:10px 16px;border-bottom:1px solid #f3f4f6;background:#f9fafb">
@@ -318,6 +320,8 @@
             No deals match the current filters.
         </div>
         @endforelse
+        </div>
+        </div>
     </div>
 
     {{-- Pagination --}}

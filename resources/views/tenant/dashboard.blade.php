@@ -40,7 +40,7 @@ document.addEventListener('alpine:init', () => {
 
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
 
         @php
         $kpis = [
@@ -436,7 +436,9 @@ document.addEventListener('alpine:init', () => {
                 </div>
             </div>
 
-            {{-- Column headers --}}
+            {{-- Column headers + rows: scrollable on mobile --}}
+            <div class="overflow-x-auto -mx-1">
+            <div style="min-width:480px">
             <div x-show="filteredDeals().length>0"
                  class="grid gap-3 px-3 mb-1"
                  style="grid-template-columns:2fr 1fr 1fr 80px">
@@ -478,6 +480,9 @@ document.addEventListener('alpine:init', () => {
                         </div>
                     </a>
                 </template>
+            </div>
+
+            </div>
             </div>
 
             {{-- Empty state --}}

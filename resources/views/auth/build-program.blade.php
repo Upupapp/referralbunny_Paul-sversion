@@ -72,7 +72,7 @@
                     <h1 class="text-2xl font-bold text-[#1E1B4B]">Create your account</h1>
                     <p class="text-gray-400 text-sm mt-1">You'll be the owner of your referral program workspace.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1.5">First Name *</label>
                         <input x-model="form.first_name" type="text" placeholder="First name" class="wi">
@@ -89,7 +89,7 @@
                     <input x-model="form.email" type="email" placeholder="you@company.com" class="wi">
                     <p x-show="errors.email" class="err" x-text="errors.email"></p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
                         <input x-model="form.password" type="password" placeholder="Min 8 characters" class="wi">
@@ -106,7 +106,7 @@
                     <p class="text-xs text-gray-400 mt-1">This is what referrers will see when they join your program.</p>
                     <p x-show="errors.workspace_name" class="err" x-text="errors.workspace_name"></p>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Country *</label>
                         <select x-model="form.country" class="wi">
@@ -203,7 +203,8 @@
                     <h1 class="text-2xl font-bold text-[#1E1B4B]">Your deal pipeline</h1>
                     <p class="text-gray-400 text-sm mt-1">Define the stages deals go through. Set a time limit per stage, and mark the "Won" stage.</p>
                 </div>
-                <div class="space-y-0 divide-y divide-gray-100">
+                <div class="overflow-x-auto -mx-1">
+                <div class="min-w-[380px] space-y-0 divide-y divide-gray-100">
                     <div class="grid text-[10px] font-bold text-gray-400 uppercase tracking-wide pb-2" style="grid-template-columns:1fr 80px 60px 36px">
                         <span class="pl-5">Stage name</span><span class="text-center">Days limit</span><span class="text-center">Won?</span><span></span>
                     </div>
@@ -227,6 +228,7 @@
                         </div>
                     </template>
                 </div>
+                </div>
                 <button @click="addStage()" class="flex items-center gap-2 text-sm text-[#7B61FF] font-semibold hover:opacity-75 transition-opacity">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     Add stage
@@ -248,7 +250,7 @@
                     <h1 class="text-2xl font-bold text-[#1E1B4B]">Commission structure</h1>
                     <p class="text-gray-400 text-sm mt-1">How do referrers earn from each deal they bring in?</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1.5">What do you call a deal? *</label>
                         <input x-model="form.lead_label" type="text" placeholder="e.g. Deal, Application, Property" class="wi">
@@ -262,7 +264,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-2">Commission type *</label>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <button @click="form.commission_type = 'percentage_of_value'"
                                 :class="form.commission_type === 'percentage_of_value' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
                                 class="border-2 rounded-xl p-3 text-left transition-all">

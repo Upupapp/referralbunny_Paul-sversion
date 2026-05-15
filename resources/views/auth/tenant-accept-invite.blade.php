@@ -206,7 +206,7 @@
                       @submit="submitting = true">
                     @csrf
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="field-label" for="first_name">First name</label>
                             <input id="first_name" name="first_name" type="text" autocomplete="given-name" required

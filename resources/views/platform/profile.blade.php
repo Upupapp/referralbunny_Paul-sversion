@@ -73,7 +73,7 @@
         <div class="card space-y-5">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Account Information</h2>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Display name</label>
                     <input name="name" type="text" value="{{ old('name', $user->name) }}" class="form-input" required>
@@ -85,7 +85,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Job title</label>
                     <input name="job_title" type="text" value="{{ old('job_title', $user->job_title) }}" class="form-input" placeholder="Super Administrator">
@@ -96,7 +96,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Phone number</label>
                     <input name="phone_number" type="tel" value="{{ old('phone_number', $user->phone_number) }}" class="form-input">
@@ -112,7 +112,7 @@
                 <textarea name="bio" rows="3" class="form-input resize-none" maxlength="500">{{ old('bio', $user->bio) }}</textarea>
             </div>
 
-            <div class="pt-3 border-t border-gray-100 grid grid-cols-2 gap-4">
+            <div class="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Timezone</label>
                     <select name="timezone" class="form-input">
