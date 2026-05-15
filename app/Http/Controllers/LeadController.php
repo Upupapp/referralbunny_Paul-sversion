@@ -39,13 +39,22 @@ class LeadController extends Controller
             $relations[] = 'dealPartners.partner';
         }
 
+        // reseller_id column may not exist on all DB deployments — check once per day and add
+        // it to the select only if present; leads still load without it (uses reseller_name)
+        $baseSelect = [
+            'id', 'tenant_id', 'name', 'stage', 'status', 'days_left',
+            'reseller_name', 'organization_id',
+            'commission_status', 'base_cost', 'added_amount', 'deal_value',
+            'created_at', 'updated_at', 'deleted_at', 'deleted_by',
+        ];
+        if (Cache::remember('schema.leads_has_reseller_id', 86400, fn() =>
+            \Illuminate\Support\Facades\Schema::hasColumn('leads', 'reseller_id')
+        )) {
+            $baseSelect[] = 'reseller_id';
+        }
+
         $query = Lead::with($relations)
-            ->select([
-                'id', 'tenant_id', 'name', 'stage', 'status', 'days_left',
-                'reseller_name', 'reseller_id', 'organization_id',
-                'commission_status', 'base_cost', 'added_amount', 'deal_value',
-                'created_at', 'updated_at', 'deleted_at', 'deleted_by',
-            ])
+            ->select($baseSelect)
             ->orderBy('created_at', 'desc');
 
         // Derive tenant from authenticated context; fall back to query param
