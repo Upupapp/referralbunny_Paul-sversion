@@ -510,14 +510,16 @@ class CriticalActionService
 
     private function unrepliedMessages(string $tenantId): array
     {
-        // Message threads with no reply in > 24h (using existing thread/message tables)
+        // Threads where admin has unread messages AND the last reseller message is > 24h old.
+        // Using admin_unread (reset when admin reads the thread) + a 24h-old reseller message.
         try {
             $count = DB::table('message_threads as t')
                 ->where('t.tenant_id', $tenantId)
+                ->where('t.admin_unread', '>', 0)
                 ->whereExists(fn($q) => $q->select(DB::raw(1))
                     ->from('thread_messages as m')
                     ->whereColumn('m.thread_id', 't.id')
-                    ->where('m.is_read', false)
+                    ->where('m.sender_type', 'reseller')
                     ->where('m.created_at', '<', now()->subHours(24))
                 )
                 ->count();

@@ -97,6 +97,15 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
             <h2 class="text-sm font-bold text-[#1E1B4B]">My Information</h2>
 
+            {{-- Email (read-only) --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1.5">Email Address</label>
+                <div class="w-full border border-gray-200 bg-gray-100 rounded-xl px-3.5 py-2.5 text-sm text-gray-500 select-all">
+                    {{ $partner->email }}
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Your email cannot be changed. Contact your referrer to update it.</p>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1.5">First Name *</label>

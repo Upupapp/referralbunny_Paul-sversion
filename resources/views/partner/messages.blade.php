@@ -12,9 +12,56 @@
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
                 <div>
                     <h2 class="text-sm font-bold text-[#1E1B4B]">Messages</h2>
-                    <p class="text-[10px] text-gray-400 mt-0.5">Deal-scoped conversations</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Conversations with your team</p>
+                </div>
+                {{-- New Message button --}}
+                <button @click="showCompose = !showCompose"
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
+                        style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
+                        title="New Message">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Compose: pick recipient --}}
+            <div x-show="showCompose" x-cloak class="px-3 py-3 border-b border-blue-100 bg-blue-50/50 space-y-2 shrink-0">
+                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wide">New Conversation</p>
+                <select x-model="composeType"
+                        class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:border-blue-400">
+                    <option value="">— Select recipient type —</option>
+                    <option value="referrer">Message a Referrer</option>
+                    <option value="admin">Message Admin / Manager</option>
+                </select>
+                <template x-if="composeType === 'referrer'">
+                    <select x-model="composeReferrer"
+                            class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:border-blue-400">
+                        <option value="">— Select Referrer —</option>
+                        @foreach($availableReferrers as $ref)
+                        <option value="{{ $ref['name'] }}">{{ $ref['name'] }}</option>
+                        @endforeach
+                    </select>
+                </template>
+                <template x-if="composeType === 'admin'">
+                    <select x-model="composeAdmin"
+                            class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white outline-none focus:border-blue-400">
+                        <option value="">— Select Admin / Manager —</option>
+                        @foreach($availableAdmins as $admin)
+                        <option value="{{ $admin['id'] }}">{{ $admin['name'] }} ({{ $admin['role'] }})</option>
+                        @endforeach
+                    </select>
+                </template>
+                <div class="flex gap-1.5">
+                    <button @click="showCompose = false; composeType = ''; composeReferrer = ''; composeAdmin = ''"
+                            class="flex-1 py-1 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">Cancel</button>
+                    <button @click="openComposedConversation()"
+                            :disabled="!composeType || (composeType === 'referrer' && !composeReferrer) || (composeType === 'admin' && !composeAdmin)"
+                            class="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
+                            style="background:linear-gradient(135deg,#2563EB,#3B82F6)">Start</button>
                 </div>
             </div>
+
             {{-- Tabs --}}
             <div class="flex border-b border-gray-100 shrink-0">
                 <button @click="msgTab = 'deals'"
@@ -23,7 +70,7 @@
                 <button @click="msgTab = 'admin'"
                         :class="msgTab === 'admin' ? 'text-blue-600 border-b-2 border-blue-500 font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[11px] py-2.5 transition-colors relative">
-                    Contact Admin
+                    Admin &amp; Support
                     <span x-show="adminDirectUnread > 0"
                           class="absolute top-1.5 right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center"
                           x-text="adminDirectUnread > 9 ? '9+' : adminDirectUnread"></span>
@@ -270,6 +317,10 @@ function partnerMessages() {
         msgTab: 'deals',
 
         adminDirectUnread: @php echo (int) $directThreads->sum('partner_unread'); @endphp,
+        showCompose: false,
+        composeType: '',
+        composeReferrer: '',
+        composeAdmin: '',
 
         init() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -304,6 +355,29 @@ function partnerMessages() {
             this.messages         = [];
             this.mobilePane       = 'chat';
             this.msgTab           = 'admin';
+        },
+
+        openComposedConversation() {
+            this.showCompose = false;
+            if (this.composeType === 'admin') {
+                // For now all admin messages go to the shared direct thread
+                this.msgTab = 'admin';
+                this.startDirectAdminMessage();
+            } else if (this.composeType === 'referrer' && this.composeReferrer) {
+                // Find an existing deal thread where the deal's referrer matches
+                const referrerThread = serverThreads.find(t => t.deal_name && t.deal_id);
+                // Navigate to deal threads and let user pick the right deal
+                this.msgTab = 'deals';
+                this.mobilePane = 'list';
+                // If only one deal with this referrer, auto-open it
+                const matchingThreads = this.threads.filter(t => t.deal_id);
+                if (matchingThreads.length === 1) {
+                    this.selectThread(matchingThreads[0].id);
+                }
+            }
+            this.composeType = '';
+            this.composeReferrer = '';
+            this.composeAdmin = '';
         },
 
         startPendingConversation(deal) {

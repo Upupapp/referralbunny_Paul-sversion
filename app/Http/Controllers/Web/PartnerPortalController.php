@@ -348,22 +348,50 @@ class PartnerPortalController extends Controller
 
     public function messages(Request $request)
     {
-        $partner = $this->partner();
+        $partner  = $this->partner();
+        $tenantId = $partner->tenant_id;
 
         $threads = PartnerThread::where('partner_id', $partner->id)
-            ->where('tenant_id', $partner->tenant_id)
+            ->where('tenant_id', $tenantId)
             ->with(['deal', 'reseller'])
             ->orderByDesc('last_message_at')
             ->get();
 
-        // Separate deal threads from direct (admin) threads
         $dealThreads   = $threads->filter(fn($t) => !is_null($t->deal_id));
         $directThreads = $threads->filter(fn($t) => is_null($t->deal_id));
+
+        // Referrers associated with this partner's deals (unique by reseller_name)
+        $dealIds = $this->authorizedDealIds();
+        $availableReferrers = collect();
+        if (!empty($dealIds)) {
+            $availableReferrers = \Illuminate\Support\Facades\DB::table('leads')
+                ->whereIn('id', $dealIds)
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('reseller_name')
+                ->select('reseller_name')
+                ->distinct()
+                ->get()
+                ->map(fn($r) => ['name' => $r->reseller_name]);
+        }
+
+        // Admins and managers in this tenant
+        $availableAdmins = \Illuminate\Support\Facades\DB::table('tenant_memberships as tm')
+            ->join('tenant_users as tu', 'tm.tenant_user_id', '=', 'tu.id')
+            ->where('tm.tenant_id', $tenantId)
+            ->where('tm.status', 'active')
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+            ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
+            ->get()
+            ->map(fn($u) => [
+                'id'    => $u->id,
+                'name'  => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
+                'role'  => ucfirst($u->role),
+            ]);
 
         // If deal_id param is provided and no thread exists yet, pass pending deal context
         $pendingDeal = null;
         $dealId = $request->query('deal_id');
-        if ($dealId && in_array($dealId, $this->authorizedDealIds())) {
+        if ($dealId && in_array($dealId, $dealIds)) {
             $hasThread = $dealThreads->contains('deal_id', $dealId);
             if (!$hasThread) {
                 $lead = Lead::find($dealId);
@@ -373,7 +401,10 @@ class PartnerPortalController extends Controller
             }
         }
 
-        return view('partner.messages', compact('partner', 'threads', 'dealThreads', 'directThreads', 'pendingDeal'));
+        return view('partner.messages', compact(
+            'partner', 'threads', 'dealThreads', 'directThreads', 'pendingDeal',
+            'availableReferrers', 'availableAdmins'
+        ));
     }
 
     public function threadMessages(string $threadId)
@@ -619,30 +650,32 @@ class PartnerPortalController extends Controller
             ->where('status', '!=', 'removed')
             ->get();
 
-        // Load the corresponding deals
-        $deals = Lead::whereIn('id', $splits->pluck('deal_id')->unique()->values()->toArray())
+        // Load the corresponding deals — include soft-deleted so archived deals still show
+        $deals = Lead::withTrashed()
+            ->whereIn('id', $splits->pluck('deal_id')->unique()->values()->toArray())
             ->get(['id', 'name', 'deal_value', 'added_amount', 'stage', 'status', 'commission_status', 'reseller_name'])
             ->keyBy('id');
 
         $commissions = $splits->map(function ($s) use ($deals) {
             $deal = $deals->get($s->deal_id);
-            $pool = round((float) ($deal?->added_amount ?? 0) * 0.70, 2);
+            if (!$deal) return null; // deal fully removed from DB — skip
+            $pool = round((float) ($deal->added_amount ?? 0) * 0.70, 2);
             $myAmount = $s->split_share_type === 'percentage'
                 ? round($pool * (float) $s->split_share_value / 100, 2)
                 : (float) $s->split_share_value;
             return [
-                'deal_id'         => $s->deal_id,
-                'deal_name'       => $deal?->name ?? '—',
-                'deal_value'      => (float) ($deal?->deal_value ?? 0),
-                'deal_stage'      => $deal?->stage ?? 'unknown',
-                'deal_status'     => $deal?->status ?? 'active',
-                'commission_status' => $deal?->commission_status ?? 'pending',
-                'split_type'      => $s->split_share_type,
-                'split_value'     => (float) $s->split_share_value,
-                'my_amount'       => $myAmount,
-                'status'          => $s->status ?? 'provisional',
+                'deal_id'           => $s->deal_id,
+                'deal_name'         => $deal->name,
+                'deal_value'        => (float) ($deal->deal_value ?? 0),
+                'deal_stage'        => $deal->stage ?? 'introduction',
+                'deal_status'       => $deal->status ?? 'active',
+                'commission_status' => $deal->commission_status ?? 'pending',
+                'split_type'        => $s->split_share_type,
+                'split_value'       => (float) $s->split_share_value,
+                'my_amount'         => $myAmount,
+                'status'            => $s->status ?? 'provisional',
             ];
-        })->values();
+        })->filter()->values();
 
         $totalProvisional = $commissions->where('commission_status', 'pending')->sum('my_amount');
         $totalLocked      = $commissions->where('commission_status', 'locked')->sum('my_amount');
