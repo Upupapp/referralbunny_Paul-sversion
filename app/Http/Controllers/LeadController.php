@@ -77,49 +77,62 @@ class LeadController extends Controller
         }
 
         if ($includePartners) {
-            // Map partner data into a clean `partners` array on each lead.
-            // Also attach commission_pool and partner_commission_total for net commission display.
-            $calc = app(\App\Services\CommissionCalculationService::class);
+            try {
+                $calc = app(\App\Services\CommissionCalculationService::class);
 
-            // Batch-load partner splits for all leads in one query to avoid N+1.
-            $leadIds = $leads->pluck('id')->all();
-            $partnerSplitsByDeal = DB::table('deal_partner_splits')
-                ->whereIn('deal_id', $leadIds)
-                ->whereNull('deleted_at')
-                ->where('status', '!=', 'removed')
-                ->select('deal_id', 'split_share_value', 'split_share_type')
-                ->get()
-                ->groupBy('deal_id');
+                $leadIds = $leads->pluck('id')->all();
+                $partnerSplitsByDeal = collect();
+                if (!empty($leadIds)) {
+                    $partnerSplitsByDeal = DB::table('deal_partner_splits')
+                        ->whereIn('deal_id', $leadIds)
+                        ->whereNull('deleted_at')
+                        ->where('status', '!=', 'removed')
+                        ->select('deal_id', 'split_share_value', 'split_share_type')
+                        ->get()
+                        ->groupBy('deal_id');
+                }
 
-            $leads = $leads->map(function (Lead $lead) use ($calc, $partnerSplitsByDeal) {
-                $data = $lead->toArray();
-                $data['partners'] = $lead->dealPartners
-                    ->where('status', 'active')
-                    ->map(fn(DealPartner $dp) => [
-                        'id'             => $dp->partner_user_id,
-                        'display_name'   => $dp->partner?->display_name ?? null,
-                        'email'          => $dp->partner?->email ?? null,
-                        'setup_complete' => $dp->partner?->isSetupComplete() ?? false,
-                    ])
-                    ->values()
-                    ->toArray();
+                $leads = $leads->map(function ($lead) use ($calc, $partnerSplitsByDeal) {
+                    $data = $lead instanceof Lead ? $lead->toArray() : (array) $lead;
 
-                // Commission pool from stored fields (same formula as CommissionCalculationService)
-                $breakdown = $calc->breakdownFromLead($lead);
-                $pool      = (float) ($breakdown['commission_pool'] ?? 0);
+                    try {
+                        $data['partners'] = ($lead instanceof Lead ? $lead->dealPartners : collect())
+                            ->where('status', 'active')
+                            ->map(fn(DealPartner $dp) => [
+                                'id'             => $dp->partner_user_id,
+                                'display_name'   => $dp->partner?->display_name ?? null,
+                                'email'          => $dp->partner?->email ?? null,
+                                'setup_complete' => $dp->partner?->isSetupComplete() ?? false,
+                            ])
+                            ->values()
+                            ->toArray();
+                    } catch (\Throwable) {
+                        $data['partners'] = [];
+                    }
 
-                // Sum partner splits for this deal
-                $splits = $partnerSplitsByDeal->get($lead->id, collect());
-                $partnerTotal = $splits->sum(
-                    fn ($ps) => $calc->partnerShare($pool, (float) $ps->split_share_value, $ps->split_share_type ?? 'percentage')
-                );
+                    try {
+                        $breakdown    = $lead instanceof Lead ? $calc->breakdownFromLead($lead) : [];
+                        $pool         = (float) ($breakdown['commission_pool'] ?? 0);
+                        $splits       = $partnerSplitsByDeal->get($lead->id ?? ($data['id'] ?? null), collect());
+                        $partnerTotal = $splits->sum(
+                            fn ($ps) => $calc->partnerShare($pool, (float) $ps->split_share_value, $ps->split_share_type ?? 'percentage')
+                        );
+                    } catch (\Throwable) {
+                        $pool = 0.0;
+                        $partnerTotal = 0.0;
+                    }
 
-                $data['commission_pool']           = round($pool, 2);
-                $data['partner_commission_total']  = round($partnerTotal, 2);
-                $data['referrer_pool_remaining']   = max(0.0, round($pool - $partnerTotal, 2));
+                    $data['commission_pool']          = round($pool, 2);
+                    $data['partner_commission_total'] = round($partnerTotal, 2);
+                    $data['referrer_pool_remaining']  = max(0.0, round($pool - $partnerTotal, 2));
 
-                return $data;
-            });
+                    return $data;
+                });
+            } catch (\Throwable $e) {
+                \Log::warning('LeadController include_partners failed: ' . $e->getMessage(), [
+                    'file' => $e->getFile(), 'line' => $e->getLine(),
+                ]);
+            }
         }
 
         if (isset($paginated)) {
