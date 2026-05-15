@@ -433,7 +433,7 @@
                                               x-text="n.author_role === 'partner' ? 'You' : n.author_role_label"></span>
                                         <span class="text-[10px] text-gray-400" x-text="n.created_ago"></span>
                                     </div>
-                                    <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap" x-text="n.body"></p>
+                                    <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words" x-html="linkify(n.body)"></p>
                                     <template x-if="n.attachments && n.attachments.length > 0">
                                         <div class="flex flex-wrap gap-1.5 mt-2">
                                             <template x-for="att in n.attachments" :key="att.id">
@@ -572,6 +572,15 @@
 
 @push('scripts')
 <script>
+function linkify(text) {
+    if (!text) return '';
+    const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return e.replace(
+        /(https?:\/\/[^\s<>&"'()\[\]{}]+)/gi,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>'
+    );
+}
+
 function partnerNotes(dealId, postUrl, csrf) {
     return {
         notes:    [],

@@ -4,6 +4,17 @@
 
 @section('content')
 @php
+// ── Linkify helper: escape HTML then make URLs clickable ──────────────────
+if (!function_exists('rb_linkify')) {
+    function rb_linkify(string $text): string {
+        $e = htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return (string) preg_replace(
+            '/(https?:\/\/[^\s<>&"\'()\[\]{}]+)/i',
+            '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>',
+            $e
+        );
+    }
+}
 // ── Derived response-level status ─────────────────────────────────────────
 $taskStatuses = $submission->tasks->pluck('status');
 [$statusLabel, $statusColor, $statusBg] = match(true) {
@@ -162,7 +173,7 @@ $allActivities = collect([$timelineSubmitEntry])
                            style="font-size:13px;color:#7B61FF;font-weight:500;text-decoration:none;word-break:break-all"
                            aria-label="Send email to {{ $answer }}">{{ $answer }}</a>
                         @elseif($field->field_type === 'textarea' || (is_string($answer) && str_contains($answer, "\n")))
-                        <div style="font-size:13px;color:#374151;line-height:1.75;background:#fafafa;border:1px solid #f3f4f6;border-radius:10px;padding:12px 14px;white-space:pre-line;word-break:break-word">{{ e($answer) }}</div>
+                        <div style="font-size:13px;color:#374151;line-height:1.75;background:#fafafa;border:1px solid #f3f4f6;border-radius:10px;padding:12px 14px;white-space:pre-line;word-break:break-word">{!! rb_linkify((string) $answer) !!}</div>
                         @elseif(is_array($answer))
                         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px">
                             @foreach($answer as $v)
@@ -170,7 +181,7 @@ $allActivities = collect([$timelineSubmitEntry])
                             @endforeach
                         </div>
                         @else
-                        <p style="font-size:13px;color:#1E1B4B;font-weight:500;margin:0;word-break:break-word">{{ $answer }}</p>
+                        <p style="font-size:13px;color:#1E1B4B;font-weight:500;margin:0;word-break:break-word">{!! rb_linkify((string) $answer) !!}</p>
                         @endif
                     @else
                     <p style="font-size:13px;color:#d1d5db;margin:0;font-style:italic">Not provided</p>
@@ -195,7 +206,7 @@ $allActivities = collect([$timelineSubmitEntry])
                         @endforeach
                     </div>
                     @else
-                    <p style="font-size:13px;color:#1E1B4B;font-weight:500;margin:0;white-space:pre-line;word-break:break-word">{{ e($val) }}</p>
+                    <p style="font-size:13px;color:#1E1B4B;font-weight:500;margin:0;white-space:pre-line;word-break:break-word">{!! rb_linkify((string) $val) !!}</p>
                     @endif
                 </div>
                 @endforeach
