@@ -478,31 +478,61 @@ class CriticalActionService
 
     private function pendingInvites(string $tenantId): array
     {
-        // Invites expiring within 48 hours
-        $expiring = DB::table('tenant_invitations')
+        $actions = [];
+
+        // Tenant user invites expiring within 48 hours
+        $expiringUsers = DB::table('tenant_invitations')
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
             ->where('expires_at', '<', now()->addHours(48))
             ->count();
 
-        if ($expiring === 0) return [];
+        if ($expiringUsers > 0) {
+            $actions[] = $this->make([
+                'type'          => 'invite_expiring',
+                'category'      => 'user',
+                'severity'      => 'high',
+                'summary'       => "{$expiringUsers} team invitation" . ($expiringUsers > 1 ? 's' : '') . " expiring within 48 hours",
+                'actor_name'    => 'System',
+                'actor_role'    => 'System',
+                'related_label' => 'Team Invitations',
+                'related_type'  => 'invitation',
+                'related_id'    => null,
+                'occurred_at'   => now(),
+                'action_url'    => "/tenant/{$tenantId}/users",
+                'action_needed' => true,
+                'source'        => 'tenant_invitations',
+            ]);
+        }
 
-        return [$this->make([
-            'type'          => 'invite_expiring',
-            'category'      => 'user',
-            'severity'      => 'medium',
-            'summary'       => "{$expiring} pending invitation" . ($expiring > 1 ? 's' : '') . " expiring within 48 hours",
-            'actor_name'    => 'System',
-            'actor_role'    => 'System',
-            'related_label' => 'Invitations',
-            'related_type'  => 'invitation',
-            'related_id'    => null,
-            'occurred_at'   => now(),
-            'action_url'    => "/tenant/{$tenantId}/users",
-            'action_needed' => true,
-            'source'        => 'tenant_invitations',
-        ])];
+        // Referrer invites approaching 90-day expiry (within 7 days)
+        $expiringReferrers = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'invited')
+            ->where('created_at', '<', now()->subDays(83))
+            ->where('created_at', '>', now()->subDays(90))
+            ->count();
+
+        if ($expiringReferrers > 0) {
+            $actions[] = $this->make([
+                'type'          => 'referrer_invite_expiring',
+                'category'      => 'user',
+                'severity'      => 'high',
+                'summary'       => "{$expiringReferrers} referrer invite" . ($expiringReferrers > 1 ? 's' : '') . " expiring within 7 days — re-invite or they'll lose access",
+                'actor_name'    => 'System',
+                'actor_role'    => 'System',
+                'related_label' => 'Referrer Invitations',
+                'related_type'  => 'referrer',
+                'related_id'    => null,
+                'occurred_at'   => now(),
+                'action_url'    => "/tenant/{$tenantId}/referrers",
+                'action_needed' => true,
+                'source'        => 'resellers',
+            ]);
+        }
+
+        return $actions;
     }
 
     private function recentAcceptedInvites(string $tenantId, int $limit, $since): array
@@ -1600,8 +1630,8 @@ class CriticalActionService
                 'related_type'  => 'referrer',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->created_at,
-                'action_url'    => "/tenant/{$tenantId}/referrers",
-                'action_label'  => 'View Referrers',
+                'action_url'    => "/tenant/{$tenantId}/referrers/{$r->id}",
+                'action_label'  => 'View Referrer',
                 'action_needed' => true,
                 'source'        => 'resellers',
                 'description'   => 'A new Referrer has been invited. Send their setup link if they haven\'t joined yet.',

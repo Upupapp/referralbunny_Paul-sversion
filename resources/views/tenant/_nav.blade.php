@@ -66,29 +66,30 @@ try {
     $_taskSeenKey = 'tenant_task_seen_' . $tenantId . '_' . $_navActorId;
     $_taskLastSeen = session($_taskSeenKey);
 
-    if ($isAdminMgr) {
-        // Admins/managers: count ALL new open tasks in tenant since last visit
-        $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
-            ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
-            ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
-        if ($_taskLastSeen) {
-            $taskQ->where('created_at', '>', $_taskLastSeen);
+    $_taskBadgeCacheKey = "nav_task_badge:{$tenantId}:{$_navActorId}:" . md5((string) $_taskLastSeen);
+    $taskBadge = (int) \Illuminate\Support\Facades\Cache::remember($_taskBadgeCacheKey, 60, function () use ($tenantId, $isAdminMgr, $_taskLastSeen, $_navActorType, $_navActorId) {
+        if ($isAdminMgr) {
+            $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
+            if ($_taskLastSeen) {
+                $taskQ->where('created_at', '>', $_taskLastSeen);
+            }
+            return $taskQ->count();
+        } else {
+            $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('assigned_to_type', $_navActorType)
+                ->where('assigned_to_id', $_navActorId)
+                ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
+            if ($_taskLastSeen) {
+                $taskQ->where('created_at', '>', $_taskLastSeen);
+            }
+            return $taskQ->count();
         }
-        $taskBadge = (int) $taskQ->count();
-    } else {
-        // Non-admins: count only tasks assigned to them since last visit
-        $taskQ = \Illuminate\Support\Facades\DB::table('tasks')
-            ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
-            ->where('assigned_to_type', $_navActorType)
-            ->where('assigned_to_id', $_navActorId)
-            ->whereNotIn('status', ['completed', 'cancelled', 'archived']);
-        if ($_taskLastSeen) {
-            $taskQ->where('created_at', '>', $_taskLastSeen);
-        }
-        $taskBadge = (int) $taskQ->count();
-    }
+    });
 
     // Reset badge when user is on the tasks page
     if (request()->routeIs('tenant.tasks*')) {
@@ -98,10 +99,12 @@ try {
 } catch (\Throwable) {}
 
 try {
-    $msgBadge = (int) \Illuminate\Support\Facades\DB::table('message_threads')
-            ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count()
-        + (int) \Illuminate\Support\Facades\DB::table('partner_threads')
-            ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count();
+    $msgBadge = (int) \Illuminate\Support\Facades\Cache::remember("nav_msg_badge:{$tenantId}", 30, function () use ($tenantId) {
+        return \Illuminate\Support\Facades\DB::table('message_threads')
+                ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count()
+            + \Illuminate\Support\Facades\DB::table('partner_threads')
+                ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count();
+    });
 } catch (\Throwable) {}
 
 // Note: $criticalBadge is added to workspaceBadge after it's computed below

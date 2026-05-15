@@ -6,6 +6,7 @@ use App\Models\TenantMembership;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Ensures a user can only access a tenant they belong to.
@@ -27,10 +28,13 @@ class EnsureTenantAccess
             $tenantId = $request->route('tenantId');
             $userId   = Auth::guard('tenant')->id();
 
-            $membership = TenantMembership::where('tenant_user_id', $userId)
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->first();
+            $cacheKey   = "tenant_membership:{$userId}:{$tenantId}";
+            $membership = Cache::remember($cacheKey, 120, fn() =>
+                TenantMembership::where('tenant_user_id', $userId)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first()
+            );
 
             if (! $membership) {
                 abort(403, 'You do not have access to this tenant workspace.');

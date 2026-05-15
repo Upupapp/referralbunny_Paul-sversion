@@ -119,7 +119,7 @@ class ResellerController extends Controller
                     $aa = $dv; // generic legacy fallback
                 }
 
-                $pool = round($aa * 0.70, 2);
+                $pool = round($aa * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2);
 
                 $leadsplits    = $splitsByLead->get($lead->id, collect());
                 $referrerSplit = $leadsplits->firstWhere('reseller_name', $lead->reseller_name);
@@ -305,6 +305,11 @@ class ResellerController extends Controller
 
     public function show(Request $request, Reseller $reseller): JsonResponse
     {
+        // Tenant isolation — reseller must belong to the caller's tenant
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        if ($tenantId && $reseller->tenant_id !== $tenantId) {
+            return response()->json(['error' => 'Not found.'], 404);
+        }
         $data = $this->applyAnonymityMask($reseller, $this->callerIsTenantAdmin());
         return response()->json($data);
     }
@@ -342,6 +347,11 @@ class ResellerController extends Controller
     {
         if (!$this->callerIsTenantAdmin()) {
             return response()->json(['error' => 'Only admins can delete Referrers.'], 403);
+        }
+
+        // Managers cannot permanently delete referrers — owner/admin only
+        if (request()->attributes->get('_tenant_role') === 'manager') {
+            return response()->json(['error' => 'Managers cannot delete Referrers. Contact an owner or admin.'], 403);
         }
 
         $tenantId = TenantContext::id() ?? $request->input('tenant_id');
@@ -415,6 +425,11 @@ class ResellerController extends Controller
     {
         if (!$this->callerIsTenantAdmin()) {
             return response()->json(['error' => 'You do not have permission to deactivate Referrers.'], 403);
+        }
+
+        // Managers cannot deactivate referrers — owner/admin only
+        if (request()->attributes->get('_tenant_role') === 'manager') {
+            return response()->json(['error' => 'Managers cannot deactivate Referrers. Contact an owner or admin.'], 403);
         }
 
         // Resolve tenant from auth context
