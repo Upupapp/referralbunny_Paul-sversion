@@ -8,6 +8,7 @@ use App\Models\ImportBatchRow;
 use App\Models\PendingReferrerInvite;
 use App\Models\Tenant;
 use App\Services\LguIds\LguIdsImportService;
+use App\Services\NotificationDispatchService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -264,6 +265,30 @@ class LguIdsImportController extends Controller
         }
 
         $result = $this->service->executeImport($batch, $this->authId(), $this->authRole());
+
+        // Notify all tenant admins/managers — the LguIdsImportService only notifies the executor.
+        // When a Referrer executes the import, no admin is notified without this call.
+        try {
+            $actorName = 'Referrer';
+            if (Auth::guard('reseller')->check()) {
+                $rs = \App\Models\Reseller::find($this->authId());
+                $actorName = $rs?->name ?: 'Referrer';
+            } elseif (Auth::guard('tenant')->check()) {
+                $tu = Auth::guard('tenant')->user();
+                $actorName = trim(($tu->first_name ?? '') . ' ' . ($tu->last_name ?? '')) ?: ($tu->email ?? 'Admin');
+            }
+            $summary = "Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}.";
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'LGU IDS deal import completed',
+                body:         "{$actorName} imported deals from \"{$batch->file_name}\". {$summary}",
+                actionUrl:    "/tenant/{$tenantId}/imports/lgu-ids/{$batchId}",
+                actionLabel:  'View Import',
+                dedupeSuffix: "lgu_import_done_{$batchId}",
+            );
+        } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.imports.lgu-ids.show', [$tenantId, $batchId])
