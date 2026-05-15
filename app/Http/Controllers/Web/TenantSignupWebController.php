@@ -36,9 +36,22 @@ class TenantSignupWebController extends Controller
             'password'           => ['required', 'confirmed', Password::min(8)],
             'workspace_name'     => 'required|string|max:255',
             'industry'           => 'required|string|max:100',
+            'sub_industries'     => 'nullable|array|max:3',
+            'sub_industries.*'   => 'string|max:100',
             'country'            => 'required|string|max:100',
             'timezone'           => 'required|string|max:100',
             'preferred_currency' => 'required|string|max:10',
+            'lead_label'         => 'nullable|string|max:50',
+            'value_label'        => 'nullable|string|max:50',
+            'commission_type'    => 'nullable|string|in:percentage_of_value,fixed_amount,placement_fee',
+            'company_share_pct'  => 'nullable|numeric|min:0|max:100',
+            'referrer_share_pct' => 'nullable|numeric|min:0|max:100',
+            'pipeline_stages'    => 'nullable|array|max:10',
+            'pipeline_stages.*.key'   => 'required_with:pipeline_stages|string|max:50',
+            'pipeline_stages.*.name'  => 'required_with:pipeline_stages|string|max:100',
+            'pipeline_stages.*.days'  => 'nullable|integer|min:1|max:365',
+            'pipeline_stages.*.color' => 'nullable|string|max:20',
+            'pipeline_stages.*.is_final' => 'nullable|boolean',
             'terms'              => 'accepted',
         ]);
 
@@ -54,7 +67,6 @@ class TenantSignupWebController extends Controller
         $userId = (string) Str::uuid();
 
         DB::transaction(function () use ($data, $tenantId, $userId) {
-            // Create tenant user account
             DB::table('tenant_users')->insert([
                 'id'         => $userId,
                 'first_name' => $data['first_name'],
@@ -66,7 +78,6 @@ class TenantSignupWebController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Create tenant workspace
             DB::table('tenants')->insert([
                 'id'                 => $tenantId,
                 'name'               => $data['workspace_name'],
@@ -80,7 +91,6 @@ class TenantSignupWebController extends Controller
                 'updated_at'         => now(),
             ]);
 
-            // Assign as owner
             DB::table('tenant_memberships')->insert([
                 'id'             => (string) Str::uuid(),
                 'tenant_id'      => $tenantId,
@@ -90,6 +100,46 @@ class TenantSignupWebController extends Controller
                 'created_at'     => now(),
                 'updated_at'     => now(),
             ]);
+
+            // Save program config (commission + labels)
+            try {
+                DB::table('tenant_program_configs')->insert([
+                    'tenant_id'           => $tenantId,
+                    'industry'            => $data['industry'],
+                    'sub_industries'      => json_encode($data['sub_industries'] ?? []),
+                    'lead_label'          => $data['lead_label'] ?? 'Deal',
+                    'value_label'         => $data['value_label'] ?? 'Deal Value',
+                    'commission_type'     => $data['commission_type'] ?? 'percentage_of_value',
+                    'company_share_pct'   => $data['company_share_pct'] ?? 30,
+                    'referrer_share_pct'  => $data['referrer_share_pct'] ?? 70,
+                    'default_expiry_days' => 21,
+                    'reassignment_mode'   => 'manual',
+                    'onboarding_complete' => true,
+                    'template_applied'    => $data['industry'],
+                    'created_at'          => now(),
+                    'updated_at'          => now(),
+                ]);
+            } catch (\Throwable) {}
+
+            // Save pipeline stages
+            $stages = $data['pipeline_stages'] ?? [];
+            foreach ($stages as $pos => $stage) {
+                try {
+                    DB::table('tenant_pipeline_stages')->insert([
+                        'id'        => (string) Str::uuid(),
+                        'tenant_id' => $tenantId,
+                        'stage_key' => Str::slug($stage['key'] ?? $stage['name']),
+                        'name'      => $stage['name'],
+                        'position'  => $pos,
+                        'days_limit'=> isset($stage['days']) ? (int) $stage['days'] : null,
+                        'color'     => $stage['color'] ?? '#9CA3AF',
+                        'is_final'  => (bool) ($stage['is_final'] ?? false),
+                        'is_won'    => (bool) ($stage['is_won'] ?? false),
+                        'created_at'=> now(),
+                        'updated_at'=> now(),
+                    ]);
+                } catch (\Throwable) {}
+            }
         });
 
         // Log in as tenant user
@@ -115,6 +165,15 @@ class TenantSignupWebController extends Controller
                 ],
             );
         } catch (\Throwable) {}
+
+        // Return JSON for the fetch-based wizard; plain redirect for legacy form posts
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success'  => true,
+                'redirect' => route('tenant.dashboard', $tenantId),
+                'message'  => "Welcome! Your workspace \"{$data['workspace_name']}\" is ready.",
+            ]);
+        }
 
         return redirect()->route('tenant.dashboard', $tenantId)
             ->with('success', "Welcome! Your workspace \"{$data['workspace_name']}\" is ready.");

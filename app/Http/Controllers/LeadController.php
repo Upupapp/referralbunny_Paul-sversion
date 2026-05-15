@@ -184,16 +184,25 @@ class LeadController extends Controller
             }
         }
 
-        // ── LGU IDS: set days_left from pipeline stage rules ──────────
-        // LOCKED RULE — do not generalise (LGU IDS pipeline protection)
+        // ── Set days_left from pipeline stage configuration ───────────
         $daysLeft = $data['days_left'] ?? 21;
         if ($tenantId === 'lgu-ids') {
+            // LOCKED RULE — LGU IDS pipeline stage time limits (do not generalise)
             $stageRule = DB::table('tenant_pipeline_stage_rules')
                 ->where('tenant_id', 'lgu-ids')
                 ->where('stage', $data['stage'])
                 ->first();
             if ($stageRule) {
                 $daysLeft = $stageRule->max_days;
+            }
+        } else {
+            // Generic tenants: use tenant_pipeline_stages if configured
+            $stageConfig = DB::table('tenant_pipeline_stages')
+                ->where('tenant_id', $tenantId)
+                ->where('stage_key', $data['stage'])
+                ->first();
+            if ($stageConfig?->days_limit) {
+                $daysLeft = (int) $stageConfig->days_limit;
             }
         }
 
@@ -453,16 +462,28 @@ class LeadController extends Controller
             }
         }
 
-        // ── LGU IDS: reset days_left when stage advances ──────────────
-        // LOCKED RULE — do not generalise (LGU IDS pipeline protection)
-        if (isset($data['stage']) && $data['stage'] !== $lead->stage && $lead->tenant_id === 'lgu-ids') {
-            $stageRule = DB::table('tenant_pipeline_stage_rules')
-                ->where('tenant_id', 'lgu-ids')
-                ->where('stage', $data['stage'])
-                ->first();
-            if ($stageRule) {
-                $data['days_left'] = $stageRule->max_days;
-                $data['status']    = 'active';
+        // ── Reset days_left when stage advances ──────────────────────
+        if (isset($data['stage']) && $data['stage'] !== $lead->stage) {
+            if ($lead->tenant_id === 'lgu-ids') {
+                // LOCKED RULE — LGU IDS pipeline stage time limits
+                $stageRule = DB::table('tenant_pipeline_stage_rules')
+                    ->where('tenant_id', 'lgu-ids')
+                    ->where('stage', $data['stage'])
+                    ->first();
+                if ($stageRule) {
+                    $data['days_left'] = $stageRule->max_days;
+                    $data['status']    = 'active';
+                }
+            } else {
+                // Generic tenants: reset days_left from tenant_pipeline_stages
+                $stageConfig = DB::table('tenant_pipeline_stages')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->where('stage_key', $data['stage'])
+                    ->first();
+                if ($stageConfig?->days_limit) {
+                    $data['days_left'] = (int) $stageConfig->days_limit;
+                    $data['status']    = 'active';
+                }
             }
         }
 

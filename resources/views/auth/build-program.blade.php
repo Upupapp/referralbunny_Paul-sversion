@@ -3,327 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Build a Referral Program — ReferralBunny.ai</title>
     <link rel="icon" type="image/webp" href="/images/logos/referralbunny-favicon.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { box-sizing: border-box; }
         body {
-            margin: 0; padding: 0;
-            min-height: 100vh;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(145deg, #1E1347 0%, #2D1B69 55%, #1a1040 100%);
+            margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif;
+            background: linear-gradient(145deg, #0f0b1f 0%, #1e1347 50%, #0a0620 100%);
             background-attachment: fixed;
         }
-        .login-page {
-            width: 100%;
-            padding: 2rem 1.5rem;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .login-card {
-            width: 100%;
-            max-width: 960px;
-            display: flex;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 32px 80px rgba(0,0,0,.45);
-        }
-        .card-left {
-            flex: 1;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            padding: 2.5rem 3rem;
-        }
-        .card-right {
-            width: 360px;
-            flex-shrink: 0;
-            background: linear-gradient(145deg, #1E1347 0%, #2D1B69 60%, #1a1040 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2.5rem;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            overflow: hidden;
-        }
-        @media (max-width: 767px) {
-            .card-right { display: none !important; }
-            .card-left  { padding: 2rem 1.5rem; }
-        }
-        .form-wrap { max-width: 380px; }
-        .field-label {
-            display: block; font-size: .8125rem; font-weight: 500;
-            color: #374151; margin-bottom: .375rem;
-        }
-        .field-input {
-            width: 100%; border: 1px solid #e5e7eb; background: #f9fafb;
-            border-radius: 12px; padding: .75rem 1rem; font-size: .875rem;
-            color: #111827; outline: none; font-family: 'Inter', sans-serif;
-            transition: border-color .15s, box-shadow .15s, background .15s;
-        }
-        .field-input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.15); background: #fff; }
-        .field-input::placeholder { color: #9ca3af; }
-        .field-select {
-            width: 100%; border: 1px solid #e5e7eb; background: #f9fafb;
-            border-radius: 12px; padding: .75rem 1rem; font-size: .875rem;
-            color: #111827; outline: none; font-family: 'Inter', sans-serif;
-            cursor: pointer; appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-repeat: no-repeat; background-position: right .75rem center; background-size: 1.25rem;
-            padding-right: 2.5rem;
-        }
-        .field-select:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.15); background-color: #fff; }
-        .btn-primary {
-            width: 100%; background: #7c3aed; color: #fff;
-            border: none; border-radius: 12px; padding: .8125rem 1rem;
-            font-size: .875rem; font-weight: 600; cursor: pointer;
-            transition: background .15s; font-family: 'Inter', sans-serif; margin-top: .5rem;
-        }
-        .btn-primary:hover  { background: #6d28d9; }
-        .btn-primary:active { background: #5b21b6; }
-        .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-        .error-box {
-            display: flex; align-items: flex-start; gap: .75rem;
-            background: #fef2f2; border: 1px solid #fecaca;
-            border-radius: 12px; padding: .75rem 1rem; margin-bottom: 1.25rem;
-        }
-        .error-box p { margin: 0; font-size: .875rem; color: #dc2626; }
-        .section-label {
-            font-size: .625rem; font-weight: 700; color: #9ca3af;
-            letter-spacing: .12em; text-transform: uppercase;
-            margin: 1.5rem 0 1rem; padding-top: 1.25rem;
-            border-top: 1px solid #f3f4f6;
-        }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
-        .pw-wrap { position: relative; }
-        .pw-toggle {
-            position: absolute; right: .875rem; top: 50%; transform: translateY(-50%);
-            background: none; border: none; cursor: pointer; color: #9ca3af; padding: 0; display: flex;
-        }
-        .pw-toggle:hover { color: #6b7280; }
+        .wi { width:100%;border:1.5px solid #e5e7eb;border-radius:12px;padding:10px 14px;font-size:14px;outline:none;transition:all .15s;background:#fff;color:#1e1b4b; }
+        .wi:focus { border-color:#7B61FF;box-shadow:0 0 0 3px rgba(123,97,255,.12); }
+        .wi::placeholder { color:#9ca3af; }
+        select.wi { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px; }
+        .ind-card { border:1.5px solid #e5e7eb;border-radius:14px;padding:12px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:#fff; }
+        .ind-card:hover { border-color:#7B61FF;background:#f5f3ff; }
+        .ind-card.sel { border-color:#7B61FF;background:#ede9fe; }
+        .bp { background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px; }
+        .bp:hover { opacity:.9;box-shadow:0 4px 16px rgba(123,97,255,.4); }
+        .bp:disabled { opacity:.5;cursor:not-allowed; }
+        .bs { background:white;color:#374151;border:1.5px solid #e5e7eb;border-radius:12px;padding:11px 20px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s; }
+        .bs:hover { border-color:#7B61FF;color:#7B61FF; }
+        .err { color:#ef4444;font-size:12px;margin-top:4px; }
     </style>
 </head>
 <body>
+<div x-data="buildWizard()" x-init="init()" class="min-h-screen py-8 px-4">
 
-<div class="login-page">
-    <div class="login-card">
+    {{-- Logo --}}
+    <div class="text-center mb-8">
+        <a href="/"><img src="/images/logos/referralbunny-logo-white-horizontal.webp" alt="Referral Bunny" class="h-9 object-contain mx-auto"></a>
+    </div>
 
-        {{-- LEFT — form --}}
-        <div class="card-left">
-            <div style="margin-bottom:1.75rem">
-                <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
+    <div class="max-w-3xl mx-auto">
+
+        {{-- Progress --}}
+        <div class="mb-8 px-2">
+            <div class="flex items-end">
+                @php $steps = [1=>'Account',2=>'Industry',3=>'Pipeline',4=>'Commission',5=>'Done']; @endphp
+                @foreach($steps as $n => $label)
+                <div class="flex flex-col items-center" style="flex:{{ $n<5?'1':'0' }}">
+                    <div class="flex items-center w-full">
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all"
+                             :class="step > {{ $n }} ? 'bg-[#7B61FF] text-white' : (step === {{ $n }} ? 'bg-white text-[#7B61FF] ring-2 ring-[#7B61FF]' : 'bg-white/10 text-white/30')">
+                            <template x-if="step > {{ $n }}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                            </template>
+                            <template x-if="step <= {{ $n }}"><span>{{ $n }}</span></template>
+                        </div>
+                        @if($n < 5)<div class="flex-1 h-0.5 transition-all" :class="step > {{ $n }} ? 'bg-[#7B61FF]' : 'bg-white/15'"></div>@endif
+                    </div>
+                    <p class="text-[10px] mt-1.5 font-medium transition-colors" :class="step === {{ $n }} ? 'text-white' : 'text-white/30'">{{ $label }}</p>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Card --}}
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            {{-- STEP 1: Account --}}
+            <div x-show="step === 1" class="p-8 space-y-5">
+                <div>
+                    <h1 class="text-2xl font-bold text-[#1E1B4B]">Create your account</h1>
+                    <p class="text-gray-400 text-sm mt-1">You'll be the owner of your referral program workspace.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">First Name *</label>
+                        <input x-model="form.first_name" type="text" placeholder="First name" class="wi">
+                        <p x-show="errors.first_name" class="err" x-text="errors.first_name"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Last Name *</label>
+                        <input x-model="form.last_name" type="text" placeholder="Last name" class="wi">
+                        <p x-show="errors.last_name" class="err" x-text="errors.last_name"></p>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Work Email *</label>
+                    <input x-model="form.email" type="email" placeholder="you@company.com" class="wi">
+                    <p x-show="errors.email" class="err" x-text="errors.email"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Password *</label>
+                        <input x-model="form.password" type="password" placeholder="Min 8 characters" class="wi">
+                        <p x-show="errors.password" class="err" x-text="errors.password"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Confirm Password *</label>
+                        <input x-model="form.password_confirmation" type="password" placeholder="Repeat password" class="wi">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Program / Workspace Name *</label>
+                    <input x-model="form.workspace_name" type="text" placeholder="e.g. Acme Corp Referral Program" class="wi">
+                    <p class="text-xs text-gray-400 mt-1">This is what referrers will see when they join your program.</p>
+                    <p x-show="errors.workspace_name" class="err" x-text="errors.workspace_name"></p>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Country *</label>
+                        <select x-model="form.country" class="wi">
+                            <option value="">Select</option>
+                            <option value="Philippines">Philippines</option>
+                            <option value="United States">United States</option>
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="Australia">Australia</option>
+                            <option value="Singapore">Singapore</option>
+                            <option value="Canada">Canada</option>
+                            <option value="India">India</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <p x-show="errors.country" class="err" x-text="errors.country"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Timezone *</label>
+                        <select x-model="form.timezone" class="wi">
+                            <option value="Asia/Manila">Asia/Manila (PH)</option>
+                            <option value="Asia/Singapore">Asia/Singapore</option>
+                            <option value="Asia/Kolkata">Asia/Kolkata</option>
+                            <option value="Australia/Sydney">Australia/Sydney</option>
+                            <option value="America/New_York">America/New_York</option>
+                            <option value="America/Los_Angeles">America/LA</option>
+                            <option value="Europe/London">Europe/London</option>
+                            <option value="UTC">UTC</option>
+                        </select>
+                        <p x-show="errors.timezone" class="err" x-text="errors.timezone"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Currency *</label>
+                        <select x-model="form.preferred_currency" class="wi">
+                            <option value="PHP">PHP — Peso</option>
+                            <option value="USD">USD — Dollar</option>
+                            <option value="GBP">GBP — Pound</option>
+                            <option value="AUD">AUD — Dollar</option>
+                            <option value="SGD">SGD — Dollar</option>
+                            <option value="INR">INR — Rupee</option>
+                        </select>
+                        <p x-show="errors.preferred_currency" class="err" x-text="errors.preferred_currency"></p>
+                    </div>
+                </div>
+                <label class="flex items-start gap-2.5 cursor-pointer">
+                    <input x-model="form.terms" type="checkbox" class="mt-0.5 w-4 h-4 accent-purple-600 flex-shrink-0">
+                    <span class="text-xs text-gray-500 leading-relaxed">
+                        I agree to the <a href="#" class="text-[#7B61FF] hover:underline">Terms of Service</a> and <a href="#" class="text-[#7B61FF] hover:underline">Privacy Policy</a>.
+                    </span>
+                </label>
+                <p x-show="errors.terms" class="err" x-text="errors.terms"></p>
+                <div class="flex justify-end pt-1">
+                    <button @click="nextStep()" class="bp">
+                        Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
             </div>
 
-            <h1 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:700;color:#111827">Build your referral program</h1>
-            <p style="margin:0 0 1.75rem;font-size:.8125rem;color:#6b7280;line-height:1.5">Create your ReferralBunny.ai workspace. Manage referrers, deals, and commissions — all in one place.</p>
-
-            @if ($errors->any())
-                <div class="error-box form-wrap">
-                    <x-r-bunny variant="warning" size="xs" :decorative="true" style="flex-shrink:0;margin-top:2px" />
-                    <p>{{ $errors->first() }}</p>
+            {{-- STEP 2: Industry --}}
+            <div x-show="step === 2" class="p-8 space-y-5">
+                <div>
+                    <h1 class="text-2xl font-bold text-[#1E1B4B]">What's your industry?</h1>
+                    <p class="text-gray-400 text-sm mt-1">We'll pre-fill your pipeline and commission settings. Everything is editable.</p>
                 </div>
-            @endif
-
-            @if(session('success'))
-                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem" class="form-wrap">
-                    <p style="margin:0;font-size:.875rem;color:#166534">{{ session('success') }}</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <template x-for="ind in industries" :key="ind.key">
+                        <button @click="form.industry = ind.key"
+                                :class="form.industry === ind.key ? 'sel' : ''"
+                                class="ind-card">
+                            <span class="text-2xl" x-text="ind.emoji"></span>
+                            <span class="text-xs font-semibold text-[#1E1B4B]" x-text="ind.label"></span>
+                        </button>
+                    </template>
                 </div>
-            @endif
-
-            <form method="POST" action="{{ route('tenant.create.post') }}" class="form-wrap" x-data="{ submitting: false }" @submit="submitting = true">
-                @csrf
-
-                {{-- Personal info --}}
-                <p class="section-label" style="margin-top:0;padding-top:0;border-top:none">Your account</p>
-
-                <div class="two-col" style="margin-bottom:.875rem">
-                    <div>
-                        <label class="field-label">First name</label>
-                        <input name="first_name" type="text" required autocomplete="given-name"
-                               value="{{ old('first_name') }}" class="field-input" placeholder="Jane">
+                <template x-if="form.industry && currentTemplate">
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                        <p class="text-xs font-bold text-purple-700 uppercase tracking-wide mb-2">Smart Template Preview</p>
+                        <div class="flex flex-wrap gap-3 text-xs text-purple-700">
+                            <span class="bg-white rounded-full px-2.5 py-1">📋 Lead: <strong x-text="currentTemplate.leadLabel"></strong></span>
+                            <span class="bg-white rounded-full px-2.5 py-1">💰 <strong x-text="currentTemplate.referrerShare + '% to Referrers'"></strong></span>
+                            <span class="bg-white rounded-full px-2.5 py-1">🔢 <strong x-text="currentTemplate.stages.length + ' pipeline stages'"></strong></span>
+                        </div>
                     </div>
-                    <div>
-                        <label class="field-label">Last name</label>
-                        <input name="last_name" type="text" required autocomplete="family-name"
-                               value="{{ old('last_name') }}" class="field-input" placeholder="Dela Cruz">
+                </template>
+                <div class="flex justify-between pt-1">
+                    <button @click="step = 1" class="bs">Back</button>
+                    <button @click="applyTemplateAndNext()" :disabled="!form.industry" class="bp">
+                        Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- STEP 3: Pipeline --}}
+            <div x-show="step === 3" class="p-8 space-y-5">
+                <div>
+                    <h1 class="text-2xl font-bold text-[#1E1B4B]">Your deal pipeline</h1>
+                    <p class="text-gray-400 text-sm mt-1">Define the stages deals go through. Set a time limit per stage, and mark the "Won" stage.</p>
+                </div>
+                <div class="space-y-0 divide-y divide-gray-100">
+                    <div class="grid text-[10px] font-bold text-gray-400 uppercase tracking-wide pb-2" style="grid-template-columns:1fr 80px 60px 36px">
+                        <span class="pl-5">Stage name</span><span class="text-center">Days limit</span><span class="text-center">Won?</span><span></span>
                     </div>
-                </div>
-
-                <div style="margin-bottom:.875rem">
-                    <label class="field-label">Work email</label>
-                    <input name="email" type="email" required autocomplete="email"
-                           value="{{ old('email') }}" class="field-input" placeholder="you@company.com">
-                </div>
-
-                <div class="two-col" style="margin-bottom:.875rem">
-                    <div>
-                        <label class="field-label">Password</label>
-                        <div class="pw-wrap" x-data="{ show: false }">
-                            <input name="password" :type="show ? 'text' : 'password'" required
-                                   class="field-input" style="padding-right:2.75rem" placeholder="Min. 8 characters">
-                            <button type="button" class="pw-toggle" @click="show = !show" tabindex="-1">
-                                <svg x-show="!show" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                <svg x-show="show"  width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>
+                    <template x-for="(stage, idx) in form.pipeline_stages" :key="idx">
+                        <div class="py-2.5" style="display:grid;grid-template-columns:1fr 80px 60px 36px;align-items:center;gap:8px">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full flex-shrink-0" :style="'background:' + stage.color"></div>
+                                <input x-model="stage.name" type="text" placeholder="Stage name"
+                                       class="wi py-1.5 text-sm"
+                                       @input="stage.key = stage.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')">
+                            </div>
+                            <input x-model.number="stage.days" type="number" placeholder="—" min="1" max="365"
+                                   class="wi py-1.5 text-sm text-center">
+                            <div class="flex justify-center">
+                                <input type="checkbox" x-model="stage.is_won" class="w-4 h-4 accent-green-500">
+                            </div>
+                            <button @click="form.pipeline_stages.splice(idx, 1)"
+                                    class="flex justify-center text-gray-300 hover:text-red-400 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
-                    </div>
-                    <div>
-                        <label class="field-label">Confirm password</label>
-                        <input name="password_confirmation" type="password" required
-                               class="field-input" placeholder="••••••••">
-                    </div>
+                    </template>
                 </div>
-
-                {{-- Workspace info --}}
-                <p class="section-label">Your workspace</p>
-
-                <div style="margin-bottom:.875rem">
-                    <label class="field-label">Workspace name</label>
-                    <input name="workspace_name" type="text" required
-                           value="{{ old('workspace_name') }}" class="field-input" placeholder="Acme Corp Referral Program">
-                    <p style="font-size:.6875rem;color:#9ca3af;margin:.25rem 0 0">This is the name your referrers will see.</p>
-                </div>
-
-                <div class="two-col" style="margin-bottom:.875rem">
-                    <div>
-                        <label class="field-label">Industry</label>
-                        <select name="industry" required class="field-select">
-                            <option value="">Select…</option>
-                            <option value="Technology" {{ old('industry') === 'Technology' ? 'selected' : '' }}>Technology</option>
-                            <option value="Real Estate" {{ old('industry') === 'Real Estate' ? 'selected' : '' }}>Real Estate</option>
-                            <option value="Financial Services" {{ old('industry') === 'Financial Services' ? 'selected' : '' }}>Financial Services</option>
-                            <option value="Healthcare" {{ old('industry') === 'Healthcare' ? 'selected' : '' }}>Healthcare</option>
-                            <option value="Education" {{ old('industry') === 'Education' ? 'selected' : '' }}>Education</option>
-                            <option value="Government / LGU" {{ old('industry') === 'Government / LGU' ? 'selected' : '' }}>Government / LGU</option>
-                            <option value="Retail / E-commerce" {{ old('industry') === 'Retail / E-commerce' ? 'selected' : '' }}>Retail / E-commerce</option>
-                            <option value="Professional Services" {{ old('industry') === 'Professional Services' ? 'selected' : '' }}>Professional Services</option>
-                            <option value="Insurance" {{ old('industry') === 'Insurance' ? 'selected' : '' }}>Insurance</option>
-                            <option value="Other" {{ old('industry') === 'Other' ? 'selected' : '' }}>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label">Country</label>
-                        <select name="country" required class="field-select">
-                            <option value="">Select…</option>
-                            <option value="Philippines" {{ old('country', 'Philippines') === 'Philippines' ? 'selected' : '' }}>Philippines</option>
-                            <option value="United States" {{ old('country') === 'United States' ? 'selected' : '' }}>United States</option>
-                            <option value="Singapore" {{ old('country') === 'Singapore' ? 'selected' : '' }}>Singapore</option>
-                            <option value="Australia" {{ old('country') === 'Australia' ? 'selected' : '' }}>Australia</option>
-                            <option value="United Kingdom" {{ old('country') === 'United Kingdom' ? 'selected' : '' }}>United Kingdom</option>
-                            <option value="Other" {{ old('country') === 'Other' ? 'selected' : '' }}>Other</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="two-col" style="margin-bottom:1.25rem">
-                    <div>
-                        <label class="field-label">Timezone</label>
-                        <select name="timezone" required class="field-select">
-                            <option value="">Select…</option>
-                            <option value="Asia/Manila" {{ old('timezone', 'Asia/Manila') === 'Asia/Manila' ? 'selected' : '' }}>Asia/Manila (PHT)</option>
-                            <option value="Asia/Singapore" {{ old('timezone') === 'Asia/Singapore' ? 'selected' : '' }}>Asia/Singapore (SGT)</option>
-                            <option value="Australia/Sydney" {{ old('timezone') === 'Australia/Sydney' ? 'selected' : '' }}>Australia/Sydney (AEST)</option>
-                            <option value="America/New_York" {{ old('timezone') === 'America/New_York' ? 'selected' : '' }}>America/New_York (EST)</option>
-                            <option value="America/Los_Angeles" {{ old('timezone') === 'America/Los_Angeles' ? 'selected' : '' }}>America/Los_Angeles (PST)</option>
-                            <option value="Europe/London" {{ old('timezone') === 'Europe/London' ? 'selected' : '' }}>Europe/London (GMT)</option>
-                            <option value="UTC" {{ old('timezone') === 'UTC' ? 'selected' : '' }}>UTC</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label">Currency</label>
-                        <select name="preferred_currency" required class="field-select">
-                            <option value="">Select…</option>
-                            <option value="PHP" {{ old('preferred_currency', 'PHP') === 'PHP' ? 'selected' : '' }}>PHP — Philippine Peso</option>
-                            <option value="USD" {{ old('preferred_currency') === 'USD' ? 'selected' : '' }}>USD — US Dollar</option>
-                            <option value="SGD" {{ old('preferred_currency') === 'SGD' ? 'selected' : '' }}>SGD — Singapore Dollar</option>
-                            <option value="AUD" {{ old('preferred_currency') === 'AUD' ? 'selected' : '' }}>AUD — Australian Dollar</option>
-                            <option value="GBP" {{ old('preferred_currency') === 'GBP' ? 'selected' : '' }}>GBP — British Pound</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display:flex;align-items:flex-start;gap:.625rem;margin-bottom:1rem">
-                    <input type="checkbox" name="terms" id="terms" required
-                           style="margin-top:2px;width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;flex-shrink:0">
-                    <label for="terms" style="font-size:.75rem;color:#6b7280;cursor:pointer;line-height:1.5">
-                        I agree to the <a href="#" style="color:#7c3aed">Terms of Service</a> and <a href="#" style="color:#7c3aed">Privacy Policy</a>.
-                    </label>
-                </div>
-
-                <button type="submit" class="btn-primary" :disabled="submitting" x-text="submitting ? 'Creating workspace…' : 'Create My Workspace'">
-                    Create My Workspace
+                <button @click="addStage()" class="flex items-center gap-2 text-sm text-[#7B61FF] font-semibold hover:opacity-75 transition-opacity">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    Add stage
                 </button>
-            </form>
-
-            <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #f3f4f6" class="form-wrap">
-                <div style="display:flex;flex-direction:column;gap:.5rem">
-                    <a href="{{ route('tenant.login') }}"
-                       style="font-size:.75rem;color:#7c3aed;text-decoration:none"
-                       onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                        Already have an account? Sign in →
-                    </a>
-                    <a href="{{ route('tenant.join') }}"
-                       style="font-size:.75rem;color:#9ca3af;text-decoration:none"
-                       onmouseover="this.style.color='#6b7280'" onmouseout="this.style.color='#9ca3af'">
-                        Joining an existing program? Join instead →
-                    </a>
+                <div class="bg-blue-50 rounded-xl p-3.5 text-xs text-blue-700 leading-relaxed">
+                    <strong>Days limit</strong> — how many days a deal can sit in this stage before being flagged as expiring. Leave blank for no limit. Check <strong>Won</strong> for the final success stage.
+                </div>
+                <div class="flex justify-between pt-1">
+                    <button @click="step = 2" class="bs">Back</button>
+                    <button @click="step = 4" :disabled="form.pipeline_stages.length === 0" class="bp">
+                        Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
                 </div>
             </div>
 
-            <div style="margin-top:1rem" class="form-wrap">
-                <a href="{{ route('portal.select') }}"
-                   style="display:inline-flex;align-items:center;gap:.375rem;font-size:.75rem;color:#9ca3af;text-decoration:none;transition:color .15s"
-                   onmouseover="this.style.color='#7B61FF'" onmouseout="this.style.color='#9ca3af'">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                    </svg>
-                    Back
+            {{-- STEP 4: Commission --}}
+            <div x-show="step === 4" class="p-8 space-y-5">
+                <div>
+                    <h1 class="text-2xl font-bold text-[#1E1B4B]">Commission structure</h1>
+                    <p class="text-gray-400 text-sm mt-1">How do referrers earn from each deal they bring in?</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">What do you call a deal? *</label>
+                        <input x-model="form.lead_label" type="text" placeholder="e.g. Deal, Application, Property" class="wi">
+                        <p class="text-xs text-gray-400 mt-1">Used in buttons, labels, and headings.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">What does deal value mean? *</label>
+                        <input x-model="form.value_label" type="text" placeholder="e.g. Contract Value, Sale Price" class="wi">
+                        <p class="text-xs text-gray-400 mt-1">Shown as the value field label.</p>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">Commission type *</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button @click="form.commission_type = 'percentage_of_value'"
+                                :class="form.commission_type === 'percentage_of_value' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
+                                class="border-2 rounded-xl p-3 text-left transition-all">
+                            <div class="text-xl mb-1">%</div>
+                            <p class="text-xs font-bold text-[#1E1B4B]">% of Value</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Percentage of the deal value</p>
+                        </button>
+                        <button @click="form.commission_type = 'fixed_amount'"
+                                :class="form.commission_type === 'fixed_amount' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
+                                class="border-2 rounded-xl p-3 text-left transition-all">
+                            <div class="text-xl mb-1">💵</div>
+                            <p class="text-xs font-bold text-[#1E1B4B]">Fixed Amount</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Fixed payout per closed deal</p>
+                        </button>
+                        <button @click="form.commission_type = 'placement_fee'"
+                                :class="form.commission_type === 'placement_fee' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
+                                class="border-2 rounded-xl p-3 text-left transition-all">
+                            <div class="text-xl mb-1">💼</div>
+                            <p class="text-xs font-bold text-[#1E1B4B]">Placement Fee</p>
+                            <p class="text-[11px] text-gray-400 mt-0.5">% of salary / recurring</p>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-3">Commission split *</label>
+                    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-500">Company keeps <strong class="text-[#1E1B4B]" x-text="form.company_share_pct + '%'"></strong></span>
+                            <span class="text-[#7B61FF] font-semibold">Referrers receive <strong x-text="form.referrer_share_pct + '%'"></strong></span>
+                        </div>
+                        <input type="range" x-model.number="form.company_share_pct"
+                               @input="form.referrer_share_pct = 100 - form.company_share_pct"
+                               min="0" max="100" step="5" class="w-full accent-purple-600">
+                        <div class="flex rounded-lg overflow-hidden h-7 text-[11px] font-bold">
+                            <div class="flex items-center justify-center text-white transition-all"
+                                 :style="'background:#1E1B4B;width:' + form.company_share_pct + '%'"
+                                 x-show="form.company_share_pct > 8"
+                                 x-text="form.company_share_pct + '% Co.'"></div>
+                            <div class="flex items-center justify-center text-white transition-all"
+                                 :style="'background:linear-gradient(135deg,#7B61FF,#9B8BFF);width:' + form.referrer_share_pct + '%'"
+                                 x-show="form.referrer_share_pct > 8"
+                                 x-text="form.referrer_share_pct + '% Referrers'"></div>
+                        </div>
+                        <p class="text-xs text-gray-400">These are defaults — individual deals can override the split.</p>
+                    </div>
+                </div>
+                <div class="flex justify-between pt-1">
+                    <button @click="step = 3" class="bs">Back</button>
+                    <button @click="submitForm()" :disabled="submitting" class="bp">
+                        <svg x-show="submitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                        </svg>
+                        <span x-text="submitting ? 'Creating program…' : 'Launch my program 🚀'"></span>
+                    </button>
+                </div>
+                <p x-show="submitError" class="text-center text-sm text-red-600 font-medium" x-text="submitError"></p>
+            </div>
+
+            {{-- STEP 5: Done --}}
+            <div x-show="step === 5" class="p-10 text-center space-y-6">
+                <img src="/images/mascots/r-rocket.webp" alt="" class="w-24 h-24 object-contain mx-auto" onerror="this.style.display='none'">
+                <div>
+                    <h1 class="text-2xl font-bold text-[#1E1B4B]">Your program is live! 🎉</h1>
+                    <p class="text-gray-500 text-sm mt-2 max-w-sm mx-auto" x-text="'Welcome, ' + form.first_name + '! ' + form.workspace_name + ' is ready. Start by inviting your first Referrers.'"></p>
+                </div>
+                <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+                    <div class="bg-purple-50 rounded-xl p-3 text-center"><div class="text-2xl mb-1">👥</div><p class="text-[11px] font-semibold text-[#1E1B4B]">Invite Referrers</p></div>
+                    <div class="bg-purple-50 rounded-xl p-3 text-center"><div class="text-2xl mb-1">📋</div><p class="text-[11px] font-semibold text-[#1E1B4B]">Add Deals</p></div>
+                    <div class="bg-purple-50 rounded-xl p-3 text-center"><div class="text-2xl mb-1">💰</div><p class="text-[11px] font-semibold text-[#1E1B4B]">Track Commissions</p></div>
+                </div>
+                <a :href="dashboardUrl" class="bp mx-auto">
+                    Go to Dashboard
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </a>
             </div>
+
         </div>
 
-        {{-- RIGHT — brand panel --}}
-        <div class="card-right">
-            <div style="position:absolute;width:260px;height:260px;border-radius:50%;top:-80px;right:-80px;opacity:.25;pointer-events:none;background:radial-gradient(circle,#7C3AED,transparent 65%)"></div>
-            <div style="position:absolute;width:200px;height:200px;border-radius:50%;bottom:-60px;left:-60px;opacity:.2;pointer-events:none;background:radial-gradient(circle,#3B82F6,transparent 65%)"></div>
-            <div style="position:relative;z-index:1">
-                <x-r-bunny variant="hero" size="lg" :decorative="true" style="display:block;margin:0 auto 1.25rem" />
-                <h2 style="margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#fff;line-height:1.4">Your referral program<br>starts here.</h2>
-                <p style="font-size:.75rem;color:rgba(255,255,255,.5);line-height:1.6;max-width:180px;margin:0 auto">Build, launch, and manage a referral program in minutes.</p>
-                <div style="margin-top:1.5rem;display:flex;flex-direction:column;gap:.5rem">
-                    <div style="display:flex;align-items:center;gap:.5rem;text-align:left">
-                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(123,97,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                            <svg width="10" height="10" fill="none" stroke="#a78bfa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        </div>
-                        <span style="font-size:.6875rem;color:rgba(255,255,255,.6)">Invite referrers and resellers</span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:.5rem;text-align:left">
-                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(123,97,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                            <svg width="10" height="10" fill="none" stroke="#a78bfa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        </div>
-                        <span style="font-size:.6875rem;color:rgba(255,255,255,.6)">Track deals through the pipeline</span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:.5rem;text-align:left">
-                        <div style="width:20px;height:20px;border-radius:50%;background:rgba(123,97,255,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                            <svg width="10" height="10" fill="none" stroke="#a78bfa" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        </div>
-                        <span style="font-size:.6875rem;color:rgba(255,255,255,.6)">Automate commissions and payouts</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <p class="text-center text-white/30 text-xs mt-6">
+            Already have an account? <a href="{{ route('tenant.login') }}" class="text-white/60 hover:text-white underline">Sign in</a>
+        </p>
     </div>
 </div>
 
+@push('scripts')
+<script>
+const S_COLORS = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#F97316','#06B6D4','#84CC16','#EC4899'];
+const TEMPLATES = {
+    'Technology & SaaS':        { leadLabel:'Account',         valueLabel:'Contract Value', commissionType:'percentage_of_value', companyShare:20, referrerShare:80, stages:[{key:'demo',name:'Demo',days:7,color:'#9CA3AF',is_won:false},{key:'trial',name:'Trial',days:14,color:'#3B82F6',is_won:false},{key:'proposal',name:'Proposal',days:14,color:'#F59E0B',is_won:false},{key:'negotiation',name:'Negotiation',days:14,color:'#8B5CF6',is_won:false},{key:'closed-won',name:'Closed Won',days:null,color:'#10B981',is_won:true}] },
+    'Real Estate':              { leadLabel:'Buyer Lead',       valueLabel:'Property Value', commissionType:'percentage_of_value', companyShare:40, referrerShare:60, stages:[{key:'inquiry',name:'Inquiry',days:7,color:'#9CA3AF',is_won:false},{key:'viewing',name:'Viewing',days:14,color:'#3B82F6',is_won:false},{key:'offer',name:'Offer',days:21,color:'#F59E0B',is_won:false},{key:'closing',name:'Closing',days:30,color:'#8B5CF6',is_won:false},{key:'sold',name:'Sold',days:null,color:'#10B981',is_won:true}] },
+    'Recruitment & HR':         { leadLabel:'Candidate',        valueLabel:'Annual Salary',  commissionType:'placement_fee',       companyShare:30, referrerShare:70, stages:[{key:'screening',name:'Screening',days:7,color:'#9CA3AF',is_won:false},{key:'interview',name:'Interview',days:14,color:'#3B82F6',is_won:false},{key:'offer',name:'Offer',days:7,color:'#F59E0B',is_won:false},{key:'hired',name:'Hired',days:null,color:'#10B981',is_won:true}] },
+    'Financial Services':       { leadLabel:'Client',           valueLabel:'Deal Value',     commissionType:'percentage_of_value', companyShare:35, referrerShare:65, stages:[{key:'introduction',name:'Introduction',days:14,color:'#9CA3AF',is_won:false},{key:'needs-analysis',name:'Needs Analysis',days:21,color:'#3B82F6',is_won:false},{key:'proposal',name:'Proposal',days:14,color:'#F59E0B',is_won:false},{key:'signed',name:'Signed',days:null,color:'#10B981',is_won:true}] },
+    'Healthcare':               { leadLabel:'Patient',          valueLabel:'Service Value',  commissionType:'fixed_amount',        companyShare:50, referrerShare:50, stages:[{key:'inquiry',name:'Inquiry',days:3,color:'#9CA3AF',is_won:false},{key:'consultation',name:'Consultation',days:7,color:'#3B82F6',is_won:false},{key:'enrolled',name:'Enrolled',days:null,color:'#10B981',is_won:true}] },
+    'Education':                { leadLabel:'Student',          valueLabel:'Enrollment Value',commissionType:'fixed_amount',        companyShare:40, referrerShare:60, stages:[{key:'inquiry',name:'Inquiry',days:7,color:'#9CA3AF',is_won:false},{key:'application',name:'Application',days:14,color:'#3B82F6',is_won:false},{key:'enrolled',name:'Enrolled',days:null,color:'#10B981',is_won:true}] },
+    'Government & Public Sector':{ leadLabel:'Municipality',    valueLabel:'Contract Value', commissionType:'percentage_of_value', companyShare:30, referrerShare:70, stages:[{key:'introduction',name:'Introduction',days:14,color:'#9CA3AF',is_won:false},{key:'presentation',name:'Presentation',days:21,color:'#3B82F6',is_won:false},{key:'contract-sent',name:'Contract Sent',days:30,color:'#F59E0B',is_won:false},{key:'signed',name:'Signed',days:30,color:'#8B5CF6',is_won:false},{key:'paid',name:'Paid',days:null,color:'#10B981',is_won:true}] },
+    'Retail & E-commerce':      { leadLabel:'Customer',         valueLabel:'Order Value',    commissionType:'percentage_of_value', companyShare:50, referrerShare:50, stages:[{key:'referred',name:'Referred',days:7,color:'#9CA3AF',is_won:false},{key:'contacted',name:'Contacted',days:7,color:'#3B82F6',is_won:false},{key:'purchased',name:'Purchased',days:null,color:'#10B981',is_won:true}] },
+    'Other':                    { leadLabel:'Deal',             valueLabel:'Deal Value',     commissionType:'percentage_of_value', companyShare:30, referrerShare:70, stages:[{key:'introduction',name:'Introduction',days:14,color:'#9CA3AF',is_won:false},{key:'in-progress',name:'In Progress',days:21,color:'#3B82F6',is_won:false},{key:'won',name:'Won',days:null,color:'#10B981',is_won:true}] },
+};
+
+function buildWizard() {
+    return {
+        step: 1, submitting: false, submitError: '', dashboardUrl: '/', errors: {},
+        form: {
+            first_name:'', last_name:'', email:'', password:'', password_confirmation:'',
+            workspace_name:'', industry:'', country:'Philippines', timezone:'Asia/Manila',
+            preferred_currency:'PHP', lead_label:'Deal', value_label:'Deal Value',
+            commission_type:'percentage_of_value', company_share_pct:30, referrer_share_pct:70,
+            pipeline_stages:[], terms:false,
+        },
+        industries: [
+            {key:'Technology & SaaS',emoji:'💻',label:'Technology & SaaS'},
+            {key:'Real Estate',emoji:'🏠',label:'Real Estate'},
+            {key:'Recruitment & HR',emoji:'👔',label:'Recruitment & HR'},
+            {key:'Financial Services',emoji:'💰',label:'Financial Services'},
+            {key:'Healthcare',emoji:'🏥',label:'Healthcare'},
+            {key:'Education',emoji:'🎓',label:'Education'},
+            {key:'Government & Public Sector',emoji:'🏛️',label:'Government / Public Sector'},
+            {key:'Retail & E-commerce',emoji:'🛍️',label:'Retail & E-commerce'},
+            {key:'Other',emoji:'⚙️',label:'Other / Custom'},
+        ],
+        get currentTemplate() { return TEMPLATES[this.form.industry] ?? null; },
+        init() {},
+
+        applyTemplateAndNext() {
+            if (!this.form.industry) return;
+            const t = TEMPLATES[this.form.industry];
+            if (t) {
+                this.form.lead_label = t.leadLabel; this.form.value_label = t.valueLabel;
+                this.form.commission_type = t.commissionType;
+                this.form.company_share_pct = t.companyShare; this.form.referrer_share_pct = t.referrerShare;
+                this.form.pipeline_stages = t.stages.map(s => ({...s}));
+            }
+            this.step = 3;
+        },
+
+        addStage() {
+            const i = this.form.pipeline_stages.length;
+            this.form.pipeline_stages.push({key:'stage-'+(i+1),name:'Stage '+(i+1),days:14,color:S_COLORS[i%S_COLORS.length],is_won:false});
+        },
+
+        nextStep() {
+            this.errors = {};
+            if (this.step === 1) {
+                if (!this.form.first_name)      this.errors.first_name = 'Required';
+                if (!this.form.last_name)       this.errors.last_name  = 'Required';
+                if (!this.form.email)           this.errors.email = 'Required';
+                if (this.form.password.length < 8) this.errors.password = 'Minimum 8 characters';
+                if (this.form.password !== this.form.password_confirmation) this.errors.password = 'Passwords do not match';
+                if (!this.form.workspace_name)  this.errors.workspace_name = 'Required';
+                if (!this.form.country)         this.errors.country = 'Required';
+                if (!this.form.terms)           this.errors.terms = 'You must accept the terms';
+                if (Object.keys(this.errors).length) return;
+            }
+            this.step++;
+        },
+
+        async submitForm() {
+            if (this.submitting) return;
+            this.submitting = true; this.submitError = '';
+            try {
+                const res = await fetch('{{ route("tenant.create.post") }}', {
+                    method:'POST', credentials:'same-origin',
+                    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'X-Requested-With':'XMLHttpRequest'},
+                    body: JSON.stringify(this.form),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    this.submitError = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Something went wrong.');
+                    return;
+                }
+                this.dashboardUrl = data.redirect || '/';
+                this.step = 5;
+            } catch(e) {
+                this.submitError = 'Network error. Please try again.';
+            } finally { this.submitting = false; }
+        },
+    };
+}
+</script>
+@endpush
 </body>
 </html>
