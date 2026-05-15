@@ -60,7 +60,11 @@ class SearchController extends Controller
     {
         $user = $request->user();
         if (!$user) return response()->json([]);
-        return response()->json($this->search->getRecent($user->id));
+        try {
+            return response()->json($this->search->getRecent($user->id));
+        } catch (\Throwable) {
+            return response()->json([]);
+        }
     }
 
     // GET /api/search/saved

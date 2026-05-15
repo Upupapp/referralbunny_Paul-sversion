@@ -173,31 +173,38 @@ class SearchService
 
     public function logSearch(int $userId, string $query, int $resultCount): void
     {
-        RecentSearch::create([
-            'user_id'      => $userId,
-            'query'        => $query,
-            'result_count' => $resultCount,
-        ]);
+        try {
+            RecentSearch::create([
+                'user_id'      => $userId,
+                'query'        => $query,
+                'result_count' => $resultCount,
+            ]);
 
-        // Keep only the last 20 recent searches per user
-        $toDelete = RecentSearch::where('user_id', $userId)
-            ->orderByDesc('created_at')
-            ->skip(20)
-            ->take(100)
-            ->pluck('id');
+            $toDelete = RecentSearch::where('user_id', $userId)
+                ->orderByDesc('created_at')
+                ->skip(20)
+                ->take(100)
+                ->pluck('id');
 
-        if ($toDelete->isNotEmpty()) {
-            RecentSearch::whereIn('id', $toDelete)->delete();
+            if ($toDelete->isNotEmpty()) {
+                RecentSearch::whereIn('id', $toDelete)->delete();
+            }
+        } catch (\Throwable) {
+            // recent_searches table may not exist on this deployment
         }
     }
 
     public function getRecent(int $userId): array
     {
-        return RecentSearch::where('user_id', $userId)
-            ->orderByDesc('created_at')
-            ->limit(8)
-            ->get(['query', 'result_count', 'created_at'])
-            ->toArray();
+        try {
+            return RecentSearch::where('user_id', $userId)
+                ->orderByDesc('created_at')
+                ->limit(8)
+                ->get(['query', 'result_count', 'created_at'])
+                ->toArray();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public function saveSearch(int $userId, string $name, string $query, array $filters, bool $pinned = false): SavedSearch
