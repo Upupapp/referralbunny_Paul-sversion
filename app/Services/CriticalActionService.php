@@ -110,34 +110,38 @@ class CriticalActionService
      */
     public function forReseller(string $tenantId, string $resellerName, int $limit = 8, ?string $resellerId = null): array
     {
-        $sources = [
-            fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
-            fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
-            fn() => $this->resellerUnreadMessages($tenantId, $resellerName),
-            fn() => $this->resellerLeadHistory($tenantId, $resellerName),
-            fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
-        ];
+        $cacheKey = "ca_reseller:{$tenantId}:" . md5($resellerName . ':' . ($resellerId ?? ''));
+        return Cache::remember($cacheKey, 60, function () use ($tenantId, $resellerName, $resellerId, $limit) {
+            $sources = [
+                fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
+                fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
+                fn() => $this->resellerUnreadMessages($tenantId, $resellerName),
+                fn() => $this->resellerLeadHistory($tenantId, $resellerName),
+                fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
+                fn() => $this->resellerPendingApprovals($tenantId, $resellerName),
+            ];
 
-        if ($resellerId) {
-            $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
-            $sources[] = fn() => $this->resellerOverdueTasks($tenantId, $resellerId);
-        }
-
-        $items = [];
-        foreach ($sources as $source) {
-            try {
-                $items = array_merge($items, $source());
-            } catch (\Throwable $e) {
-                Log::warning('[CriticalActionService] Reseller source failed', ['error' => $e->getMessage()]);
+            if ($resellerId) {
+                $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
+                $sources[] = fn() => $this->resellerOverdueTasks($tenantId, $resellerId);
             }
-        }
 
-        usort($items, fn($a, $b) =>
-            (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
-            ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
-        );
+            $items = [];
+            foreach ($sources as $source) {
+                try {
+                    $items = array_merge($items, $source());
+                } catch (\Throwable $e) {
+                    Log::warning('[CriticalActionService] Reseller source failed', ['error' => $e->getMessage()]);
+                }
+            }
 
-        return array_slice($items, 0, $limit);
+            usort($items, fn($a, $b) =>
+                (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+                ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+            );
+
+            return array_slice($items, 0, $limit);
+        });
     }
 
     /**
@@ -724,10 +728,55 @@ class CriticalActionService
             'related_type'  => 'deal',
             'related_id'    => $r->lead_id,
             'occurred_at'   => $r->created_at ?? now(),
-            'action_url'    => null,
+            'action_url'    => "/reseller/{$tenantId}/deals/{$r->lead_id}",
             'action_needed' => false,
             'source'        => 'lead_history',
         ]))->toArray();
+    }
+
+    private function resellerPendingApprovals(string $tenantId, string $resellerName): array
+    {
+        try {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
+                ->value('id');
+
+            if (!$reseller) return [];
+
+            $rows = DB::table('deal_approval_requests as dar')
+                ->join('leads as l', 'l.id', '=', 'dar.deal_id')
+                ->where('dar.tenant_id', $tenantId)
+                ->where('dar.status', 'pending')
+                ->where('dar.requested_by_type', 'reseller')
+                ->where('dar.requested_by_id', $reseller)
+                ->select('dar.id', 'dar.type', 'dar.created_at', 'l.id as lead_id', 'l.name as lead_name')
+                ->orderByDesc('dar.created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => $r->type === 'deal_archive' ? 'pending_archive_request' : 'pending_stage_approval',
+                'category'      => 'deal',
+                'severity'      => 'medium',
+                'summary'       => $r->type === 'deal_archive'
+                    ? "Archive request pending review: {$r->lead_name}"
+                    : "Stage approval pending review: {$r->lead_name}",
+                'actor_name'    => 'You',
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->lead_name,
+                'related_type'  => 'deal',
+                'related_id'    => $r->lead_id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/reseller/{$tenantId}/deals/{$r->lead_id}",
+                'action_label'  => 'View Deal',
+                'action_needed' => false,
+                'source'        => 'deal_approval_requests',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerPendingApprovals failed', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 
     private function resellerCommissionUpdates(string $tenantId, string $resellerName): array

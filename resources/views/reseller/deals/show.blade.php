@@ -1617,7 +1617,7 @@ function rbRemovePartner(splitId, name) {
             }
         } catch (err) {
             document.getElementById('rb-remove-partner-modal').style.display = 'none';
-            alert('Network error. Please try again.');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
         }
     };
 }

@@ -167,6 +167,7 @@ class ResellerDealController extends Controller
             $attachments = DB::table('lead_attachments')
                 ->where('lead_id', $dealId)
                 ->orderBy('created_at', 'desc')
+                ->limit(50)
                 ->get()
                 ->toArray();
         } catch (\Throwable) {}
@@ -465,6 +466,14 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Deal is already at this stage.'], 422);
         }
 
+        // Server-side forward-only guard — UI enforces this too but API must also validate
+        $stageOrder = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+        $currentIdx = array_search($oldStage, $stageOrder, true);
+        $targetIdx  = array_search($targetStage, $stageOrder, true);
+        if ($targetIdx !== false && $currentIdx !== false && $targetIdx <= $currentIdx) {
+            return response()->json(['error' => 'Stage moves must progress forward. You cannot move a deal to an earlier stage.'], 422);
+        }
+
         // Check for a pending approval for this deal + stage
         $pendingExists = DealApprovalRequest::where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
@@ -479,7 +488,15 @@ class ResellerDealController extends Controller
         DB::beginTransaction();
         try {
             $lead->update(['stage' => $targetStage]);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController moveStage failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not move stage. Please try again.'], 500);
+        }
 
+        // Activity log and notification outside transaction
+        try {
             app(DealActivityService::class)->record($lead, 'Stage moved by referrer', 'stage', [
                 'category'   => 'stage',
                 'reseller'   => $reseller->name,
@@ -488,13 +505,7 @@ class ResellerDealController extends Controller
                 'old_values' => ['stage' => $oldStage],
                 'new_values' => ['stage' => $targetStage],
             ]);
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController moveStage failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not move stage. Please try again.'], 500);
-        }
+        } catch (\Throwable) {}
 
         try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(

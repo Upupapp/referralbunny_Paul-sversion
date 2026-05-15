@@ -24,6 +24,9 @@ class HandleCommissionStatusChanged
 
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
 
+        // Priority map used for both reseller and partner notifications
+        $priorities = ['pending' => 'normal', 'locked' => 'high', 'paid' => 'high'];
+
         // In-app notification
         if ($reseller) {
             $dispatcher = app(NotificationDispatchService::class);
@@ -37,7 +40,6 @@ class HandleCommissionStatusChanged
                 'locked'  => "Your commission for {$event->leadName} was approved.",
                 'paid'    => "Your commission for {$event->leadName} has been paid.",
             ];
-            $priorities = ['pending' => 'normal', 'locked' => 'high', 'paid' => 'high'];
 
             $dispatcher->dispatchToReseller(
                 resellerId:   $reseller->id,
