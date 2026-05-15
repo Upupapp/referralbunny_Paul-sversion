@@ -1516,7 +1516,7 @@ function rsDealData() {
                 : this.archiveReason;
             const { ok, data } = await post(base + '/archive-request', { reason: fullReason });
             this.archiveSaving = false;
-            if (!ok) { this.archiveError = (data.hint ? '[' + data.hint + '] ' : '') + (data.error || 'Could not submit request.'); return; }
+            if (!ok) { this.archiveError = data.error || 'Could not submit request. Please try again.'; return; }
             this.showArchive = false; this.archiveReason = ''; this.archiveDetail = '';
             this.showToast('Archive request submitted. Admins have been notified and will review shortly.');
             setTimeout(() => window.location.reload(), 1000);

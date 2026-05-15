@@ -67,6 +67,8 @@ class TenantSignupWebController extends Controller
         $userId = (string) Str::uuid();
 
         DB::transaction(function () use ($data, $tenantId, $userId) {
+            $now = now();
+
             DB::table('tenant_users')->insert([
                 'id'         => $userId,
                 'first_name' => $data['first_name'],
@@ -74,8 +76,8 @@ class TenantSignupWebController extends Controller
                 'email'      => $data['email'],
                 'password'   => Hash::make($data['password']),
                 'status'     => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => $now,
+                'updated_at' => $now,
             ]);
 
             DB::table('tenants')->insert([
@@ -87,8 +89,8 @@ class TenantSignupWebController extends Controller
                 'timezone'           => $data['timezone'],
                 'preferred_currency' => $data['preferred_currency'],
                 'status'             => 'active',
-                'created_at'         => now(),
-                'updated_at'         => now(),
+                'created_at'         => $now,
+                'updated_at'         => $now,
             ]);
 
             DB::table('tenant_memberships')->insert([
@@ -97,48 +99,41 @@ class TenantSignupWebController extends Controller
                 'tenant_user_id' => $userId,
                 'role'           => 'owner',
                 'status'         => 'active',
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'created_at'     => $now,
+                'updated_at'     => $now,
             ]);
 
-            // Save program config (commission + labels)
-            try {
-                DB::table('tenant_program_configs')->insert([
-                    'tenant_id'           => $tenantId,
-                    'industry'            => $data['industry'],
-                    'sub_industries'      => json_encode($data['sub_industries'] ?? []),
-                    'lead_label'          => $data['lead_label'] ?? 'Deal',
-                    'value_label'         => $data['value_label'] ?? 'Deal Value',
-                    'commission_type'     => $data['commission_type'] ?? 'percentage_of_value',
-                    'company_share_pct'   => $data['company_share_pct'] ?? 30,
-                    'referrer_share_pct'  => $data['referrer_share_pct'] ?? 70,
-                    'default_expiry_days' => 21,
-                    'reassignment_mode'   => 'manual',
-                    'onboarding_complete' => true,
-                    'template_applied'    => $data['industry'],
-                    'created_at'          => now(),
-                    'updated_at'          => now(),
-                ]);
-            } catch (\Throwable) {}
+            DB::table('tenant_program_configs')->insert([
+                'tenant_id'           => $tenantId,
+                'industry'            => $data['industry'],
+                'sub_industries'      => json_encode($data['sub_industries'] ?? []),
+                'lead_label'          => $data['lead_label'] ?? 'Deal',
+                'value_label'         => $data['value_label'] ?? 'Deal Value',
+                'commission_type'     => $data['commission_type'] ?? 'percentage_of_value',
+                'company_share_pct'   => $data['company_share_pct'] ?? 30,
+                'referrer_share_pct'  => $data['referrer_share_pct'] ?? 70,
+                'default_expiry_days' => 21,
+                'reassignment_mode'   => 'manual',
+                'onboarding_complete' => true,
+                'template_applied'    => $data['industry'],
+                'created_at'          => $now,
+                'updated_at'          => $now,
+            ]);
 
-            // Save pipeline stages
-            $stages = $data['pipeline_stages'] ?? [];
-            foreach ($stages as $pos => $stage) {
-                try {
-                    DB::table('tenant_pipeline_stages')->insert([
-                        'id'        => (string) Str::uuid(),
-                        'tenant_id' => $tenantId,
-                        'stage_key' => Str::slug($stage['key'] ?? $stage['name']),
-                        'name'      => $stage['name'],
-                        'position'  => $pos,
-                        'days_limit'=> isset($stage['days']) ? (int) $stage['days'] : null,
-                        'color'     => $stage['color'] ?? '#9CA3AF',
-                        'is_final'  => (bool) ($stage['is_final'] ?? false),
-                        'is_won'    => (bool) ($stage['is_won'] ?? false),
-                        'created_at'=> now(),
-                        'updated_at'=> now(),
-                    ]);
-                } catch (\Throwable) {}
+            foreach ($data['pipeline_stages'] ?? [] as $pos => $stage) {
+                DB::table('tenant_pipeline_stages')->insert([
+                    'id'        => (string) Str::uuid(),
+                    'tenant_id' => $tenantId,
+                    'stage_key' => Str::slug($stage['key'] ?? $stage['name']),
+                    'name'      => $stage['name'],
+                    'position'  => $pos,
+                    'days_limit'=> isset($stage['days']) ? (int) $stage['days'] : null,
+                    'color'     => $stage['color'] ?? '#9CA3AF',
+                    'is_final'  => (bool) ($stage['is_final'] ?? false),
+                    'is_won'    => (bool) ($stage['is_won'] ?? false),
+                    'created_at'=> $now,
+                    'updated_at'=> $now,
+                ]);
             }
         });
 

@@ -56,7 +56,7 @@ class LeadController extends Controller
         }
 
         if ($request->filled('reseller_name')) {
-            $query->whereRaw('LOWER(reseller_name) = ?', [strtolower($request->reseller_name)]);
+            $query->forReseller($request->reseller_name);
         }
 
         // Paginate to prevent OOM on large tenants; callers may request all via per_page=all
@@ -185,26 +185,7 @@ class LeadController extends Controller
         }
 
         // ── Set days_left from pipeline stage configuration ───────────
-        $daysLeft = $data['days_left'] ?? 21;
-        if ($tenantId === 'lgu-ids') {
-            // LOCKED RULE — LGU IDS pipeline stage time limits (do not generalise)
-            $stageRule = DB::table('tenant_pipeline_stage_rules')
-                ->where('tenant_id', 'lgu-ids')
-                ->where('stage', $data['stage'])
-                ->first();
-            if ($stageRule) {
-                $daysLeft = $stageRule->max_days;
-            }
-        } else {
-            // Generic tenants: use tenant_pipeline_stages if configured
-            $stageConfig = DB::table('tenant_pipeline_stages')
-                ->where('tenant_id', $tenantId)
-                ->where('stage_key', $data['stage'])
-                ->first();
-            if ($stageConfig?->days_limit) {
-                $daysLeft = (int) $stageConfig->days_limit;
-            }
-        }
+        $daysLeft = $this->resolveStageLimit($tenantId, $data['stage']) ?? ($data['days_left'] ?? 21);
 
         // Resellers and Partners cannot set financial fields — always compute server-side
         $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
@@ -354,6 +335,27 @@ class LeadController extends Controller
         ), 201);
     } // end doStore
 
+    /**
+     * Returns the days_left for a given stage in a given tenant, or null if unconfigured.
+     * LGU IDS uses tenant_pipeline_stage_rules (LOCKED). All others use tenant_pipeline_stages.
+     */
+    private function resolveStageLimit(string $tenantId, string $stage): ?int
+    {
+        if ($tenantId === 'lgu-ids') {
+            $rule = DB::table('tenant_pipeline_stage_rules')
+                ->where('tenant_id', 'lgu-ids')
+                ->where('stage', $stage)
+                ->value('max_days');
+            return $rule !== null ? (int) $rule : null;
+        }
+
+        $limit = DB::table('tenant_pipeline_stages')
+            ->where('tenant_id', $tenantId)
+            ->where('stage_key', $stage)
+            ->value('days_limit');
+        return $limit !== null ? (int) $limit : null;
+    }
+
     private function callerIsTenantAdmin(): bool
     {
         return Auth::guard('web')->check()
@@ -464,26 +466,10 @@ class LeadController extends Controller
 
         // ── Reset days_left when stage advances ──────────────────────
         if (isset($data['stage']) && $data['stage'] !== $lead->stage) {
-            if ($lead->tenant_id === 'lgu-ids') {
-                // LOCKED RULE — LGU IDS pipeline stage time limits
-                $stageRule = DB::table('tenant_pipeline_stage_rules')
-                    ->where('tenant_id', 'lgu-ids')
-                    ->where('stage', $data['stage'])
-                    ->first();
-                if ($stageRule) {
-                    $data['days_left'] = $stageRule->max_days;
-                    $data['status']    = 'active';
-                }
-            } else {
-                // Generic tenants: reset days_left from tenant_pipeline_stages
-                $stageConfig = DB::table('tenant_pipeline_stages')
-                    ->where('tenant_id', $lead->tenant_id)
-                    ->where('stage_key', $data['stage'])
-                    ->first();
-                if ($stageConfig?->days_limit) {
-                    $data['days_left'] = (int) $stageConfig->days_limit;
-                    $data['status']    = 'active';
-                }
+            $limit = $this->resolveStageLimit($lead->tenant_id, $data['stage']);
+            if ($limit !== null) {
+                $data['days_left'] = $limit;
+                $data['status']    = 'active';
             }
         }
 

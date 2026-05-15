@@ -1531,7 +1531,7 @@ class CriticalActionService
                 'occurred_at'   => $r->created_at,
                 'action_url'    => "/tenant/{$tenantId}/referrers",
                 'action_label'  => 'View Referrers',
-                'action_needed' => false,
+                'action_needed' => true,
                 'source'        => 'resellers',
                 'description'   => 'A new Referrer has been invited. Send their setup link if they haven\'t joined yet.',
             ]))->toArray();

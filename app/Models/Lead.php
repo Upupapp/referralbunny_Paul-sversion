@@ -85,4 +85,10 @@ class Lead extends Model
     {
         return $this->hasMany(DealAssignmentExtensionRequest::class, 'deal_id');
     }
+
+    /** Case-insensitive reseller_name filter — use everywhere instead of whereRaw(LOWER). */
+    public function scopeForReseller(\Illuminate\Database\Eloquent\Builder $q, string $name): void
+    {
+        $q->whereRaw('LOWER(reseller_name) = ?', [strtolower($name)]);
+    }
 }

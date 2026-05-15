@@ -638,10 +638,7 @@ class ResellerDealController extends Controller
                 'exception' => class_basename($e),
                 'trace'     => $e->getTraceAsString(),
             ]);
-            return response()->json([
-                'error' => 'Could not submit archive request. Please try again.',
-                'hint'  => class_basename($e),
-            ], 500);
+            return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
         }
 
         // Activity log + notification AFTER commit — never let these roll back the business record
