@@ -46,7 +46,16 @@ class EnsureLegalAgreementsAccepted
                 return $next($request);
             }
 
-            if ($this->hasPending($tenantId, $userType, $userId, $role)) {
+            // Cache the result for 60 s per user — hasPending() fires two DB queries on
+            // every authenticated page load (reseller, partner, and tenant routes).
+            $cacheKey = "legal_pending:{$tenantId}:{$userType}:{$userId}";
+            $hasPending = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($tenantId, $userType, $userId, $role) {
+                return $this->hasPending($tenantId, $userType, $userId, $role);
+            });
+
+            if ($hasPending) {
+                // Bust the cache immediately so the acceptance page can see fresh state.
+                \Illuminate\Support\Facades\Cache::forget($cacheKey);
                 session()->put('legal_agreements.intended_url', $request->fullUrl());
                 return redirect()->route('tenant.legal-agreements.accept', $tenantId);
             }

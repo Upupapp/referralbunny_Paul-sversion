@@ -146,8 +146,9 @@ class TenantSignupWebController extends Controller
             }
         });
 
-        // Log in as tenant user
+        // Log in as tenant user — regenerate session to prevent fixation
         Auth::guard('tenant')->loginUsingId($userId, false);
+        request()->session()->regenerate();
 
         // Notify super admins of the new tenant signup
         try {

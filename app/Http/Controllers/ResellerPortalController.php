@@ -135,51 +135,74 @@ class ResellerPortalController extends Controller
     {
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
+        $calc     = app(\App\Services\CommissionCalculationService::class);
 
-        $leads = Lead::withTrashed()
+        // ── Summary stats: aggregate ALL leads (unbounded is fine — only 3 numeric columns) ──
+        $allLeads = Lead::withTrashed()
+            ->where('tenant_id', $tenantId)
+            ->forReseller($reseller->name)
+            ->select('id', 'deal_value', 'base_cost', 'added_amount', 'commission_status')
+            ->get();
+
+        // Load all commission splits for this referrer in a single query
+        $allLeadIds = $allLeads->pluck('id');
+        $allSplits  = $allLeadIds->isNotEmpty()
+            ? DB::table('commission_splits')
+                ->whereIn('lead_id', $allLeadIds)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->get()
+                ->keyBy('lead_id')
+            : collect();
+
+        $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
+        foreach ($allLeads as $lead) {
+            $pool     = $calc->breakdownFromLead($lead)['commission_pool'] ?? 0;
+            $splitRow = $allSplits->get($lead->id);
+            $pct      = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
+            $mine     = $calc->referrerShare($pool, $pct);
+            $status   = $lead->commission_status ?? 'pending';
+            if (array_key_exists($status, $commissionStats)) {
+                $commissionStats[$status] += $mine;
+            } else {
+                $commissionStats['pending'] += $mine;
+            }
+        }
+
+        // ── Paginated display: DB-level pagination (avoids loading all rows into PHP) ──
+        $perPage = 20;
+        $page    = max(1, (int) request()->input('page', 1));
+
+        $pagedQuery = Lead::withTrashed()
             ->where('tenant_id', $tenantId)
             ->forReseller($reseller->name)
             ->select('id', 'name', 'stage', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        // Load this referrer's commission splits to get their percentage per deal
-        $leadIds = $leads->pluck('id');
-        $splits  = DB::table('commission_splits')
-            ->whereIn('lead_id', $leadIds)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
-            ->get()
-            ->keyBy('lead_id');
+        $pagedLeads = $pagedQuery->paginate($perPage, ['*'], 'page', $page);
 
-        // Attach computed commission amounts to each lead
-        $calc  = app(\App\Services\CommissionCalculationService::class);
-        $leads = $leads->map(function ($lead) use ($splits, $calc) {
-            $breakdown  = $calc->breakdownFromLead($lead);
-            $pool       = $breakdown['commission_pool'];
-            $splitRow   = $splits->get($lead->id);
-            $pct        = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
+        // Attach per-lead commission to the current page only
+        $pageIds    = $pagedLeads->getCollection()->pluck('id');
+        $pageSplits = $pageIds->isNotEmpty()
+            ? DB::table('commission_splits')
+                ->whereIn('lead_id', $pageIds)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->get()
+                ->keyBy('lead_id')
+            : collect();
+
+        $pagedLeads->getCollection()->transform(function ($lead) use ($pageSplits, $calc) {
+            $breakdown              = $calc->breakdownFromLead($lead);
+            $pool                   = $breakdown['commission_pool'];
+            $splitRow               = $pageSplits->get($lead->id);
+            $pct                    = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
             $lead->commission_pool  = $pool;
             $lead->my_commission    = $calc->referrerShare($pool, $pct);
             $lead->split_percentage = $pct;
             return $lead;
         });
 
-        // Summary cards show referrer's actual commission share (not deal value)
-        $commissionStats = [
-            'pending' => $leads->where('commission_status', 'pending')->sum('my_commission'),
-            'locked'  => $leads->where('commission_status', 'locked')->sum('my_commission'),
-            'paid'    => $leads->where('commission_status', 'paid')->sum('my_commission'),
-        ];
-
-        // Paginate for display — stats use full $leads collection above
-        $perPage  = 20;
-        $page     = (int) request()->input('page', 1);
-        $pagedLeads = new \Illuminate\Pagination\LengthAwarePaginator(
-            $leads->forPage($page, $perPage)->values(),
-            $leads->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
+        // $leads kept for view back-compat (some Blade sections may reference it)
+        $leads = $pagedLeads->getCollection();
 
         return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats', 'pagedLeads'));
     }

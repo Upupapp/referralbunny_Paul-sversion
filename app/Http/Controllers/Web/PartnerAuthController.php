@@ -81,6 +81,11 @@ class PartnerAuthController extends Controller
                 ->withErrors(['token' => 'This setup link is invalid or has already been used.']);
         }
 
+        // Enforce a 90-day TTL on partner invite links (mirrors reseller setup expiry)
+        if ($partner->created_at && $partner->created_at->lt(now()->subDays(90))) {
+            return view('auth.partner-invite-expired', ['invitation' => null]);
+        }
+
         return view('auth.partner-setup', compact('partner', 'token'));
     }
 

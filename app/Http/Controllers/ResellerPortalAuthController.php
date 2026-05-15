@@ -192,6 +192,7 @@ class ResellerPortalAuthController extends Controller
 
         $reseller = $reseller->fresh();
         Auth::guard('reseller')->login($reseller);
+        request()->session()->regenerate();
 
         // Fire ResellerJoined → welcome email + admin in-app notification.
         try {

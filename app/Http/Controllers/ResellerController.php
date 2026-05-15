@@ -391,16 +391,12 @@ class ResellerController extends Controller
             'ids.*' => 'required|string|uuid',
         ]);
 
-        $deleted = Reseller::where('tenant_id', $tenantId)
+        // Use a single DELETE statement instead of loading all rows then iterating.
+        // Still respects the tenant + status safety guard.
+        $count = Reseller::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
             ->where('status', 'deactivated')
-            ->get();
-
-        $count = $deleted->count();
-
-        foreach ($deleted as $r) {
-            $r->delete();
-        }
+            ->delete();
 
         Log::info("Bulk reseller delete", [
             'tenant_id' => $tenantId,

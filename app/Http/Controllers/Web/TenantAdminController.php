@@ -13,13 +13,18 @@ use App\Services\PermissionService;
 use App\Services\ReferrerPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class TenantAdminController extends Controller
 {
     private function config(string $tenantId): ?TenantConfig
     {
-        return TenantConfig::where('tenant_id', $tenantId)->first();
+        // Cache for 5 minutes — config changes are admin-initiated and infrequent.
+        // Key is busted whenever the settings page saves (via model Observer or manual flush).
+        return Cache::remember("tenant_config:{$tenantId}", 300, function () use ($tenantId) {
+            return TenantConfig::where('tenant_id', $tenantId)->first();
+        });
     }
 
     private function configMeta(string $tenantId): array

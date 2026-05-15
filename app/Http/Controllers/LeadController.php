@@ -600,7 +600,9 @@ class LeadController extends Controller
 
         $leads = Lead::onlyTrashed()
             ->where('tenant_id', $tenantId)
+            ->select(['id', 'tenant_id', 'name', 'stage', 'status', 'reseller_name', 'deal_value', 'commission_status', 'deleted_at', 'deleted_by'])
             ->orderBy('deleted_at', 'desc')
+            ->limit(500) // archived deals are purged after 10 days; a 500-row cap is safe
             ->get()
             ->map(function (Lead $lead) {
                 $arr = $lead->toArray();

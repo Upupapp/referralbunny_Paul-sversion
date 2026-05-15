@@ -80,7 +80,7 @@ Route::post('/tenant/select-workspace', [TenantAuthWebController::class, 'choose
 
 // ── Build a Referral Program (Tenant Signup) ─────────────────
 Route::get('/tenant/create',  [TenantSignupWebController::class, 'showBuild'])->name('tenant.create');
-Route::post('/tenant/create', [TenantSignupWebController::class, 'build'])->name('tenant.create.post');
+Route::post('/tenant/create', [TenantSignupWebController::class, 'build'])->name('tenant.create.post')->middleware('throttle:5,1');
 
 // ── Join a Referral Program ───────────────────────────────────
 Route::get('/tenant/join',         [TenantSignupWebController::class, 'showJoin'])->name('tenant.join');
