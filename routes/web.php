@@ -152,6 +152,8 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/tasks',                     [ResellerPortalController::class, 'taskStore'])->name('tasks.store');
         Route::post('/tasks/{taskId}/complete',   [ResellerPortalController::class, 'taskComplete'])->name('tasks.complete');
         Route::patch('/tasks/{taskId}/status',    [ResellerPortalController::class, 'taskUpdateStatus'])->name('tasks.update-status');
+        Route::get('/calendar',        [ResellerPortalController::class, 'calendar'])->name('calendar');
+        Route::get('/calendar/events', [ResellerPortalController::class, 'calendarEvents'])->name('calendar.events');
         Route::get('/activity',       [ResellerPortalController::class, 'activityLog'])->name('activity');
         Route::get('/notifications',  [ResellerPortalController::class, 'notifications'])->name('notifications'); // redirects → activity
         Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markNotifRead'])->name('notifications.read');

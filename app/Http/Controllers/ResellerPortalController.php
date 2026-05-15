@@ -689,4 +689,94 @@ class ResellerPortalController extends Controller
 
         return response()->json(['status' => $newStatus]);
     }
+
+    public function calendar(string $tenantId): \Illuminate\View\View
+    {
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+        return view('reseller.calendar', compact('reseller', 'tenant'));
+    }
+
+    public function calendarEvents(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = $this->reseller();
+        $tz       = config('app.timezone', 'UTC');
+
+        try {
+            $from = \Illuminate\Support\Carbon::parse($request->query('from', now($tz)->startOfMonth()->toDateString()), $tz)->startOfDay();
+            $to   = \Illuminate\Support\Carbon::parse($request->query('to',   now($tz)->endOfMonth()->toDateString()),   $tz)->endOfDay();
+        } catch (\Throwable) {
+            return response()->json(['error' => 'Invalid date range.'], 400);
+        }
+
+        $today   = \Illuminate\Support\Carbon::today($tz);
+        $events  = collect();
+
+        // ── Own deals (by expiry date) ────────────────────────────────────────
+        DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->where('reseller_name', $reseller->name)
+            ->whereIn('status', ['active', 'expiring'])
+            ->whereNotNull('days_left')
+            ->where('days_left', '>=', 0)
+            ->whereNull('deleted_at')
+            ->select('id', 'name', 'days_left', 'stage', 'status')
+            ->get()
+            ->each(function ($deal) use ($from, $to, $today, $tenantId, &$events) {
+                $expiry = $today->copy()->addDays((int) $deal->days_left);
+                if (!$expiry->between($from, $to)) return;
+                $d = (int) $deal->days_left;
+                $events->push([
+                    'id'       => 'deal-' . $deal->id,
+                    'type'     => 'deal',
+                    'title'    => $deal->name,
+                    'label'    => 'Deal Expiry',
+                    'date'     => $expiry->toDateString(),
+                    'days_left'=> $d,
+                    'stage'    => ucwords(str_replace('_', ' ', $deal->stage ?? '')),
+                    'status'   => $deal->status,
+                    'priority' => $d <= 3 ? 'urgent' : ($d <= 7 ? 'high' : 'medium'),
+                    'color'    => $d <= 3 ? 'red' : ($d <= 7 ? 'orange' : 'yellow'),
+                    'done'     => false,
+                    'url'      => "/reseller/{$tenantId}/deals/{$deal->id}",
+                ]);
+            });
+
+        // ── Own tasks (by due date) ───────────────────────────────────────────
+        DB::table('tasks')
+            ->where('tenant_id', $tenantId)
+            ->where('assigned_to_type', 'reseller')
+            ->where('assigned_to_id', (string) $reseller->id)
+            ->whereNull('deleted_at')
+            ->whereNotNull('due_at')
+            ->whereNotIn('status', ['cancelled', 'archived'])
+            ->whereBetween('due_at', [$from, $to])
+            ->select('id', 'title', 'status', 'priority', 'due_at')
+            ->get()
+            ->each(function ($task) use ($today, $tenantId, &$events) {
+                $due  = \Illuminate\Support\Carbon::parse($task->due_at);
+                $done = $task->status === 'completed';
+                $overdue = !$done && $due->lt($today);
+                $events->push([
+                    'id'       => 'task-' . $task->id,
+                    'type'     => 'task',
+                    'title'    => $task->title,
+                    'label'    => 'Task',
+                    'date'     => $due->toDateString(),
+                    'priority' => $task->priority,
+                    'status'   => $task->status,
+                    'done'     => $done,
+                    'overdue'  => $overdue,
+                    'color'    => $done ? 'gray' : ($overdue ? 'red' : match($task->priority) {
+                        'urgent' => 'red', 'high' => 'orange', 'medium' => 'purple', default => 'purple',
+                    }),
+                    'url'      => "/reseller/{$tenantId}/tasks",
+                ]);
+            });
+
+        $sorted  = $events->sortBy('date')->values();
+        $grouped = $sorted->groupBy('date')->map(fn($g) => $g->values())->all();
+
+        return response()->json(['events' => $sorted, 'grouped' => $grouped]);
+    }
 }
