@@ -45,6 +45,36 @@
      @rb-del-cancel.window="selectMode = false; selectedDeals = []"
      @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true">
 
+    {{-- Inline deal-health alerts (computed from loaded deals — click to pre-filter) --}}
+    <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || missingReferrerCount > 0)">
+        <div class="flex flex-wrap gap-2">
+            <template x-if="expiredCount > 0">
+                <button @click="filterStatus = 'expired'; applyFilters()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
+                    <span x-text="expiredCount + ' deal' + (expiredCount > 1 ? 's' : '') + ' expired'"></span>
+                    <span class="text-red-400 text-[10px]">→ filter</span>
+                </button>
+            </template>
+            <template x-if="expiringCount > 0">
+                <button @click="filterStatus = 'expiring'; applyFilters()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0"></span>
+                    <span x-text="expiringCount + ' deal' + (expiringCount > 1 ? 's' : '') + ' expiring soon'"></span>
+                    <span class="text-orange-400 text-[10px]">→ filter</span>
+                </button>
+            </template>
+            <template x-if="missingReferrerCount > 0">
+                <button @click="filterStatus = ''; filterStage = ''; filterReseller = 'MISSING'; applyFilters()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>
+                    <span x-text="missingReferrerCount + ' deal' + (missingReferrerCount > 1 ? 's' : '') + ' missing Referrer'"></span>
+                    <span class="text-yellow-500 text-[10px]">→ filter</span>
+                </button>
+            </template>
+        </div>
+    </template>
+
     {{-- Tab navigation: Active Deals / Deal Archive --}}
     <div class="flex items-center gap-2">
         <button @click="activeTab = 'deals'"
@@ -179,7 +209,7 @@
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-sm font-semibold text-[#1E1B4B]">
-                    <span x-text="filtered.length"></span> deals
+                    <span x-text="filtered.length"></span><span x-show="leads.length < totalDeals" x-text="' of ' + totalDeals"></span> deals
                     <span x-show="filterStage || filterStatus || filterCommission || filterProvince || filterReseller || filterPartner || search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
                 </p>
                 <span x-show="sortCol !== 'created_at'"
@@ -938,7 +968,7 @@ function lguBaseCost(dv) {
 
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
-        leads: [], filtered: [], loading: true,
+        leads: [], filtered: [], loading: true, totalDeals: 0,
         canViewReferrers,
         showLocation,
         viewMode: 'table',
@@ -957,6 +987,10 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
         referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
         form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '', customOrgName: '' },
+
+        get expiringCount()       { return this.leads.filter(l => l.status === 'expiring').length; },
+        get expiredCount()        { return this.leads.filter(l => l.status === 'expired').length; },
+        get missingReferrerCount(){ return this.leads.filter(l => !l.reseller_name && ['active','expiring'].includes(l.status)).length; },
 
         stages: [
             { key: 'introduction',  label: 'Introduction',  color: '#9CA3AF' },
@@ -991,6 +1025,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 });
                 const data = await res.json();
                 this.leads = Array.isArray(data) ? data : (data.data || []);
+                this.totalDeals = data.total ?? this.leads.length;
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
@@ -1110,7 +1145,11 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 const matchSx = !this.filterStatus     || l.status            === this.filterStatus;
                 const matchCo = !this.filterCommission || l.commission_status  === this.filterCommission;
                 const matchPr = !this.filterProvince   || (l.data?.province||'') === this.filterProvince;
-                const matchRs = !this.filterReseller   || (l.reseller_name||'') === this.filterReseller;
+                const matchRs = !this.filterReseller
+                    ? true
+                    : this.filterReseller === 'MISSING'
+                        ? !l.reseller_name
+                        : (l.reseller_name||'') === this.filterReseller;
                 const matchPa = !fp || (l.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
                 return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs && matchPa;
             });
