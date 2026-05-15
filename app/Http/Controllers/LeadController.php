@@ -18,6 +18,7 @@ use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -341,19 +342,20 @@ class LeadController extends Controller
      */
     private function resolveStageLimit(string $tenantId, string $stage): ?int
     {
-        if ($tenantId === 'lgu-ids') {
-            $rule = DB::table('tenant_pipeline_stage_rules')
-                ->where('tenant_id', 'lgu-ids')
-                ->where('stage', $stage)
-                ->value('max_days');
-            return $rule !== null ? (int) $rule : null;
-        }
-
-        $limit = DB::table('tenant_pipeline_stages')
-            ->where('tenant_id', $tenantId)
-            ->where('stage_key', $stage)
-            ->value('days_limit');
-        return $limit !== null ? (int) $limit : null;
+        $map = Cache::remember("stage_limits_{$tenantId}", 3600, function () use ($tenantId) {
+            if ($tenantId === 'lgu-ids') {
+                return DB::table('tenant_pipeline_stage_rules')
+                    ->where('tenant_id', 'lgu-ids')
+                    ->pluck('max_days', 'stage')
+                    ->toArray();
+            }
+            return DB::table('tenant_pipeline_stages')
+                ->where('tenant_id', $tenantId)
+                ->pluck('days_limit', 'stage_key')
+                ->toArray();
+        });
+        $val = $map[$stage] ?? null;
+        return $val !== null ? (int) $val : null;
     }
 
     private function callerIsTenantAdmin(): bool

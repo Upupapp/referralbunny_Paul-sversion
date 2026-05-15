@@ -16,10 +16,11 @@
                 </div>
                 {{-- New Message button --}}
                 <button @click="showCompose = !showCompose"
-                        class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
                         style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
-                        title="New Message">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        title="New Message"
+                        aria-label="New Message">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                     </svg>
                 </button>

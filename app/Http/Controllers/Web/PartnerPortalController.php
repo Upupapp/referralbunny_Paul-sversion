@@ -13,6 +13,7 @@ use App\Services\NotificationDispatchService;
 use App\Services\UserDisplayNameService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PartnerPortalController extends Controller
@@ -364,29 +365,34 @@ class PartnerPortalController extends Controller
         $dealIds = $this->authorizedDealIds();
         $availableReferrers = collect();
         if (!empty($dealIds)) {
-            $availableReferrers = \Illuminate\Support\Facades\DB::table('leads')
-                ->whereIn('id', $dealIds)
-                ->where('tenant_id', $tenantId)
-                ->whereNotNull('reseller_name')
-                ->select('reseller_name')
-                ->distinct()
-                ->get()
-                ->map(fn($r) => ['name' => $r->reseller_name]);
+            $cacheKey = 'partner_compose_referrers_' . $partner->id . '_' . $tenantId;
+            $availableReferrers = Cache::remember($cacheKey, 300, function () use ($dealIds, $tenantId) {
+                return DB::table('leads')
+                    ->whereIn('id', $dealIds)
+                    ->where('tenant_id', $tenantId)
+                    ->whereNotNull('reseller_name')
+                    ->select('reseller_name')
+                    ->distinct()
+                    ->get()
+                    ->map(fn($r) => ['name' => $r->reseller_name]);
+            });
         }
 
         // Admins and managers in this tenant
-        $availableAdmins = \Illuminate\Support\Facades\DB::table('tenant_memberships as tm')
-            ->join('tenant_users as tu', 'tm.tenant_user_id', '=', 'tu.id')
-            ->where('tm.tenant_id', $tenantId)
-            ->where('tm.status', 'active')
-            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
-            ->get()
-            ->map(fn($u) => [
-                'id'    => $u->id,
-                'name'  => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
-                'role'  => ucfirst($u->role),
-            ]);
+        $availableAdmins = Cache::remember("tenant_admins_{$tenantId}", 300, function () use ($tenantId) {
+            return DB::table('tenant_memberships as tm')
+                ->join('tenant_users as tu', 'tm.tenant_user_id', '=', 'tu.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
+                ->get()
+                ->map(fn($u) => [
+                    'id'    => $u->id,
+                    'name'  => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
+                    'role'  => ucfirst($u->role),
+                ]);
+        });
 
         // If deal_id param is provided and no thread exists yet, pass pending deal context
         $pendingDeal = null;

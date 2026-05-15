@@ -120,11 +120,20 @@ class TenantSignupWebController extends Controller
                 'updated_at'          => $now,
             ]);
 
+            $usedKeys = [];
             foreach ($data['pipeline_stages'] ?? [] as $pos => $stage) {
+                $baseKey = Str::slug($stage['key'] ?? $stage['name']) ?: 'stage';
+                $key = $baseKey;
+                $counter = 2;
+                while (in_array($key, $usedKeys, true)) {
+                    $key = "{$baseKey}-{$counter}";
+                    $counter++;
+                }
+                $usedKeys[] = $key;
                 DB::table('tenant_pipeline_stages')->insert([
                     'id'        => (string) Str::uuid(),
                     'tenant_id' => $tenantId,
-                    'stage_key' => Str::slug($stage['key'] ?? $stage['name']),
+                    'stage_key' => $key,
                     'name'      => $stage['name'],
                     'position'  => $pos,
                     'days_limit'=> isset($stage['days']) ? (int) $stage['days'] : null,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Lead;
 use App\Models\Reseller;
 use App\Models\Tenant;
 use App\Services\CriticalActionService;
@@ -29,9 +30,8 @@ class ResellerPortalController extends Controller
 
         // Load all reseller-accessible leads safely
         try {
-            $leads = DB::table('leads')
-                ->where('tenant_id', $tenantId)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+            $leads = Lead::where('tenant_id', $tenantId)
+                ->forReseller($reseller->name)
                 ->orderByDesc('created_at')
                 ->get();
         } catch (\Throwable) {
@@ -136,9 +136,9 @@ class ResellerPortalController extends Controller
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
 
-        $leads = DB::table('leads')
+        $leads = Lead::withTrashed()
             ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+            ->forReseller($reseller->name)
             ->get();
 
         // Load this referrer's commission splits to get their percentage per deal
@@ -257,9 +257,9 @@ class ResellerPortalController extends Controller
         // Get all lead IDs belonging to this reseller
         $leadIds = [];
         try {
-            $leadIds = DB::table('leads')
+            $leadIds = Lead::withTrashed()
                 ->where('tenant_id', $tenantId)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->forReseller($reseller->name)
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
                 ->toArray();
@@ -717,13 +717,11 @@ class ResellerPortalController extends Controller
         $events  = collect();
 
         // ── Own deals (by expiry date) ────────────────────────────────────────
-        DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+        Lead::where('tenant_id', $tenantId)
+            ->forReseller($reseller->name)
             ->whereIn('status', ['active', 'expiring'])
             ->whereNotNull('days_left')
             ->where('days_left', '>=', 0)
-            ->whereNull('deleted_at')
             ->select('id', 'name', 'days_left', 'stage', 'status')
             ->get()
             ->each(function ($deal) use ($from, $to, $today, $tenantId, &$events) {
