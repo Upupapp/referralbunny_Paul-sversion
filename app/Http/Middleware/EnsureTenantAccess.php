@@ -28,21 +28,24 @@ class EnsureTenantAccess
             $tenantId = $request->route('tenantId');
             $userId   = Auth::guard('tenant')->id();
 
-            $cacheKey   = "tenant_membership:{$userId}:{$tenantId}";
-            $membership = Cache::remember($cacheKey, 120, fn() =>
+            $cacheKey = "tenant_membership:{$userId}:{$tenantId}";
+            $cached   = Cache::remember($cacheKey, 120, fn() =>
                 TenantMembership::where('tenant_user_id', $userId)
                     ->where('tenant_id', $tenantId)
                     ->where('status', 'active')
-                    ->first()
+                    ->select(['id', 'tenant_user_id', 'tenant_id', 'role', 'status'])
+                    ->first()?->toArray()
             );
 
-            if (! $membership) {
+            if (! $cached) {
                 abort(403, 'You do not have access to this tenant workspace.');
             }
 
+            $membership = (object) $cached;
+
             // Bind membership to request for downstream use (nav + controllers)
-            $request->merge(['_tenant_membership' => $membership]);
-            $request->attributes->set('_tenant_role', $membership->role ?? 'admin');
+            $request->merge(['_tenant_membership' => $cached]);
+            $request->attributes->set('_tenant_role', $cached['role'] ?? 'admin');
 
             return $next($request);
         }
