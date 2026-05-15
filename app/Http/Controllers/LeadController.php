@@ -46,13 +46,20 @@ class LeadController extends Controller
                 'commission_status', 'base_cost', 'added_amount', 'deal_value',
                 'created_at', 'updated_at', 'deleted_at', 'deleted_by',
             ])
-            ->addSelect([
+            ->orderBy('created_at', 'desc');
+
+        // last_activity_at subquery requires lead_history table — skip if it doesn't exist
+        $hasLeadHistory = Cache::remember('schema.has_lead_history', 86400, fn() =>
+            \Illuminate\Support\Facades\Schema::hasTable('lead_history')
+        );
+        if ($hasLeadHistory) {
+            $query->addSelect([
                 'last_activity_at' => LeadHistory::select('created_at')
                     ->whereColumn('lead_id', 'leads.id')
                     ->orderByDesc('created_at')
                     ->limit(1),
-            ])
-            ->orderBy('created_at', 'desc');
+            ]);
+        }
 
         // Derive tenant from authenticated context; fall back to query param
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
