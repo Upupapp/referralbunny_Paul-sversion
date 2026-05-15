@@ -695,12 +695,23 @@ class ResellerController extends Controller
             return response()->json(['error' => 'tenant_id required'], 400);
         }
 
+        $row = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->selectRaw("
+                COUNT(*)                                                                        AS total,
+                SUM(CASE WHEN status IN ('active','nda_signed') THEN 1 ELSE 0 END)             AS active,
+                SUM(CASE WHEN status = 'invited'                THEN 1 ELSE 0 END)             AS invited,
+                SUM(CASE WHEN email    IS NULL                  THEN 1 ELSE 0 END)             AS no_email,
+                SUM(CASE WHEN password IS NULL                  THEN 1 ELSE 0 END)             AS no_password
+            ")
+            ->first();
+
         $counts = [
-            'total'       => Reseller::where('tenant_id', $tenantId)->count(),
-            'active'      => Reseller::where('tenant_id', $tenantId)->whereIn('status', ['active', 'nda_signed'])->count(),
-            'invited'     => Reseller::where('tenant_id', $tenantId)->where('status', 'invited')->count(),
-            'no_email'    => Reseller::where('tenant_id', $tenantId)->whereNull('email')->count(),
-            'no_password' => Reseller::where('tenant_id', $tenantId)->whereNull('password')->count(),
+            'total'       => (int) ($row?->total       ?? 0),
+            'active'      => (int) ($row?->active      ?? 0),
+            'invited'     => (int) ($row?->invited     ?? 0),
+            'no_email'    => (int) ($row?->no_email    ?? 0),
+            'no_password' => (int) ($row?->no_password ?? 0),
         ];
 
         return response()->json($counts);

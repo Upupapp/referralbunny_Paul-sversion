@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\CommissionCalculationService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ReferrerPerformanceService
@@ -13,38 +15,40 @@ class ReferrerPerformanceService
      */
     public function forReseller(string $tenantId, string $resellerName): array
     {
+        $cacheKey = "referrer_perf:{$tenantId}:" . md5($resellerName);
+        return Cache::remember($cacheKey, 120, function () use ($tenantId, $resellerName) {
+            return $this->compute($tenantId, $resellerName);
+        });
+    }
+
+    private function compute(string $tenantId, string $resellerName): array
+    {
+        $pr = CommissionCalculationService::COMMISSION_POOL_RATE;
+
         try {
-            $leads = DB::table('leads')
+            $agg = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('reseller_name', $resellerName)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
                 ->whereNull('deleted_at')
-                ->get();
+                ->selectRaw("
+                    COUNT(*)                                                                         AS total,
+                    SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                AS active,
+                    SUM(CASE WHEN status = 'expiring'             THEN 1 ELSE 0 END)                AS expiring,
+                    SUM(CASE WHEN stage  = 'paid'                 THEN 1 ELSE 0 END)                AS paid,
+                    COALESCE(SUM(deal_value), 0)                                                     AS total_value,
+                    COALESCE(SUM(CASE WHEN commission_status='pending' THEN added_amount * {$pr} ELSE 0 END), 0) AS pending_comm,
+                    COALESCE(SUM(CASE WHEN commission_status='locked'  THEN added_amount * {$pr} ELSE 0 END), 0) AS locked_comm,
+                    COALESCE(SUM(CASE WHEN commission_status='paid'    THEN added_amount * {$pr} ELSE 0 END), 0) AS paid_comm,
+                    MAX(created_at)                                                                  AS last_deal_at
+                ")->first();
         } catch (\Throwable) {
-            $leads = collect();
+            $agg = null;
         }
 
-        $total            = $leads->count();
-        $active           = $leads->whereIn('status', ['active', 'expiring'])->count();
-        $expiring         = $leads->where('status', 'expiring')->count();
-        $paid             = $leads->where('stage', 'paid')->count();
-        $totalValue       = $leads->sum('deal_value');
-        $avgValue         = $total > 0 ? round($totalValue / $total, 2) : 0;
-        $conversionRate   = $total > 0 ? round($paid / $total * 100, 1) : null;
-
-        // Commission summary — use commission_pool (70% of added_amount), not deal_value
-        $calc = new \App\Services\CommissionCalculationService();
-        $pendingCommission = $leads->where('commission_status', 'pending')->sum(
-            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
-        );
-        $lockedCommission = $leads->where('commission_status', 'locked')->sum(
-            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
-        );
-        $paidCommission = $leads->where('commission_status', 'paid')->sum(
-            fn($l) => $calc->breakdownFromLead($l)['commission_pool']
-        );
-
-        // Recent activity
-        $lastDeal = $leads->sortByDesc('created_at')->first();
+        $total  = (int)  ($agg?->total       ?? 0);
+        $paid   = (int)  ($agg?->paid        ?? 0);
+        $tv     = (float)($agg?->total_value ?? 0);
+        $lastDeal = $agg?->last_deal_at;
 
         // Unread messages
         $unreadMessages = 0;
@@ -61,7 +65,7 @@ class ReferrerPerformanceService
         try {
             $overdueUpdates = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('reseller_name', $resellerName)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
                 ->whereIn('status', ['active', 'expiring'])
                 ->where('updated_at', '<', now()->subDays(14))
                 ->whereNull('deleted_at')
@@ -70,18 +74,18 @@ class ReferrerPerformanceService
 
         return [
             'total_deals'          => $total,
-            'active_deals'         => $active,
-            'expiring_deals'       => $expiring,
+            'active_deals'         => (int)   ($agg?->active     ?? 0),
+            'expiring_deals'       => (int)   ($agg?->expiring   ?? 0),
             'closed_won_deals'     => $paid,
-            'total_deal_value'     => (float) $totalValue,
-            'average_deal_value'   => (float) $avgValue,
-            'conversion_rate'      => $conversionRate,
-            'pending_commission'   => (float) $pendingCommission,
-            'locked_commission'    => (float) $lockedCommission,
-            'paid_commission'      => (float) $paidCommission,
+            'total_deal_value'     => $tv,
+            'average_deal_value'   => $total > 0 ? round($tv / $total, 2) : 0.0,
+            'conversion_rate'      => $total > 0 ? round($paid / $total * 100, 1) : null,
+            'pending_commission'   => (float) ($agg?->pending_comm ?? 0),
+            'locked_commission'    => (float) ($agg?->locked_comm  ?? 0),
+            'paid_commission'      => (float) ($agg?->paid_comm    ?? 0),
             'unread_messages'      => $unreadMessages,
             'overdue_updates'      => $overdueUpdates,
-            'last_deal_created_at' => $lastDeal?->created_at,
+            'last_deal_created_at' => $lastDeal,
         ];
     }
 

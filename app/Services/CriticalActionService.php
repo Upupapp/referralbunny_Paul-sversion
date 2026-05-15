@@ -676,26 +676,51 @@ class CriticalActionService
             $rows = DB::table('activity_logs')
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>', $since)
+                ->whereRaw("(metadata->>'audit_event' IS NULL OR metadata->>'audit_event' != 'true')")
                 ->select('id', 'user_id', 'action', 'entity', 'entity_id', 'created_at')
                 ->orderByDesc('created_at')
                 ->limit($limit)
                 ->get();
 
-            return $rows->map(fn($r) => $this->make([
-                'type'          => 'activity_' . str_replace([' ', '-'], '_', strtolower($r->action ?? 'action')),
-                'category'      => 'activity',
-                'severity'      => 'info',
-                'summary'       => ucfirst($r->action ?? 'Action recorded'),
-                'actor_name'    => 'Team member',
-                'actor_role'    => 'Admin',
-                'related_label' => $r->entity ?? '',
-                'related_type'  => $r->entity ?? 'record',
-                'related_id'    => $r->entity_id,
-                'occurred_at'   => $r->created_at ?? now(),
-                'action_url'    => null,
-                'action_needed' => false,
-                'source'        => 'activity_logs',
-            ]))->toArray();
+            // Batch-resolve actor names from tenant_users and super-admin users tables
+            $userIds = $rows->pluck('user_id')->filter()->unique()->values()->toArray();
+            $actorMap = [];
+            if (!empty($userIds)) {
+                DB::table('tenant_users')->whereIn('id', $userIds)
+                    ->select('id', DB::raw("TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))) as name"))
+                    ->get()->each(fn($u) => $actorMap[(string)$u->id] = $u->name ?: 'Team member');
+                DB::table('users')->whereIn('id', $userIds)->select('id', 'name')
+                    ->get()->each(fn($u) => $actorMap[(string)$u->id] ??= ($u->name ?: 'Super Admin'));
+            }
+
+            return $rows->map(function ($r) use ($tenantId, $actorMap) {
+                $actorName = isset($r->user_id) ? ($actorMap[(string)$r->user_id] ?? 'Team member') : 'System';
+
+                $actionUrl = match($r->entity ?? '') {
+                    'lead'           => "/tenant/{$tenantId}/deals/{$r->entity_id}",
+                    'reseller',
+                    'referrer'       => "/tenant/{$tenantId}/referrers/{$r->entity_id}",
+                    'import',
+                    'import_batch'   => "/tenant/{$tenantId}/imports",
+                    default          => null,
+                };
+
+                return $this->make([
+                    'type'          => 'activity_' . str_replace([' ', '-'], '_', strtolower($r->action ?? 'action')),
+                    'category'      => 'activity',
+                    'severity'      => 'info',
+                    'summary'       => ucfirst(str_replace('_', ' ', $r->action ?? 'Action recorded')),
+                    'actor_name'    => $actorName,
+                    'actor_role'    => 'Admin',
+                    'related_label' => $r->entity ?? '',
+                    'related_type'  => $r->entity ?? 'record',
+                    'related_id'    => $r->entity_id,
+                    'occurred_at'   => $r->created_at ?? now(),
+                    'action_url'    => $actionUrl,
+                    'action_needed' => false,
+                    'source'        => 'activity_logs',
+                ]);
+            })->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] recentActivityLogs failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];

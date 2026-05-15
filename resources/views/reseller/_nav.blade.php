@@ -1,72 +1,64 @@
 @php
-    $tid = $tenant->id;
+    $tid    = $tenant->id;
+    $_rsId  = auth('reseller')->id();
+    $_rsUser = auth('reseller')->user();
 
-    // Unread messages — best-effort, never blocks render
-    try {
-        $_rsThread = \App\Models\MessageThread::where('tenant_id', $tid)
-            ->where('reseller_id', auth('reseller')->id())
-            ->select('reseller_unread')
-            ->first();
-        $_rsUnread = (int) ($_rsThread?->reseller_unread ?? 0);
-    } catch (\Throwable) {
-        $_rsUnread = 0;
+    // Reset activity seen timestamp when on the activity page
+    if (request()->routeIs('reseller.activity')) {
+        session(["rs_activity_seen_{$_rsId}" => now()->toIso8601String()]);
     }
+    $_lastSeen = session("rs_activity_seen_{$_rsId}", now()->subHours(24)->toIso8601String());
 
-    // New activity badge — count events since last time this reseller visited the activity log
-    $_activityBadge = 0;
-    if (!request()->routeIs('reseller.activity')) {
-        try {
-            $_rsId      = auth('reseller')->id();
-            $_lastSeen  = session("rs_activity_seen_{$_rsId}", now()->subHours(24)->toIso8601String());
-            $_leadIds   = \Illuminate\Support\Facades\DB::table('leads')
-                ->where('tenant_id', $tid)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower(auth('reseller')->user()?->name ?? '')])
-                ->pluck('id')
-                ->map(fn($x) => (string) $x)
-                ->toArray();
+    // Cache all nav badge queries together for 30 seconds — 5 DB queries per page otherwise
+    $_navBadgeCacheKey = "rs_nav_badges:{$_rsId}:{$tid}:" . md5((string) $_lastSeen);
+    [$_rsUnread, $_activityBadge, $_taskBadge] = \Illuminate\Support\Facades\Cache::remember(
+        $_navBadgeCacheKey, 30,
+        function () use ($tid, $_rsId, $_rsUser, $_lastSeen) {
+            $rsUnread = 0;
+            $actBadge = 0;
+            $taskBadge = 0;
 
-            if (count($_leadIds) > 0) {
-                $_lhNew = (int) \Illuminate\Support\Facades\DB::table('lead_history')
-                    ->where('tenant_id', $tid)
-                    ->whereIn('lead_id', $_leadIds)
-                    ->where('created_at', '>', $_lastSeen)
-                    ->count();
+            try {
+                $t = \App\Models\MessageThread::where('tenant_id', $tid)
+                    ->where('reseller_id', $_rsId)->select('reseller_unread')->first();
+                $rsUnread = (int) ($t?->reseller_unread ?? 0);
+            } catch (\Throwable) {}
 
-                $_alNew = (int) \Illuminate\Support\Facades\DB::table('activity_logs')
-                    ->where('tenant_id', $tid)
-                    ->where(fn($q) =>
-                        $q->where(fn($q2) => $q2->where('entity', 'reseller')->where('entity_id', (string) $_rsId))
-                          ->orWhere(fn($q2) => $q2->where('entity', 'lead')->whereIn('entity_id', $_leadIds))
-                    )
-                    ->where('created_at', '>', $_lastSeen)
-                    ->count();
+            if (!request()->routeIs('reseller.activity')) {
+                try {
+                    $leadIds = \Illuminate\Support\Facades\DB::table('leads')
+                        ->where('tenant_id', $tid)
+                        ->whereRaw('LOWER(reseller_name) = ?', [strtolower($_rsUser?->name ?? '')])
+                        ->pluck('id')->map(fn($x) => (string) $x)->toArray();
 
-                $_activityBadge = min($_lhNew + $_alNew, 99);
+                    if (count($leadIds) > 0) {
+                        $lhNew = (int) \Illuminate\Support\Facades\DB::table('lead_history')
+                            ->where('tenant_id', $tid)->whereIn('lead_id', $leadIds)
+                            ->where('created_at', '>', $_lastSeen)->count();
+                        $alNew = (int) \Illuminate\Support\Facades\DB::table('activity_logs')
+                            ->where('tenant_id', $tid)
+                            ->where(fn($q) =>
+                                $q->where(fn($q2) => $q2->where('entity', 'reseller')->where('entity_id', (string) $_rsId))
+                                  ->orWhere(fn($q2) => $q2->where('entity', 'lead')->whereIn('entity_id', $leadIds))
+                            )
+                            ->where('created_at', '>', $_lastSeen)->count();
+                        $actBadge = min($lhNew + $alNew, 99);
+                    }
+                } catch (\Throwable) {}
             }
-        } catch (\Throwable) {
-            $_activityBadge = 0;
-        }
-    } else {
-        // Visiting the activity log — reset the seen timestamp
-        session(["rs_activity_seen_" . auth('reseller')->id() => now()->toIso8601String()]);
-    }
 
-    // Open task badge for this reseller
-    $_taskBadge = 0;
-    if (!request()->routeIs('reseller.tasks')) {
-        try {
-            $_rsId2 = auth('reseller')->id();
-            $_taskBadge = (int) \App\Models\Task::where('tenant_id', $tid)
-                ->where('assigned_to_type', 'reseller')
-                ->where('assigned_to_id', $_rsId2)
-                ->whereNull('deleted_at')
-                ->whereIn('status', ['open', 'in_progress', 'waiting'])
-                ->count();
-            $_taskBadge = min($_taskBadge, 99);
-        } catch (\Throwable) {
-            $_taskBadge = 0;
+            if (!request()->routeIs('reseller.tasks')) {
+                try {
+                    $taskBadge = min((int) \App\Models\Task::where('tenant_id', $tid)
+                        ->where('assigned_to_type', 'reseller')->where('assigned_to_id', $_rsId)
+                        ->whereNull('deleted_at')->whereIn('status', ['open', 'in_progress', 'waiting'])
+                        ->count(), 99);
+                } catch (\Throwable) {}
+            }
+
+            return [$rsUnread, $actBadge, $taskBadge];
         }
-    }
+    );
 
     // Active-group detection
     $_networkActive = request()->routeIs('reseller.partners*')
