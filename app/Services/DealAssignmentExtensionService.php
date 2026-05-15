@@ -266,9 +266,9 @@ class DealAssignmentExtensionService
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
                     priority:     $decision === 'approved' ? 'normal' : 'high',
-                    title:        ucfirst($decision) . ": Extension request",
+                    title:        ucfirst($decision) . ": Extension request for \"{$deal->name}\"",
                     body:         $message,
-                    actionUrl:    url("/reseller/{$tenantId}/deals"),
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$deal->id}"),
                     actionLabel:  'View Deal',
                     dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 );

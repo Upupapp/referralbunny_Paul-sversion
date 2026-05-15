@@ -31,7 +31,7 @@ class ResellerPortalController extends Controller
         try {
             $leads = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('reseller_name', $reseller->name)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
                 ->orderByDesc('created_at')
                 ->get();
         } catch (\Throwable) {
@@ -57,7 +57,7 @@ class ResellerPortalController extends Controller
             $splits  = $leadIds->isNotEmpty()
                 ? DB::table('commission_splits')
                     ->whereIn('lead_id', $leadIds)
-                    ->where('reseller_name', $reseller->name)
+                    ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
                     ->get()->keyBy('lead_id')
                 : collect();
 
@@ -138,14 +138,14 @@ class ResellerPortalController extends Controller
 
         $leads = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
             ->get();
 
         // Load this referrer's commission splits to get their percentage per deal
         $leadIds = $leads->pluck('id');
         $splits  = DB::table('commission_splits')
             ->whereIn('lead_id', $leadIds)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
             ->get()
             ->keyBy('lead_id');
 
@@ -259,7 +259,7 @@ class ResellerPortalController extends Controller
         try {
             $leadIds = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('reseller_name', $reseller->name)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
                 ->toArray();
@@ -719,7 +719,7 @@ class ResellerPortalController extends Controller
         // ── Own deals (by expiry date) ────────────────────────────────────────
         DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
             ->whereIn('status', ['active', 'expiring'])
             ->whereNotNull('days_left')
             ->where('days_left', '>=', 0)

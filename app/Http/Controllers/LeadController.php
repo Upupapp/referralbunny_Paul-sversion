@@ -56,7 +56,7 @@ class LeadController extends Controller
         }
 
         if ($request->filled('reseller_name')) {
-            $query->where('reseller_name', $request->reseller_name);
+            $query->whereRaw('LOWER(reseller_name) = ?', [strtolower($request->reseller_name)]);
         }
 
         // Paginate to prevent OOM on large tenants; callers may request all via per_page=all

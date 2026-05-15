@@ -38,11 +38,18 @@ class ResellerDealController extends Controller
     {
         $reseller = $this->reseller();
 
-        $lead = Lead::where('id', $dealId)
+        // Check withTrashed first so we can give a better error if the deal is archived
+        $lead = Lead::withTrashed()
+            ->where('id', $dealId)
             ->where('tenant_id', $tenantId)
             ->first();
 
         if (!$lead) abort(404, 'Deal not found.');
+
+        // Archived (soft-deleted) deals are not accessible from the referrer portal
+        if ($lead->trashed()) {
+            abort(404, 'This deal has been archived and is no longer accessible.');
+        }
 
         // Access check: reseller must be assigned to this deal
         if (!$this->resellerCanAccessDeal($reseller, $lead)) {
@@ -54,12 +61,12 @@ class ResellerDealController extends Controller
 
     private function resellerCanAccessDeal(Reseller $reseller, Lead $lead): bool
     {
-        // Primary assignment via reseller_name
-        if ($reseller->name === $lead->reseller_name) return true;
+        // Primary assignment — case-insensitive to handle import name-casing differences
+        if (strtolower((string) $reseller->name) === strtolower((string) $lead->reseller_name)) return true;
 
-        // Secondary: commission split (additional referrer)
+        // Secondary: commission split (additional referrer) — also case-insensitive
         return CommissionSplit::where('lead_id', $lead->id)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
             ->exists();
     }
 

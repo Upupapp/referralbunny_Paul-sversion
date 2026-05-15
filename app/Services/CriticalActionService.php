@@ -652,7 +652,7 @@ class CriticalActionService
         // Show deals already marked expiring OR still active but with ≤5 days left
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('reseller_name', $resellerName)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
             ->where(fn($q) =>
                 $q->where('status', 'expiring')
                   ->orWhere(fn($q2) => $q2->where('status', 'active')->where('days_left', '<=', 5))
@@ -686,7 +686,7 @@ class CriticalActionService
         $rows = DB::table('lead_history as h')
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
-            ->where('l.reseller_name', $resellerName)
+            ->whereRaw('LOWER(l.reseller_name) = ?', [strtolower($resellerName)])
             ->where('h.created_at', '>', now()->subDays(14))
             ->whereIn('h.type', ['stage', 'commission', 'assignment'])
             ->select('h.id', 'h.action', 'h.type', 'h.created_at', 'l.id as lead_id', 'l.name as lead_name')
@@ -715,7 +715,7 @@ class CriticalActionService
     {
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('reseller_name', $resellerName)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
             ->where('commission_status', 'locked')
             ->where('updated_at', '>', now()->subDays(7))
             ->select('id', 'name', 'commission_status', 'deal_value', 'updated_at')
@@ -1115,7 +1115,7 @@ class CriticalActionService
             $rows = DB::table('deal_assignment_extension_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
-                ->where('l.reseller_name', $resellerName)
+                ->whereRaw('LOWER(l.reseller_name) = ?', [strtolower($resellerName)])
                 ->whereIn('r.status', ['pending_review', 'clarification_requested'])
                 ->select('r.id', 'r.status', 'r.requested_days', 'r.created_at', 'l.id as lead_id', 'l.name as lead_name')
                 ->orderByDesc('r.created_at')
