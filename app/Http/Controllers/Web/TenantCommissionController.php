@@ -197,10 +197,10 @@ class TenantCommissionController extends Controller
             $query->where('reseller_name', 'like', '%' . $filterReferrer . '%');
         }
 
-        $deals     = $query->orderByDesc('created_at')->get();
-        $dealIds   = $deals->pluck('id');
-        $splits    = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->get()->groupBy('lead_id');
-        $pSplits   = DB::table('deal_partner_splits')->whereIn('lead_id', $dealIds)->where('tenant_id', $tenantId)->get()->groupBy('lead_id');
+        $dealIds = (clone $query)->pluck('id');
+        $splits  = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->get()->groupBy('lead_id');
+        $pSplits = DB::table('deal_partner_splits')->whereIn('lead_id', $dealIds)->where('tenant_id', $tenantId)->get()->groupBy('lead_id');
+        $deals   = $query->orderByDesc('created_at')->cursor();
 
         $filename = 'commission-' . $tenant->slug . '-' . now()->format('Y-m-d') . '.csv';
 

@@ -399,7 +399,7 @@ class TenantAdminController extends Controller
         try {
             app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'team',
+                category:     'tenant_workspace',
                 priority:     'normal',
                 title:        'Referrer invite resent',
                 body:         'Invite resent to ' . $reseller->name . ' (' . $reseller->email . ').',

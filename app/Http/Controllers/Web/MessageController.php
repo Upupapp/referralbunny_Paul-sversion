@@ -158,6 +158,7 @@ class MessageController extends Controller
 
             $messages = ThreadMessage::where('thread_id', $threadId)
                 ->orderBy('created_at')
+                ->limit(200)
                 ->get()
                 ->map(fn($m) => $this->formatMessage($m));
 
@@ -191,6 +192,7 @@ class MessageController extends Controller
 
             $messages = ThreadMessage::where('thread_id', $threadId)
                 ->orderBy('created_at')
+                ->limit(200)
                 ->get()
                 ->map(fn($m) => $this->formatMessage($m));
 
@@ -398,6 +400,7 @@ class MessageController extends Controller
         $messages = PartnerMessage::where('thread_id', $threadId)
             ->where('tenant_id', $tenantId)
             ->orderBy('created_at')
+            ->limit(200)
             ->get()
             ->map(fn($m) => [
                 'id'              => $m->id,

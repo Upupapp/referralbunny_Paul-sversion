@@ -406,7 +406,7 @@ document.addEventListener('alpine:init', () => {
             <div x-show="resellers.length===0" class="flex flex-col items-center justify-center py-10 text-center">
                 <img src="/images/mascots/r-bunny-sleeping.webp" alt="" aria-hidden="true"
                      class="w-12 h-12 object-contain mb-2 opacity-50">
-                <p class="text-xs text-gray-400">No resellers yet</p>
+                <p class="text-xs text-gray-400">No referrers yet</p>
             </div>
 
             {{-- Scrollbar indicator --}}

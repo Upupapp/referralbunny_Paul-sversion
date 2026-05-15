@@ -601,7 +601,7 @@ class ResellerPortalController extends Controller
         try {
             app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'task',
+                category:     'task_approval',
                 priority:     'normal',
                 title:        'Referrer created a task',
                 body:         ($reseller->name ?? $reseller->email) . " created a task: \"{$task->title}\".",
@@ -641,7 +641,7 @@ class ResellerPortalController extends Controller
         try {
             app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'task',
+                category:     'task_approval',
                 priority:     'normal',
                 title:        'Task completed by Referrer',
                 body:         ($reseller->name ?? $reseller->email) . " completed: \"{$task->title}\".",

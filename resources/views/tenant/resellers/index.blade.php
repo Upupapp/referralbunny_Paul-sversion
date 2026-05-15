@@ -87,7 +87,7 @@
             </div>
             <div class="p-6 space-y-4">
                 <div><label class="form-label">Full Name *</label><input type="text" x-model="form.name" class="form-input" placeholder="Referrer full name"></div>
-                <div><label class="form-label">Email *</label><input type="email" x-model="form.email" class="form-input" placeholder="reseller@email.com"></div>
+                <div><label class="form-label">Email *</label><input type="email" x-model="form.email" class="form-input" placeholder="referrer@email.com"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="form-label">Phone</label><input type="text" x-model="form.phone" class="form-input" placeholder="+63 9XX XXX XXXX"></div>
                     <div><label class="form-label">Territory</label><input type="text" x-model="form.territory" class="form-input" placeholder="e.g. Metro Manila"></div>

@@ -128,7 +128,7 @@ class TenantInvitationController extends Controller
         try {
             $inviter = $invitation->invitedBy;
             if ($inviter && $inviter->id !== $user->id) {
-                Mail::send(new TenantInvitationAcceptedMail($invitation, $inviter, $user));
+                Mail::queue(new TenantInvitationAcceptedMail($invitation, $inviter, $user));
             }
         } catch (\Throwable) {}
 

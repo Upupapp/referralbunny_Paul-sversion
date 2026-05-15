@@ -185,7 +185,7 @@
                     </div>
                 </template>
                 <template x-if="resellers.length === 0">
-                    <p class="text-gray-400 text-sm text-center py-4">No resellers yet</p>
+                    <p class="text-gray-400 text-sm text-center py-4">No referrers yet</p>
                 </template>
             </div>
         </div>

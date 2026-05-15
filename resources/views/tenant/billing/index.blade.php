@@ -158,7 +158,7 @@
                         </tr>
                         @foreach([
                             ['Leads / mo',    'max_leads_per_month'],
-                            ['Resellers',     'max_resellers'],
+                            ['Referrers',     'max_resellers'],
                             ['Users',         'max_users'],
                             ['Messages / mo', 'max_messages_per_month'],
                             ['Storage',       'max_storage_mb'],

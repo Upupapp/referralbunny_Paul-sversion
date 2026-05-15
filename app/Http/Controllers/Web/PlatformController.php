@@ -19,7 +19,8 @@ class PlatformController extends Controller
 {
     public function dashboard(AnalyticsService $analytics, BillingService $billing)
     {
-        $tenants = Tenant::latest()->get();
+        $totalTenants = Tenant::count();
+        $tenants = Tenant::latest()->limit(20)->get();
         $summary = $analytics->platformSummary();
 
         $industryData = Tenant::selectRaw('industry, count(*) as count')
@@ -57,7 +58,7 @@ class PlatformController extends Controller
             'tenants'             => $tenants,
             'stats'               => $summary,
             'industryData'        => $industryData,
-            'totalTenants'        => $tenants->count(),
+            'totalTenants'        => $totalTenants,
             'recentNotifications' => $recentNotifications,
             'billing'             => $billingSummary,
             'approvalCount'       => $approvalCount,
@@ -94,7 +95,7 @@ class PlatformController extends Controller
     public function showTenant(Tenant $tenant)
     {
         $tenant->load(['config', 'subIndustries', 'resellers']);
-        $leads   = Lead::where('tenant_id', $tenant->id)->get();
+        $leads   = Lead::where('tenant_id', $tenant->id)->latest()->limit(50)->get();
         $metric  = TenantMetric::where('tenant_id', $tenant->id)->first();
         $notifications = Notification::where('tenant_id', $tenant->id)
             ->orderByDesc('created_at')->limit(10)->get();

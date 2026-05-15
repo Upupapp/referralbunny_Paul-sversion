@@ -50,6 +50,7 @@ class ContactController extends Controller
                 'cri.role_invite_deal_id'
             )
             ->orderBy('c.first_name')
+            ->limit(1000)
             ->get();
 
         return response()->json($contacts);

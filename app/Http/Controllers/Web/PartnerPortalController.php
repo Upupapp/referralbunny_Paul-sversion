@@ -376,7 +376,9 @@ class PartnerPortalController extends Controller
                     ->select('reseller_name')
                     ->distinct()
                     ->get()
-                    ->map(fn($r) => ['name' => $r->reseller_name]);
+                    ->map(fn($r) => ['name' => $r->reseller_name])
+                    ->values()
+                    ->toArray();
             });
         }
 
@@ -393,7 +395,9 @@ class PartnerPortalController extends Controller
                     'id'    => $u->id,
                     'name'  => trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')) ?: $u->email,
                     'role'  => ucfirst($u->role),
-                ]);
+                ])
+                ->values()
+                ->toArray();
         });
 
         // If deal_id param is provided and no thread exists yet, pass pending deal context

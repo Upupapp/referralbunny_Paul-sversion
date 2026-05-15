@@ -80,13 +80,19 @@ class EnsureLegalAgreementsAccepted
             $tenantId = $request->route('tenantId');
             if (!$tenantId) return ['', '', '', ''];
 
-            $membership = DB::table('tenant_memberships')
-                ->where('tenant_user_id', $tenantUser->id)
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->first();
+            // EnsureTenantAccess already resolved and cached this — read from request attributes
+            $cached = $request->attributes->get('_tenant_membership');
+            $role   = is_array($cached) ? ($cached['role'] ?? null) : ($request->attributes->get('_tenant_role') ?? null);
 
-            $role = $membership?->role ?? 'member';
+            if (!$role) {
+                $membership = DB::table('tenant_memberships')
+                    ->where('tenant_user_id', $tenantUser->id)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first();
+                $role = $membership?->role ?? 'member';
+            }
+
             return [(string) $tenantId, 'tenant_user', (string) $tenantUser->id, $role];
         }
 

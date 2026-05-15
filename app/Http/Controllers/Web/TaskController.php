@@ -255,7 +255,7 @@ class TaskController extends Controller
                 // In-app notification to tenant user
                 try {
                     $notifSvc->dispatch(
-                        category:         'task',
+                        category:         'task_approval',
                         priority:         $notifPriority,
                         title:            'New Task: ' . $task->title,
                         body:             $notifBody,
@@ -287,7 +287,7 @@ class TaskController extends Controller
                     $notifSvc->dispatchToReseller(
                         resellerId:       (string) $assignee->id,
                         tenantId:         $tenantId,
-                        category:         'task',
+                        category:         'task_approval',
                         priority:         $notifPriority,
                         title:            'New Task: ' . $task->title,
                         body:             $notifBody,
@@ -422,7 +422,7 @@ class TaskController extends Controller
         if ($oldAssigneeId && $oldAssigneeId !== $actorId) {
             try {
                 app(\App\Services\NotificationDispatchService::class)->dispatch(
-                    category:         'task',
+                    category:         'task_approval',
                     priority:         'normal',
                     title:            'Task reassigned',
                     body:             "{$actorName} reassigned \"{$task->title}\" to themselves.",
@@ -647,7 +647,7 @@ class TaskController extends Controller
                 try {
                     if ($freshTask->assigned_to_type === 'tenant_user') {
                         $notifSvc->dispatch(
-                            category:         'task',
+                            category:         'task_approval',
                             priority:         'normal',
                             title:            "Task completed: {$freshTask->title}",
                             body:             "{$actorName} marked this task as done.",
@@ -725,7 +725,7 @@ class TaskController extends Controller
         if (!$isAssignee && $task->assigned_to_type === 'tenant_user' && $task->assigned_to_id) {
             try {
                 app(\App\Services\NotificationDispatchService::class)->dispatch(
-                    category:         'task',
+                    category:         'task_approval',
                     priority:         'normal',
                     title:            "Task status updated",
                     body:             "{$actorName} moved \"{$task->title}\" to {$statusLabel}.",

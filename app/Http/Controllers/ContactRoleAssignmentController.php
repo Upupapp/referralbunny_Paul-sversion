@@ -238,7 +238,7 @@ class ContactRoleAssignmentController extends Controller
         $dealName    = $deal ? ($deal->name ?? null) : null;
 
         try {
-            Mail::to($contact->email)->send(
+            Mail::to($contact->email)->queue(
                 new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $dealName)
             );
         } catch (\Throwable $e) {
