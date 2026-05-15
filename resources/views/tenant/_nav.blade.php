@@ -108,17 +108,18 @@ try {
 $workspaceBadge = $taskBadge + $msgBadge;
 
 // Critical actions badge — count all action_needed=true items.
-// Cached per tenant for 2 min so the full service isn't called on every page load.
+// Cached per USER (not per tenant) so one admin visiting doesn't reset another's badge.
+// TTL: 60 seconds — urgent actions appear within 1 minute.
 $criticalBadge = 0;
 if ($isAdminMgr) {
     try {
         $_caUserId   = auth('tenant')->id() ?? auth('web')->id();
-        $_caBadgeKey = "ca_badge_{$tenantId}";
-        $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember($_caBadgeKey, 120, function () use ($tenantId) {
+        $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
+        $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember($_caBadgeKey, 60, function () use ($tenantId) {
             $actions = app(\App\Services\CriticalActionService::class)->dashboardSummary($tenantId, 100);
             return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
         });
-        // Clear badge cache when admin visits the critical actions page (they "see" them)
+        // Clear THIS USER's badge when they visit the critical actions page
         if (request()->routeIs('tenant.critical-actions')) {
             \Illuminate\Support\Facades\Cache::forget($_caBadgeKey);
             $criticalBadge = 0;

@@ -258,7 +258,10 @@ class CriticalActionService
         if ($canUsers) {
             $sources[] = fn() => $this->pendingInvites($tenantId);
             $sources[] = fn() => $this->recentAcceptedInvites($tenantId, $limitPer, $since);
+            $sources[] = fn() => $this->newReferrerSignups($tenantId);
         }
+
+        $sources[] = fn() => $this->newPartnersOnDeals($tenantId);
 
         if ($canExports) {
             $sources[] = fn() => $this->pendingExportRequests($tenantId);
@@ -1497,6 +1500,81 @@ class CriticalActionService
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] staleGoogleCalendarIntegrations failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // ── New reseller signups (invited + not yet active — admin should welcome/onboard) ──
+
+    private function newReferrerSignups(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'invited')
+                ->where('created_at', '>', now()->subDays(7))
+                ->select('id', 'name', 'email', 'created_at')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'new_referrer_invited',
+                'category'      => 'user',
+                'severity'      => 'info',
+                'summary'       => "New Referrer invited: {$r->name}",
+                'actor_name'    => $r->name ?? $r->email,
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->name ?? $r->email,
+                'related_type'  => 'referrer',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->created_at,
+                'action_url'    => "/tenant/{$tenantId}/referrers",
+                'action_label'  => 'View Referrers',
+                'action_needed' => false,
+                'source'        => 'resellers',
+                'description'   => 'A new Referrer has been invited. Send their setup link if they haven\'t joined yet.',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] newReferrerSignups failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // ── New partners added to deals in the last 7 days ─────────────
+
+    private function newPartnersOnDeals(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('deal_partner_splits as dps')
+                ->join('leads as l', 'l.id', '=', 'dps.deal_id')
+                ->where('dps.tenant_id', $tenantId)
+                ->whereNull('dps.deleted_at')
+                ->where('dps.status', '!=', 'removed')
+                ->where('dps.created_at', '>', now()->subDays(7))
+                ->select('dps.id', 'dps.partner_name', 'dps.partner_email', 'dps.created_at', 'l.name as deal_name', 'l.id as deal_id')
+                ->orderByDesc('dps.created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'new_partner_on_deal',
+                'category'      => 'deal',
+                'severity'      => 'info',
+                'summary'       => "New Partner added to \"{$r->deal_name}\"",
+                'actor_name'    => $r->partner_name ?? $r->partner_email,
+                'actor_role'    => 'Partner',
+                'related_label' => $r->deal_name,
+                'related_type'  => 'deal',
+                'related_id'    => $r->deal_id,
+                'occurred_at'   => $r->created_at,
+                'action_url'    => "/tenant/{$tenantId}/deals/{$r->deal_id}",
+                'action_label'  => 'View Deal',
+                'action_needed' => false,
+                'source'        => 'deal_partner_splits',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] newPartnersOnDeals failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];
         }
     }
