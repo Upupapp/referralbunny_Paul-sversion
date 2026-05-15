@@ -692,17 +692,13 @@ class LeadController extends Controller
 
         [$actorId, $actorRole, $actorName] = $this->resolveActor();
 
-        $leads = Lead::where('tenant_id', $tenantId)
+        $count = Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
-            ->get();
+            ->count();
 
-        $count = $leads->count();
-
-        foreach ($leads as $lead) {
-            $lead->deleted_by = $actorName;
-            $lead->save();
-            $lead->delete(); // soft-delete
-        }
+        Lead::where('tenant_id', $tenantId)
+            ->whereIn('id', $data['ids'])
+            ->update(['deleted_by' => $actorName, 'deleted_at' => now()]);
 
         Log::info('Bulk deal archive (soft-delete)', [
             'tenant_id'  => $tenantId,
@@ -852,12 +848,9 @@ class LeadController extends Controller
         // ── LGU IDS: reset days_left when stage advances ──────────────
         // LOCKED RULE — mirrors update() (LGU IDS pipeline protection)
         if ($lead->tenant_id === 'lgu-ids' && !$isPaid) {
-            $stageRule = DB::table('tenant_pipeline_stage_rules')
-                ->where('tenant_id', 'lgu-ids')
-                ->where('stage', $targetStage)
-                ->first();
-            if ($stageRule) {
-                $updates['days_left'] = $stageRule->max_days;
+            $stageLimit = $this->resolveStageLimit('lgu-ids', $targetStage);
+            if ($stageLimit !== null) {
+                $updates['days_left'] = $stageLimit;
                 $updates['status']    = 'active';
             }
         }

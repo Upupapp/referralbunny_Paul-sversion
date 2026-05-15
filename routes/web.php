@@ -219,6 +219,8 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::post('/profile/photo',                 [PartnerProfileController::class, 'updatePhoto'])->name('profile.photo');
         Route::delete('/profile/photo',               [PartnerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
         Route::post('/profile/password',              [PartnerProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
+        Route::get('/notifications',                  [PartnerPortalController::class, 'notifications'])->name('notifications');
+        Route::post('/notifications/{id}/read',       [\App\Http\Controllers\Web\NotificationsController::class, 'markReadForPartner'])->name('notifications.read');
 
         // ── Note Attachment Download (session auth — opens inline in new tab) ──
         Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',

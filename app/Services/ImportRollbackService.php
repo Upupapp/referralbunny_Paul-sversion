@@ -305,7 +305,7 @@ class ImportRollbackService
             $status   = $rollback->status === 'completed' ? 'complete' : 'complete with warnings';
 
             $this->notifications->dispatch(
-                category:         'import_rollback',
+                category:         'import_export',
                 priority:         $conflict > 0 ? 'high' : 'normal',
                 title:            'Import rollback ' . $status,
                 body:             "Your import rollback for \"{$batch->file_name}\" is {$status}. {$removed} records removed, {$restored} records restored, {$conflict} items need review.",

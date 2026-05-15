@@ -173,7 +173,7 @@ class NotificationDispatchService
         ?string $dedupeSuffix = null,
         array   $metadata     = [],
     ): void {
-        $admins = DB::table('users')->select('id')->get();
+        $admins = DB::table('users')->select('id')->where('status', '!=', 'suspended')->get();
 
         foreach ($admins as $admin) {
             $key = $dedupeSuffix ? "{$category}:{$admin->id}:{$dedupeSuffix}" : null;

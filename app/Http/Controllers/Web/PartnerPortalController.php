@@ -86,6 +86,12 @@ class PartnerPortalController extends Controller
         ));
     }
 
+    public function notifications()
+    {
+        $partner = $this->partner();
+        return view('partner.notifications', compact('partner'));
+    }
+
     public function deals()
     {
         $partner = $this->partner();

@@ -44,6 +44,12 @@ class NotificationsController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function markReadForPartner(Request $request, string $notificationId)
+    {
+        $this->findUserNotification($notificationId)->update(['is_read' => true]);
+        return response()->json(['ok' => true]);
+    }
+
     private function findUserNotification(string $notificationId): Notification
     {
         [$type, $id] = $this->resolveCurrentUser();

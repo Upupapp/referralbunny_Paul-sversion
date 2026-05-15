@@ -3,8 +3,10 @@
 namespace App\Listeners;
 
 use App\Events\DealExpired;
+use App\Mail\ResellerDealExpired;
 use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class HandleDealExpired
 {
@@ -52,6 +54,21 @@ class HandleDealExpired
                 actionLabel:  'View Deals',
                 dedupeSuffix: "{$event->leadId}:expired",
             );
+
+            // Send email to reseller — mailable exists, wire it here
+            if ($event->resellerEmail) {
+                try {
+                    $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? 'Referral Bunny';
+                    Mail::to($event->resellerEmail)->queue(new ResellerDealExpired(
+                        resellerName: $event->resellerName ?? '',
+                        resellerEmail: $event->resellerEmail,
+                        tenantName: $tenantName,
+                        dealName: $event->leadName,
+                        stage: $event->stage,
+                        dashboardUrl: url("/reseller/{$event->tenantId}/deals"),
+                    ));
+                } catch (\Throwable) {}
+            }
         }
 
         // Notify active Partners associated with this deal

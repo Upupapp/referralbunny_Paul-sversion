@@ -60,8 +60,9 @@ class NotificationController extends Controller
         $limit  = min((int) ($request->input('limit', 50)), 200);
         $offset = (int) ($request->input('offset', 0));
 
-        $total = (clone $q)->count();
-        $items = $q->skip($offset)->take($limit)->get()->map(fn($n) => [
+        $unreadCount = (clone $q)->where('is_read', false)->where('is_dismissed', false)->count();
+        $total       = (clone $q)->count();
+        $items       = $q->skip($offset)->take($limit)->get()->map(fn($n) => [
             'id'            => $n->id,
             'category'      => $n->category,
             'priority'      => $n->priority,
@@ -78,10 +79,9 @@ class NotificationController extends Controller
         ]);
 
         return response()->json([
-            'items' => $items,
-            'total' => $total,
-            'unread_count' => NotificationDispatchService::queryForUser($type, $id, $tenantId)
-                ->where('is_read', false)->where('is_dismissed', false)->count(),
+            'items'        => $items,
+            'total'        => $total,
+            'unread_count' => $unreadCount,
         ]);
     }
 
@@ -186,10 +186,17 @@ class NotificationController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function markAllRead(Request $request, NotificationService $service): JsonResponse
+    public function markAllRead(Request $request): JsonResponse
     {
-        // Use context-derived tenant; SA may pass explicit tenant_id (already resolved in context)
-        $service->markAllRead(TenantContext::id());
+        [$type, $id, $tenantId] = $this->resolveCurrentUser();
+        if (!$type || !$id) return response()->json(['ok' => false], 401);
+
+        Notification::where('notifiable_type', $type)
+            ->where('notifiable_id', $id)
+            ->where('is_read', false)
+            ->where('is_dismissed', false)
+            ->update(['is_read' => true]);
+
         return response()->json(['message' => 'All marked as read.']);
     }
 

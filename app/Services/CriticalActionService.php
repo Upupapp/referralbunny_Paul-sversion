@@ -721,7 +721,7 @@ class CriticalActionService
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
-            ->where('commission_status', 'locked')
+            ->whereIn('commission_status', ['locked', 'paid'])
             ->where('updated_at', '>', now()->subDays(7))
             ->select('id', 'name', 'commission_status', 'deal_value', 'updated_at')
             ->orderByDesc('updated_at')
@@ -1159,7 +1159,7 @@ class CriticalActionService
         try {
             $reseller = DB::table('resellers')
                 ->where('tenant_id', $tenantId)
-                ->where('name', $resellerName)
+                ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
                 ->select('id')
                 ->first();
 

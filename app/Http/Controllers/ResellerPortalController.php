@@ -243,8 +243,9 @@ class ResellerPortalController extends Controller
 
     public function notifications($tenantId)
     {
-        // Kept for backwards-compat links — redirect to activity log
-        return redirect()->route('reseller.activity', $tenantId);
+        $reseller = $this->reseller();
+        $tenant   = Tenant::findOrFail($tenantId);
+        return view('reseller.notifications', compact('reseller', 'tenant'));
     }
 
     public function activityLog($tenantId)
