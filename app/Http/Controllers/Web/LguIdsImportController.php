@@ -233,12 +233,16 @@ class LguIdsImportController extends Controller
         $approverId = $this->authId();
         $action     = $request->input('action');
 
+        // Resolve reseller email once before the loop — not inside it
+        $resellerEmail = ($this->authRole() === 'reseller')
+            ? \App\Models\Reseller::where('id', $approverId)->value('email')
+            : null;
+
         foreach ($rows as $row) {
             // Resellers may only approve their own rows
-            if ($this->authRole() === 'reseller') {
-                $norm  = $row->normalized_data;
-                $email = \App\Models\Reseller::where('id', $approverId)->value('email');
-                if (strtolower($norm['referrer_email'] ?? '') !== strtolower($email ?? '')) {
+            if ($resellerEmail !== null) {
+                $norm = $row->normalized_data;
+                if (strtolower($norm['referrer_email'] ?? '') !== strtolower($resellerEmail)) {
                     continue; // silently skip rows not owned by this reseller
                 }
             }

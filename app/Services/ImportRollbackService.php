@@ -312,7 +312,7 @@ class ImportRollbackService
                 notifiableType:   $rollback->requested_by_type ?? 'tenant_admin',
                 notifiableId:     $rollback->requested_by,
                 tenantId:         $tenantId,
-                actionUrl:        "/tenant/{$tenantId}/imports/{$batch->import_type === 'lgu_ids' ? 'lgu-ids' : 'deals'}/{$batch->id}/rollback/{$rollback->id}",
+                actionUrl:        "/tenant/{$tenantId}/imports/{$batch->import_type === 'lgu_ids_deals' ? 'lgu-ids' : ($batch->import_type === 'contacts' ? 'contacts' : 'deals')}/{$batch->id}/rollback/{$rollback->id}",
                 actionLabel:      'View rollback report',
                 deduplicationKey: "rollback_done:{$rollback->id}",
                 metadata:         $result,

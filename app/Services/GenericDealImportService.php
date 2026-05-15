@@ -865,16 +865,18 @@ class GenericDealImportService
             'completed_with_warnings' => 'Deals Import Complete with Warnings',
             'failed'                  => 'Deals Import Failed',
         ];
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:     $tenantId,
-            category:     'import_' . $status,
-            priority:     $failed > 0 ? 'high' : 'normal',
-            title:        $titleMap[$status] ?? 'Deals Import Complete',
-            body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
-            actionUrl:    "/tenant/{$tenantId}/imports/deals/{$batch->id}/report",
-            actionLabel:  'View Report',
-            dedupeSuffix: $batch->id,
-        );
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'import_' . $status,
+                priority:     $failed > 0 ? 'high' : 'normal',
+                title:        $titleMap[$status] ?? 'Deals Import Complete',
+                body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
+                actionUrl:    "/tenant/{$tenantId}/imports/deals/{$batch->id}/report",
+                actionLabel:  'View Report',
+                dedupeSuffix: $batch->id,
+            );
+        } catch (\Throwable) {}
 
         return compact('created', 'updated', 'skipped', 'failed');
     }

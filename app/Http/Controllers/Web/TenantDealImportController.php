@@ -349,12 +349,16 @@ class TenantDealImportController extends Controller
         $approverId = $this->authId();
         $action     = $request->input('action');
 
+        // Resolve reseller email once before the loop — not inside it
+        $resellerEmail = ($this->authRole() === 'reseller')
+            ? Reseller::where('id', $approverId)->value('email')
+            : null;
+
         foreach ($rows as $row) {
             // Resellers may only approve rows assigned to themselves — silently skip others
-            if ($this->authRole() === 'reseller') {
-                $norm    = $row->normalized_data;
-                $myEmail = Reseller::where('id', $approverId)->value('email');
-                if (strtolower($norm['referrer_email'] ?? '') !== strtolower($myEmail ?? '')) {
+            if ($resellerEmail !== null) {
+                $norm = $row->normalized_data;
+                if (strtolower($norm['referrer_email'] ?? '') !== strtolower($resellerEmail)) {
                     continue;
                 }
             }
@@ -448,24 +452,8 @@ class TenantDealImportController extends Controller
             $fileName = $batch->file_name ?? 'import file';
             $summary  = "Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}.";
 
-            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $tenantId,
-                category:     'deal_pipeline',
-                priority:     'normal',
-                title:        "Deal import completed",
-                body:         "{$actorName} imported deals from {$fileName}. {$summary}",
-                actionUrl:    "/tenant/{$tenantId}/imports",
-                actionLabel:  'View Import',
-                dedupeSuffix: "import_done_{$batchId}",
-                metadata:     [
-                    'batch_id'  => $batchId,
-                    'file_name' => $fileName,
-                    'created'   => $result['created'],
-                    'updated'   => $result['updated'],
-                    'skipped'   => $result['skipped'],
-                    'failed'    => $result['failed'],
-                ],
-            );
+            // Service already dispatches the import-complete notification to admins.
+            // No second dispatch needed here — would create duplicate with different dedup key.
         } catch (\Throwable) {
             // Notification failure must never block the import redirect
         }

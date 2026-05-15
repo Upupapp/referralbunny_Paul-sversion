@@ -457,6 +457,13 @@ class LguIdsImportService
             );
         }
 
+        $maxRows = $importedByRole === 'reseller' ? 1000 : 5000;
+        if (count($rawRows) > $maxRows) {
+            throw new \InvalidArgumentException(
+                "Import limit is {$maxRows} rows for your role. Your file has " . count($rawRows) . " rows. Please split the file and re-upload."
+            );
+        }
+
         $batch = ImportBatch::create([
             'tenant_id'        => self::TENANT_ID,
             'import_type'      => 'lgu_ids_deals',
@@ -624,6 +631,15 @@ class LguIdsImportService
         $failed  = 0;
         $errors  = [];
 
+        // Pre-load all stage rules once — avoids N+1 (one query per row) inside the loop
+        $stageRulesMap = [];
+        try {
+            $stageRulesMap = DB::table('tenant_pipeline_stage_rules')
+                ->where('tenant_id', self::TENANT_ID)
+                ->pluck('max_days', 'stage')
+                ->toArray();
+        } catch (\Throwable) {}
+
         foreach ($rows as $row) {
             if ($row->row_action === 'blocked') { $skipped++; continue; }
             if ($row->row_action === 'skip')    { $skipped++; continue; }
@@ -706,16 +722,8 @@ class LguIdsImportService
                     'signed'        => 30,
                     default         => 21,
                 };
-                try {
-                    $stageRule = DB::table('tenant_pipeline_stage_rules')
-                        ->where('tenant_id', self::TENANT_ID)
-                        ->where('stage', $stage)
-                        ->first();
-                    if ($stageRule?->max_days) {
-                        $daysLeft = (int) $stageRule->max_days;
-                    }
-                } catch (\Throwable) {
-                    // Table may not exist yet — use hardcoded defaults above
+                if (isset($stageRulesMap[$stage])) {
+                    $daysLeft = (int) $stageRulesMap[$stage];
                 }
 
                 // ── One-deal-per-org check (LOCKED RULE)

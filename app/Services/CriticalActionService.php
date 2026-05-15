@@ -418,7 +418,10 @@ class CriticalActionService
     {
         $rows = DB::table('import_batches')
             ->where('tenant_id', $tenantId)
-            ->whereIn('status', ['completed_with_warnings', 'failed', 'completed', 'previewed', 'previewing'])
+            ->where(fn($q) => $q
+                ->whereIn('status', ['completed_with_warnings', 'failed', 'completed', 'previewed', 'previewing'])
+                ->orWhere(fn($q2) => $q2->where('status', 'processing')->where('started_at', '<', now()->subMinutes(15)))
+            )
             ->where('created_at', '>', now()->subDays(14))
             ->select('id', 'status', 'file_name', 'import_type', 'failed_rows',
                      'successful_rows', 'total_rows', 'unknown_referrer_rows',
@@ -441,11 +444,12 @@ class CriticalActionService
             };
 
             [$severity, $summary, $actionUrl, $actionLabel, $actionNeeded] = match ($r->status) {
-                'previewed'               => ['high',   "{$typeLabel} ready to confirm: {$r->file_name}",       $batchBase,           'Confirm Import', true],
-                'previewing'             => ['medium', "{$typeLabel} upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',  true],
-                'failed'                  => ['high',   "{$typeLabel} failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',   true],
-                'completed_with_warnings' => ['medium', "{$typeLabel} completed with warnings: {$r->file_name}","{$batchBase}/report", 'View Report',   true],
-                default                   => ['info',   "{$typeLabel} completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',   false],
+                'previewed'               => ['high',   "{$typeLabel} ready to confirm: {$r->file_name}",       $batchBase,           'Confirm Import',   true],
+                'previewing'             => ['medium', "{$typeLabel} upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',    true],
+                'processing'              => ['high',   "{$typeLabel} stuck — processing for 15+ minutes: {$r->file_name}", $batchBase, 'View Import',  true],
+                'failed'                  => ['high',   "{$typeLabel} failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',     true],
+                'completed_with_warnings' => ['medium', "{$typeLabel} completed with warnings: {$r->file_name}","{$batchBase}/report", 'View Report',     true],
+                default                   => ['info',   "{$typeLabel} completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',     false],
             };
 
             if (($r->unknown_referrer_rows ?? 0) > 0 && in_array($r->status, ['completed', 'completed_with_warnings'])) {
