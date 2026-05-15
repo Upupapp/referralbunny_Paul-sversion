@@ -40,6 +40,12 @@ class LeadController extends Controller
         }
 
         $query = Lead::with($relations)
+            ->select([
+                'id', 'tenant_id', 'name', 'stage', 'status', 'days_left',
+                'reseller_name', 'reseller_id', 'organization_id',
+                'commission_status', 'base_cost', 'added_amount', 'deal_value',
+                'created_at', 'updated_at', 'deleted_at', 'deleted_by',
+            ])
             ->addSelect([
                 'last_activity_at' => LeadHistory::select('created_at')
                     ->whereColumn('lead_id', 'leads.id')
@@ -475,19 +481,21 @@ class LeadController extends Controller
             }
         }
 
-        // Fire commission status event if changed
-        if (isset($data['commission_status']) && $data['commission_status'] !== $lead->commission_status) {
+        $oldCommissionStatus = $lead->commission_status;
+        $lead->update($data);
+
+        // Fire commission status event AFTER the DB write succeeds
+        $newCommissionStatus = $lead->fresh()->commission_status;
+        if (isset($data['commission_status']) && $newCommissionStatus !== $oldCommissionStatus) {
             CommissionStatusChanged::dispatch(
-                leadId:        $lead->id,
-                leadName:      $lead->name,
-                tenantId:      $lead->tenant_id,
-                resellerName:  $lead->reseller_name,
-                newStatus:     $data['commission_status'],
-                dealValue:     (float) ($lead->deal_value ?? 0),
+                leadId:       $lead->id,
+                leadName:     $lead->name,
+                tenantId:     $lead->tenant_id,
+                resellerName: $lead->reseller_name,
+                newStatus:    $newCommissionStatus,
+                dealValue:    (float) ($lead->deal_value ?? 0),
             );
         }
-
-        $lead->update($data);
 
         // ── Audit: log financial changes to deal history ──────────────
         $newDealValue   = (float) ($lead->deal_value   ?? 0);
@@ -907,6 +915,20 @@ class LeadController extends Controller
                 );
             }
         });
+
+        // Fire commission event after transaction — referrers/partners need this
+        if ($isLocking || $isPaid) {
+            try {
+                CommissionStatusChanged::dispatch(
+                    leadId:       $lead->id,
+                    leadName:     $lead->name,
+                    tenantId:     $lead->tenant_id,
+                    resellerName: $lead->reseller_name,
+                    newStatus:    $isPaid ? 'paid' : 'locked',
+                    dealValue:    (float) ($lead->deal_value ?? 0),
+                );
+            } catch (\Throwable) {}
+        }
 
         // Notify tenant admins and assigned referrer about stage movement
         try {

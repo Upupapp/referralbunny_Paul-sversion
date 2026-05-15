@@ -16,6 +16,14 @@ class CriticalActionService
     // Severity ordering for sorting — 'normal' treated as alias for 'low'
     private const SEVERITY_ORDER = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'normal' => 3, 'info' => 4];
 
+    // Static in-process cache for Schema::hasTable() — avoids information_schema queries on every request
+    private static array $tableExistsCache = [];
+
+    private static function tableExists(string $table): bool
+    {
+        return self::$tableExistsCache[$table] ??= Schema::hasTable($table);
+    }
+
     // ── Public API ─────────────────────────────────────────────────
 
     /**
@@ -729,10 +737,12 @@ class CriticalActionService
             ->get();
 
         return $rows->map(fn($r) => $this->make([
-            'type'          => 'commission_locked',
+            'type'          => $r->commission_status === 'paid' ? 'commission_paid' : 'commission_locked',
             'category'      => 'deal',
-            'severity'      => 'medium',
-            'summary'       => "Commission locked — review your deal: {$r->name}",
+            'severity'      => $r->commission_status === 'paid' ? 'info' : 'medium',
+            'summary'       => $r->commission_status === 'paid'
+                ? "Commission paid for: {$r->name}"
+                : "Commission locked — review your deal: {$r->name}",
             'actor_name'    => 'System',
             'actor_role'    => 'System',
             'related_label' => $r->name,
@@ -741,7 +751,7 @@ class CriticalActionService
             'occurred_at'   => $r->updated_at ?? now(),
             'action_url'    => "/reseller/{$tenantId}/deals/{$r->id}",
             'action_label'  => 'View Deal',
-            'action_needed' => true,
+            'action_needed' => $r->commission_status !== 'paid',
             'source'        => 'leads',
         ]))->toArray();
     }
@@ -1077,7 +1087,7 @@ class CriticalActionService
 
     private function resellerOverdueTasks(string $tenantId, string $resellerId): array
     {
-        if (!Schema::hasTable('tasks')) return [];
+        if (!self::tableExists('tasks')) return [];
 
         try {
             $tasks = DB::table('tasks')
@@ -1202,7 +1212,7 @@ class CriticalActionService
 
     private function overdueOpenTasks(string $tenantId): array
     {
-        if (!Schema::hasTable('tasks')) return [];
+        if (!self::tableExists('tasks')) return [];
 
         $tasks = DB::table('tasks')
             ->where('tenant_id', $tenantId)
@@ -1234,7 +1244,7 @@ class CriticalActionService
 
     private function openRequestFormTasks(string $tenantId): array
     {
-        if (!Schema::hasTable('tasks')) return [];
+        if (!self::tableExists('tasks')) return [];
 
         $tasks = DB::table('tasks')
             ->where('tenant_id', $tenantId)
@@ -1467,7 +1477,7 @@ class CriticalActionService
      */
     private function staleGoogleCalendarIntegrations(string $tenantId): array
     {
-        if (!Schema::hasTable('google_calendar_integrations')) return [];
+        if (!self::tableExists('google_calendar_integrations')) return [];
 
         try {
             $stale = DB::table('google_calendar_integrations')

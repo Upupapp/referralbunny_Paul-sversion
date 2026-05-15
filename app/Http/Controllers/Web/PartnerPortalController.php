@@ -137,7 +137,7 @@ class PartnerPortalController extends Controller
         // Compute this partner's peso amount from the deal's commission pool.
         // NOTE: commission_pool, added_amount, base_cost are NEVER passed to the view —
         // partners are only entitled to see their own estimated commission amount.
-        $commissionPool = round((float) ($lead->added_amount ?? 0) * 0.70, 2);
+        $commissionPool = round((float) ($lead->added_amount ?? 0) * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2);
         if ($myPartnerSplit) {
             $myPartnerSplit->peso_amount = $myPartnerSplit->split_share_type === 'percentage'
                 ? round($commissionPool * (float) $myPartnerSplit->split_share_value / 100, 2)
@@ -678,7 +678,7 @@ class PartnerPortalController extends Controller
         $commissions = $splits->map(function ($s) use ($deals) {
             $deal = $deals->get($s->deal_id);
             if (!$deal) return null; // deal fully removed from DB — skip
-            $pool = round((float) ($deal->added_amount ?? 0) * 0.70, 2);
+            $pool = round((float) ($deal->added_amount ?? 0) * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2);
             $myAmount = $s->split_share_type === 'percentage'
                 ? round($pool * (float) $s->split_share_value / 100, 2)
                 : (float) $s->split_share_value;

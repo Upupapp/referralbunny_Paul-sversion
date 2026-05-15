@@ -7,7 +7,9 @@ use App\Models\TenantMetric;
 use App\Models\Lead;
 use App\Models\Notification;
 use App\Models\Reseller;
+use App\Services\CommissionCalculationService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
@@ -144,25 +146,28 @@ class AnalyticsService
 
     public function tenantFinancialSummary(string $tenantId): array
     {
-        $r = \Illuminate\Support\Facades\DB::table('leads')
+        $cr = CommissionCalculationService::COMPANY_SHARE_RATE;
+        $pr = CommissionCalculationService::COMMISSION_POOL_RATE;
+
+        $r = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->selectRaw("
-                COALESCE(SUM(deal_value), 0)                                                        AS total_contract,
-                COALESCE(SUM(added_amount * 0.30), 0)                                               AS total_company,
-                COALESCE(SUM(added_amount * 0.70), 0)                                               AS total_pool,
-                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * 0.70 ELSE 0 END), 0) AS paid_pool,
-                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN 1 ELSE 0 END), 0)         AS pending_count,
-                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN 1 ELSE 0 END), 0)         AS locked_count,
-                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN 1 ELSE 0 END), 0)         AS paid_count,
-                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN deal_value  ELSE 0 END), 0) AS pending_contract,
-                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN deal_value  ELSE 0 END), 0) AS locked_contract,
-                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN deal_value  ELSE 0 END), 0) AS paid_contract,
-                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * 0.30 ELSE 0 END), 0) AS pending_company,
-                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * 0.30 ELSE 0 END), 0) AS locked_company,
-                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * 0.30 ELSE 0 END), 0) AS paid_company,
-                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * 0.70 ELSE 0 END), 0) AS pending_pool,
-                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * 0.70 ELSE 0 END), 0) AS locked_pool
+                COALESCE(SUM(deal_value), 0)                                                              AS total_contract,
+                COALESCE(SUM(added_amount * {$cr}), 0)                                                    AS total_company,
+                COALESCE(SUM(added_amount * {$pr}), 0)                                                    AS total_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * {$pr} ELSE 0 END), 0) AS paid_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN 1 ELSE 0 END), 0)               AS pending_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN 1 ELSE 0 END), 0)               AS locked_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN 1 ELSE 0 END), 0)               AS paid_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN deal_value  ELSE 0 END), 0)     AS pending_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN deal_value  ELSE 0 END), 0)     AS locked_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN deal_value  ELSE 0 END), 0)     AS paid_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * {$cr} ELSE 0 END), 0) AS pending_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * {$cr} ELSE 0 END), 0) AS locked_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * {$cr} ELSE 0 END), 0) AS paid_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * {$pr} ELSE 0 END), 0) AS pending_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * {$pr} ELSE 0 END), 0) AS locked_pool
             ")->first();
 
         $breakdown = [
