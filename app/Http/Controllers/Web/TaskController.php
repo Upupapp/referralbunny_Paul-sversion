@@ -103,18 +103,53 @@ class TaskController extends Controller
                 ->get()->keyBy('id')
             : collect();
 
-        if ($validAssignees->isEmpty() && $validResellers->isEmpty()) {
+        // Super admins (admin_user type) can self-assign via 'me' even though they
+        // are not in tenant_users. Add a synthetic assignee so the task creates.
+        $superAdminSelf = null;
+        if ($validAssignees->isEmpty() && $validResellers->isEmpty() && $actorType === 'admin_user') {
+            $superAdminSelf = (object) [
+                'id'            => $actorId,
+                'name'          => $actorName,
+                'email'         => Auth::guard('web')->user()?->email ?? '',
+                'assignee_type' => 'admin_user',
+            ];
+        } elseif ($validAssignees->isEmpty() && $validResellers->isEmpty()) {
             return response()->json(['error' => 'No valid assignees found.'], 422);
         }
 
         $createdTasks   = [];
-        $isSelfAssign   = $tenantUserIds->count() === 1 && $resellerRawIds->isEmpty() && $tenantUserIds->first() === $actorId;
+        $isSelfAssign   = ($tenantUserIds->count() === 1 && $resellerRawIds->isEmpty() && $tenantUserIds->first() === $actorId)
+                        || $superAdminSelf !== null;
 
         DB::transaction(function () use (
             $data, $tenantId, $actorType, $actorId, $actorName,
             $tenantUserIds, $validAssignees, $resellerRawIds, $validResellers,
-            $isSelfAssign, &$createdTasks
+            $isSelfAssign, $superAdminSelf, &$createdTasks
         ) {
+            // ── Super admin self-assignment ────────────────────────────────────
+            if ($superAdminSelf !== null) {
+                $task = Task::create([
+                    'tenant_id'         => $tenantId,
+                    'title'             => $data['title'],
+                    'description'       => $data['description'] ?? null,
+                    'status'            => 'open',
+                    'priority'          => $data['priority'],
+                    'category'          => 'manual',
+                    'assigned_to_type'  => 'admin_user',
+                    'assigned_to_id'    => $superAdminSelf->id,
+                    'assigned_by_type'  => 'admin_user',
+                    'assigned_by_id'    => $superAdminSelf->id,
+                    'created_by_type'   => 'admin_user',
+                    'created_by_id'     => $superAdminSelf->id,
+                    'source_type'       => $data['source_type'] ?? null,
+                    'source_id'         => $data['source_id'] ?? null,
+                    'due_at'            => !empty($data['due_at']) ? $data['due_at'] : null,
+                    'visibility'        => 'tenant_team',
+                ]);
+                $createdTasks[] = ['task' => $task, 'assignee_type' => 'admin_user', 'assignee' => $superAdminSelf];
+                return;
+            }
+
             // ── Tenant user tasks ──────────────────────────────────────────────
             foreach ($tenantUserIds as $assigneeId) {
                 $assignee = $validAssignees->get($assigneeId);

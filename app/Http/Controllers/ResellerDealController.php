@@ -633,8 +633,15 @@ class ResellerDealController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('ResellerDealController requestArchive failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
+            Log::error('ResellerDealController requestArchive failed', [
+                'error'     => $e->getMessage(),
+                'exception' => class_basename($e),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'error' => 'Could not submit archive request. Please try again.',
+                'hint'  => class_basename($e),
+            ], 500);
         }
 
         // Activity log + notification AFTER commit — never let these roll back the business record
