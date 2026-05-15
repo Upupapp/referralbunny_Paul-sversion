@@ -797,17 +797,19 @@ class CriticalActionService
         try {
             $rows = DB::table('export_requests')
                 ->where('tenant_id', $tenantId)
-                ->where('status', 'pending')
-                ->select('id', 'requester_type', 'requester_id', 'requester_role', 'export_type', 'is_sensitive', 'reason', 'created_at')
+                ->whereIn('status', ['pending', 'failed'])
+                ->select('id', 'status', 'requester_type', 'requester_id', 'requester_role', 'export_type', 'is_sensitive', 'reason', 'created_at')
                 ->orderByDesc('created_at')
                 ->limit(10)
                 ->get();
 
             return $rows->map(fn($r) => $this->make([
-                'type'          => 'export_approval_pending',
+                'type'          => $r->status === 'failed' ? 'export_failed' : 'export_approval_pending',
                 'category'      => 'export',
-                'severity'      => $r->is_sensitive ? 'high' : 'medium',
-                'summary'       => "Export approval needed: {$r->export_type} data",
+                'severity'      => $r->status === 'failed' ? 'high' : ($r->is_sensitive ? 'high' : 'medium'),
+                'summary'       => $r->status === 'failed'
+                    ? "Export failed: {$r->export_type} data — retry or investigate"
+                    : "Export approval needed: {$r->export_type} data",
                 'actor_name'    => ucfirst($r->requester_role),
                 'actor_role'    => ucfirst($r->requester_role),
                 'related_label' => ucwords(str_replace('_', ' ', $r->export_type)) . ' export',
@@ -815,10 +817,10 @@ class CriticalActionService
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->created_at ?? now(),
                 'action_url'    => "/tenant/{$tenantId}/exports/{$r->id}",
-                'action_label'  => 'Review Request',
+                'action_label'  => $r->status === 'failed' ? 'View Failed Export' : 'Review Request',
                 'action_needed' => true,
                 'source'        => 'export_requests',
-                'meta'          => ['is_sensitive' => (bool) $r->is_sensitive],
+                'meta'          => ['is_sensitive' => (bool) $r->is_sensitive, 'status' => $r->status],
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] pendingExportRequests failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
@@ -980,7 +982,7 @@ class CriticalActionService
                 ->whereIn('rb.status', ['failed', 'completed_with_warnings'])
                 ->where('rb.created_at', '>', now()->subDays(14))
                 ->select(
-                    'rb.id', 'rb.status', 'rb.records_conflict', 'rb.records_failed',
+                    'rb.id', 'rb.import_batch_id', 'rb.status', 'rb.records_conflict', 'rb.records_failed',
                     'rb.created_at', 'b.file_name'
                 )
                 ->orderByDesc('rb.created_at')
@@ -1000,8 +1002,8 @@ class CriticalActionService
                 'related_type'  => 'import',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->created_at ?? now(),
-                'action_url'    => "/tenant/{$tenantId}/imports",
-                'action_label'  => 'View Imports',
+                'action_url'    => "/tenant/{$tenantId}/imports/{$r->import_batch_id}/rollback/{$r->id}",
+                'action_label'  => 'View Rollback',
                 'action_needed' => true,
                 'source'        => 'import_rollbacks',
                 'meta'          => ['records_conflict' => $r->records_conflict, 'records_failed' => $r->records_failed],

@@ -50,14 +50,17 @@ class GenerateExportJob implements ShouldQueue
 
             // Generate row data based on export type
             $rows = match ($request->export_type) {
-                'deals'         => $this->generateDeals($request),
-                'contacts'      => $this->generateContacts($request),
-                'organizations' => $this->generateOrganizations($request),
-                'referrers'     => $this->generateReferrers($request),
-                'commissions'   => $this->generateCommissions($request),
-                'users'         => $this->generateUsers($request),
-                'reports'       => $this->generateReports($request),
-                default         => $this->generateDeals($request),
+                'deals'          => $this->generateDeals($request),
+                'contacts'       => $this->generateContacts($request),
+                'organizations'  => $this->generateOrganizations($request),
+                'referrers'      => $this->generateReferrers($request),
+                'commissions'    => $this->generateCommissions($request),
+                'users'          => $this->generateUsers($request),
+                'reports'        => $this->generateReports($request),
+                'audit_logs',
+                'messages',
+                'import_summary' => [['Export Type', 'Status', 'Note'], [$request->export_type, 'Not available', 'This export type is not yet implemented. Please contact support.']],
+                default          => $this->generateDeals($request),
             };
 
             // Build CSV content
@@ -375,7 +378,7 @@ class GenerateExportJob implements ShouldQueue
             ->where('tm.tenant_id', $request->tenant_id)
             ->select([
                 'tu.id',
-                'tu.name',
+                DB::raw("TRIM(CONCAT(COALESCE(tu.first_name, ''), ' ', COALESCE(tu.last_name, ''))) as name"),
                 'tu.email',
                 'tu.phone',
                 'tm.role',

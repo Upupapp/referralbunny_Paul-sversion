@@ -15,7 +15,7 @@ class AnalyticsService
 
     public function platformSummary(): array
     {
-        $tenants      = Tenant::with('leads')->get();
+        $tenants      = Tenant::get();
         $totalLeads   = Lead::count();
         $totalPipeline= Lead::sum('deal_value');
 
@@ -144,50 +144,39 @@ class AnalyticsService
 
     public function tenantFinancialSummary(string $tenantId): array
     {
-        $leads = Lead::where('tenant_id', $tenantId)
-            ->get(['base_cost', 'added_amount', 'deal_value', 'commission_status']);
-
-        $totalContract = 0.0;
-        $totalCompany  = 0.0;
-        $totalPool     = 0.0;
-        $paidPool      = 0.0;
+        $r = \Illuminate\Support\Facades\DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->selectRaw("
+                COALESCE(SUM(deal_value), 0)                                                        AS total_contract,
+                COALESCE(SUM(added_amount * 0.30), 0)                                               AS total_company,
+                COALESCE(SUM(added_amount * 0.70), 0)                                               AS total_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * 0.70 ELSE 0 END), 0) AS paid_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN 1 ELSE 0 END), 0)         AS pending_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN 1 ELSE 0 END), 0)         AS locked_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN 1 ELSE 0 END), 0)         AS paid_count,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN deal_value  ELSE 0 END), 0) AS pending_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN deal_value  ELSE 0 END), 0) AS locked_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN deal_value  ELSE 0 END), 0) AS paid_contract,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * 0.30 ELSE 0 END), 0) AS pending_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * 0.30 ELSE 0 END), 0) AS locked_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'paid'    THEN added_amount * 0.30 ELSE 0 END), 0) AS paid_company,
+                COALESCE(SUM(CASE WHEN commission_status = 'pending' THEN added_amount * 0.70 ELSE 0 END), 0) AS pending_pool,
+                COALESCE(SUM(CASE WHEN commission_status = 'locked'  THEN added_amount * 0.70 ELSE 0 END), 0) AS locked_pool
+            ")->first();
 
         $breakdown = [
-            'pending' => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
-            'locked'  => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
-            'paid'    => ['count' => 0, 'contract' => 0.0, 'company' => 0.0, 'pool' => 0.0],
+            ['label' => 'pending', 'count' => (int) $r->pending_count, 'contract' => (float) $r->pending_contract, 'company' => (float) $r->pending_company, 'pool' => (float) $r->pending_pool],
+            ['label' => 'locked',  'count' => (int) $r->locked_count,  'contract' => (float) $r->locked_contract,  'company' => (float) $r->locked_company,  'pool' => (float) $r->locked_pool],
+            ['label' => 'paid',    'count' => (int) $r->paid_count,    'contract' => (float) $r->paid_contract,    'company' => (float) $r->paid_company,    'pool' => (float) $r->paid_pool],
         ];
 
-        $calc = app(\App\Services\CommissionCalculationService::class);
-
-        foreach ($leads as $lead) {
-            $b        = $calc->breakdownFromLead($lead);
-            $aa       = $b['added_amount'];
-            $contract = $b['deal_value'];
-            $company  = $b['company_share'];
-            $pool     = $b['commission_pool'];
-            $status   = array_key_exists($lead->commission_status ?? '', $breakdown)
-                ? ($lead->commission_status ?? 'pending')
-                : 'pending';
-
-            $totalContract += $contract;
-            $totalCompany  += $company;
-            $totalPool     += $pool;
-
-            if ($status === 'paid') $paidPool += $pool;
-
-            $breakdown[$status]['count']    += 1;
-            $breakdown[$status]['contract'] += $contract;
-            $breakdown[$status]['company']  += $company;
-            $breakdown[$status]['pool']     += $pool;
-        }
-
         return [
-            'total_contract_value' => round($totalContract, 2),
-            'total_company_share'  => round($totalCompany, 2),
-            'total_comm_pool'      => round($totalPool, 2),
-            'paid_comm_pool'       => round($paidPool, 2),
-            'commission_breakdown' => array_values($breakdown),
+            'total_contract_value' => round((float) $r->total_contract, 2),
+            'total_company_share'  => round((float) $r->total_company,  2),
+            'total_comm_pool'      => round((float) $r->total_pool,     2),
+            'paid_comm_pool'       => round((float) $r->paid_pool,      2),
+            'commission_breakdown' => $breakdown,
         ];
     }
 

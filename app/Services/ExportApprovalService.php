@@ -359,8 +359,8 @@ class ExportApprovalService
                 extra:    ['file_name' => $request->file_name],
             );
 
-            // Notify the requester that their file has expired
-            $this->sendEmail($request, 'expired');
+            // Notify requester in-app AND by email
+            $this->notifyStatusChange($request, 'expired');
 
             $count++;
         }
@@ -476,6 +476,16 @@ class ExportApprovalService
                 actionUrl:   "/tenant/{$request->tenant_id}/exports/{$request->id}",
                 actionLabel: 'Download Now',
                 dedupeSuffix: 'export_ready:' . $request->id,
+                settings:    $settings,
+            ),
+
+            'expired' => $this->notifyRequester(
+                request:     $request,
+                title:       'Export File Expired',
+                body:        'Your ' . $request->export_type . ' export file has expired and is no longer available for download. You may submit a new request.',
+                actionUrl:   "/tenant/{$request->tenant_id}/exports",
+                actionLabel: 'New Export',
+                dedupeSuffix: 'export_expired:' . $request->id,
                 settings:    $settings,
             ),
 
@@ -673,6 +683,21 @@ class ExportApprovalService
                 recipientId:    (string) $request->requester_id,
                 emailKey:       "export_expired:{$request->id}",
                 subject:        'Your export file has expired — ReferralBunny.ai',
+                tenantId:       $request->tenant_id,
+            ),
+
+            'failed' => EmailLogger::send(
+                mailable:       new ExportRejected(
+                    requesterName:   $requesterName,
+                    exportType:      $exportLabel,
+                    rejectionReason: 'Export generation failed. Please try again or contact support.',
+                    tenantName:      $tenantName,
+                ),
+                recipientEmail: $requesterEmail,
+                recipientType:  $request->requester_type,
+                recipientId:    (string) $request->requester_id,
+                emailKey:       "export_failed:{$request->id}",
+                subject:        'Your export could not be generated — ReferralBunny.ai',
                 tenantId:       $request->tenant_id,
             ),
 
