@@ -64,7 +64,8 @@ class PartnerPortalController extends Controller
         $completion    = UserDisplayNameService::completionPercent($partner);
         $recentDeals   = Lead::whereIn('id', $dealIds)
             ->where('tenant_id', $partner->tenant_id)
-            ->orderByDesc('created_at')->limit(5)->get();
+            ->orderByDesc('created_at')->limit(5)
+            ->get(['id', 'name', 'stage', 'status', 'reseller_name', 'deal_value']);
 
         // Expiring deals the partner is associated with (for Needs Attention panel)
         $expiringDeals = Lead::whereIn('id', $dealIds)
@@ -74,8 +75,14 @@ class PartnerPortalController extends Controller
             ->limit(3)
             ->get(['id', 'name', 'days_left', 'status']);
 
+        $criticalActions = [];
+        try {
+            $criticalActions = app(\App\Services\CriticalActionService::class)
+                ->forPartner((string) $partner->id, $partner->tenant_id);
+        } catch (\Throwable) {}
+
         return view('partner.dashboard', compact(
-            'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals', 'expiringDeals'
+            'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals', 'expiringDeals', 'criticalActions'
         ));
     }
 
@@ -85,7 +92,7 @@ class PartnerPortalController extends Controller
         $deals   = Lead::whereIn('id', $this->authorizedDealIds())
             ->where('tenant_id', $partner->tenant_id)
             ->orderByDesc('created_at')
-            ->get();
+            ->get(['id', 'name', 'stage', 'status', 'deal_value', 'reseller_name', 'days_left']);
 
         return view('partner.deals.index', compact('partner', 'deals'));
     }
@@ -379,7 +386,7 @@ class PartnerPortalController extends Controller
         }
 
         // Admins and managers in this tenant
-        $availableAdmins = Cache::remember("tenant_admins_{$tenantId}", 300, function () use ($tenantId) {
+        $availableAdmins = Cache::remember("partner_portal:tenant_admins_{$tenantId}", 300, function () use ($tenantId) {
             return DB::table('tenant_memberships as tm')
                 ->join('tenant_users as tu', 'tm.tenant_user_id', '=', 'tu.id')
                 ->where('tm.tenant_id', $tenantId)
@@ -436,11 +443,11 @@ class PartnerPortalController extends Controller
         $thread->update(['partner_unread' => 0]);
 
         PartnerMessage::where('thread_id', $threadId)
-            ->where('sender_type', 'reseller')
+            ->whereIn('sender_type', ['reseller', 'admin'])
             ->where('is_read', false)
             ->update(['is_read' => true, 'read_at' => now()]);
 
-        $messages = $thread->messages()->get()->map(fn($m) => [
+        $messages = $thread->messages()->latest()->limit(100)->get()->map(fn($m) => [
             'id'          => $m->id,
             'sender_type' => $m->sender_type,
             'sender_name' => $m->sender_name,

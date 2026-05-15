@@ -68,6 +68,9 @@ class NotificationsController extends Controller
         if (Auth::guard('reseller')->check()) {
             return ['reseller', (string) Auth::guard('reseller')->id()];
         }
+        if (Auth::guard('partner')->check()) {
+            return ['partner', (string) Auth::guard('partner')->id()];
+        }
         return [null, null];
     }
 }

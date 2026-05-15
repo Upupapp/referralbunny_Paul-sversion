@@ -101,7 +101,7 @@
                                 ? ($daysLeft <= 0 ? 'Overdue' : $daysLeft . 'd')
                                 : null;
                         @endphp
-                        <tr x-show="(search === '' || '{{ $dealName }}'.includes(search.toLowerCase())) && (filterStage === '' || filterStage === '{{ $stageKey }}')"
+                        <tr x-show="(search === '' || {{ Js::from($dealName) }}.includes(search.toLowerCase())) && (filterStage === '' || filterStage === {{ Js::from($stageKey) }})"
                             class="hover:bg-gray-50/60 transition-colors">
                             <td class="px-5 py-3.5">
                                 <div class="flex items-center gap-2.5">

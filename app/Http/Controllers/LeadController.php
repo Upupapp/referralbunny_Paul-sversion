@@ -951,6 +951,29 @@ class LeadController extends Controller
                     );
                 }
             }
+
+            // Notify active partners on this deal
+            $partnerSplits = DB::table('deal_partner_splits')
+                ->where('deal_id', $lead->id)
+                ->where('tenant_id', $lead->tenant_id)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->whereNotNull('partner_user_id')
+                ->pluck('partner_user_id');
+
+            foreach ($partnerSplits as $partnerUserId) {
+                app(NotificationDispatchService::class)->dispatchToPartner(
+                    partnerId:    (string) $partnerUserId,
+                    tenantId:     $lead->tenant_id,
+                    category:     'deal_pipeline',
+                    priority:     $priority,
+                    title:        "Deal moved to {$stageName}",
+                    body:         "\"{$lead->name}\" has been moved from {$fromName} to {$stageName}.",
+                    actionUrl:    "/partner/deals/{$lead->id}",
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "{$lead->id}:stage:{$targetStage}:p:{$minute}",
+                );
+            }
         } catch (\Throwable) {}
 
         return response()->json($lead->fresh(['commissionSplits', 'history']));

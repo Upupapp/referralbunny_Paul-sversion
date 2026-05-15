@@ -198,6 +198,23 @@ class DealPartnerSplitController extends Controller
                     ($oldSplit->partner_name ?? 'A Partner') . ' was removed from "' . $lead->name . '".',
                     $lead->id . ':partner_removed:' . $splitId,
                 );
+
+                // Notify the removed partner
+                if (!empty($oldSplit->partner_user_id)) {
+                    try {
+                        app(NotificationDispatchService::class)->dispatchToPartner(
+                            partnerId:    (string) $oldSplit->partner_user_id,
+                            tenantId:     $tenantId,
+                            category:     'deal_pipeline',
+                            priority:     'high',
+                            title:        'You have been removed from a deal',
+                            body:         'You have been removed from "' . $lead->name . '". Contact your referrer or admin for more information.',
+                            actionUrl:    null,
+                            actionLabel:  null,
+                            dedupeSuffix: $lead->id . ':partner_removed:' . $splitId,
+                        );
+                    } catch (\Throwable) {}
+                }
             }
 
             return response()->json(['success' => true, 'message' => 'Partner split removed.']);

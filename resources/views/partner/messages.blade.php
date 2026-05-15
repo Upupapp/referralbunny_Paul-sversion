@@ -292,6 +292,7 @@ function partnerMessages() {
             'deal_id'        => $t->deal_id,
             'thread_type'    => $t->thread_type ?? 'deal',
             'deal_name'      => optional($t->deal)->name ?? 'Deal',
+            'reseller_name'  => optional($t->reseller)->name ?? null,
             'last_preview'   => $t->last_message_preview,
             'partner_unread' => $t->partner_unread ?? 0,
         ])->values()->all();
@@ -361,17 +362,15 @@ function partnerMessages() {
         openComposedConversation() {
             this.showCompose = false;
             if (this.composeType === 'admin') {
-                // For now all admin messages go to the shared direct thread
                 this.msgTab = 'admin';
                 this.startDirectAdminMessage();
             } else if (this.composeType === 'referrer' && this.composeReferrer) {
-                // Find an existing deal thread where the deal's referrer matches
-                const referrerThread = serverThreads.find(t => t.deal_name && t.deal_id);
-                // Navigate to deal threads and let user pick the right deal
+                const referrerName = this.composeReferrer.toLowerCase();
+                const matchingThreads = this.threads.filter(t =>
+                    t.deal_id && t.reseller_name && t.reseller_name.toLowerCase() === referrerName
+                );
                 this.msgTab = 'deals';
                 this.mobilePane = 'list';
-                // If only one deal with this referrer, auto-open it
-                const matchingThreads = this.threads.filter(t => t.deal_id);
                 if (matchingThreads.length === 1) {
                     this.selectThread(matchingThreads[0].id);
                 }
@@ -407,7 +406,13 @@ function partnerMessages() {
                 const r = await fetch(`/partner/messages/thread/${threadId}`, { headers: hdrs() });
                 const d = await r.json();
                 this.messages = d.messages ?? [];
-                if (t) t.partner_unread = 0;
+                if (t) {
+                    const wasUnread = t.partner_unread || 0;
+                    t.partner_unread = 0;
+                    if (!t.deal_id) {
+                        this.adminDirectUnread = Math.max(0, this.adminDirectUnread - wasUnread);
+                    }
+                }
             } catch (e) {
                 this.messages = [];
                 this.$dispatch('show-toast', { type: 'error', message: 'Unable to load messages. Please try again.' });

@@ -90,7 +90,7 @@ class PartnerProfileController extends Controller
         return back()->with('success', 'Profile photo removed.');
     }
 
-    public function changePassword(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
+    public function changePassword(Request $request): \Illuminate\Http\RedirectResponse
     {
         $partner = Auth::guard('partner')->user();
         if (!$partner) abort(403);
