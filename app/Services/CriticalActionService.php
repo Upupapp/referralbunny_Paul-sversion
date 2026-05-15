@@ -546,41 +546,71 @@ class CriticalActionService
     }
 
     /**
-     * Admin view: partner_threads with unread messages from partners (reseller_unread > 0).
-     * These are partner messages that a Referrer (reseller) hasn't replied to.
-     * Grouped as a single count-based action so admin can monitor partner engagement.
+     * Admin view: two separate actions —
+     * 1) Direct partner messages the admin hasn't read yet (admin_unread > 0, thread_type = 'direct')
+     * 2) Deal-thread partner messages the Referrer hasn't replied to (reseller_unread > 0, deal_id IS NOT NULL)
      */
     private function unreadPartnerMessages(string $tenantId): array
     {
+        $actions = [];
         try {
-            $count = DB::table('partner_threads')
+            // Admin's own unread direct partner messages
+            $adminUnread = DB::table('partner_threads')
                 ->where('tenant_id', $tenantId)
+                ->where('thread_type', 'direct')
+                ->where('admin_unread', '>', 0)
+                ->count();
+
+            if ($adminUnread > 0) {
+                $actions[] = $this->make([
+                    'type'          => 'partner_direct_messages_unread',
+                    'category'      => 'messaging',
+                    'severity'      => 'medium',
+                    'summary'       => "{$adminUnread} unread direct message" . ($adminUnread > 1 ? 's' : '') . ' from Partners',
+                    'actor_name'    => 'Partners',
+                    'actor_role'    => 'Partner',
+                    'related_label' => 'Partner Messages',
+                    'related_type'  => 'message',
+                    'related_id'    => null,
+                    'occurred_at'   => now(),
+                    'action_url'    => "/tenant/{$tenantId}/messages?tab=partners",
+                    'action_label'  => 'View Partner Messages',
+                    'action_needed' => true,
+                    'source'        => 'partner_threads',
+                    'description'   => 'Partners have sent you direct messages that need a response.',
+                ]);
+            }
+
+            // Deal-thread partner messages the Referrer hasn't replied to
+            $referrerUnread = DB::table('partner_threads')
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('deal_id')
                 ->where('reseller_unread', '>', 0)
                 ->count();
 
-            if ($count === 0) return [];
-
-            return [$this->make([
-                'type'          => 'partner_messages_unread',
-                'category'      => 'messaging',
-                'severity'      => 'medium',
-                'summary'       => "{$count} unread partner message" . ($count > 1 ? 's' : '') . ' waiting for Referrer response',
-                'actor_name'    => 'Partners',
-                'actor_role'    => 'Partner',
-                'related_label' => 'Partner Messages',
-                'related_type'  => 'message',
-                'related_id'    => null,
-                'occurred_at'   => now(),
-                'action_url'    => "/tenant/{$tenantId}/messages",
-                'action_label'  => 'View Messages',
-                'action_needed' => true,
-                'source'        => 'partner_threads',
-                'description'   => 'Partners have sent messages that their Referrer has not yet replied to. Check in to ensure deals stay on track.',
-            ])];
+            if ($referrerUnread > 0) {
+                $actions[] = $this->make([
+                    'type'          => 'partner_deal_messages_unread',
+                    'category'      => 'messaging',
+                    'severity'      => 'low',
+                    'summary'       => "{$referrerUnread} deal thread" . ($referrerUnread > 1 ? 's' : '') . ' with partner messages awaiting Referrer reply',
+                    'actor_name'    => 'Partners',
+                    'actor_role'    => 'Partner',
+                    'related_label' => 'Partner Deal Messages',
+                    'related_type'  => 'message',
+                    'related_id'    => null,
+                    'occurred_at'   => now(),
+                    'action_url'    => "/tenant/{$tenantId}/messages?tab=partners",
+                    'action_label'  => 'View Partner Messages',
+                    'action_needed' => false,
+                    'source'        => 'partner_threads',
+                    'description'   => 'Partners have sent deal messages that their Referrer has not yet replied to.',
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] unreadPartnerMessages failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
-            return [];
         }
+        return $actions;
     }
 
     private function recentActivityLogs(string $tenantId, int $limit, $since): array

@@ -476,6 +476,7 @@ class PartnerPortalController extends Controller
             'last_message_at'      => now(),
             'last_message_preview' => $preview,
             'reseller_unread'      => $thread->reseller_unread + 1,
+            'admin_unread'         => $thread->admin_unread + 1,
             'reseller_id'          => $thread->reseller_id ?? $resellerId,
         ]);
 
@@ -672,6 +673,10 @@ class PartnerPortalController extends Controller
             $to   = \Illuminate\Support\Carbon::parse($request->query('to',   now($tz)->endOfMonth()->toDateString()),   $tz)->endOfDay();
         } catch (\Throwable) {
             return response()->json(['error' => 'Invalid date range.'], 400);
+        }
+
+        if ($from->diffInDays($to) > 92) {
+            return response()->json(['error' => 'Date range cannot exceed 92 days.'], 400);
         }
 
         $events = collect();

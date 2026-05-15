@@ -242,6 +242,7 @@ function partnerMessages() {
         $threadData = $threads->map(fn($t) => [
             'id'             => $t->id,
             'deal_id'        => $t->deal_id,
+            'thread_type'    => $t->thread_type ?? 'deal',
             'deal_name'      => optional($t->deal)->name ?? 'Deal',
             'last_preview'   => $t->last_message_preview,
             'partner_unread' => $t->partner_unread ?? 0,
@@ -289,8 +290,7 @@ function partnerMessages() {
         },
 
         startDirectAdminMessage() {
-            // Check if direct thread already exists in serverThreads (deal_id = null)
-            const existing = serverThreads.find(t => t.deal_id === null || t.deal_id === undefined);
+            const existing = serverThreads.find(t => t.thread_type === 'direct');
             if (existing) {
                 this.selectThread(existing.id);
                 return;
@@ -394,6 +394,7 @@ function partnerMessages() {
                         this.scrollToBottom();
                         this.$el.querySelector('textarea')?.dispatchEvent(new Event('input'));
                     });
+                    this.$dispatch('show-toast', { type: 'success', message: 'Message sent.' });
                 }
             } catch (e) {
                 this.body      = msgBody;

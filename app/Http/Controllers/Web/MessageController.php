@@ -354,6 +354,9 @@ class MessageController extends Controller
 
     public function partnerThreads(string $tenantId): \Illuminate\Http\JsonResponse
     {
+        // Referrers (reseller guard) must not access partner thread data
+        if (Auth::guard('reseller')->check()) abort(403);
+
         $threads = PartnerThread::where('tenant_id', $tenantId)
             ->with('partner:id,first_name,last_name,email')
             ->orderByDesc('last_message_at')
@@ -377,19 +380,23 @@ class MessageController extends Controller
 
     public function partnerThreadMessages(string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
     {
+        if (Auth::guard('reseller')->check()) abort(403);
+
         $thread = PartnerThread::where('tenant_id', $tenantId)->findOrFail($threadId);
 
         // Mark partner messages as read for admin
         $thread->update(['admin_unread' => 0]);
 
         PartnerMessage::where('thread_id', $threadId)
+            ->where('tenant_id', $tenantId)
             ->where('sender_type', 'partner')
             ->where('is_read', false)
             ->update(['is_read' => true, 'read_at' => now()]);
 
-        $partner = Partner::find($thread->partner_id);
+        $partner = $thread->partner ?? Partner::find($thread->partner_id);
 
         $messages = PartnerMessage::where('thread_id', $threadId)
+            ->where('tenant_id', $tenantId)
             ->orderBy('created_at')
             ->get()
             ->map(fn($m) => [
@@ -417,6 +424,8 @@ class MessageController extends Controller
 
     public function replyToPartnerThread(Request $request, string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
     {
+        if (Auth::guard('reseller')->check()) abort(403);
+
         $request->validate(['body' => 'required|string|max:5000']);
 
         $thread = PartnerThread::where('tenant_id', $tenantId)
@@ -517,22 +526,10 @@ class MessageController extends Controller
     {
         $partner = \App\Models\Partner::where('tenant_id', $tenantId)->where('id', $partnerId)->firstOrFail();
 
-        // Reuse existing direct thread (no deal context) if one exists
-        $thread = \App\Models\PartnerThread::where('tenant_id', $tenantId)
-            ->where('partner_id', $partner->id)
-            ->whereNull('deal_id')
-            ->first();
-
-        if (!$thread) {
-            $thread = \App\Models\PartnerThread::create([
-                'id'          => (string) Str::uuid(),
-                'tenant_id'   => $tenantId,
-                'partner_id'  => $partner->id,
-                'deal_id'     => null,
-                'reseller_id' => null,
-                'thread_type' => 'direct',
-            ]);
-        }
+        $thread = \App\Models\PartnerThread::firstOrCreate(
+            ['tenant_id' => $tenantId, 'partner_id' => $partner->id, 'deal_id' => null],
+            ['reseller_id' => null, 'thread_type' => 'direct']
+        );
 
         \App\Models\PartnerMessage::create([
             'thread_id'   => $thread->id,

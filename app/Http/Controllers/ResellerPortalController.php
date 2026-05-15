@@ -709,6 +709,10 @@ class ResellerPortalController extends Controller
             return response()->json(['error' => 'Invalid date range.'], 400);
         }
 
+        if ($from->diffInDays($to) > 92) {
+            return response()->json(['error' => 'Date range cannot exceed 92 days.'], 400);
+        }
+
         $today   = \Illuminate\Support\Carbon::today($tz);
         $events  = collect();
 

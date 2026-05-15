@@ -789,6 +789,7 @@ function messaging() {
                     if (el) el.scrollTop = el.scrollHeight;
                     this.$el.querySelector('textarea[x-model="partnerReplyBody"]')?.dispatchEvent(new Event('input'));
                 });
+                this.$dispatch('show-toast', { type: 'success', message: 'Reply sent.' });
             } catch(e) {
                 this.partnerReplyBody = body;
                 this.partnerSendError = e.message || 'Failed to send. Please try again.';

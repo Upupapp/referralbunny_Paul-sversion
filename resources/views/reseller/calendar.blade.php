@@ -254,9 +254,9 @@ function resellerCalendar() {
                 this.applyFilters();
             } catch {
                 this.fetchError = true; this.allEvents = []; this.events = []; this.grouped = {};
+                this.$nextTick(() => this.buildCells());
             } finally {
                 this.loading = false;
-                this.$nextTick(() => this.buildCells());
             }
         },
 
