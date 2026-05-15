@@ -20,12 +20,16 @@ class TenantAdminController extends Controller
 {
     private function config(string $tenantId): ?TenantConfig
     {
-        // Cache as plain array to avoid __PHP_Incomplete_Class on deserialization.
+        // Cache raw DB attributes (pre-cast JSON strings) to avoid __PHP_Incomplete_Class
+        // on deserialization. forceFill(toArray()) would store already-decoded PHP arrays
+        // as raw values, causing the array cast to json_decode(array) → null.
+        // getAttributes() returns the raw JSON strings; setRawAttributes() restores them
+        // so that cast access (->fields, ->stages, etc.) works correctly on retrieval.
         $cached = Cache::remember("tenant_config:{$tenantId}", 300, function () use ($tenantId) {
-            return TenantConfig::where('tenant_id', $tenantId)->first()?->toArray();
+            return TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes();
         });
 
-        return $cached ? (new TenantConfig())->forceFill($cached) : null;
+        return $cached ? (new TenantConfig())->setRawAttributes($cached) : null;
     }
 
     private function configMeta(string $tenantId): array
