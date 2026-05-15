@@ -25,7 +25,7 @@ class PartnerThread extends Model
     protected $fillable = [
         'id', 'tenant_id', 'deal_id', 'partner_id', 'reseller_id',
         'last_message_at', 'last_message_preview',
-        'partner_unread', 'reseller_unread',
+        'partner_unread', 'reseller_unread', 'admin_unread', 'thread_type',
     ];
 
     protected $casts = [

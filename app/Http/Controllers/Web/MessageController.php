@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\MessageThread;
+use App\Models\Partner;
+use App\Models\PartnerMessage;
+use App\Models\PartnerThread;
 use App\Models\Reseller;
 use App\Models\ThreadMessage;
 use App\Services\Messaging\MessageReminderService;
@@ -345,6 +348,127 @@ class MessageController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => $msg, 'sent' => $sent]);
+    }
+
+    // ── Partner inbox (admin reads + replies) ────────────────────────────────
+
+    public function partnerThreads(string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $threads = PartnerThread::where('tenant_id', $tenantId)
+            ->with('partner:id,first_name,last_name,email')
+            ->orderByDesc('last_message_at')
+            ->get()
+            ->map(fn($t) => [
+                'id'             => $t->id,
+                'thread_type'    => $t->thread_type ?? 'deal',
+                'deal_id'        => $t->deal_id,
+                'partner_id'     => $t->partner_id,
+                'partner_name'   => $t->partner
+                    ? (trim(($t->partner->first_name ?? '') . ' ' . ($t->partner->last_name ?? '')) ?: $t->partner->email)
+                    : 'Partner',
+                'partner_email'  => $t->partner?->email ?? '',
+                'last_preview'   => $t->last_message_preview,
+                'last_at'        => $t->last_message_at?->diffForHumans(),
+                'admin_unread'   => $t->admin_unread ?? 0,
+            ]);
+
+        return response()->json($threads);
+    }
+
+    public function partnerThreadMessages(string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
+    {
+        $thread = PartnerThread::where('tenant_id', $tenantId)->findOrFail($threadId);
+
+        // Mark partner messages as read for admin
+        $thread->update(['admin_unread' => 0]);
+
+        PartnerMessage::where('thread_id', $threadId)
+            ->where('sender_type', 'partner')
+            ->where('is_read', false)
+            ->update(['is_read' => true, 'read_at' => now()]);
+
+        $partner = Partner::find($thread->partner_id);
+
+        $messages = PartnerMessage::where('thread_id', $threadId)
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn($m) => [
+                'id'              => $m->id,
+                'sender_type'     => $m->sender_type,
+                'sender_name'     => $m->sender_name,
+                'body'            => $m->body,
+                'created_at'      => $m->created_at?->diffForHumans() ?? 'just now',
+                'created_at_full' => $m->created_at?->format('M j, Y g:i A') ?? '',
+            ]);
+
+        return response()->json([
+            'thread'   => [
+                'id'           => $thread->id,
+                'thread_type'  => $thread->thread_type ?? 'deal',
+                'deal_id'      => $thread->deal_id,
+                'partner_id'   => $thread->partner_id,
+                'partner_name' => $partner
+                    ? (trim(($partner->first_name ?? '') . ' ' . ($partner->last_name ?? '')) ?: $partner->email)
+                    : 'Partner',
+            ],
+            'messages' => $messages,
+        ]);
+    }
+
+    public function replyToPartnerThread(Request $request, string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['body' => 'required|string|max:5000']);
+
+        $thread = PartnerThread::where('tenant_id', $tenantId)->findOrFail($threadId);
+
+        $senderName = $this->senderName();
+        $senderId   = (string) (Auth::guard('tenant')->id() ?? Auth::guard('web')->id());
+
+        $message = PartnerMessage::create([
+            'thread_id'   => $threadId,
+            'tenant_id'   => $tenantId,
+            'deal_id'     => $thread->deal_id,
+            'sender_type' => 'admin',
+            'sender_id'   => $senderId,
+            'sender_name' => $senderName,
+            'body'        => $request->body,
+            'is_read'     => false,
+        ]);
+
+        $thread->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => Str::limit($request->body, 80),
+            'partner_unread'       => DB::raw('partner_unread + 1'),
+        ]);
+
+        // Notify the partner
+        try {
+            $partner = Partner::find($thread->partner_id);
+            if ($partner) {
+                app(\App\Services\NotificationDispatchService::class)->dispatch(
+                    category:         'tenant_workspace',
+                    priority:         'normal',
+                    title:            'New message from your workspace',
+                    body:             $senderName . ' replied: "' . Str::limit($request->body, 80) . '"',
+                    notifiableType:   'partner',
+                    notifiableId:     (string) $partner->id,
+                    tenantId:         $tenantId,
+                    actionUrl:        url('/partner/messages'),
+                    actionLabel:      'View Message',
+                    deduplicationKey: 'partner_reply:' . $threadId . ':' . now()->format('YmdH'),
+                    metadata:         ['sender_name' => $senderName, 'thread_id' => $threadId],
+                );
+            }
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'id'              => $message->id,
+            'sender_type'     => $message->sender_type,
+            'sender_name'     => $message->sender_name,
+            'body'            => $message->body,
+            'created_at'      => 'just now',
+            'created_at_full' => now()->format('M j, Y g:i A'),
+        ]);
     }
 
     private function sendToReseller(string $tenantId, string $resellerId, string $body, string $senderName, string $senderId): void

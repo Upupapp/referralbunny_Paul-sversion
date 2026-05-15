@@ -35,6 +35,7 @@ if (request()->routeIs([
     'tenant.messages',
     'tenant.critical-actions',
     'tenant.notifications',
+    'tenant.resources', 'tenant.resources.*',
 ])) {
     $activeGroup = 'workspace';
 } elseif (request()->routeIs([
@@ -98,6 +99,11 @@ try {
 
 try {
     $msgBadge = (int) \Illuminate\Support\Facades\DB::table('message_threads')
+        ->where('tenant_id', $tenantId)
+        ->where('admin_unread', '>', 0)
+        ->count();
+    // Also count partner threads with unread messages for admin
+    $msgBadge += (int) \Illuminate\Support\Facades\DB::table('partner_threads')
         ->where('tenant_id', $tenantId)
         ->where('admin_unread', '>', 0)
         ->count();
@@ -314,6 +320,16 @@ $workspaceBadge += $criticalBadge;
                         {{ $msgBadge > 99 ? '99+' : $msgBadge }}
                     </span>
                 @endif
+            </a>
+
+            <a href="{{ route('tenant.resources', $tenantId) }}"
+               aria-current="{{ request()->routeIs('tenant.resources*') ? 'page' : 'false' }}"
+               @click="window.dispatchEvent(new CustomEvent('sidebar-close'))"
+               class="nav-child {{ request()->routeIs('tenant.resources*') ? 'nav-child-active' : '' }}">
+                <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                Resources
             </a>
 
             @if($isAdminMgr)

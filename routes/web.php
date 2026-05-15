@@ -203,9 +203,12 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
         Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
+        Route::post('/messages/send-direct',          [PartnerPortalController::class, 'sendDirectMessage'])->name('messages.send-direct')->middleware('throttle:30,1');
         Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index');
         Route::post('/deals/{dealId}/notes',          [PartnerPortalController::class, 'addNote'])->name('deals.notes')->middleware('throttle:30,1');
         Route::get('/commissions',                    [PartnerPortalController::class, 'commissions'])->name('commissions');
+        Route::get('/calendar',                       [PartnerPortalController::class, 'calendar'])->name('calendar');
+        Route::get('/calendar/events',                [PartnerPortalController::class, 'calendarEvents'])->name('calendar.events');
         Route::get('/forms',                          [PartnerPortalController::class, 'forms'])->name('forms');
         Route::get('/forms/{token}',                  [PartnerPortalController::class, 'formShow'])->name('forms.show');
         Route::post('/forms/{token}/submit',          [PartnerPortalController::class, 'formSubmit'])->name('forms.submit')->middleware('throttle:20,1');
@@ -255,6 +258,10 @@ Route::middleware(['auth:tenant,reseller,web'])
         Route::get('/threads/{threadId}/messages', [MessageController::class, 'fetchMessages'])->name('thread.messages');
         Route::post('/threads/{threadId}',         [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
         Route::post('/broadcast',                  [MessageController::class, 'broadcastMessage'])->name('broadcast')->middleware('throttle:10,1');
+        // Partner inbox — admin reads and replies to partner threads
+        Route::get('/partner-threads',                    [MessageController::class, 'partnerThreads'])->name('partner-threads');
+        Route::get('/partner-threads/{threadId}',         [MessageController::class, 'partnerThreadMessages'])->name('partner-thread');
+        Route::post('/partner-threads/{threadId}/reply',  [MessageController::class, 'replyToPartnerThread'])->name('partner-reply')->middleware('throttle:60,1');
     });
 
 // ── Google Calendar OAuth callback — must be authenticated; Google preserves session cookies ──
@@ -352,6 +359,18 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
 
     // ── Integrations ──────────────────────────────────────────────
     Route::get('/integrations',                    [\App\Http\Controllers\Web\GoogleCalendarController::class, 'index'])->name('integrations');
+
+    // ── Resources (Google Drive-style file manager) ───────────────────
+    Route::get('/resources',                           [\App\Http\Controllers\Web\TenantResourceController::class, 'index'])->name('resources');
+    Route::get('/resources/folder/{folderId}',         [\App\Http\Controllers\Web\TenantResourceController::class, 'index'])->name('resources.folder');
+    Route::post('/resources/folders',                  [\App\Http\Controllers\Web\TenantResourceController::class, 'createFolder'])->name('resources.folders.create');
+    Route::patch('/resources/folders/{folderId}',      [\App\Http\Controllers\Web\TenantResourceController::class, 'renameFolder'])->name('resources.folders.rename');
+    Route::delete('/resources/folders/{folderId}',     [\App\Http\Controllers\Web\TenantResourceController::class, 'deleteFolder'])->name('resources.folders.delete');
+    Route::post('/resources/upload',                   [\App\Http\Controllers\Web\TenantResourceController::class, 'upload'])->name('resources.upload')->middleware('throttle:30,1');
+    Route::patch('/resources/files/{fileId}',          [\App\Http\Controllers\Web\TenantResourceController::class, 'renameFile'])->name('resources.files.rename');
+    Route::patch('/resources/files/{fileId}/move',     [\App\Http\Controllers\Web\TenantResourceController::class, 'moveFile'])->name('resources.files.move');
+    Route::delete('/resources/files/{fileId}',         [\App\Http\Controllers\Web\TenantResourceController::class, 'deleteFile'])->name('resources.files.delete');
+    Route::get('/resources/files/{fileId}/download',   [\App\Http\Controllers\Web\TenantResourceController::class, 'download'])->name('resources.files.download');
     Route::get('/google-calendar/connect',         [\App\Http\Controllers\Web\GoogleCalendarController::class, 'redirect'])->name('google.calendar.connect');
     Route::delete('/google-calendar/disconnect',   [\App\Http\Controllers\Web\GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
     Route::post('/google-calendar/sync-now',       [\App\Http\Controllers\Web\GoogleCalendarController::class, 'syncNow'])->name('google.calendar.sync-now');

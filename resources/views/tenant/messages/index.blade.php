@@ -70,20 +70,35 @@
 
             {{-- Tabs --}}
             <div class="flex border-b border-gray-100 shrink-0">
+                <button @click="setInbox('referrers')"
+                        :class="inbox==='referrers' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
+                        class="flex-1 text-[11px] py-2.5 transition-colors">Referrers</button>
+                <button @click="setInbox('partners')"
+                        :class="inbox==='partners' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
+                        class="flex-1 text-[11px] py-2.5 transition-colors relative">
+                    Partners
+                    <span x-show="partnerTotalUnread > 0"
+                          class="absolute top-1.5 right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-blue-500 text-white text-[8px] font-bold flex items-center justify-center"
+                          x-text="partnerTotalUnread > 9 ? '9+' : partnerTotalUnread"></span>
+                </button>
+            </div>
+
+            {{-- Sub-tabs (only for referrers inbox) --}}
+            <div x-show="inbox==='referrers'" class="flex border-b border-gray-100 shrink-0">
                 <button @click="setTab('all')"
                         :class="activeTab==='all' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
-                        class="flex-1 text-[11px] py-2.5 transition-colors">All</button>
+                        class="flex-1 text-[10px] py-2 transition-colors">All</button>
                 <button @click="setTab('needs_reply')"
                         :class="activeTab==='needs_reply' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
-                        class="flex-1 text-[11px] py-2.5 transition-colors relative">
+                        class="flex-1 text-[10px] py-2 transition-colors relative">
                     Needs Reply
                     <span x-show="needsReplyCount > 0"
-                          class="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-orange-400 text-white text-[8px] font-bold flex items-center justify-center"
+                          class="absolute top-1 right-1 w-3 h-3 rounded-full bg-orange-400 text-white text-[7px] font-bold flex items-center justify-center"
                           x-text="needsReplyCount > 9 ? '9+' : needsReplyCount"></span>
                 </button>
                 <button @click="setTab('unread')"
                         :class="activeTab==='unread' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
-                        class="flex-1 text-[11px] py-2.5 transition-colors">Unread</button>
+                        class="flex-1 text-[10px] py-2 transition-colors">Unread</button>
             </div>
 
             {{-- Search --}}
@@ -126,8 +141,8 @@
                     </div>
                 </template>
 
-                {{-- Empty state --}}
-                <template x-if="!loading && !loadError && filteredThreads.length === 0">
+                {{-- Referrers: empty state --}}
+                <template x-if="inbox==='referrers' && !loading && !loadError && filteredThreads.length === 0">
                     <div class="flex flex-col items-center justify-center py-10 px-4 text-center">
                         <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mb-3 opacity-60">
                         <p class="text-xs font-medium text-gray-500" x-show="search">No results for "<span x-text="search"></span>"</p>
@@ -141,22 +156,20 @@
                     </div>
                 </template>
 
-                {{-- Thread list --}}
-                <template x-if="!loading && !loadError">
+                {{-- Referrers: thread list --}}
+                <template x-if="inbox==='referrers' && !loading && !loadError">
                     <div>
                         <template x-for="thread in filteredThreads" :key="thread.id">
                             <button
                                 @click="selectThread(thread)"
                                 class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70"
-                                :class="activeThread?.id === thread.id
+                                :class="activeThread?.id === thread.id && !activePartnerThread
                                     ? 'bg-[#F5F3FF] border-l-[3px] border-l-[#7B61FF]'
                                     : 'border-l-[3px] border-l-transparent'"
                             >
                                 <div class="flex items-center gap-2.5">
-                                    {{-- Avatar --}}
                                     <div class="w-8 h-8 rounded-full bg-[#EDE9FE] flex items-center justify-center shrink-0 text-[#7B61FF] font-bold text-xs"
                                          x-text="(thread.reseller_name || '?').charAt(0).toUpperCase()"></div>
-                                    {{-- Meta --}}
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-center justify-between gap-1">
                                             <span class="text-xs truncate"
@@ -183,6 +196,66 @@
                     </div>
                 </template>
 
+                {{-- Partners: loading --}}
+                <template x-if="inbox==='partners' && partnerLoading">
+                    <div class="flex flex-col items-center justify-center py-10 gap-3 text-gray-400">
+                        <svg class="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                        </svg>
+                        <span class="text-xs">Loading partner messages…</span>
+                    </div>
+                </template>
+
+                {{-- Partners: empty --}}
+                <template x-if="inbox==='partners' && !partnerLoading && filteredPartnerThreads.length === 0">
+                    <div class="flex flex-col items-center justify-center py-10 px-4 text-center">
+                        <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mb-3 opacity-60">
+                        <p class="text-xs font-medium text-gray-500">No partner messages yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Partners can message you via their portal.</p>
+                    </div>
+                </template>
+
+                {{-- Partners: thread list --}}
+                <template x-if="inbox==='partners' && !partnerLoading && filteredPartnerThreads.length > 0">
+                    <div>
+                        <template x-for="thread in filteredPartnerThreads" :key="thread.id">
+                            <button
+                                @click="selectPartnerThread(thread)"
+                                class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70"
+                                :class="activePartnerThread?.id === thread.id
+                                    ? 'bg-blue-50 border-l-[3px] border-l-blue-500'
+                                    : 'border-l-[3px] border-l-transparent'"
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 font-bold text-xs"
+                                         x-text="(thread.partner_name || '?').charAt(0).toUpperCase()"></div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center justify-between gap-1">
+                                            <span class="text-xs truncate"
+                                                  :class="thread.admin_unread > 0 ? 'font-bold text-[#1E1B4B]' : 'font-semibold text-[#1E1B4B]'"
+                                                  x-text="thread.partner_name || 'Partner'"></span>
+                                            <span class="text-[9px] text-gray-400 shrink-0 ml-1" x-text="thread.last_at ?? ''"></span>
+                                        </div>
+                                        <div class="flex items-center justify-between gap-1 mt-0.5">
+                                            <p class="text-[11px] truncate flex-1"
+                                               :class="thread.admin_unread > 0 ? 'text-[#1E1B4B] font-medium' : 'text-gray-400'"
+                                               x-text="thread.last_preview || 'No messages yet'"></p>
+                                            <span x-show="thread.admin_unread > 0"
+                                                  class="shrink-0 min-w-[1rem] h-4 px-1 rounded-full bg-blue-500 flex items-center justify-center ml-1">
+                                                <span class="text-[8px] font-bold text-white"
+                                                      x-text="thread.admin_unread > 9 ? '9+' : thread.admin_unread"></span>
+                                            </span>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 mt-0.5 truncate"
+                                           x-text="thread.thread_type === 'direct' ? 'Direct message' : 'Deal thread'"></p>
+                                    </div>
+                                </div>
+                            </button>
+                        </template>
+                    </div>
+                </template>
+
             </div>
         </div>
 
@@ -191,7 +264,7 @@
              class="flex-1 flex-col min-w-0">
 
             {{-- No thread selected --}}
-            <template x-if="!activeThread">
+            <template x-if="!activeThread && !activePartnerThread">
                 <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
                     <img src="/images/mascots/r-bunny-helper-question.webp" alt="" class="w-16 h-16 object-contain mb-3 opacity-70">
                     <h3 class="text-[#1E1B4B] font-semibold text-sm">Select a conversation</h3>
@@ -206,8 +279,8 @@
                 </div>
             </template>
 
-            {{-- Active thread --}}
-            <template x-if="activeThread">
+            {{-- Active referrer thread --}}
+            <template x-if="activeThread && !activePartnerThread">
                 <div class="flex flex-col h-full min-h-0">
 
                     {{-- Thread header --}}
@@ -230,7 +303,7 @@
                         </span>
                     </div>
 
-                    {{-- Reminder banner (R Bunny AI Dialog) --}}
+                    {{-- Reminder banner --}}
                     <template x-if="activeThreadReminder">
                         <div class="mx-3 mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 shrink-0">
                             <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,8 +316,6 @@
 
                     {{-- Messages area --}}
                     <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0" x-ref="messageArea">
-
-                        {{-- Loading messages --}}
                         <template x-if="loadingMessages">
                             <div class="flex items-center justify-center gap-2 py-8 text-gray-400">
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -254,8 +325,6 @@
                                 <span class="text-xs">Loading messages…</span>
                             </div>
                         </template>
-
-                        {{-- Message load error --}}
                         <template x-if="!loadingMessages && messageLoadError">
                             <div class="flex flex-col items-center justify-center py-8 text-center">
                                 <img src="/images/mascots/r-bunny-warning-error.webp" alt="" class="w-12 h-12 object-contain mb-2 opacity-80">
@@ -263,16 +332,12 @@
                                 <button @click="retryLoadMessages()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
                             </div>
                         </template>
-
-                        {{-- Empty thread --}}
                         <template x-if="!loadingMessages && !messageLoadError && activeMessages.length === 0">
                             <div class="flex flex-col items-center justify-center py-10 text-center">
                                 <img src="/images/mascots/r-bunny-waving.webp" alt="" class="w-12 h-12 object-contain mb-2 opacity-70">
                                 <p class="text-xs text-gray-400">No messages yet — send the first one below.</p>
                             </div>
                         </template>
-
-                        {{-- Messages --}}
                         <template x-for="msg in activeMessages" :key="msg.id">
                             <div :class="msg.sender_type === 'admin' ? 'flex justify-end' : 'flex justify-start'">
                                 <div :class="msg.sender_type === 'admin'
@@ -287,10 +352,8 @@
                                 </div>
                             </div>
                         </template>
-
                     </div>
 
-                    {{-- Send error --}}
                     <div x-show="sendError"
                          class="mx-3 mb-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2 shrink-0">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,12 +363,9 @@
                         <button @click="sendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
                     </div>
 
-                    {{-- Compose --}}
                     <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
                         <form @submit.prevent="sendReply()" class="flex gap-2 items-end">
-                            <textarea x-model="replyBody"
-                                      placeholder="Type a message…"
-                                      rows="1"
+                            <textarea x-model="replyBody" placeholder="Type a message…" rows="1"
                                       class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-[#7B61FF]/20 focus:border-[#7B61FF] transition-all"
                                       style="min-height:40px; max-height:120px;"
                                       @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
@@ -314,8 +374,7 @@
                             <button type="submit"
                                     class="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
                                     style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
-                                    :disabled="!replyBody.trim() || sending"
-                                    title="Send message">
+                                    :disabled="!replyBody.trim() || sending">
                                 <svg x-show="!sending" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
                                 </svg>
@@ -327,7 +386,99 @@
                         </form>
                         <p class="text-[9px] text-gray-400 mt-1.5 pl-1 hidden sm:block">Enter to send · Shift+Enter for new line</p>
                     </div>
+                </div>
+            </template>
 
+            {{-- Active partner thread --}}
+            <template x-if="activePartnerThread">
+                <div class="flex flex-col h-full min-h-0">
+
+                    {{-- Partner thread header --}}
+                    <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+                        <button @click="mobilePane = 'list'; activePartnerThread = null"
+                                class="lg:hidden p-1.5 -ml-0.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs shrink-0"
+                             x-text="(activePartnerThread.partner_name || '?').charAt(0).toUpperCase()"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm text-[#1E1B4B] truncate" x-text="activePartnerThread.partner_name || 'Partner'"></p>
+                            <p class="text-[10px] text-gray-400 truncate"
+                               x-text="activePartnerThread.thread_type === 'direct' ? 'Direct message · Partner' : 'Deal conversation · Partner'"></p>
+                        </div>
+                        <span class="hidden sm:inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-500 rounded-full px-2.5 py-1 shrink-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                            Partner
+                        </span>
+                    </div>
+
+                    {{-- Partner messages area --}}
+                    <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0" x-ref="partnerMessageArea">
+                        <template x-if="loadingPartnerMessages">
+                            <div class="flex items-center justify-center gap-2 py-8 text-gray-400">
+                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                                </svg>
+                                <span class="text-xs">Loading messages…</span>
+                            </div>
+                        </template>
+                        <template x-if="!loadingPartnerMessages && partnerMessages.length === 0">
+                            <div class="flex flex-col items-center justify-center py-10 text-center">
+                                <img src="/images/mascots/r-bunny-waving.webp" alt="" class="w-12 h-12 object-contain mb-2 opacity-70">
+                                <p class="text-xs text-gray-400">No messages yet — send the first one below.</p>
+                            </div>
+                        </template>
+                        <template x-for="msg in partnerMessages" :key="msg.id">
+                            <div :class="msg.sender_type === 'admin' ? 'flex justify-end' : 'flex justify-start'">
+                                <div :class="msg.sender_type === 'admin'
+                                        ? 'text-white rounded-2xl rounded-br-sm'
+                                        : 'bg-blue-50 text-[#1E1B4B] rounded-2xl rounded-bl-sm'"
+                                     :style="msg.sender_type === 'admin' ? 'background:linear-gradient(135deg,#7B61FF,#9B8BFF)' : ''"
+                                     class="max-w-[78%] sm:max-w-[70%] px-3.5 sm:px-4 py-2.5">
+                                    <p class="text-[10px] font-semibold mb-1"
+                                       :class="msg.sender_type === 'admin' ? 'text-white/70' : 'text-blue-600'"
+                                       x-text="msg.sender_name"></p>
+                                    <p class="text-sm leading-relaxed whitespace-pre-wrap break-words" x-text="msg.body"></p>
+                                    <p :class="msg.sender_type === 'admin' ? 'text-white/50' : 'text-gray-400'"
+                                       class="text-[10px] mt-1 text-right" :title="msg.created_at_full"
+                                       x-text="msg.created_at"></p>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="partnerSendError"
+                         class="mx-3 mb-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2 shrink-0">
+                        <span x-text="partnerSendError"></span>
+                        <button @click="partnerSendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
+                    </div>
+
+                    <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
+                        <form @submit.prevent="sendPartnerReply()" class="flex gap-2 items-end">
+                            <textarea x-model="partnerReplyBody" placeholder="Reply to partner…" rows="1"
+                                      class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 sm:px-3.5 py-2.5 resize-none outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                      style="min-height:40px; max-height:120px;"
+                                      @input="$el.style.height='40px'; $el.style.height=$el.scrollHeight+'px'"
+                                      @keydown.enter.prevent.exact="sendPartnerReply()"
+                                      @keydown.enter.shift.prevent="partnerReplyBody += '\n'"></textarea>
+                            <button type="submit"
+                                    class="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style="background:linear-gradient(135deg,#3B82F6,#60A5FA)"
+                                    :disabled="!partnerReplyBody.trim() || partnerSending">
+                                <svg x-show="!partnerSending" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                                <svg x-show="partnerSending" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>
+                                </svg>
+                            </button>
+                        </form>
+                        <p class="text-[9px] text-gray-400 mt-1.5 pl-1 hidden sm:block">Enter to send · Shift+Enter for new line</p>
+                    </div>
                 </div>
             </template>
         </div>
@@ -499,6 +650,16 @@ function messaging() {
         sendError:            null,
         composeError:         null,
         _retryThread:         null,
+        // Partner inbox state
+        inbox:                   'referrers',
+        partnerThreads:          [],
+        partnerLoading:          false,
+        activePartnerThread:     null,
+        partnerMessages:         [],
+        loadingPartnerMessages:  false,
+        partnerReplyBody:        '',
+        partnerSending:          false,
+        partnerSendError:        null,
 
         get filteredThreads() {
             const q    = this.search.toLowerCase().trim();
@@ -513,26 +674,133 @@ function messaging() {
             );
         },
 
+        get filteredPartnerThreads() {
+            const q = this.search.toLowerCase().trim();
+            if (!q) return this.partnerThreads;
+            return this.partnerThreads.filter(t =>
+                (t.partner_name  ?? '').toLowerCase().includes(q) ||
+                (t.partner_email ?? '').toLowerCase().includes(q) ||
+                (t.last_preview  ?? '').toLowerCase().includes(q)
+            );
+        },
+
         get totalUnread() {
             return this.threads.reduce((s, t) => s + (t.admin_unread ?? 0), 0);
         },
 
+        get partnerTotalUnread() {
+            return this.partnerThreads.reduce((s, t) => s + (t.admin_unread ?? 0), 0);
+        },
+
         async init() {
             window.__messaging = this;
-            // Load recipient list built in the separate script block
             this._allRecipients = window.__allRecipients ?? [];
-            await this.loadThreads();
-            await this.loadNeedsReplyCount();
+            // Check URL for tab param
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('tab') === 'partners') {
+                this.inbox = 'partners';
+                await this.loadPartnerThreads();
+                const threadId = urlParams.get('thread');
+                if (threadId) {
+                    const t = this.partnerThreads.find(x => x.id === threadId);
+                    if (t) this.selectPartnerThread(t);
+                }
+            } else {
+                await this.loadThreads();
+                await this.loadNeedsReplyCount();
+            }
         },
 
         _allRecipients: [],
+
+        async setInbox(mode) {
+            this.inbox = mode;
+            this.activeThread        = null;
+            this.activePartnerThread = null;
+            this.mobilePane          = 'list';
+            if (mode === 'partners') {
+                await this.loadPartnerThreads();
+            } else {
+                await this.loadThreads(false);
+            }
+        },
+
+        async loadPartnerThreads() {
+            this.partnerLoading = true;
+            try {
+                const r = await fetch(`${BASE}/partner-threads`, { headers: hdrs() });
+                if (!r.ok) throw new Error();
+                this.partnerThreads = await r.json();
+            } catch(e) {
+                this.globalError = 'Failed to load partner messages. Please refresh.';
+            } finally {
+                this.partnerLoading = false;
+            }
+        },
+
+        async selectPartnerThread(thread) {
+            this.activePartnerThread     = { ...thread };
+            this.activeThread            = null;
+            this.partnerMessages         = [];
+            this.loadingPartnerMessages  = true;
+            this.mobilePane              = 'chat';
+            try {
+                const r = await fetch(`${BASE}/partner-threads/${thread.id}`, { headers: hdrs() });
+                if (!r.ok) throw new Error();
+                const d = await r.json();
+                this.activePartnerThread = { ...this.activePartnerThread, ...d.thread };
+                this.partnerMessages     = d.messages ?? [];
+                const t = this.partnerThreads.find(x => x.id === thread.id);
+                if (t) t.admin_unread = 0;
+            } catch(e) {
+                this.partnerSendError = 'Failed to load messages.';
+            } finally {
+                this.loadingPartnerMessages = false;
+                this.$nextTick(() => {
+                    const el = this.$refs.partnerMessageArea;
+                    if (el) el.scrollTop = el.scrollHeight;
+                });
+            }
+        },
+
+        async sendPartnerReply() {
+            if (!this.partnerReplyBody.trim() || this.partnerSending || !this.activePartnerThread) return;
+            this.partnerSending   = true;
+            this.partnerSendError = null;
+            const body = this.partnerReplyBody;
+            this.partnerReplyBody = '';
+            try {
+                const r = await fetch(`${BASE}/partner-threads/${this.activePartnerThread.id}/reply`, {
+                    method: 'POST', headers: postHdrs(),
+                    body: JSON.stringify({ body }),
+                });
+                if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    throw new Error(d.message || 'Failed to send');
+                }
+                const msg = await r.json();
+                this.partnerMessages.push(msg);
+                const t = this.partnerThreads.find(x => x.id === this.activePartnerThread.id);
+                if (t) t.last_preview = body.substring(0, 60);
+                this.$nextTick(() => {
+                    const el = this.$refs.partnerMessageArea;
+                    if (el) el.scrollTop = el.scrollHeight;
+                    this.$el.querySelector('textarea[x-model="partnerReplyBody"]')?.dispatchEvent(new Event('input'));
+                });
+            } catch(e) {
+                this.partnerReplyBody = body;
+                this.partnerSendError = e.message || 'Failed to send. Please try again.';
+            } finally {
+                this.partnerSending = false;
+            }
+        },
 
         setTab(tab) {
             this.activeTab = tab;
             if (tab === 'needs_reply') {
                 this.loadNeedsReply();
             } else {
-                this.loadThreads(false); // don't reset activeTab
+                this.loadThreads(false);
             }
         },
 

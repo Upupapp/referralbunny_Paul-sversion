@@ -356,12 +356,15 @@ class PartnerPortalController extends Controller
             ->orderByDesc('last_message_at')
             ->get();
 
+        // Separate deal threads from direct (admin) threads
+        $dealThreads   = $threads->filter(fn($t) => !is_null($t->deal_id));
+        $directThreads = $threads->filter(fn($t) => is_null($t->deal_id));
+
         // If deal_id param is provided and no thread exists yet, pass pending deal context
-        // so the messages view can show a compose area for the first message.
         $pendingDeal = null;
         $dealId = $request->query('deal_id');
         if ($dealId && in_array($dealId, $this->authorizedDealIds())) {
-            $hasThread = $threads->contains('deal_id', $dealId);
+            $hasThread = $dealThreads->contains('deal_id', $dealId);
             if (!$hasThread) {
                 $lead = Lead::find($dealId);
                 if ($lead) {
@@ -370,7 +373,7 @@ class PartnerPortalController extends Controller
             }
         }
 
-        return view('partner.messages', compact('partner', 'threads', 'pendingDeal'));
+        return view('partner.messages', compact('partner', 'threads', 'dealThreads', 'directThreads', 'pendingDeal'));
     }
 
     public function threadMessages(string $threadId)
@@ -379,16 +382,16 @@ class PartnerPortalController extends Controller
 
         $thread = PartnerThread::findOrFail($threadId);
 
-        // Two-factor authorization: partner owns the thread AND still has deal access.
-        // Prevents IDOR where a removed partner could read thread messages.
+        // Partner must own the thread — prevents IDOR
         if ((string) $thread->partner_id !== (string) $partner->id) {
             abort(403, 'You do not have access to this thread.');
         }
-        if ($thread->deal_id && !in_array($thread->deal_id, $this->authorizedDealIds())) {
+        // Tenant isolation
+        if ((string) $thread->tenant_id !== (string) $partner->tenant_id) {
             abort(403, 'You do not have access to this thread.');
         }
-        // Tenant isolation — thread must belong to the same tenant as the partner
-        if ((string) $thread->tenant_id !== (string) $partner->tenant_id) {
+        // Deal threads: verify partner still has deal access
+        if ($thread->deal_id && !in_array($thread->deal_id, $this->authorizedDealIds())) {
             abort(403, 'You do not have access to this thread.');
         }
 
@@ -526,6 +529,79 @@ class PartnerPortalController extends Controller
         ]);
     }
 
+    // ── Send direct message to admin (no deal context) ──────────────────────
+
+    public function sendDirectMessage(Request $request)
+    {
+        $partner = $this->partner();
+
+        $data = $request->validate([
+            'body' => 'required|string|max:5000',
+        ]);
+
+        $tenantId    = $partner->tenant_id;
+        $partnerName = $partner->full_name ?: $partner->email;
+
+        // Get or create the direct thread for this partner
+        $thread = PartnerThread::firstOrCreate(
+            [
+                'partner_id' => $partner->id,
+                'tenant_id'  => $tenantId,
+                'deal_id'    => null,
+            ],
+            [
+                'reseller_id' => null,
+                'thread_type' => 'direct',
+            ]
+        );
+
+        $preview = mb_substr($data['body'], 0, 100);
+
+        $message = PartnerMessage::create([
+            'thread_id'   => $thread->id,
+            'tenant_id'   => $tenantId,
+            'deal_id'     => null,
+            'sender_type' => 'partner',
+            'sender_id'   => $partner->id,
+            'sender_name' => $partnerName,
+            'body'        => $data['body'],
+            'is_read'     => false,
+        ]);
+
+        $thread->update([
+            'last_message_at'      => now(),
+            'last_message_preview' => $preview,
+            'admin_unread'         => $thread->admin_unread + 1,
+        ]);
+
+        // Notify tenant admins
+        try {
+            $msgSnippet = '"' . \Illuminate\Support\Str::limit($data['body'], 80) . '"';
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'tenant_workspace',
+                priority:     'normal',
+                title:        'Message from Partner ' . $partnerName,
+                body:         $partnerName . ' sent you a direct message: ' . $msgSnippet,
+                actionUrl:    url("/tenant/{$tenantId}/messages?tab=partners&thread={$thread->id}"),
+                actionLabel:  'View Message',
+                dedupeSuffix: 'partner_direct:' . $thread->id . ':' . now()->format('YmdH'),
+                metadata:     ['sender_name' => $partnerName, 'thread_id' => $thread->id],
+            );
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'thread_id' => $thread->id,
+            'message'   => [
+                'id'          => $message->id,
+                'sender_type' => $message->sender_type,
+                'sender_name' => $message->sender_name,
+                'body'        => $message->body,
+                'created_ago' => 'just now',
+            ],
+        ]);
+    }
+
     // ── My Commissions ──────────────────────────────────────────────────────
 
     public function commissions()
@@ -575,5 +651,70 @@ class PartnerPortalController extends Controller
         return view('partner.commissions', compact(
             'partner', 'commissions', 'totalProvisional', 'totalLocked', 'totalPaid', 'totalAll'
         ));
+    }
+
+    // ── Calendar ─────────────────────────────────────────────────────────────
+
+    public function calendar()
+    {
+        $partner = $this->partner();
+        return view('partner.calendar', compact('partner'));
+    }
+
+    public function calendarEvents(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+    {
+        $partner  = $this->partner();
+        $dealIds  = $this->authorizedDealIds();
+        $tz       = config('app.timezone', 'UTC');
+
+        try {
+            $from = \Illuminate\Support\Carbon::parse($request->query('from', now($tz)->startOfMonth()->toDateString()), $tz)->startOfDay();
+            $to   = \Illuminate\Support\Carbon::parse($request->query('to',   now($tz)->endOfMonth()->toDateString()),   $tz)->endOfDay();
+        } catch (\Throwable) {
+            return response()->json(['error' => 'Invalid date range.'], 400);
+        }
+
+        $events = collect();
+
+        // Deal expiry events from partner's associated deals
+        if (!empty($dealIds)) {
+            $today = \Illuminate\Support\Carbon::today($tz);
+
+            \Illuminate\Support\Facades\DB::table('leads')
+                ->whereIn('id', $dealIds)
+                ->where('tenant_id', $partner->tenant_id)
+                ->whereIn('status', ['active', 'expiring'])
+                ->whereNotNull('days_left')
+                ->where('days_left', '>=', 0)
+                ->whereNull('deleted_at')
+                ->select('id', 'name', 'days_left', 'stage', 'status', 'reseller_name')
+                ->get()
+                ->each(function ($deal) use ($from, $to, $partner, $today, &$events) {
+                    $expiryDate = $today->copy()->addDays((int) $deal->days_left);
+                    if (!$expiryDate->between($from, $to)) return;
+                    $daysLeft = (int) $deal->days_left;
+                    $events->push([
+                        'id'        => 'deal-' . $deal->id,
+                        'entity_id' => $deal->id,
+                        'type'      => 'deal',
+                        'label'     => 'Deal Expiry',
+                        'title'     => $deal->name,
+                        'date'      => $expiryDate->toDateString(),
+                        'status'    => $deal->status,
+                        'priority'  => $daysLeft <= 3 ? 'urgent' : ($daysLeft <= 7 ? 'high' : 'medium'),
+                        'done'      => false,
+                        'color'     => $daysLeft <= 3 ? 'red' : ($daysLeft <= 7 ? 'orange' : 'yellow'),
+                        'days_left' => $daysLeft,
+                        'referrer'  => $deal->reseller_name,
+                        'stage'     => ucwords(str_replace('_', ' ', $deal->stage ?? '')),
+                        'url'       => "/partner/deals/{$deal->id}",
+                    ]);
+                });
+        }
+
+        $sorted  = $events->sortBy('date')->values();
+        $grouped = $sorted->groupBy('date')->map(fn($i) => $i->values())->all();
+
+        return response()->json(['events' => $sorted, 'grouped' => $grouped]);
     }
 }

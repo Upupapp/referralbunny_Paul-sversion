@@ -380,10 +380,10 @@ function rbCalendar(tenantId) {
                     method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf,'X-Requested-With':'XMLHttpRequest' },
                     body: JSON.stringify({
-                        title:       this.newTaskTitle.trim(),
-                        priority:    this.newTaskPriority,
-                        due_at:      this.selectedDay,
-                        assignee_ids: [],   // assigns to self (handled server-side for self-assign)
+                        title:        this.newTaskTitle.trim(),
+                        priority:     this.newTaskPriority,
+                        due_at:       this.selectedDay,
+                        assignee_ids: ['me'],  // 'me' triggers self-assign in TaskController
                     }),
                 });
                 if (!res.ok) {
