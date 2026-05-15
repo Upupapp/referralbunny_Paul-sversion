@@ -194,6 +194,7 @@ class ResellerPortalController extends Controller
     public function requestForms($tenantId)
     {
         $reseller = $this->reseller();
+        if ($reseller->tenant_id !== $tenantId) abort(403);
         $tenant   = Tenant::findOrFail($tenantId);
 
         $forms = collect();

@@ -330,31 +330,20 @@ class PartnerPortalController extends Controller
             $payload[$field->label ?? $field->id] = $data['fields'][$field->id] ?? null;
         }
 
-        \App\Models\RequestFormSubmission::create([
-            'tenant_id'        => $partner->tenant_id,
-            'request_form_id'  => $form->id,
-            'submitter_name'   => $partner->full_name ?: $partner->email,
-            'submitter_email'  => $partner->email,
-            'request_for'      => 'partner',
-            'notes'            => $data['notes'] ?? null,
-            'payload'          => $payload,
-            'status'           => 'pending',
-            'submitted_at'     => now(),
-        ]);
-
-        // Notify tenant admins
-        try {
-            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $partner->tenant_id,
-                category:     'tenant_workspace',
-                priority:     'normal',
-                title:        'New form submission from Partner',
-                body:         ($partner->full_name ?: $partner->email) . ' submitted "' . $form->title . '".',
-                actionUrl:    url("/tenant/{$partner->tenant_id}/request-forms"),
-                actionLabel:  'View Submissions',
-                dedupeSuffix: 'partner_form:' . $form->id . ':' . $partner->id . ':' . now()->format('Ymd'),
-            );
-        } catch (\Throwable) {}
+        // Route through RequestFormSubmissionService so tasks and notifications are created correctly
+        app(\App\Services\RequestFormSubmissionService::class)->process(
+            $form,
+            [
+                'submitter_name'  => $partner->full_name ?: $partner->email,
+                'submitter_email' => $partner->email,
+                'request_for'     => 'partner',
+                'notes'           => $data['notes'] ?? null,
+                'request_to'      => [],
+                'payload'         => $payload,
+            ],
+            hash('sha256', $request->ip() ?? ''),
+            hash('sha256', $request->userAgent() ?? ''),
+        );
 
         return redirect()->route('partner.forms')
             ->with('success', 'Your submission has been sent! The team will get back to you shortly.');

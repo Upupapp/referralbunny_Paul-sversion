@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -31,7 +32,12 @@ class CriticalActionService
      */
     public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
     {
-        $all = $this->forTenant($tenantId, ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'limit_per_source' => 5]);
+        $opts = ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'limit_per_source' => 5];
+        $all  = Cache::remember(
+            "ca_dashboard:{$tenantId}:" . md5(serialize($opts)),
+            90,
+            fn() => $this->forTenant($tenantId, $opts)
+        );
         // Dashboard widget: most recent first, severity as tiebreaker
         usort($all, fn($a, $b) =>
             $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp

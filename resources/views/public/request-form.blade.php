@@ -129,6 +129,29 @@ textarea{resize:vertical;min-height:100px}
                             </label>
                             @endforeach
                         </div>
+
+                    @elseif($field->field_type === 'checkbox')
+                        <div class="checkbox-group">
+                            @foreach($field->options ?? [] as $opt)
+                            @php $cbKey = $key . '[]'; $cbChecked = in_array($opt, (array) old($key, [])); @endphp
+                            <label class="checkbox-label {{ $cbChecked ? 'checked' : '' }}">
+                                <input type="checkbox" name="{{ $cbKey }}" value="{{ $opt }}"
+                                       {{ $cbChecked ? 'checked' : '' }}
+                                       onchange="this.closest('.checkbox-label').classList.toggle('checked', this.checked)">
+                                <span style="font-size:14px;color:#1E1B4B">{{ $opt }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+
+                    @elseif($field->field_type === 'multi_select')
+                        <select id="{{ $key }}" name="{{ $key }}[]" multiple
+                                {{ $field->is_required ? 'required' : '' }}
+                                style="height:auto;min-height:80px">
+                            @foreach($field->options ?? [] as $opt)
+                            <option value="{{ $opt }}" {{ in_array($opt, (array) old($key, [])) ? 'selected' : '' }}>{{ $opt }}</option>
+                            @endforeach
+                        </select>
+                        <p class="helper" style="margin-top:4px">Hold Ctrl / Cmd to select multiple options.</p>
                     @endif
 
                     @if($field->helper_text)

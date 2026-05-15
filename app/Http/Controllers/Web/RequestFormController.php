@@ -346,10 +346,12 @@ class RequestFormController extends Controller
 
         $order = $request->validate(['ids' => 'required|array', 'ids.*' => 'required|string'])['ids'];
 
-        foreach ($order as $idx => $fieldId) {
-            RequestFormField::where('request_form_id', $form->id)->where('id', $fieldId)
-                ->update(['sort_order' => $idx]);
-        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order, $form) {
+            foreach ($order as $idx => $fieldId) {
+                RequestFormField::where('request_form_id', $form->id)->where('id', $fieldId)
+                    ->update(['sort_order' => $idx]);
+            }
+        });
 
         return response()->json(['reordered' => true]);
     }
@@ -473,8 +475,11 @@ class RequestFormController extends Controller
             // Use a raw subquery with explicit CAST to avoid PostgreSQL's
             // "operator does not exist: uuid = character varying" error.
             // tasks.source_id is varchar; request_form_submissions.id is uuid.
-            if (\Illuminate\Support\Facades\Schema::hasTable('tasks') &&
-                \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'source_type')) {
+            static $hasTasks = null;
+            $hasTasks ??= \Illuminate\Support\Facades\Schema::hasTable('tasks')
+                       && \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'source_type');
+
+            if ($hasTasks) {
                 $submissionsQuery->selectRaw(
                     '"request_form_submissions".*, ' .
                     // Total tasks linked to this submission

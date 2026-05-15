@@ -147,7 +147,11 @@ class GenerateExportJob implements ShouldQueue
         if (!empty($scope['from']))   $query->where('created_at', '>=', $scope['from']);
         if (!empty($scope['to']))     $query->where('created_at', '<=', $scope['to']);
 
-        $rows = $query->limit(50000)->get();
+        $rows = $query->limit(50000)->get([
+            'id', 'name', 'stage', 'status', 'days_left',
+            'reseller_name', 'commission_status', 'deal_value',
+            'contract_value', 'base_cost', 'created_at',
+        ]);
 
         $headers = [
             'ID', 'Name', 'Stage', 'Status', 'Days Left',
@@ -195,7 +199,10 @@ class GenerateExportJob implements ShouldQueue
         if (!empty($scope['from'])) $query->where('created_at', '>=', $scope['from']);
         if (!empty($scope['to']))   $query->where('created_at', '<=', $scope['to']);
 
-        $rows = $query->limit(50000)->get();
+        $rows = $query->limit(50000)->get([
+            'id', 'first_name', 'last_name', 'email', 'phone',
+            'organization_name', 'title', 'source', 'created_at',
+        ]);
 
         $headers = [
             'ID', 'First Name', 'Last Name', 'Email', 'Phone',
