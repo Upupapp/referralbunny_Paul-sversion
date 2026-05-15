@@ -48,19 +48,6 @@ class LeadController extends Controller
             ])
             ->orderBy('created_at', 'desc');
 
-        // last_activity_at subquery requires lead_history table — skip if it doesn't exist
-        $hasLeadHistory = Cache::remember('schema.has_lead_history', 86400, fn() =>
-            \Illuminate\Support\Facades\Schema::hasTable('lead_history')
-        );
-        if ($hasLeadHistory) {
-            $query->addSelect([
-                'last_activity_at' => LeadHistory::select('created_at')
-                    ->whereColumn('lead_id', 'leads.id')
-                    ->orderByDesc('created_at')
-                    ->limit(1),
-            ]);
-        }
-
         // Derive tenant from authenticated context; fall back to query param
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if ($tenantId) {
@@ -81,6 +68,26 @@ class LeadController extends Controller
             $perPage = min(500, max(1, (int) $perPage));
             $paginated = $query->paginate($perPage);
             $leads     = $paginated->getCollection();
+        }
+
+        // Enrich with last_activity_at from lead_history — separate query so the main
+        // paginate never crashes if the table is missing (Supabase may not have it).
+        try {
+            $pageIds = $leads->pluck('id')->all();
+            if (!empty($pageIds)) {
+                $lastActivities = DB::table('lead_history')
+                    ->whereIn('lead_id', $pageIds)
+                    ->selectRaw('lead_id, MAX(created_at) as last_activity_at')
+                    ->groupBy('lead_id')
+                    ->pluck('last_activity_at', 'lead_id');
+
+                $leads = $leads->map(function ($lead) use ($lastActivities) {
+                    $lead->last_activity_at = $lastActivities->get($lead->id);
+                    return $lead;
+                });
+            }
+        } catch (\Throwable) {
+            // Table absent — last_activity_at stays null on each lead
         }
 
         if ($includePartners) {
