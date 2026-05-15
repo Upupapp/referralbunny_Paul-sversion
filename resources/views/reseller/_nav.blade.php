@@ -20,7 +20,7 @@
             $_lastSeen  = session("rs_activity_seen_{$_rsId}", now()->subHours(24)->toIso8601String());
             $_leadIds   = \Illuminate\Support\Facades\DB::table('leads')
                 ->where('tenant_id', $tid)
-                ->where('reseller_name', auth('reseller')->user()?->name)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower(auth('reseller')->user()?->name ?? '')])
                 ->pluck('id')
                 ->map(fn($x) => (string) $x)
                 ->toArray();

@@ -489,6 +489,14 @@ class ResellerDealController extends Controller
                 'new_values' => ['stage' => $targetStage],
             ]);
 
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController moveStage failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not move stage. Please try again.'], 500);
+        }
+
+        try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
@@ -499,13 +507,7 @@ class ResellerDealController extends Controller
                 actionLabel:  'View Deal',
                 dedupeSuffix: $dealId . ':stage:' . $targetStage . ':' . now()->format('YmdH'),
             );
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController moveStage failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not move stage. Please try again.'], 500);
-        }
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'stage' => $targetStage]);
     }
@@ -535,6 +537,7 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'A stage approval request is already pending.'], 422);
         }
 
+        $approvalId = null;
         DB::beginTransaction();
         try {
             $approval = DealApprovalRequest::create([
@@ -553,25 +556,15 @@ class ResellerDealController extends Controller
                     'referrer_name' => $reseller->name,
                 ],
             ]);
+            $approvalId = $approval->id;
 
             app(DealActivityService::class)->record($lead, 'Stage move approval requested by referrer', 'approval', [
                 'category'   => 'approval',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
                 'actor_role' => 'referrer',
-                'new_values' => ['approval_id' => $approval->id, 'target_stage' => $data['target_stage']],
+                'new_values' => ['approval_id' => $approvalId, 'target_stage' => $data['target_stage']],
             ]);
-
-            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $tenantId,
-                category:     'deal_pipeline',
-                priority:     'high',
-                title:        'Stage move approval needed',
-                body:         $reseller->name . ' requested to move "' . $lead->name . '" to ' . ucfirst(str_replace('_', ' ', $data['target_stage'])) . '. Review required.',
-                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
-                actionLabel:  'Review & Approve',
-                dedupeSuffix: $dealId . ':stage_approval:' . $approval->id,
-            );
 
             DB::commit();
         } catch (\Throwable $e) {
@@ -580,7 +573,20 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not submit approval request. Please try again.'], 500);
         }
 
-        return response()->json(['success' => true, 'approval_id' => $approval->id]);
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'high',
+                title:        'Stage move approval needed',
+                body:         $reseller->name . ' requested to move "' . $lead->name . '" to ' . ucfirst(str_replace('_', ' ', $data['target_stage'])) . '. Review required.',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                actionLabel:  'Review & Approve',
+                dedupeSuffix: $dealId . ':stage_approval:' . $approvalId,
+            );
+        } catch (\Throwable) {}
+
+        return response()->json(['success' => true, 'approval_id' => $approvalId]);
     }
 
     // ── Request Archive ───────────────────────────────────────────────────────
@@ -1214,8 +1220,16 @@ class ResellerDealController extends Controller
                 ]);
             }
 
-            // NOTIFY — tell the requesting reseller clearly what happened
-            if ($approval->requested_by_type === 'reseller') {
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
+        }
+
+        // Notify after commit — never inside transaction
+        if ($approval->requested_by_type === 'reseller') {
+            try {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
                 if ($approval->type === 'deal_stage_move') {
                     $targetStage = $approval->request_payload['target_stage'] ?? '';
@@ -1243,13 +1257,7 @@ class ResellerDealController extends Controller
                         dedupeSuffix: $approvalId . ':approved',
                     );
                 }
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
+            } catch (\Throwable) {}
         }
 
         return response()->json(['success' => true]);
@@ -1296,8 +1304,16 @@ class ResellerDealController extends Controller
                 ]);
             }
 
-            // NOTIFY — tell referrer clearly, include deal link and rejection reason
-            if ($approval->requested_by_type === 'reseller') {
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
+        }
+
+        // Notify after commit — never inside transaction
+        if ($approval->requested_by_type === 'reseller') {
+            try {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
                 if ($approval->type === 'deal_stage_move') {
                     $targetStage = $approval->request_payload['target_stage'] ?? '';
@@ -1325,13 +1341,7 @@ class ResellerDealController extends Controller
                         dedupeSuffix: $approvalId . ':rejected',
                     );
                 }
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
+            } catch (\Throwable) {}
         }
 
         return response()->json(['success' => true]);

@@ -33,6 +33,7 @@ class ResellerPortalController extends Controller
             $leads = Lead::where('tenant_id', $tenantId)
                 ->forReseller($reseller->name)
                 ->orderByDesc('created_at')
+                ->select('id', 'name', 'stage', 'status', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'days_left', 'reseller_name', 'created_at')
                 ->get();
         } catch (\Throwable) {
             $leads = collect();
@@ -92,7 +93,6 @@ class ResellerPortalController extends Controller
         // ── Unique partner count across assigned deals ─────────────────────
         $partnerCount = 0;
         try {
-            $leadIds = $leads->pluck('id');
             if ($leadIds->isNotEmpty()) {
                 $partnerCount = DB::table('deal_partner_splits')
                     ->whereIn('deal_id', $leadIds)
@@ -139,6 +139,7 @@ class ResellerPortalController extends Controller
         $leads = Lead::withTrashed()
             ->where('tenant_id', $tenantId)
             ->forReseller($reseller->name)
+            ->select('id', 'name', 'stage', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
             ->get();
 
         // Load this referrer's commission splits to get their percentage per deal
@@ -220,6 +221,7 @@ class ResellerPortalController extends Controller
             $messages = $thread
                 ? \App\Models\ThreadMessage::where('thread_id', $thread->id)
                     ->orderBy('created_at')
+                    ->limit(100)
                     ->get()
                 : collect();
 
