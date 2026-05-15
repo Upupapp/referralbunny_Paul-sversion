@@ -149,6 +149,11 @@
                     </tbody>
                 </table>
             </div>
+            @if($deals->hasPages())
+                <div class="px-4 py-3 border-t border-gray-100">
+                    {{ $deals->links() }}
+                </div>
+            @endif
         </div>
         @endif
 

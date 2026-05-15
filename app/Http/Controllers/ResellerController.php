@@ -391,6 +391,10 @@ class ResellerController extends Controller
             return response()->json(['error' => 'Only admins can delete Referrers.'], 403);
         }
 
+        if (request()->attributes->get('_tenant_role') === 'manager') {
+            return response()->json(['error' => 'Managers cannot bulk-delete Referrers.'], 403);
+        }
+
         $tenantId = TenantContext::id() ?? $request->input('tenant_id');
         if (!$tenantId) {
             return response()->json(['error' => 'Tenant context required.'], 403);

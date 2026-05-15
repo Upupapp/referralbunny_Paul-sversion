@@ -501,8 +501,7 @@ class TenantAdminController extends Controller
 
     public function users($tenantId)
     {
-        $tenant = Tenant::findOrFail($tenantId);
-        return view('tenant.users.index', compact('tenant'));
+        return app(\App\Http\Controllers\Web\TenantUserManagementController::class)->index($tenantId);
     }
 
     public function billing($tenantId)

@@ -138,7 +138,7 @@ class InvitationReminderService
 
         // In-app notification — always
         $this->notifications->dispatch(
-            category:         'team',
+            category:         'tenant_workspace',
             priority:         $newCount >= self::MAX_INVITER_REMINDERS ? 'high' : 'normal',
             title:            'Pending invitation — no response yet',
             body:             "{$invitation->email} still hasn't accepted your invitation to join as " . ucfirst($invitation->role) . ". Expires " . $invitation->expires_at->diffForHumans() . ".",

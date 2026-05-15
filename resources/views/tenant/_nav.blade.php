@@ -7,10 +7,15 @@ if (auth('web')->check()) {
 } elseif (request()->attributes->has('_tenant_role')) {
     $navRole = request()->attributes->get('_tenant_role');
 } elseif (auth('tenant')->check()) {
-    $navRole = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
-        ->where('tenant_id', $tenantId)
-        ->where('status', 'active')
-        ->value('role') ?? 'viewer';
+    $_navUserId = auth('tenant')->id();
+    $navRole = \Illuminate\Support\Facades\Cache::remember(
+        "nav_role:{$tenantId}:{$_navUserId}",
+        60,
+        fn() => \App\Models\TenantMembership::where('tenant_user_id', $_navUserId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role') ?? 'viewer'
+    );
 } else {
     $navRole = 'viewer';
 }

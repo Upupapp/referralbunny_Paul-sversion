@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Reseller;
 use App\Models\Tenant;
 use App\Services\CriticalActionService;
+use App\Services\ReferrerPerformanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,74 +29,62 @@ class ResellerPortalController extends Controller
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
 
-        // Load all reseller-accessible leads safely
+        // SQL aggregate stats (cached 120s) — no full table scan
+        $perf = app(ReferrerPerformanceService::class)->forReseller($tenantId, $reseller->name);
+        $stats = [
+            'total'      => $perf['total_deals'],
+            'active'     => $perf['active_deals'],
+            'expiring'   => $perf['expiring_deals'],
+            'paid'       => $perf['closed_won_deals'],
+            'pipeline'   => $perf['total_deal_value'],
+            'conversion' => (int) ($perf['conversion_rate'] ?? 0),
+        ];
+        $commissionStats = [
+            'pending' => $perf['pending_commission'],
+            'locked'  => $perf['locked_commission'],
+            'paid'    => $perf['paid_commission'],
+        ];
+        $totalCommission = $commissionStats['pending'] + $commissionStats['locked'] + $commissionStats['paid'];
+
+        // Load only the 6 most recent leads for display
+        $recentLeads = collect();
+        $leadCommissionMap = [];
         try {
-            $leads = Lead::where('tenant_id', $tenantId)
+            $recent = Lead::where('tenant_id', $tenantId)
                 ->forReseller($reseller->name)
                 ->orderByDesc('created_at')
+                ->limit(6)
                 ->select('id', 'name', 'stage', 'status', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'days_left', 'reseller_name', 'created_at')
                 ->get();
-        } catch (\Throwable) {
-            $leads = collect();
-        }
 
-        $stats = [
-            'total'      => $leads->count(),
-            'active'     => $leads->whereIn('status', ['active', 'expiring'])->count(),
-            'expiring'   => $leads->where('status', 'expiring')->count(),
-            'paid'       => $leads->where('stage', 'paid')->count(),
-            'pipeline'   => $leads->sum('deal_value'),
-            'conversion' => $leads->count() > 0
-                ? round($leads->where('stage', 'paid')->count() / $leads->count() * 100)
-                : 0,
-        ];
-
-        // ── Per-lead commission + totals (one pass) ───────────────────────
-        $commissionStats  = ['pending' => 0, 'locked' => 0, 'paid' => 0];
-        $leadCommissionMap = []; // lead_id → my_commission (int)
-        try {
-            $leadIds = $leads->pluck('id');
-            $splits  = $leadIds->isNotEmpty()
+            $recentIds = $recent->pluck('id');
+            $splits = $recentIds->isNotEmpty()
                 ? DB::table('commission_splits')
-                    ->whereIn('lead_id', $leadIds)
+                    ->whereIn('lead_id', $recentIds)
                     ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
                     ->get()->keyBy('lead_id')
                 : collect();
 
             $calc = app(\App\Services\CommissionCalculationService::class);
-            foreach ($leads as $lead) {
-                $breakdown    = $calc->breakdownFromLead($lead);
-                $pool         = $breakdown['commission_pool'] ?? 0;
-                $split        = $splits->get($lead->id);
-                $pct          = $split ? (float) ($split->percentage ?? 100) : 100.0;
-                $myCommission = (int) $calc->referrerShare($pool, $pct);
-                $leadCommissionMap[$lead->id] = $myCommission;
-                $status = $lead->commission_status ?? 'pending';
-                if (array_key_exists($status, $commissionStats)) {
-                    $commissionStats[$status] += $myCommission;
-                } else {
-                    $commissionStats['pending'] += $myCommission;
-                }
-            }
-        } catch (\Throwable) {
-            $commissionStats  = ['pending' => 0, 'locked' => 0, 'paid' => 0];
-            $leadCommissionMap = [];
-        }
+            $recentLeads = $recent->map(function ($lead) use ($splits, $calc, &$leadCommissionMap) {
+                $pool  = $calc->breakdownFromLead($lead)['commission_pool'] ?? 0;
+                $split = $splits->get($lead->id);
+                $pct   = $split ? (float) ($split->percentage ?? 100) : 100.0;
+                $lead->my_commission = (int) $calc->referrerShare($pool, $pct);
+                $leadCommissionMap[$lead->id] = $lead->my_commission;
+                return $lead;
+            });
+        } catch (\Throwable) {}
 
-        $totalCommission = $commissionStats['pending'] + $commissionStats['locked'] + $commissionStats['paid'];
-
-        // Attach per-lead commission to recentLeads
-        $recentLeads = $leads->take(6)->map(function ($lead) use ($leadCommissionMap) {
-            $lead->my_commission = $leadCommissionMap[$lead->id] ?? 0;
-            return $lead;
-        });
-
-        // ── Unique partner count across assigned deals ─────────────────────
+        // ── Unique partner count — query directly from DB (no full lead scan) ──
         $partnerCount = 0;
         try {
-            if ($leadIds->isNotEmpty()) {
+            $allLeadIds = Lead::where('tenant_id', $tenantId)
+                ->forReseller($reseller->name)
+                ->pluck('id');
+            if ($allLeadIds->isNotEmpty()) {
                 $partnerCount = DB::table('deal_partner_splits')
-                    ->whereIn('deal_id', $leadIds)
+                    ->whereIn('deal_id', $allLeadIds)
                     ->whereNull('deleted_at')
                     ->where('status', '!=', 'removed')
                     ->distinct()
@@ -137,11 +126,12 @@ class ResellerPortalController extends Controller
         $tenant   = Tenant::findOrFail($tenantId);
         $calc     = app(\App\Services\CommissionCalculationService::class);
 
-        // ── Summary stats: aggregate ALL leads (unbounded is fine — only 3 numeric columns) ──
+        // ── Summary stats: load leads for commission aggregation (cap at 2000 rows) ──
         $allLeads = Lead::withTrashed()
             ->where('tenant_id', $tenantId)
             ->forReseller($reseller->name)
             ->select('id', 'deal_value', 'base_cost', 'added_amount', 'commission_status')
+            ->take(2000)
             ->get();
 
         // Load all commission splits for this referrer in a single query

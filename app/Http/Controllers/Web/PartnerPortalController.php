@@ -98,7 +98,7 @@ class PartnerPortalController extends Controller
         $deals   = Lead::whereIn('id', $this->authorizedDealIds())
             ->where('tenant_id', $partner->tenant_id)
             ->orderByDesc('created_at')
-            ->get(['id', 'name', 'stage', 'status', 'deal_value', 'reseller_name', 'days_left']);
+            ->paginate(25, ['id', 'name', 'stage', 'status', 'deal_value', 'reseller_name', 'days_left']);
 
         return view('partner.deals.index', compact('partner', 'deals'));
     }

@@ -40,7 +40,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
-                {{ $memberships->count() }} member{{ $memberships->count() !== 1 ? 's' : '' }}
+                {{ $memberships->total() }} member{{ $memberships->total() !== 1 ? 's' : '' }}
             </div>
         </div>
     </div>
@@ -92,6 +92,9 @@
                             @endif
                         </div>
                         <p class="text-xs text-gray-400 mt-0.5 truncate">{{ $u?->email }}</p>
+                    @if($u?->last_accessed_at)
+                        <p class="text-[11px] text-gray-300 mt-0.5">Last active {{ $u->last_accessed_at->diffForHumans() }}</p>
+                    @endif
                     </div>
 
                     {{-- Actions (admin only) --}}
@@ -112,6 +115,7 @@
 
                             <div class="relative" x-data="{ open: false }">
                                 <button @click="open = !open"
+                                        aria-label="Member actions"
                                         class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M12 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 7a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
@@ -182,6 +186,10 @@
                     @endif
                 </div>
             @endforelse
+
+            @if($memberships->hasPages())
+                <div class="mt-2">{{ $memberships->links() }}</div>
+            @endif
         </div>
 
         {{-- RIGHT: Sidebar --}}

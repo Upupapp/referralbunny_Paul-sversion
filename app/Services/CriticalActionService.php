@@ -500,7 +500,7 @@ class CriticalActionService
                 'related_type'  => 'invitation',
                 'related_id'    => null,
                 'occurred_at'   => now(),
-                'action_url'    => "/tenant/{$tenantId}/users",
+                'action_url'    => "/tenant/{$tenantId}/users#pending-invitations",
                 'action_needed' => true,
                 'source'        => 'tenant_invitations',
             ]);

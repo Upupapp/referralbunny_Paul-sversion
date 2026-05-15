@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Mail\TenantInvitationMail;
 use App\Mail\TenantInvitationRevokedMail;
+use App\Models\ActivityLog;
 use App\Models\Tenant;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
@@ -15,7 +16,9 @@ use App\Services\NotificationDispatchService;
 use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TenantUserManagementController extends Controller
@@ -93,12 +96,13 @@ class TenantUserManagementController extends Controller
             ->whereIn('status', ['active', 'suspended'])
             ->with('tenantUser')
             ->orderByRaw("CASE role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'manager' THEN 3 WHEN 'member' THEN 4 ELSE 5 END")
-            ->get();
+            ->paginate(50);
 
         $pendingInvites = TenantInvitation::where('tenant_id', $tenantId)
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
             ->orderByDesc('created_at')
+            ->take(100)
             ->get();
 
         return view('tenant.users.index', compact(
@@ -253,16 +257,18 @@ class TenantUserManagementController extends Controller
             \Log::warning("Tenant invite resend email failed: " . $e->getMessage());
         }
 
-        $this->notifications->dispatchToTenantAdmins(
-            tenantId:    $tenantId,
-            category:    'team',
-            priority:    'low',
-            title:       'Invitation Resent',
-            body:        "Invitation to {$invitation->email} was resent.",
-            actionUrl:   route('tenant.users', $tenantId),
-            actionLabel: 'View Users',
-            dedupeSuffix: "resend:{$invitation->id}:" . now()->format('YmdHi'),
-        );
+        try {
+            $this->notifications->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'tenant_workspace',
+                priority:     'low',
+                title:        'Invitation Resent',
+                body:         "Invitation to {$invitation->email} was resent.",
+                actionUrl:    route('tenant.users', $tenantId),
+                actionLabel:  'View Users',
+                dedupeSuffix: "resend:{$invitation->id}:" . now()->format('YmdHi'),
+            );
+        } catch (\Throwable) {}
 
         return back()->with('success', "Invitation resent to {$invitation->email}.");
     }
@@ -380,21 +386,46 @@ class TenantUserManagementController extends Controller
 
         // Cannot suspend the owner
         if ($membership->role === 'owner') {
-            abort(403, 'The Tenant Owner cannot be deactivated.');
+            return back()->withErrors(['error' => 'The Tenant Owner cannot be deactivated.']);
         }
 
         // Cannot suspend someone with a higher or equal role
         if ($this->roleWeight($membership->role) >= $this->roleWeight($acting->role)) {
-            abort(403, 'You cannot deactivate a user with an equal or higher role.');
+            return back()->withErrors(['error' => 'You cannot deactivate a user with an equal or higher role.']);
         }
 
         $membership->status = 'suspended';
         $membership->save();
 
+        // Invalidate the cached membership and nav role so access is revoked immediately
+        Cache::forget("tenant_membership:{$userId}:{$tenantId}");
+        Cache::forget("nav_role:{$tenantId}:{$userId}");
+
+        $userName = $membership->tenantUser?->first_name
+            ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
+            : ($membership->tenantUser?->email ?? 'A team member');
+
+        // Audit log
         try {
-            $userName = $membership->tenantUser?->first_name
-                ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
-                : ($membership->tenantUser?->email ?? 'A team member');
+            $actorId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => $actorId,
+                'action'    => 'team_member_deactivated',
+                'entity'    => 'tenant_membership',
+                'entity_id' => $membership->id,
+                'metadata'  => json_encode([
+                    'target_user_id' => $userId,
+                    'target_name'    => $userName,
+                    'target_role'    => $membership->role,
+                    'timestamp'      => now()->toIso8601String(),
+                ]),
+            ]);
+        } catch (\Throwable) {}
+
+        // Notify tenant admins
+        try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'tenant_workspace',
@@ -404,6 +435,23 @@ class TenantUserManagementController extends Controller
                 actionUrl:    route('tenant.users', $tenantId),
                 actionLabel:  'View Users',
                 dedupeSuffix: "deactivate_user:{$membership->id}",
+            );
+        } catch (\Throwable) {}
+
+        // Notify the deactivated user
+        try {
+            $tenant = Tenant::find($tenantId);
+            $this->notifications->dispatch(
+                category:         'tenant_workspace',
+                priority:         'high',
+                title:            'Your workspace access has been suspended',
+                body:             "Your access to {$tenant?->name} has been suspended by an admin.",
+                notifiableType:   'tenant_admin',
+                notifiableId:     (string) $userId,
+                tenantId:         $tenantId,
+                actionUrl:        null,
+                actionLabel:      null,
+                deduplicationKey: "deactivate_self:{$membership->id}",
             );
         } catch (\Throwable) {}
 
@@ -423,29 +471,75 @@ class TenantUserManagementController extends Controller
 
         // Cannot remove the owner
         if ($membership->role === 'owner') {
-            abort(403, 'The Tenant Owner cannot be removed.');
+            return back()->withErrors(['error' => 'The Tenant Owner cannot be removed.']);
         }
 
         // Cannot remove someone with a higher or equal role
         if ($this->roleWeight($membership->role) >= $this->roleWeight($acting->role)) {
-            abort(403, 'You cannot remove a user with an equal or higher role.');
+            return back()->withErrors(['error' => 'You cannot remove a user with an equal or higher role.']);
         }
 
         $membership->status = 'removed';
         $membership->save();
 
+        // Invalidate the cached membership and nav role so access is revoked immediately
+        Cache::forget("tenant_membership:{$userId}:{$tenantId}");
+        Cache::forget("nav_role:{$tenantId}:{$userId}");
+
+        $removedUser  = $membership->tenantUser;
+        $removedEmail = $removedUser?->email ?? 'A team member';
+        $removedName  = $removedUser?->first_name
+            ? trim($removedUser->first_name . ' ' . ($removedUser->last_name ?? ''))
+            : $removedEmail;
+
+        // Audit log
         try {
-            $removedUser  = $membership->tenantUser;
-            $removedEmail = $removedUser?->email ?? 'A team member';
+            $actorId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => $actorId,
+                'action'    => 'team_member_removed',
+                'entity'    => 'tenant_membership',
+                'entity_id' => $membership->id,
+                'metadata'  => json_encode([
+                    'target_user_id' => $userId,
+                    'target_name'    => $removedName,
+                    'target_email'   => $removedEmail,
+                    'target_role'    => $membership->role,
+                    'timestamp'      => now()->toIso8601String(),
+                ]),
+            ]);
+        } catch (\Throwable) {}
+
+        // Notify tenant admins
+        try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'tenant_workspace',
                 priority:     'normal',
                 title:        'Team member removed',
-                body:         "{$removedEmail} has been removed from this workspace.",
+                body:         "{$removedName} has been removed from this workspace.",
                 actionUrl:    route('tenant.users', $tenantId),
                 actionLabel:  'View Users',
                 dedupeSuffix: "remove_user:{$membership->id}",
+            );
+        } catch (\Throwable) {}
+
+        // Notify the removed user
+        try {
+            $tenant = Tenant::find($tenantId);
+            $this->notifications->dispatch(
+                category:         'tenant_workspace',
+                priority:         'high',
+                title:            'You have been removed from a workspace',
+                body:             "Your access to {$tenant?->name} has been removed by an admin.",
+                notifiableType:   'tenant_admin',
+                notifiableId:     (string) $userId,
+                tenantId:         $tenantId,
+                actionUrl:        null,
+                actionLabel:      null,
+                deduplicationKey: "remove_self:{$membership->id}",
             );
         } catch (\Throwable) {}
 
