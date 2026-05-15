@@ -20,11 +20,12 @@ class TenantAdminController extends Controller
 {
     private function config(string $tenantId): ?TenantConfig
     {
-        // Cache for 5 minutes — config changes are admin-initiated and infrequent.
-        // Key is busted whenever the settings page saves (via model Observer or manual flush).
-        return Cache::remember("tenant_config:{$tenantId}", 300, function () use ($tenantId) {
-            return TenantConfig::where('tenant_id', $tenantId)->first();
+        // Cache as plain array to avoid __PHP_Incomplete_Class on deserialization.
+        $cached = Cache::remember("tenant_config:{$tenantId}", 300, function () use ($tenantId) {
+            return TenantConfig::where('tenant_id', $tenantId)->first()?->toArray();
         });
+
+        return $cached ? (new TenantConfig())->forceFill($cached) : null;
     }
 
     private function configMeta(string $tenantId): array
