@@ -714,9 +714,11 @@ function messaging() {
         _allRecipients: [],
 
         async setInbox(mode) {
-            this.inbox = mode;
+            this.inbox               = mode;
             this.activeThread        = null;
             this.activePartnerThread = null;
+            this.activeMessages      = [];
+            this.partnerMessages     = [];
             this.mobilePane          = 'list';
             if (mode === 'partners') {
                 await this.loadPartnerThreads();

@@ -419,7 +419,9 @@ class MessageController extends Controller
     {
         $request->validate(['body' => 'required|string|max:5000']);
 
-        $thread = PartnerThread::where('tenant_id', $tenantId)->findOrFail($threadId);
+        $thread = PartnerThread::where('tenant_id', $tenantId)
+            ->with('partner:id,first_name,last_name,email')
+            ->findOrFail($threadId);
 
         $senderName = $this->senderName();
         $senderId   = (string) (Auth::guard('tenant')->id() ?? Auth::guard('web')->id());
@@ -441,9 +443,8 @@ class MessageController extends Controller
             'partner_unread'       => DB::raw('partner_unread + 1'),
         ]);
 
-        // Notify the partner
         try {
-            $partner = Partner::find($thread->partner_id);
+            $partner = $thread->partner;
             if ($partner) {
                 app(\App\Services\NotificationDispatchService::class)->dispatch(
                     category:         'tenant_workspace',
@@ -529,6 +530,7 @@ class MessageController extends Controller
                 'partner_id'  => $partner->id,
                 'deal_id'     => null,
                 'reseller_id' => null,
+                'thread_type' => 'direct',
             ]);
         }
 

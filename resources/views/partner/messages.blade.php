@@ -268,12 +268,7 @@ function partnerMessages() {
         mobilePane: 'list',
         msgTab: 'deals',
 
-        get adminDirectUnread() {
-            @php
-                $directUnreadCount = $directThreads->sum('partner_unread');
-            @endphp
-            return {{ $directUnreadCount }};
-        },
+        adminDirectUnread: @php echo (int) $directThreads->sum('partner_unread'); @endphp,
 
         init() {
             const urlParams = new URLSearchParams(window.location.search);

@@ -99,14 +99,9 @@ try {
 
 try {
     $msgBadge = (int) \Illuminate\Support\Facades\DB::table('message_threads')
-        ->where('tenant_id', $tenantId)
-        ->where('admin_unread', '>', 0)
-        ->count();
-    // Also count partner threads with unread messages for admin
-    $msgBadge += (int) \Illuminate\Support\Facades\DB::table('partner_threads')
-        ->where('tenant_id', $tenantId)
-        ->where('admin_unread', '>', 0)
-        ->count();
+            ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count()
+        + (int) \Illuminate\Support\Facades\DB::table('partner_threads')
+            ->where('tenant_id', $tenantId)->where('admin_unread', '>', 0)->count();
 } catch (\Throwable) {}
 
 // Note: $criticalBadge is added to workspaceBadge after it's computed below

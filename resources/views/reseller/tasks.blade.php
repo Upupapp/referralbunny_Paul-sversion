@@ -3,18 +3,6 @@
 @section('nav') @include('reseller._nav') @endsection
 
 @section('content')
-@php
-if (!function_exists('rb_linkify')) {
-    function rb_linkify(string $text): string {
-        $e = htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        return (string) preg_replace(
-            '/(https?:\/\/[^\s<>&"\'()\[\]{}]+)/i',
-            '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>',
-            $e
-        );
-    }
-}
-@endphp
 <div class="max-w-3xl mx-auto space-y-4"
      x-data="referrerTasks('{{ $tenant->id }}')"
      x-init="init()">
