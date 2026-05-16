@@ -73,7 +73,7 @@
                 <p class="text-sm font-semibold text-amber-800">Needs Attention</p>
             </div>
             <button x-show="!seen"
-                    @click="seen=true; fetch('{{ route('partner.actions.mark-all-read') }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} })"
+                    @click="fetch('{{ route('partner.actions.mark-all-read') }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} }).then(r=>{ if(r.ok) seen=true; }).catch(()=>{})"
                     class="text-[10px] text-amber-600 hover:text-emerald-600 underline underline-offset-2 transition-colors">
                 Mark all seen
             </button>

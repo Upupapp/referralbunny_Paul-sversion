@@ -306,7 +306,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{{ $actionItems->count() }} item{{ $actionItems->count() > 1 ? 's' : '' }}</span>
                 <button x-show="!markingDone"
-                        @click="markingDone=true; fetch('{{ route('reseller.actions.mark-all-read', $tenant->id) }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} })"
+                        @click="fetch('{{ route('reseller.actions.mark-all-read', $tenant->id) }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} }).then(r=>{ if(r.ok) markingDone=true; }).catch(()=>{})"
                         class="text-[10px] text-gray-400 hover:text-emerald-600 transition-colors underline underline-offset-2">
                     Mark all seen
                 </button>

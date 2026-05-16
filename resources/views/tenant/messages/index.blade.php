@@ -66,11 +66,11 @@
                                     fetch('{{ route('tenant.messages.mark-all-read', $tenant->id) }}', {
                                         method:'POST', credentials:'same-origin',
                                         headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
-                                    }).then(()=>{
-                                        threads.forEach(t=>t.admin_unread=0);
-                                        partnerThreads.forEach(t=>t.admin_unread=0);
+                                    }).then(r=>{
+                                        if(r.ok){ threads.forEach(t=>t.admin_unread=0); partnerThreads.forEach(t=>t.admin_unread=0); }
+                                        else globalError='Failed to mark all as read. Please try again.';
                                         busy=false;
-                                    }).catch(()=>busy=false)"
+                                    }).catch(()=>{ globalError='Failed to mark all as read. Please try again.'; busy=false; })"
                                 class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                                 :disabled="busy" title="Mark all as read">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -706,7 +706,8 @@ function messaging() {
         },
 
         get totalUnread() {
-            return this.threads.reduce((s, t) => s + (t.admin_unread ?? 0), 0);
+            return this.threads.reduce((s, t) => s + (t.admin_unread ?? 0), 0)
+                 + this.partnerThreads.reduce((s, t) => s + (t.admin_unread ?? 0), 0);
         },
 
         get partnerTotalUnread() {

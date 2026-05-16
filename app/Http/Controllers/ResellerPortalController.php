@@ -102,10 +102,13 @@ class ResellerPortalController extends Controller
 
         // ── Recent activity (Critical Actions for this referrer, including imports) ─
         $recentActivity = [];
-        try {
-            $recentActivity = app(CriticalActionService::class)
-                ->forReseller($tenantId, $reseller->name, 8, $reseller->id);
-        } catch (\Throwable) {}
+        // Suppressed for 5 min after referrer clicks "Mark all seen"
+        if (!\Illuminate\Support\Facades\Cache::has("ca_rs_suppressed:{$reseller->id}")) {
+            try {
+                $recentActivity = app(CriticalActionService::class)
+                    ->forReseller($tenantId, $reseller->name, 8, $reseller->id);
+            } catch (\Throwable) {}
+        }
 
         return view('reseller.dashboard', compact(
             'reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity',

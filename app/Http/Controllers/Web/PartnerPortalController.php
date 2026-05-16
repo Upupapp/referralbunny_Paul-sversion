@@ -76,10 +76,13 @@ class PartnerPortalController extends Controller
             ->get(['id', 'name', 'days_left', 'status']);
 
         $criticalActions = [];
-        try {
-            $criticalActions = app(\App\Services\CriticalActionService::class)
-                ->forPartner((string) $partner->id, $partner->tenant_id);
-        } catch (\Throwable) {}
+        // Suppressed for 5 min after partner clicks "Mark all seen"
+        if (!Cache::has("ca_partner_suppressed:{$partner->id}")) {
+            try {
+                $criticalActions = app(\App\Services\CriticalActionService::class)
+                    ->forPartner((string) $partner->id, $partner->tenant_id);
+            } catch (\Throwable) {}
+        }
 
         return view('partner.dashboard', compact(
             'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals', 'expiringDeals', 'criticalActions'
@@ -772,12 +775,8 @@ class PartnerPortalController extends Controller
     {
         $partner = $this->partner();
 
+        // Only partner_threads stores partner unread counts — message_threads has no partner_id column
         DB::table('partner_threads')
-            ->where('partner_id', $partner->id)
-            ->where('partner_unread', '>', 0)
-            ->update(['partner_unread' => 0]);
-
-        DB::table('message_threads')
             ->where('partner_id', $partner->id)
             ->where('partner_unread', '>', 0)
             ->update(['partner_unread' => 0]);

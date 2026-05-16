@@ -22,11 +22,10 @@
                                     fetch('{{ route('partner.messages.mark-all-read') }}', {
                                         method:'POST', credentials:'same-origin',
                                         headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
-                                    }).then(()=>{
-                                        threads.forEach(t=>t.partner_unread=0);
-                                        adminDirectUnread=0;
+                                    }).then(r=>{
+                                        if(r.ok){ threads.forEach(t=>t.partner_unread=0); adminDirectUnread=0; }
                                         busy=false;
-                                    }).catch(()=>busy=false)"
+                                    }).catch(()=>{ busy=false; })"
                                 :disabled="busy"
                                 class="w-8 h-8 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                 title="Mark all as read" aria-label="Mark all messages as read">
