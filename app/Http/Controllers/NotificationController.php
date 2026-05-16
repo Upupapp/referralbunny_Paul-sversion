@@ -111,7 +111,9 @@ class NotificationController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        // Bust the partner nav badge cache so the sidebar reflects immediately
+        // Bust the unread count API cache for all guard types
+        Cache::forget("notif_unread_{$type}_{$id}");
+        // Bust the partner nav badge cache (separate key used by _nav.blade.php)
         if ($type === 'partner') {
             Cache::forget("partner_notif_unread:{$id}");
         }

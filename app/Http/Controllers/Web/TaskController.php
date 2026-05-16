@@ -503,7 +503,7 @@ class TaskController extends Controller
         if ($dateFilter === 'overdue') {
             $query->whereNotIn('status', ['completed','cancelled','archived'])->where('due_at', '<', now());
         } elseif ($dateFilter === 'today') {
-            $query->whereDate('due_at', today());
+            $query->whereDate('due_at', today('Asia/Manila'));
         } elseif ($dateFilter === 'week') {
             $query->whereBetween('due_at', [now()->startOfDay(), now()->addWeek()->endOfDay()]);
         }
@@ -897,9 +897,14 @@ class TaskController extends Controller
 
         $assigneeName     = null;
         $assigneeInitials = '--';
-        if ($task->assigned_to_id && $task->assigned_to_type === 'tenant_user') {
-            $u = TenantUser::find($task->assigned_to_id);
-            $assigneeName = $u?->full_name;
+        if ($task->assigned_to_id) {
+            if ($task->assigned_to_type === 'tenant_user') {
+                $u = TenantUser::find($task->assigned_to_id);
+                $assigneeName = $u?->full_name;
+            } elseif ($task->assigned_to_type === 'reseller') {
+                $r = \App\Models\Reseller::find($task->assigned_to_id);
+                $assigneeName = $r?->name ?: $r?->email;
+            }
             if ($assigneeName) {
                 $parts = explode(' ', trim($assigneeName));
                 $assigneeInitials = strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)) ?: '--';

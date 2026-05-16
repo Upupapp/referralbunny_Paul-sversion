@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TenantPasswordResetMail;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class TenantAuthWebController extends Controller
 {
@@ -111,6 +116,96 @@ class TenantAuthWebController extends Controller
 
         return redirect()->route('tenant.dashboard', $tenantId);
     }
+
+    // ── Forgot / Reset Password ──────────────────────────────────────────────
+
+    public function showForgotPassword()
+    {
+        return view('auth.tenant-forgot-password');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = TenantUser::whereRaw('lower(email) = ?', [strtolower(trim($request->email))])->first();
+
+        // Always return success to prevent email enumeration
+        if ($user) {
+            $token    = Str::random(64);
+            $resetUrl = url('/tenant/reset-password?token=' . $token . '&email=' . urlencode($user->email));
+
+            DB::table('password_reset_tokens')->upsert(
+                ['email' => $user->email, 'token' => Hash::make($token), 'created_at' => now()],
+                ['email'],
+                ['token', 'created_at']
+            );
+
+            try {
+                Mail::queue(new TenantPasswordResetMail(
+                    userName:  trim("{$user->first_name} {$user->last_name}"),
+                    userEmail: $user->email,
+                    resetUrl:  $resetUrl,
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('[TenantAuth] Password reset email failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return back()->with('success', 'If an account exists with that email, a reset link has been sent.');
+    }
+
+    public function showResetPassword(Request $request)
+    {
+        $token = $request->query('token');
+        $email = $request->query('email');
+        if (!$token || !$email) return redirect()->route('tenant.login');
+
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $email)
+            ->where('created_at', '>', now()->subHour())
+            ->first();
+
+        if (!$record || !Hash::check($token, $record->token)) {
+            return redirect()->route('tenant.login')
+                ->withErrors(['reset' => 'This reset link is invalid or has expired. Please request a new one.']);
+        }
+
+        return view('auth.tenant-reset-password', compact('token', 'email'));
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token'                 => 'required|string',
+            'email'                 => 'required|email',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $data['email'])
+            ->where('created_at', '>', now()->subHour())
+            ->first();
+
+        if (!$record || !Hash::check($data['token'], $record->token)) {
+            return back()->withErrors(['token' => 'This reset link is invalid or has expired.']);
+        }
+
+        $user = TenantUser::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
+        if (!$user) {
+            return back()->withErrors(['email' => 'No account found with that email address.']);
+        }
+
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+
+        return redirect()->route('tenant.login')
+            ->with('success', 'Password updated successfully. You can now sign in with your new password.');
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private function redirectAfterLogin(TenantUser $user)
     {

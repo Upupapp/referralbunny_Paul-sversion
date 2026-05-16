@@ -59,6 +59,10 @@ Route::get('/sign-in',       fn() => view('auth.signin-select'))->name('signin.s
 Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
 Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post')->middleware('throttle:10,1');
 Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
+Route::get('/tenant/forgot-password',  [TenantAuthWebController::class, 'showForgotPassword'])->name('tenant.forgot-password');
+Route::post('/tenant/forgot-password', [TenantAuthWebController::class, 'forgotPassword'])->name('tenant.forgot-password.send')->middleware('throttle:5,1');
+Route::get('/tenant/reset-password',   [TenantAuthWebController::class, 'showResetPassword'])->name('tenant.reset-password');
+Route::post('/tenant/reset-password',  [TenantAuthWebController::class, 'resetPassword'])->name('tenant.reset-password.update')->middleware('throttle:5,1');
 
 // ── Tenant Invite Acceptance (public — no auth required) ──────
 use App\Http\Controllers\Web\TenantInvitationController;
