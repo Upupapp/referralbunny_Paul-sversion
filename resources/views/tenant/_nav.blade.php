@@ -123,10 +123,15 @@ if ($isAdminMgr) {
     try {
         $_caUserId   = auth('tenant')->id() ?? auth('web')->id();
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
-        $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember($_caBadgeKey, 60, function () use ($tenantId) {
-            $actions = app(\App\Services\CriticalActionService::class)->dashboardSummary($tenantId, 100);
-            return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
-        });
+        // Badge suppressed if user clicked "Mark all as seen" (lasts 5 min)
+        if (\Illuminate\Support\Facades\Cache::has("ca_badge_suppressed:{$tenantId}:{$_caUserId}")) {
+            $criticalBadge = 0;
+        } else {
+            $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember($_caBadgeKey, 60, function () use ($tenantId) {
+                $actions = app(\App\Services\CriticalActionService::class)->dashboardSummary($tenantId, 100);
+                return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
+            });
+        }
         // Clear THIS USER's badge when they visit the critical actions page
         if (request()->routeIs('tenant.critical-actions')) {
             \Illuminate\Support\Facades\Cache::forget($_caBadgeKey);

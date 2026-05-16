@@ -622,4 +622,42 @@ class MessageController extends Controller
             'created_at_full' => $m->created_at?->format('M j, Y g:i A') ?? '',
         ];
     }
+
+    // ── Mark All Read ─────────────────────────────────────────────────────────
+
+    public function markAllAdminRead(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        // Resellers cannot reset the admin unread count
+        if (auth('reseller')->check()) {
+            return response()->json(['error' => 'Admin access required.'], 403);
+        }
+
+        DB::table('message_threads')
+            ->where('tenant_id', $tenantId)
+            ->where('admin_unread', '>', 0)
+            ->update(['admin_unread' => 0]);
+
+        DB::table('partner_threads')
+            ->where('tenant_id', $tenantId)
+            ->where('admin_unread', '>', 0)
+            ->update(['admin_unread' => 0]);
+
+        \Illuminate\Support\Facades\Cache::forget("nav_msg_badge:{$tenantId}");
+
+        return response()->json(['success' => true, 'message' => 'All messages marked as read.']);
+    }
+
+    public function markAllResellerRead(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = auth('reseller')->user();
+        if (!$reseller) return response()->json(['error' => 'Unauthorized.'], 403);
+
+        DB::table('message_threads')
+            ->where('tenant_id', $tenantId)
+            ->where('reseller_id', $reseller->id)
+            ->where('reseller_unread', '>', 0)
+            ->update(['reseller_unread' => 0]);
+
+        return response()->json(['success' => true, 'message' => 'All messages marked as read.']);
+    }
 }

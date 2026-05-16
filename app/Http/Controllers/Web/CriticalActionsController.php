@@ -119,4 +119,18 @@ class CriticalActionsController extends Controller
             'lastSeenAt'  => $lastSeenAt ? Carbon::parse($lastSeenAt) : null,
         ]);
     }
+
+    public function markAllRead(string $tenantId, Request $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+
+        if ($userId) {
+            Cache::put("ca_last_seen_{$tenantId}_{$userId}", now()->toIso8601String(), now()->addDays(30));
+            Cache::forget("ca_badge_{$tenantId}_{$userId}");
+            // Suppress badge for 5 minutes so it doesn't instantly reappear
+            Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
+        }
+
+        return response()->json(['success' => true, 'message' => 'All critical actions marked as seen.']);
+    }
 }

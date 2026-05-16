@@ -147,6 +147,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::delete('/partners/splits/{splitId}',[\App\Http\Controllers\ReferrerPartnerController::class, 'removeFromDeal'])->name('partners.remove');
         Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
+        Route::post('/messages/mark-all-read', [MessageController::class, 'markAllResellerRead'])->name('messages.mark-all-read');
         // ── Tasks (Referrer — own tasks only) ────────────────────
         Route::get('/tasks',                      [ResellerPortalController::class, 'tasks'])->name('tasks');
         Route::post('/tasks',                     [ResellerPortalController::class, 'taskStore'])->name('tasks.store');
@@ -266,6 +267,7 @@ Route::middleware(['auth:tenant,reseller,web'])
         Route::get('/partner-threads',                    [MessageController::class, 'partnerThreads'])->name('partner-threads');
         Route::get('/partner-threads/{threadId}',         [MessageController::class, 'partnerThreadMessages'])->name('partner-thread');
         Route::post('/partner-threads/{threadId}/reply',  [MessageController::class, 'replyToPartnerThread'])->name('partner-reply')->middleware('throttle:60,1');
+        Route::post('/mark-all-read',                     [MessageController::class, 'markAllAdminRead'])->name('mark-all-read');
     });
 
 // ── Google Calendar OAuth callback — must be authenticated; Google preserves session cookies ──
@@ -279,7 +281,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/dashboard',       [TenantAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/calendar',        [\App\Http\Controllers\Web\TenantCalendarController::class, 'index'])->name('calendar');
     Route::get('/calendar/events', [\App\Http\Controllers\Web\TenantCalendarController::class, 'events'])->name('calendar.events');
-    Route::get('/critical-actions', [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
+    Route::get('/critical-actions',           [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
+    Route::post('/critical-actions/mark-all-read', [\App\Http\Controllers\Web\CriticalActionsController::class, 'markAllRead'])->name('critical-actions.mark-all-read');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');

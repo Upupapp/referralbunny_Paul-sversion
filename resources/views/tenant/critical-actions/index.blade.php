@@ -38,10 +38,32 @@
                     <p class="text-gray-400 text-xs mt-0.5">Important activity, warnings, and follow-up items for this workspace</p>
                 </div>
             </div>
-            <div class="text-sm text-gray-400">
-                <span class="font-semibold text-[#1E1B4B]">{{ $result['total'] }}</span> item{{ $result['total'] !== 1 ? 's' : '' }}
+            <div class="flex items-center gap-3">
+                <div class="text-sm text-gray-400">
+                    <span class="font-semibold text-[#1E1B4B]">{{ $result['total'] }}</span> item{{ $result['total'] !== 1 ? 's' : '' }}
+                    @if($result['total'] > 0)
+                        <span class="mx-1">·</span> Page {{ $result['page'] }} of {{ $result['total_pages'] }}
+                    @endif
+                </div>
                 @if($result['total'] > 0)
-                    <span class="mx-1">·</span> Page {{ $result['page'] }} of {{ $result['total_pages'] }}
+                <button x-data="{ done: false, loading: false }"
+                        @click="if(done||loading) return; loading=true;
+                            fetch('{{ route('tenant.critical-actions.mark-all-read', $tenant->id) }}', {
+                                method:'POST', credentials:'same-origin',
+                                headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+                            }).then(()=>{ done=true; loading=false; }).catch(()=>{ loading=false; })"
+                        class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-60"
+                        :disabled="loading || done">
+                    <svg x-show="!done && !loading" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg x-show="loading" x-cloak class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span x-show="!done" x-text="loading ? 'Marking…' : 'Mark all as seen'"></span>
+                    <span x-show="done" x-cloak class="text-emerald-600">All seen ✓</span>
+                </button>
                 @endif
             </div>
         </div>

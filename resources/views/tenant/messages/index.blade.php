@@ -58,14 +58,35 @@
                         </template>
                     </p>
                 </div>
-                <button @click="openCompose = true"
-                        class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
-                        style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
-                        title="New Message">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    {{-- Mark all read (only when unread > 0) --}}
+                    <template x-if="totalUnread > 0">
+                        <button x-data="{ busy: false }"
+                                @click="if(busy) return; busy=true;
+                                    fetch('{{ route('tenant.messages.mark-all-read', $tenant->id) }}', {
+                                        method:'POST', credentials:'same-origin',
+                                        headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+                                    }).then(()=>{
+                                        threads.forEach(t=>t.admin_unread=0);
+                                        partnerThreads.forEach(t=>t.admin_unread=0);
+                                        busy=false;
+                                    }).catch(()=>busy=false)"
+                                class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                                :disabled="busy" title="Mark all as read">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                    </template>
+                    <button @click="openCompose = true"
+                            class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md"
+                            style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
+                            title="New Message">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {{-- Tabs --}}
