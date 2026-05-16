@@ -9,6 +9,7 @@ use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends Controller
 {
@@ -107,6 +108,11 @@ class NotificationController extends Controller
             ->where('notifiable_id', $id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
+
+        // Bust the partner nav badge cache so the sidebar reflects immediately
+        if ($type === 'partner') {
+            Cache::forget("partner_notif_unread:{$id}");
+        }
 
         return response()->json(['ok' => true]);
     }
