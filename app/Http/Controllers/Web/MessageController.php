@@ -23,6 +23,7 @@ class MessageController extends Controller
             $threads = MessageThread::where('tenant_id', $tenantId)
                 ->with('reseller:id,name,email')
                 ->orderByDesc('last_message_at')
+                ->limit(100)
                 ->get()
                 ->map(fn($t) => [
                     'id'                   => $t->id,
@@ -362,6 +363,7 @@ class MessageController extends Controller
         $threads = PartnerThread::where('tenant_id', $tenantId)
             ->with('partner:id,first_name,last_name,email')
             ->orderByDesc('last_message_at')
+            ->limit(100)
             ->get()
             ->map(fn($t) => [
                 'id'             => $t->id,

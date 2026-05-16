@@ -205,7 +205,7 @@ class RequestFormSubmissionService
         try {
             $notifService->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'request_form',
+                category:     'task_approval',
                 priority:     'normal',
                 title:        "New form response: {$form->title}",
                 body:         $body,

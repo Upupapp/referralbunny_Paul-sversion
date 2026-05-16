@@ -620,6 +620,39 @@ class LeadController extends Controller
             'deleted_by' => $actorName,
         ]);
 
+        // Notify admins and the assigned referrer
+        try {
+            $notifSvc = app(\App\Services\NotificationDispatchService::class);
+            $notifSvc->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Deal archived',
+                body:         "{$leadName} was moved to the archive by {$actorName}.",
+                actionUrl:    "/tenant/{$tenantId}/deals",
+                actionLabel:  'View Deals',
+                dedupeSuffix: "deal_archived:{$leadId}",
+            );
+            if ($lead->reseller_name) {
+                $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                    ->first();
+                if ($reseller) {
+                    $notifSvc->dispatchToReseller(
+                        resellerId:   $reseller->id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'One of your deals was archived',
+                        body:         "{$leadName} has been moved to the archive.",
+                        actionUrl:    "/reseller/{$tenantId}/deals",
+                        actionLabel:  'View My Deals',
+                        dedupeSuffix: "deal_archived_rs:{$leadId}",
+                    );
+                }
+            }
+        } catch (\Throwable) {}
+
         return response()->json(['success' => true, 'deleted_id' => $leadId]);
     }
 
@@ -685,6 +718,39 @@ class LeadController extends Controller
             'tenant_id'   => $lead->tenant_id,
             'restored_by' => $actorName,
         ]);
+
+        // Notify admins and the assigned referrer
+        try {
+            $notifSvc = app(\App\Services\NotificationDispatchService::class);
+            $notifSvc->dispatchToTenantAdmins(
+                tenantId:     $lead->tenant_id,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Deal restored from archive',
+                body:         "{$lead->name} has been restored and is now active again.",
+                actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
+                actionLabel:  'View Deal',
+                dedupeSuffix: "deal_restored:{$lead->id}",
+            );
+            if ($lead->reseller_name) {
+                $reseller = \App\Models\Reseller::where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                    ->first();
+                if ($reseller) {
+                    $notifSvc->dispatchToReseller(
+                        resellerId:   $reseller->id,
+                        tenantId:     $lead->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Your deal has been restored',
+                        body:         "{$lead->name} was restored from the archive and is active again.",
+                        actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: "deal_restored_rs:{$lead->id}",
+                    );
+                }
+            }
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'lead' => $lead->fresh(['commissionSplits'])]);
     }

@@ -150,7 +150,8 @@ class CriticalActionService
      */
     public function forPartner(string $partnerId, string $tenantId, int $limit = 6): array
     {
-        $actions = [];
+        $actions  = [];
+        $dealIds  = []; // initialized here so commission block can safely reference it
 
         // Unread messages in partner threads (partner_unread > 0)
         try {

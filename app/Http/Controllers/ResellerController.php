@@ -510,6 +510,21 @@ class ResellerController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Notify the deactivated referrer themselves
+        try {
+            app(NotificationDispatchService::class)->dispatchToReseller(
+                resellerId:   $reseller->id,
+                tenantId:     $tenantId,
+                category:     'reseller_referrer',
+                priority:     'high',
+                title:        'Your referrer account has been deactivated',
+                body:         'Your access to this workspace has been removed by an admin. Contact the workspace admin if you believe this was an error.',
+                actionUrl:    null,
+                actionLabel:  null,
+                dedupeSuffix: "self_deactivated:{$reseller->id}",
+            );
+        } catch (\Throwable) {}
+
         return response()->json([
             'success'            => true,
             'message'            => 'Referrer deactivated. Access to this tenant has been removed.',

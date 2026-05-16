@@ -20,7 +20,7 @@ class SearchService
         'approval_request' => ['label' => 'Approval',         'icon' => 'check-circle'],
         'subscription'     => ['label' => 'Subscription',     'icon' => 'refresh'],
         'lead'             => ['label' => 'Lead',             'icon' => 'user'],
-        'reseller'         => ['label' => 'Reseller',         'icon' => 'users'],
+        'reseller'         => ['label' => 'Referrer',         'icon' => 'users'],
         'notification'     => ['label' => 'Notification',     'icon' => 'bell'],
     ];
 
@@ -112,7 +112,7 @@ class SearchService
             'query'      => $query,
             'command'    => $command,
             'scoped'     => $scoped,
-            'has_index'  => DB::table('search_index')->count() > 0,
+            'has_index'  => \Illuminate\Support\Facades\Cache::remember('search_has_index', 60, fn() => DB::table('search_index')->count() > 0),
         ];
     }
 

@@ -71,6 +71,7 @@ class TenantAdminController extends Controller
                 ->where('status', 'expiring')
                 ->select('id', 'name', 'days_left', 'deal_value', 'reseller_name')
                 ->orderBy('days_left')
+                ->limit(50)
                 ->get();
 
             // 2. New deals since last visit
@@ -79,6 +80,7 @@ class TenantAdminController extends Controller
                 ->where('created_at', '>', $since)
                 ->select('id', 'name', 'stage', 'deal_value', 'reseller_name', 'created_at')
                 ->orderByDesc('created_at')
+                ->limit(50)
                 ->get();
 
             // 3. New resellers invited since last visit (status = invited, pending acceptance)
@@ -88,6 +90,7 @@ class TenantAdminController extends Controller
                 ->where('created_at', '>', $since)
                 ->select('id', 'name', 'email', 'created_at')
                 ->orderByDesc('created_at')
+                ->limit(50)
                 ->get();
 
             // 4. Resellers who became active since last visit (joined_date or created_at)
@@ -97,6 +100,7 @@ class TenantAdminController extends Controller
                 ->where('created_at', '>', $since)
                 ->select('id', 'name', 'email', 'joined_date', 'created_at')
                 ->orderByDesc('created_at')
+                ->limit(50)
                 ->get();
 
             // Only show if at least one section has data
