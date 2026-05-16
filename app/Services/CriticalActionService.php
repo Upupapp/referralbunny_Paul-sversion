@@ -38,10 +38,10 @@ class CriticalActionService
             90,
             fn() => $this->forTenant($tenantId, $opts)
         );
-        // Dashboard widget: most recent first, severity as tiebreaker
+        // Dashboard widget: severity-first so urgent items are never buried by recent low-severity ones
         usort($all, fn($a, $b) =>
-            $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
-            ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+            (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+            ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
         );
         return array_slice($all, 0, $limit);
     }
@@ -51,14 +51,19 @@ class CriticalActionService
      */
     public function masterList(string $tenantId, array $filters = [], int $perPage = 25): array
     {
-        $all = $this->forTenant($tenantId, [
+        $opts = [
             'billing'          => $filters['can_see_billing'] ?? false,
             'exports'          => $filters['can_see_exports']  ?? true,
             'users'            => $filters['can_see_users']    ?? true,
             'limit_per_source' => 50,
             'since'            => $filters['since'] ?? null,
             'until'            => $filters['until'] ?? null,
-        ]);
+        ];
+        $all = Cache::remember(
+            "ca_master:{$tenantId}:" . md5(serialize($opts)),
+            45,
+            fn() => $this->forTenant($tenantId, $opts)
+        );
 
         // Apply filters
         if (! empty($filters['severity'])) {
@@ -329,10 +334,19 @@ class CriticalActionService
             $sources[] = fn() => $this->billingIssues($tenantId);
         }
 
-        $all = [];
+        $all  = [];
+        $seen = [];
         foreach ($sources as $source) {
             try {
-                $all = array_merge($all, $source());
+                foreach ($source() as $action) {
+                    // Deduplicate by type+related_id so the same deal can't appear in
+                    // both expiringDeals and stalledDeals, inflating the badge count
+                    $dedupeKey = $action['type'] . ':' . ($action['related_id'] ?? md5($action['summary'] ?? ''));
+                    if (!isset($seen[$dedupeKey])) {
+                        $seen[$dedupeKey] = true;
+                        $all[] = $action;
+                    }
+                }
             } catch (\Throwable $e) {
                 Log::warning('[CriticalActionService] Tenant source failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             }
@@ -347,6 +361,7 @@ class CriticalActionService
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->where('status', 'expiring')
+            ->whereNull('deleted_at')
             ->select('id', 'name', 'reseller_name', 'days_left', 'deal_value', 'updated_at')
             ->orderBy('days_left')
             ->limit(10)
@@ -376,6 +391,7 @@ class CriticalActionService
             ->where('tenant_id', $tenantId)
             ->where('status', 'expired')
             ->where('updated_at', '>', now()->subDays(7))
+            ->whereNull('deleted_at')
             ->select('id', 'name', 'reseller_name', 'updated_at')
             ->orderByDesc('updated_at')
             ->limit(5)
@@ -404,6 +420,7 @@ class CriticalActionService
             ->where('tenant_id', $tenantId)
             ->whereNull('reseller_name')
             ->whereIn('status', ['active', 'expiring'])
+            ->whereNull('deleted_at')
             ->count();
 
         if ($count === 0) return [];
@@ -1105,7 +1122,7 @@ class CriticalActionService
                 return $this->make([
                     'type'          => 'stage_move_request_pending',
                     'category'      => 'deal',
-                    'severity'      => $missingCount > 0 ? 'high' : 'low',
+                    'severity'      => $missingCount > 0 ? 'high' : 'medium',
                     'summary'       => $summary,
                     'actor_name'    => $referrerName,
                     'actor_role'    => 'Referrer',
@@ -1470,6 +1487,7 @@ class CriticalActionService
             $rows = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->whereNotIn('status', ['expired', 'declined'])
+                ->whereNull('deleted_at')
                 ->whereRaw("data::jsonb->>'amount_defaulted' = 'true'")
                 ->whereRaw("data::jsonb->>'amount_confirmation_status' = 'pending'")
                 ->select('id', 'name', 'reseller_name', 'stage', 'deal_value', 'updated_at')
@@ -1516,7 +1534,8 @@ class CriticalActionService
             $rows = DB::table('lead_history as lh')
                 ->join('leads as l', 'l.id', '=', 'lh.lead_id')
                 ->where('lh.tenant_id', $tenantId)
-                ->where('lh.action', 'like', '%amount updated by referrer%')
+                ->whereIn('lh.category', ['financial', 'commission'])
+                ->where('lh.action', 'like', 'amount updated by referrer%')
                 ->where('lh.created_at', '>=', $cutoff)
                 ->where('l.commission_status', 'pending') // only pending — locked/paid are finalised
                 ->whereNull('l.deleted_at')
@@ -1691,7 +1710,7 @@ class CriticalActionService
                 'related_type'  => 'integration',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->token_expires_at ?? now(),
-                'action_url'    => "/tenant/{$tenantId}/integrations",
+                'action_url'    => "/tenant/{$tenantId}/settings",
                 'action_label'  => 'Manage Integration',
                 'action_needed' => true,
                 'source'        => 'google_calendar_integrations',

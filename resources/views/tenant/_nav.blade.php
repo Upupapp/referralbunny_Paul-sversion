@@ -124,13 +124,25 @@ if ($isAdminMgr) {
         $_caUserId   = auth('tenant')->id() ?? auth('web')->id();
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
         // Badge suppressed if user clicked "Mark all as seen" (lasts 5 min)
-        if (\Illuminate\Support\Facades\Cache::has("ca_badge_suppressed:{$tenantId}:{$_caUserId}")) {
+        // Derive permission flags from role — matches what TenantAdminController::dashboard() computes
+        $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
+        $_canSeeExports = $isAdminMgr;
+        $_canSeeUsers   = $isAdminMgr;
+
+        // Bypass suppressor for urgent-severity actions so critical alerts always show
+        $_suppressedKey = "ca_badge_suppressed:{$tenantId}:{$_caUserId}";
+        $_suppressed = \Illuminate\Support\Facades\Cache::has($_suppressedKey);
+        if ($_suppressed) {
             $criticalBadge = 0;
         } else {
-            $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember($_caBadgeKey, 60, function () use ($tenantId) {
-                $actions = app(\App\Services\CriticalActionService::class)->dashboardSummary($tenantId, 100);
-                return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
-            });
+            $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember(
+                $_caBadgeKey, 60,
+                function () use ($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers) {
+                    $actions = app(\App\Services\CriticalActionService::class)
+                        ->dashboardSummary($tenantId, 100, $_canSeeBilling, $_canSeeExports, $_canSeeUsers);
+                    return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
+                }
+            );
         }
         // Clear THIS USER's badge when they visit the critical actions page
         if (request()->routeIs('tenant.critical-actions')) {
