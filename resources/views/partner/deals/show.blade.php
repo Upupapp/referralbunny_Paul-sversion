@@ -155,19 +155,34 @@
                 </div>
 
                 <div class="px-5 sm:px-6 pt-5 pb-5">
-                    {{-- Prominent amount display --}}
-                    <div class="rounded-2xl text-center py-7 px-4 mb-5 relative overflow-hidden"
-                         style="background:linear-gradient(135deg,#1e1b4b,#312e81);box-shadow:0 8px 32px rgba(99,102,241,0.2)">
-                        <div class="absolute inset-0 opacity-10" style="background:radial-gradient(circle at 70% 30%,#818cf8,transparent 60%)"></div>
-                        <p class="text-[10px] font-bold tracking-[0.15em] text-indigo-300 uppercase mb-2 relative">Your Estimated Share</p>
-                        <p class="text-4xl sm:text-5xl font-black text-white tabular-nums mb-2 relative">
-                            ₱{{ number_format((int) round($myPartnerSplit->peso_amount ?? 0)) }}
+                    {{-- Commission share card --}}
+                    @php
+                        $csColor = match($commissionStatus) {
+                            'paid'   => ['dot' => '#10B981', 'label' => 'Paid',    'amt' => 'text-emerald-600', 'bg' => 'bg-emerald-50 border-emerald-100'],
+                            'locked' => ['dot' => '#D97706', 'label' => 'Locked',  'amt' => 'text-amber-600',   'bg' => 'bg-amber-50 border-amber-100'],
+                            default  => ['dot' => '#7B61FF', 'label' => 'Pending', 'amt' => 'text-[#7B61FF]',   'bg' => 'bg-violet-50 border-violet-100'],
+                        };
+                        $pesoAmount = (int) round($myPartnerSplit->peso_amount ?? 0);
+                    @endphp
+                    <div class="rounded-2xl border p-5 mb-5 {{ $csColor['bg'] }}">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:{{ $csColor['dot'] }}"></span>
+                                <span class="text-xs font-semibold text-[#1E1B4B]">Your Estimated Share</span>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                  style="background:{{ $csColor['dot'] }}22;color:{{ $csColor['dot'] }}">
+                                {{ $csColor['label'] }}
+                            </span>
+                        </div>
+                        <p class="text-3xl font-extrabold tabular-nums {{ $csColor['amt'] }} mb-1">
+                            ₱{{ number_format($pesoAmount) }}
                         </p>
-                        <p class="text-sm text-indigo-300 font-medium relative">
+                        <p class="text-xs text-gray-500">
                             @if(($myPartnerSplit->split_share_type ?? '') === 'percentage')
-                                {{ number_format((float)$myPartnerSplit->split_share_value, 0) }}% of the commission pool allocated to you
+                                {{ number_format((float)$myPartnerSplit->split_share_value, 0) }}% of the commission pool · estimate subject to change
                             @else
-                                Fixed amount allocation
+                                Fixed amount allocation · estimate subject to change
                             @endif
                         </p>
                     </div>
