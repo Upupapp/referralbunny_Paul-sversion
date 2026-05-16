@@ -329,11 +329,11 @@ class ContactRoleAssignmentController extends Controller
         $contactName = $contact ? trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')) : $invitation->invited_email;
 
         try {
-            Mail::to($invitation->invited_email)->send(
+            Mail::to($invitation->invited_email)->queue(
                 new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $deal?->name)
             );
         } catch (\Throwable $e) {
-            \Log::error('ContactRoleInvitationMail resend failed', ['error' => $e->getMessage()]);
+            \Log::error('ContactRoleInvitationMail queue failed', ['error' => $e->getMessage()]);
         }
 
         [$actorUserId, $actorRole] = $this->resolveActor();

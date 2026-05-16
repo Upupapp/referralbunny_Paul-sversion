@@ -905,10 +905,10 @@ class ResellerDealController extends Controller
 
             try {
                 \Illuminate\Support\Facades\Mail::to($partnerEmail)
-                    ->send(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
+                    ->queue(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
                 $inviteSent = true;
             } catch (\Throwable $mailEx) {
-                Log::warning('PartnerInviteMail send failed in addPartnerSplit', [
+                Log::warning('PartnerInviteMail queue failed in addPartnerSplit', [
                     'tenant_id' => $tenantId, 'email' => $partnerEmail,
                     'error'     => $mailEx->getMessage(),
                 ]);
@@ -1551,18 +1551,13 @@ class ResellerDealController extends Controller
                     dedupeSuffix: $splitId . ':coreferrer_removed:' . now()->format('YmdH'),
                 );
 
-                // Simple email notification
                 try {
-                    \Illuminate\Support\Facades\Mail::send([], [], function ($msg) use ($coRefReseller, $lead, $actorName, $tenantId) {
-                        $msg->to($coRefReseller->email, $coRefReseller->name)
-                            ->subject("You've been removed as a co-referrer on \"{$lead->name}\"")
-                            ->html(
-                                "<p>Hi {$coRefReseller->name},</p>"
-                                . "<p><strong>{$actorName}</strong> has removed you as a co-referrer on the deal <strong>\"{$lead->name}\"</strong>.</p>"
-                                . "<p>If you have any questions, please contact your program administrator.</p>"
-                                . "<p>— ReferralBunny.ai</p>"
-                            );
-                    });
+                    \Illuminate\Support\Facades\Mail::queue(new \App\Mail\CoReferrerRemovedMail(
+                        resellerName:  $coRefReseller->name,
+                        resellerEmail: $coRefReseller->email,
+                        dealName:      $lead->name,
+                        actorName:     $actorName,
+                    ));
                 } catch (\Throwable) {}
             }
         } catch (\Throwable) {}

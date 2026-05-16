@@ -130,21 +130,23 @@ class AgreementController extends Controller
             ->select('id', 'name')
             ->get();
 
-        $result = $resellers->map(function ($r) use ($tenantId, $requiredCount) {
-            $ackCount = DB::table('reseller_agreement_acknowledgments as ack')
-                ->join('reseller_agreement_files as af', 'ack.agreement_file_id', '=', 'af.id')
-                ->where('ack.reseller_id', $r->id)
-                ->where('af.is_required', true)
-                ->where('af.is_active', true)
-                ->count();
+        // Single query: count required acknowledgments per reseller
+        $ackCounts = DB::table('reseller_agreement_acknowledgments as ack')
+            ->join('reseller_agreement_files as af', 'ack.agreement_file_id', '=', 'af.id')
+            ->where('af.tenant_id', $tenantId)
+            ->where('af.is_required', true)
+            ->where('af.is_active', true)
+            ->whereIn('ack.reseller_id', $resellers->pluck('id'))
+            ->groupBy('ack.reseller_id')
+            ->pluck(DB::raw('COUNT(*) as cnt'), 'ack.reseller_id')
+            ->map(fn($v) => (int) $v);
 
-            return [
-                'reseller_id'     => $r->id,
-                'required_total'  => $requiredCount,
-                'acknowledged'    => $ackCount,
-                'fully_compliant' => $requiredCount === 0 || $ackCount >= $requiredCount,
-            ];
-        });
+        $result = $resellers->map(fn($r) => [
+            'reseller_id'     => $r->id,
+            'required_total'  => $requiredCount,
+            'acknowledged'    => $ackCounts->get($r->id, 0),
+            'fully_compliant' => $requiredCount === 0 || $ackCounts->get($r->id, 0) >= $requiredCount,
+        ]);
 
         return response()->json([
             'required_agreements' => $requiredCount,

@@ -315,15 +315,14 @@ class ReferrerPartnerController extends Controller
 
                 try {
                     \Illuminate\Support\Facades\Mail::to($partnerEmail)
-                        ->send(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
+                        ->queue(new \App\Mail\PartnerInviteMail($newPartner, $tenant, $reseller));
                     $inviteSent = true;
                 } catch (\Throwable $mailEx) {
-                    Log::warning('PartnerInviteMail send failed', [
+                    Log::warning('PartnerInviteMail queue failed', [
                         'tenant_id' => $tenantId,
                         'email'     => $partnerEmail,
                         'error'     => $mailEx->getMessage(),
                     ]);
-                    // Invite record exists even if email failed — they can be re-invited by admin
                 }
             }
             // If partner exists but hasn't set up yet (status=invited), no re-send here;

@@ -269,12 +269,11 @@ class ResellerPortalController extends Controller
     {
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
-        $filter   = request('filter', 'all'); // all | deals | commission | system
+        $filter   = request('filter', 'all');
         $perPage  = 25;
         $page     = max(1, (int) request('page', 1));
         $offset   = ($page - 1) * $perPage;
 
-        // Get all lead IDs belonging to this reseller
         $leadIds = [];
         try {
             $leadIds = Lead::withTrashed()
@@ -285,54 +284,95 @@ class ResellerPortalController extends Controller
                 ->toArray();
         } catch (\Throwable) {}
 
-        // Build activity from two sources then merge
-        $items = collect();
-
-        // ── Source 1: lead_history (stage changes, status updates, commission) ─
-        // 'commission' filter also pulls lead_history rows with category commission/financial
         $lhCategories = match($filter) {
             'commission' => ['commission', 'financial'],
-            'all', 'deals' => null, // null = no category filter
-            default => null,
+            default      => null,
         };
         $lhShouldRun = in_array($filter, ['all', 'deals', 'commission']) && count($leadIds) > 0;
 
-        if ($lhShouldRun) {
-            try {
-                $lhQuery = DB::table('lead_history')
-                    ->leftJoin('leads', 'lead_history.lead_id', '=', 'leads.id')
-                    ->where('lead_history.tenant_id', $tenantId)
-                    ->whereIn('lead_history.lead_id', $leadIds)
-                    ->select(
-                        'lead_history.id',
-                        'lead_history.lead_id',
-                        'lead_history.action',
-                        'lead_history.category',
-                        'lead_history.actor_name',
-                        'lead_history.actor_role',
-                        'lead_history.old_values',
-                        'lead_history.new_values',
-                        'lead_history.created_at',
-                        'leads.name as lead_name',
-                        'leads.deal_value',
-                    );
+        $actActions = match($filter) {
+            'deals'      => ['deal_comment_created','deal_comment_edited','deal_comment_deleted',
+                             'deal_extension_requested','deal_extension_approved','deal_extension_rejected','deal_extension_clarification_requested'],
+            'commission' => ['partner_split_created','partner_split_removed'],
+            'system'     => ['invite_accepted','invite.accepted','referrer_deactivated','referrer_double_auth_failed'],
+            'imports'    => ['deal_import_completed','deal_import_uploaded','contacts_import_completed','contacts_import_uploaded'],
+            default      => [],
+        };
 
-                if ($lhCategories !== null) {
-                    $lhQuery->whereIn('lead_history.category', $lhCategories);
-                }
+        $total = 0;
+        $paged = collect();
 
-                $rows = $lhQuery
-                    ->orderByDesc('lead_history.created_at')
-                    ->limit(300)
-                    ->get();
+        try {
+            // activity_logs subquery — same columns as lead_history for UNION
+            $alSub = DB::table('activity_logs as al')
+                ->where('al.tenant_id', $tenantId)
+                ->where(function ($q) use ($reseller, $leadIds) {
+                    $q->where(fn($q2) => $q2->where('al.entity', 'reseller')->where('al.entity_id', (string) $reseller->id));
+                    if (count($leadIds) > 0) {
+                        $q->orWhere(fn($q2) => $q2->where('al.entity', 'lead')->whereIn('al.entity_id', $leadIds));
+                    }
+                })
+                ->when($actActions, fn($q) => $q->whereIn('al.action', $actActions))
+                ->select([
+                    DB::raw("'al'::text as source"),
+                    DB::raw('al.id::text as id'),
+                    DB::raw('NULL::text as lead_id'),
+                    DB::raw('al.action::text as action'),
+                    DB::raw('NULL::text as category'),
+                    DB::raw('NULL::text as actor_name'),
+                    DB::raw('NULL::text as actor_role'),
+                    DB::raw('NULL::text as old_values'),
+                    DB::raw('NULL::text as new_values'),
+                    DB::raw('al.metadata::text as metadata'),
+                    DB::raw('al.entity::text as entity'),
+                    DB::raw('al.entity_id::text as entity_id'),
+                    DB::raw('NULL::text as lead_name'),
+                    'al.created_at',
+                ]);
 
-                foreach ($rows as $r) {
-                    $old = is_string($r->old_values) ? json_decode($r->old_values, true) : (array)($r->old_values ?? []);
-                    $new = is_string($r->new_values) ? json_decode($r->new_values, true) : (array)($r->new_values ?? []);
+            if ($lhShouldRun) {
+                $lhSub = DB::table('lead_history as lh')
+                    ->leftJoin('leads as l', 'lh.lead_id', '=', 'l.id')
+                    ->where('lh.tenant_id', $tenantId)
+                    ->whereIn('lh.lead_id', $leadIds)
+                    ->when($lhCategories, fn($q) => $q->whereIn('lh.category', $lhCategories))
+                    ->select([
+                        DB::raw("'lh'::text as source"),
+                        DB::raw('lh.id::text as id'),
+                        DB::raw('lh.lead_id::text as lead_id'),
+                        DB::raw('lh.action::text as action'),
+                        DB::raw('lh.category::text as category'),
+                        DB::raw('lh.actor_name::text as actor_name'),
+                        DB::raw('lh.actor_role::text as actor_role'),
+                        DB::raw('lh.old_values::text as old_values'),
+                        DB::raw('lh.new_values::text as new_values'),
+                        DB::raw('NULL::text as metadata'),
+                        DB::raw("'lead'::text as entity"),
+                        DB::raw('lh.lead_id::text as entity_id'),
+                        DB::raw('l.name::text as lead_name'),
+                        'lh.created_at',
+                    ]);
 
+                $total = (clone $lhSub)->count() + (clone $alSub)->count();
+                $rows  = $lhSub->unionAll($alSub)->orderByDesc('created_at')->limit($perPage)->offset($offset)->get();
+            } else {
+                $total = (clone $alSub)->count();
+                $rows  = $alSub->orderByDesc('created_at')->limit($perPage)->offset($offset)->get();
+            }
+
+            // Fetch lead names only for the activity_log rows on this page
+            $alLeadIds = $rows->where('source', 'al')->where('entity', 'lead')
+                ->pluck('entity_id')->filter()->unique()->values()->toArray();
+            $leadNames = count($alLeadIds) > 0
+                ? DB::table('leads')->whereIn('id', $alLeadIds)->pluck('name', 'id')->all()
+                : [];
+
+            $paged = $rows->map(function ($r) use ($leadNames, $reseller) {
+                if ($r->source === 'lh') {
+                    $old = is_string($r->old_values) ? (json_decode($r->old_values, true) ?? []) : [];
+                    $new = is_string($r->new_values) ? (json_decode($r->new_values, true) ?? []) : [];
                     [$title, $detail] = $this->formatLeadHistoryItem($r->action, $r->category, $old, $new, $r->actor_name, $r->actor_role);
-
-                    $items->push([
+                    $item = [
                         'id'         => 'lh_' . $r->id,
                         'icon_type'  => $this->leadHistoryIconType($r->category, $r->action),
                         'title'      => $title,
@@ -341,75 +381,39 @@ class ResellerPortalController extends Controller
                         'lead_id'    => $r->lead_id,
                         'created_at' => $r->created_at,
                         'category'   => $this->friendlyCategory($r->category, $r->action),
-                    ]);
+                    ];
+                } else {
+                    $meta = is_string($r->metadata) ? (json_decode($r->metadata, true) ?? []) : [];
+                    [$title, $detail, $iconType, $cat] = $this->formatActivityLogItem(
+                        $r->action, $meta, $r->entity, $r->entity_id, $leadNames, $reseller->name
+                    );
+                    $item = [
+                        'id'         => 'al_' . $r->id,
+                        'icon_type'  => $iconType,
+                        'title'      => $title,
+                        'detail'     => $detail,
+                        'deal_name'  => ($r->entity === 'lead' ? ($leadNames[$r->entity_id] ?? null) : null),
+                        'lead_id'    => ($r->entity === 'lead' ? $r->entity_id : null),
+                        'created_at' => $r->created_at,
+                        'category'   => $cat,
+                    ];
                 }
-            } catch (\Throwable) {}
+
+                try {
+                    $dt = \Carbon\Carbon::parse($r->created_at);
+                    $item['time_ago'] = $dt->diffForHumans();
+                    $item['time_fmt'] = $dt->format('M j, Y g:i A');
+                } catch (\Throwable) {
+                    $item['time_ago'] = '—';
+                    $item['time_fmt'] = '';
+                }
+                return $item;
+            })->values();
+        } catch (\Throwable $e) {
+            \Log::warning('activityLog union failed', ['error' => $e->getMessage()]);
         }
 
-        // ── Source 2: activity_logs (comments, commission, extensions) ────
-        $actActions = match($filter) {
-            'deals'      => ['deal_comment_created','deal_comment_edited','deal_comment_deleted',
-                             'deal_extension_requested','deal_extension_approved','deal_extension_rejected','deal_extension_clarification_requested'],
-            'commission' => ['partner_split_created','partner_split_removed'],
-            'system'     => ['invite_accepted','invite.accepted','referrer_deactivated','referrer_double_auth_failed'],
-            'imports'    => ['deal_import_completed','deal_import_uploaded','contacts_import_completed','contacts_import_uploaded'],
-            default      => [], // all — no action filter
-        };
-
-        try {
-            $query = DB::table('activity_logs')
-                ->where('tenant_id', $tenantId)
-                ->where(function ($q) use ($reseller, $leadIds) {
-                    $q->where(fn($q2) => $q2->where('entity', 'reseller')->where('entity_id', (string) $reseller->id));
-                    if (count($leadIds) > 0) {
-                        $q->orWhere(fn($q2) => $q2->where('entity', 'lead')->whereIn('entity_id', $leadIds));
-                    }
-                })
-                ->when($actActions, fn($q) => $q->whereIn('action', $actActions))
-                ->orderByDesc('created_at')
-                ->limit(300)
-                ->get();
-
-            // Cache lead names for activity_logs
-            $leadNames = count($leadIds) > 0
-                ? DB::table('leads')->whereIn('id', $leadIds)->pluck('name', 'id')->all()
-                : [];
-
-            foreach ($query as $r) {
-                $meta = is_string($r->metadata) ? json_decode($r->metadata, true) : (array)($r->metadata ?? []);
-                [$title, $detail, $iconType, $cat] = $this->formatActivityLogItem($r->action, $meta, $r->entity, $r->entity_id, $leadNames, $reseller->name);
-
-                $items->push([
-                    'id'         => 'al_' . $r->id,
-                    'icon_type'  => $iconType,
-                    'title'      => $title,
-                    'detail'     => $detail,
-                    'deal_name'  => ($r->entity === 'lead' ? ($leadNames[$r->entity_id] ?? null) : null),
-                    'lead_id'    => ($r->entity === 'lead' ? $r->entity_id : null),
-                    'created_at' => $r->created_at,
-                    'category'   => $cat,
-                ]);
-            }
-        } catch (\Throwable) {}
-
-        // Sort merged items by created_at desc, paginate in PHP
-        $sorted = $items->sortByDesc('created_at')->values();
-        $total  = $sorted->count();
-        $paged  = $sorted->slice($offset, $perPage)->values();
-        $pages  = (int) ceil($total / $perPage);
-
-        // Humanise timestamps
-        $paged = $paged->map(function ($item) {
-            try {
-                $dt = \Carbon\Carbon::parse($item['created_at']);
-                $item['time_ago'] = $dt->diffForHumans();
-                $item['time_fmt'] = $dt->format('M j, Y g:i A');
-            } catch (\Throwable) {
-                $item['time_ago'] = '—';
-                $item['time_fmt'] = '';
-            }
-            return $item;
-        });
+        $pages = (int) ceil($total / $perPage);
 
         return view('reseller.activity', compact(
             'reseller', 'tenant', 'paged', 'total', 'page', 'pages', 'filter'
