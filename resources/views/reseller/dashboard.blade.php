@@ -281,7 +281,8 @@
     </div>
     @else
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <div x-data="{ markingDone: false }"
+             class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></div>
                 <p class="text-sm font-bold" style="color:#1E1B4B">Actions Needed</p>
@@ -302,7 +303,15 @@
                     </div>
                 </div>
             </div>
-            <span class="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{{ $actionItems->count() }} item{{ $actionItems->count() > 1 ? 's' : '' }}</span>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{{ $actionItems->count() }} item{{ $actionItems->count() > 1 ? 's' : '' }}</span>
+                <button x-show="!markingDone"
+                        @click="markingDone=true; fetch('{{ route('reseller.actions.mark-all-read', $tenant->id) }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} })"
+                        class="text-[10px] text-gray-400 hover:text-emerald-600 transition-colors underline underline-offset-2">
+                    Mark all seen
+                </button>
+                <span x-show="markingDone" x-cloak class="text-[10px] text-emerald-600 font-medium">All seen ✓</span>
+            </div>
         </div>
         <div class="divide-y divide-gray-50">
             @foreach($actionItems as $act)

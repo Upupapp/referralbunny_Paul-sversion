@@ -767,4 +767,29 @@ class PartnerPortalController extends Controller
 
         return response()->json(['events' => $sorted, 'grouped' => $grouped]);
     }
+
+    public function markMessagesRead(): \Illuminate\Http\JsonResponse
+    {
+        $partner = $this->partner();
+
+        DB::table('partner_threads')
+            ->where('partner_id', $partner->id)
+            ->where('partner_unread', '>', 0)
+            ->update(['partner_unread' => 0]);
+
+        DB::table('message_threads')
+            ->where('partner_id', $partner->id)
+            ->where('partner_unread', '>', 0)
+            ->update(['partner_unread' => 0]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markActionsRead(): \Illuminate\Http\JsonResponse
+    {
+        $partner = $this->partner();
+        Cache::put("ca_partner_suppressed:{$partner->id}", 1, 300);
+
+        return response()->json(['success' => true]);
+    }
 }

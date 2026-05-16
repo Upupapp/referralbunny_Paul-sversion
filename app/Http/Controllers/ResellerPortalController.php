@@ -798,4 +798,15 @@ class ResellerPortalController extends Controller
 
         return response()->json(['events' => $sorted, 'grouped' => $grouped]);
     }
+
+    public function markActionsRead($tenantId): \Illuminate\Http\JsonResponse
+    {
+        $reseller = $this->reseller();
+        $cacheKey = "ca_reseller:{$tenantId}:" . md5($reseller->name . ':' . $reseller->id);
+
+        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        \Illuminate\Support\Facades\Cache::put("ca_rs_suppressed:{$reseller->id}", 1, 300);
+
+        return response()->json(['success' => true]);
+    }
 }

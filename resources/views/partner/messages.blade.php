@@ -14,16 +14,38 @@
                     <h2 class="text-sm font-bold text-[#1E1B4B]">Messages</h2>
                     <p class="text-[10px] text-gray-400 mt-0.5">Conversations with your team</p>
                 </div>
-                {{-- New Message button --}}
-                <button @click="showCompose = !showCompose"
-                        class="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md shrink-0"
-                        style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
-                        title="New Message"
-                        aria-label="New Message">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    {{-- Mark all read (only when unread exists) --}}
+                    <template x-if="totalUnread > 0">
+                        <button x-data="{ busy: false }"
+                                @click="if(busy) return; busy=true;
+                                    fetch('{{ route('partner.messages.mark-all-read') }}', {
+                                        method:'POST', credentials:'same-origin',
+                                        headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+                                    }).then(()=>{
+                                        threads.forEach(t=>t.partner_unread=0);
+                                        adminDirectUnread=0;
+                                        busy=false;
+                                    }).catch(()=>busy=false)"
+                                :disabled="busy"
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Mark all as read" aria-label="Mark all messages as read">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                    </template>
+                    {{-- New Message button --}}
+                    <button @click="showCompose = !showCompose"
+                            class="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md"
+                            style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
+                            title="New Message"
+                            aria-label="New Message">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {{-- Compose: pick recipient --}}
@@ -319,6 +341,7 @@ function partnerMessages() {
         msgTab: 'deals',
 
         adminDirectUnread: @php echo (int) $directThreads->sum('partner_unread'); @endphp,
+        get totalUnread() { return this.threads.reduce((s,t) => s + (t.partner_unread||0), 0) + this.adminDirectUnread; },
         showCompose: false,
         composeType: '',
         composeReferrer: '',
