@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\Emails\SendLguIdsPendingTasksDigestJob;
+use App\Jobs\Emails\SendLguIdsTaskDueReminderJob;
 use App\Jobs\Emails\SendResellerDailySummariesJob;
 use App\Jobs\Emails\SendSuperAdminDailySummaryJob;
 use App\Jobs\Emails\SendTenantAdminDailyBriefingJob;
@@ -9,6 +11,16 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::job(new SendSuperAdminDailySummaryJob)->dailyAt('08:00')->timezone('Asia/Manila');
 Schedule::job(new SendTenantAdminDailyBriefingJob)->dailyAt('08:00')->timezone('Asia/Manila');
 Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('Asia/Manila');
+
+// ── LGU IDS task reminders (starts Mon May 18, 2026) ─────────
+// Daily digest: all pending tasks emailed to lgu-ids admin/manager/owner
+Schedule::job(new SendLguIdsPendingTasksDigestJob)
+    ->dailyAt('08:00')->timezone('Asia/Manila')
+    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt('2026-05-18'));
+// Per-task due-today: one separate email per task due on the day
+Schedule::job(new SendLguIdsTaskDueReminderJob)
+    ->dailyAt('07:30')->timezone('Asia/Manila')
+    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt('2026-05-18'));
 
 // ── Daily jobs ────────────────────────────────────────────────
 Schedule::command('metrics:calculate')->dailyAt('01:00');

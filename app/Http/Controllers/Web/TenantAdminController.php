@@ -168,9 +168,24 @@ class TenantAdminController extends Controller
 
         $expiryAlert = null;
 
+        // Pending tasks widget — shown on every dashboard load for lgu-ids
+        $pendingTasks = collect();
+        if ($tenantId === 'lgu-ids') {
+            try {
+                $pendingTasks = DB::table('tasks')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('status', ['open', 'in_progress', 'waiting'])
+                    ->whereNull('deleted_at')
+                    ->orderByRaw("CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END")
+                    ->orderBy('due_at')
+                    ->limit(50)
+                    ->get(['id', 'title', 'priority', 'status', 'due_at', 'assigned_to_type', 'assigned_to_id']);
+            } catch (\Throwable) {}
+        }
+
         return view('tenant.dashboard', array_merge(
             compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing',
-                    'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling'),
+                    'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling', 'pendingTasks'),
             $this->configMeta($tenantId)
         ));
     }

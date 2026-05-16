@@ -98,6 +98,67 @@ document.addEventListener('alpine:init', () => {
             'info'   => ['bg' => '#F9FAFB', 'border' => '#E5E7EB', 'dot' => '#9CA3AF', 'text' => '#6B7280', 'label' => 'Info'],
         ];
     @endphp
+    {{-- ── PENDING TASKS WIDGET (lgu-ids only) ─────────────────────────────── --}}
+    @if($pendingTasks->isNotEmpty())
+    @php
+    $taskPriorityMap = [
+        'urgent' => ['bg' => 'bg-red-100',    'text' => 'text-red-700',    'label' => 'Urgent'],
+        'high'   => ['bg' => 'bg-amber-100',  'text' => 'text-amber-700',  'label' => 'High'],
+        'medium' => ['bg' => 'bg-violet-100', 'text' => 'text-violet-700', 'label' => 'Medium'],
+        'low'    => ['bg' => 'bg-green-100',  'text' => 'text-green-700',  'label' => 'Low'],
+    ];
+    $tz = 'Asia/Manila';
+    @endphp
+    <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-amber-50 bg-amber-50/50">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 000 4h6a2 2 0 000-4M9 12h6m-6 4h3"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-[#1E1B4B]">Pending Tasks</h3>
+                    <p class="text-[11px] text-amber-600 font-medium">{{ $pendingTasks->count() }} task{{ $pendingTasks->count() !== 1 ? 's' : '' }} require attention</p>
+                </div>
+            </div>
+            <a href="{{ route('tenant.tasks', $tenant->id) }}"
+               class="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors">
+                View all →
+            </a>
+        </div>
+        <div class="divide-y divide-gray-50">
+            @foreach($pendingTasks->take(10) as $task)
+            @php
+                $p = $taskPriorityMap[$task->priority ?? 'medium'] ?? $taskPriorityMap['medium'];
+                $dueAt = $task->due_at ? \Carbon\Carbon::parse($task->due_at)->setTimezone($tz) : null;
+                $isOverdue = $dueAt && $dueAt->isPast();
+                $isDueToday = $dueAt && $dueAt->isToday();
+            @endphp
+            <div class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/60 transition-colors">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 {{ $p['bg'] }} {{ $p['text'] }}">
+                    {{ $p['label'] }}
+                </span>
+                <p class="flex-1 text-sm font-medium text-[#1E1B4B] truncate">{{ $task->title }}</p>
+                @if($dueAt)
+                <span class="text-[11px] font-semibold shrink-0 {{ $isOverdue ? 'text-red-600' : ($isDueToday ? 'text-amber-600' : 'text-gray-400') }}">
+                    {{ $isOverdue ? 'Overdue' : ($isDueToday ? 'Due today' : $dueAt->format('M j')) }}
+                </span>
+                @endif
+            </div>
+            @endforeach
+        </div>
+        @if($pendingTasks->count() > 10)
+        <div class="px-5 py-3 border-t border-gray-50">
+            <a href="{{ route('tenant.tasks', $tenant->id) }}"
+               class="text-xs text-gray-400 hover:text-[#1E1B4B] transition-colors">
+                + {{ $pendingTasks->count() - 10 }} more tasks →
+            </a>
+        </div>
+        @endif
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {{-- Critical Actions widget — spans 2 of 3 columns --}}
