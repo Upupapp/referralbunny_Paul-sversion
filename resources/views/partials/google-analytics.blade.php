@@ -1,5 +1,5 @@
 @php $gaId = config('services.google_analytics_id'); @endphp
-@if($gaId && app()->isProduction())
+@if($gaId && !app()->isLocal())
 <!-- Google Analytics 4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ $gaId }}"></script>
 <script>
