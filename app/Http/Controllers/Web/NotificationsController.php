@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Tenant;
 use App\Services\NotificationDispatchService;
-use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -23,6 +22,7 @@ class NotificationsController extends Controller
             Notification::where('notifiable_type', $type)
                 ->where('notifiable_id', $id)
                 ->where('is_read', false)
+                ->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id'))
                 ->update(['is_read' => true]);
             Cache::forget("notif_unread_{$type}_{$id}");
         }
