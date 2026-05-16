@@ -170,6 +170,7 @@ class TenantAdminController extends Controller
 
         // Pending tasks widget — shown on every dashboard load for lgu-ids
         $pendingTasks = collect();
+        $newDealsSinceLastSession = collect();
         if ($tenantId === 'lgu-ids') {
             try {
                 $pendingTasks = DB::table('tasks')
@@ -181,11 +182,30 @@ class TenantAdminController extends Controller
                     ->limit(50)
                     ->get(['id', 'title', 'priority', 'status', 'due_at', 'assigned_to_type', 'assigned_to_id']);
             } catch (\Throwable) {}
+
+            // New deals since the current user last visited the dashboard (per-user cache)
+            try {
+                $userId = auth('tenant')->id() ?? auth('web')->id();
+                $lastSeenDashKey = "lgu_dash_last_seen_{$tenantId}_{$userId}";
+                $lastSeenAt = \Illuminate\Support\Facades\Cache::get($lastSeenDashKey, now()->subHours(24));
+
+                $newDealsSinceLastSession = DB::table('leads')
+                    ->where('tenant_id', $tenantId)
+                    ->where('created_at', '>', $lastSeenAt)
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('created_at')
+                    ->limit(20)
+                    ->get(['id', 'name', 'stage', 'deal_value', 'reseller_name', 'created_at']);
+
+                // Update "last seen" for next visit
+                \Illuminate\Support\Facades\Cache::put($lastSeenDashKey, now(), now()->addDays(30));
+            } catch (\Throwable) {}
         }
 
         return view('tenant.dashboard', array_merge(
             compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing',
-                    'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling', 'pendingTasks'),
+                    'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling',
+                    'pendingTasks', 'newDealsSinceLastSession'),
             $this->configMeta($tenantId)
         ));
     }
