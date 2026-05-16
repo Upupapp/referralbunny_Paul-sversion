@@ -282,7 +282,7 @@
                        const hdrs = {'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content??''};
                        const load = () => fetch('/api/notifications/mine/unread-count',{credentials:'same-origin',headers:hdrs}).then(r=>r.json()).then(d=>count=d.count??0).catch(()=>{});
                        load();
-                       _timer = setInterval(load, 90000);
+                       _timer = setInterval(() => { if (!document.hidden) load(); }, 90000);
                        document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
                        window.addEventListener('notifications:updated', (e) => { if (typeof e.detail?.unreadCount === 'number') count = e.detail.unreadCount; });
                    "

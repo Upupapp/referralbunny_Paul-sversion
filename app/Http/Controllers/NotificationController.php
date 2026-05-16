@@ -91,10 +91,12 @@ class NotificationController extends Controller
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['count' => 0]);
 
-        $count = NotificationDispatchService::queryForUser($type, $id, $tenantId)
-            ->where('is_read', false)
-            ->where('is_dismissed', false)
-            ->count();
+        $count = Cache::remember("notif_unread_{$type}_{$id}", 20, fn() =>
+            NotificationDispatchService::queryForUser($type, $id, $tenantId)
+                ->where('is_read', false)
+                ->where('is_dismissed', false)
+                ->count()
+        );
 
         return response()->json(['count' => $count]);
     }
