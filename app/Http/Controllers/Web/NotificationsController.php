@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Tenant;
-use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;

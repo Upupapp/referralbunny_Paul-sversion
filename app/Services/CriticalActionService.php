@@ -59,8 +59,14 @@ class CriticalActionService
             'since'            => $filters['since'] ?? null,
             'until'            => $filters['until'] ?? null,
         ];
+        // Stringify Carbon objects before serializing — Carbon instances are not
+        // deterministically serializable across requests, causing cache key collisions
+        $cacheOpts = $opts;
+        $cacheOpts['since'] = $opts['since'] instanceof \Carbon\Carbon ? $opts['since']->toIso8601String() : $opts['since'];
+        $cacheOpts['until'] = $opts['until'] instanceof \Carbon\Carbon ? $opts['until']->toIso8601String() : $opts['until'];
+
         $all = Cache::remember(
-            "ca_master:{$tenantId}:" . md5(serialize($opts)),
+            "ca_master:{$tenantId}:" . md5(serialize($cacheOpts)),
             45,
             fn() => $this->forTenant($tenantId, $opts)
         );
@@ -341,7 +347,9 @@ class CriticalActionService
                 foreach ($source() as $action) {
                     // Deduplicate by type+related_id so the same deal can't appear in
                     // both expiringDeals and stalledDeals, inflating the badge count
-                    $dedupeKey = $action['type'] . ':' . ($action['related_id'] ?? md5($action['summary'] ?? ''));
+                    // Aggregate actions (related_id=null) use a stable '__agg__' sentinel so the
+                    // key doesn't shift when the count changes (e.g., "3 deals" → "4 deals")
+                    $dedupeKey = $action['type'] . ':' . ($action['related_id'] ?? '__agg__');
                     if (!isset($seen[$dedupeKey])) {
                         $seen[$dedupeKey] = true;
                         $all[] = $action;
@@ -447,6 +455,7 @@ class CriticalActionService
         $rows = DB::table('lead_history as h')
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
+            ->whereNull('l.deleted_at')
             ->where('h.created_at', '>', $since)
             ->whereIn('h.type', ['stage', 'assignment', 'commission'])
             ->select('h.id', 'h.action', 'h.type', 'h.reseller', 'h.date', 'h.created_at', 'l.id as lead_id', 'l.name as lead_name')

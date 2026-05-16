@@ -104,7 +104,7 @@ class PartnerPortalController extends Controller
             ->where('is_dismissed', false)
             ->update(['is_read' => true]);
         Cache::forget("partner_notif_unread:{$partner->id}");
-        Cache::forget("notif_unread_partner_{$partner->id}");
+        Cache::forget("notif_unread_partner_{$partner->id}"); // busts mineUnreadCount API cache
 
         return view('partner.notifications', compact('partner'));
     }
@@ -120,6 +120,7 @@ class PartnerPortalController extends Controller
             ->where('is_dismissed', false)
             ->update(['is_read' => true]);
         Cache::forget("partner_notif_unread:{$partner->id}");
+        Cache::forget("notif_unread_partner_{$partner->id}");
         return response()->json(['ok' => true]);
     }
 

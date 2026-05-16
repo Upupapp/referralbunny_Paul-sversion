@@ -25,16 +25,21 @@ class SendLguIdsTaskDueReminderJob implements ShouldQueue
     public function handle(): void
     {
         $tz      = 'Asia/Manila';
-        $today   = now()->setTimezone($tz)->format('Y-m-d');
         $pending = ['open', 'in_progress', 'waiting'];
 
-        // Tasks with due_at = today and still pending
+        // UTC range for today in Asia/Manila — allows the (tenant_id, due_at) index to be used
+        // instead of a per-row DATE(expr AT TIME ZONE ...) which forces a full scan
+        $startOfDayMnl = now()->setTimezone($tz)->startOfDay()->utc();
+        $endOfDayMnl   = $startOfDayMnl->copy()->addDay();
+
+        // Tasks with due_at = today (Manila) and still pending
         try {
             $dueTasks = DB::table('tasks')
                 ->where('tenant_id', self::TENANT_ID)
                 ->whereIn('status', $pending)
                 ->whereNull('deleted_at')
-                ->whereRaw("DATE(due_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') = ?", [$today])
+                ->where('due_at', '>=', $startOfDayMnl)
+                ->where('due_at', '<',  $endOfDayMnl)
                 ->get(['id', 'title', 'description', 'priority', 'status', 'due_at', 'assigned_to_type', 'assigned_to_id']);
         } catch (\Throwable $e) {
             Log::error('[LguIdsTaskDue] Failed to fetch due tasks', ['error' => $e->getMessage()]);
