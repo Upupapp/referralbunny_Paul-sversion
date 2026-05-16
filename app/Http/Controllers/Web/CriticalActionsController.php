@@ -84,8 +84,9 @@ class CriticalActionsController extends Controller
         // Also bust the badge cache so the counter resets in the nav.
         if ($userId) {
             Cache::put($seenCacheKey, now()->toIso8601String(), now()->addDays(30));
-            // Bust THIS user's badge — per-user key matches _nav.blade.php
+            // Bust badge and suppress for 5 min — opening the page = "seen all"
             Cache::forget("ca_badge_{$tenantId}_{$userId}");
+            Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
         }
 
         $categories = [

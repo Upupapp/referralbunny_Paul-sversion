@@ -76,13 +76,15 @@ class PartnerPortalController extends Controller
             ->get(['id', 'name', 'days_left', 'status']);
 
         $criticalActions = [];
-        // Suppressed for 5 min after partner clicks "Mark all seen"
-        if (!Cache::has("ca_partner_suppressed:{$partner->id}")) {
+        $caSuppressKey = "ca_partner_suppressed:{$partner->id}";
+        if (!Cache::has($caSuppressKey)) {
             try {
                 $criticalActions = app(\App\Services\CriticalActionService::class)
                     ->forPartner((string) $partner->id, $partner->tenant_id);
             } catch (\Throwable) {}
         }
+        // Opening the dashboard = "seen all" — suppress badge for 5 min
+        Cache::put($caSuppressKey, 1, 300);
 
         return view('partner.dashboard', compact(
             'partner', 'dealCount', 'unreadCount', 'completion', 'recentDeals', 'expiringDeals', 'criticalActions'
@@ -92,6 +94,18 @@ class PartnerPortalController extends Controller
     public function notifications()
     {
         $partner = $this->partner();
+
+        // Auto-mark all as read when the notifications page is opened
+        DB::table('notifications')
+            ->where('notifiable_type', 'partner')
+            ->where('notifiable_id', (string) $partner->id)
+            ->where('tenant_id', $partner->tenant_id)
+            ->where('is_read', false)
+            ->where('is_dismissed', false)
+            ->update(['is_read' => true]);
+        Cache::forget("partner_notif_unread:{$partner->id}");
+        Cache::forget("notif_unread_partner_{$partner->id}");
+
         return view('partner.notifications', compact('partner'));
     }
 

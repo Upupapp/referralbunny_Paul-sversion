@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Tenant;
 use App\Services\NotificationDispatchService;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,17 @@ class NotificationsController extends Controller
     public function index(Request $request, string $tenantId)
     {
         $tenant = Tenant::findOrFail($tenantId);
+
+        // Auto-mark all as read when the notifications page is opened
+        [$type, $id] = $this->resolveCurrentUser();
+        if ($type && $id) {
+            Notification::where('notifiable_type', $type)
+                ->where('notifiable_id', $id)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+            Cache::forget("notif_unread_{$type}_{$id}");
+        }
+
         return view('tenant.notifications.index', compact('tenant'));
     }
 

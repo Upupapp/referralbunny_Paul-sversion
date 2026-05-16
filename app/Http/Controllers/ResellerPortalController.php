@@ -102,13 +102,15 @@ class ResellerPortalController extends Controller
 
         // ── Recent activity (Critical Actions for this referrer, including imports) ─
         $recentActivity = [];
-        // Suppressed for 5 min after referrer clicks "Mark all seen"
-        if (!\Illuminate\Support\Facades\Cache::has("ca_rs_suppressed:{$reseller->id}")) {
+        $caSuppressKey = "ca_rs_suppressed:{$reseller->id}";
+        if (!\Illuminate\Support\Facades\Cache::has($caSuppressKey)) {
             try {
                 $recentActivity = app(CriticalActionService::class)
                     ->forReseller($tenantId, $reseller->name, 8, $reseller->id);
             } catch (\Throwable) {}
         }
+        // Opening the dashboard = "seen all" — suppress badge for 5 min
+        \Illuminate\Support\Facades\Cache::put($caSuppressKey, 1, 300);
 
         return view('reseller.dashboard', compact(
             'reseller', 'tenant', 'stats', 'recentLeads', 'recentActivity',
@@ -262,6 +264,15 @@ class ResellerPortalController extends Controller
     {
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
+
+        // Auto-mark all as read when the notifications page is opened
+        DB::table('notifications')
+            ->where('notifiable_type', 'reseller')
+            ->where('notifiable_id', (string) $reseller->id)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
+
         return view('reseller.notifications', compact('reseller', 'tenant'));
     }
 
