@@ -19,7 +19,8 @@ use App\Http\Controllers\ResellerPortalController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth ──────────────────────────────────────────────────────
-Route::get('/login',  [AuthWebController::class, 'showLogin'])->name('login');
+Route::get('/login',          [AuthWebController::class, 'showLogin'])->name('login');
+Route::get('/platform/login', fn() => redirect()->route('login'))->name('platform.login');
 Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
@@ -239,10 +240,11 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
 
 // ── Super Admin Profile ───────────────────────────────────────
 Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
-    Route::get('/profile',           [PlatformProfileController::class, 'show'])->name('profile');
-    Route::post('/profile',          [PlatformProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile/photo',    [PlatformProfileController::class, 'updatePhoto'])->name('profile.photo');
-    Route::delete('/profile/photo',  [PlatformProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+    Route::get('/profile',            [PlatformProfileController::class, 'show'])->name('profile');
+    Route::post('/profile',           [PlatformProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo',     [PlatformProfileController::class, 'updatePhoto'])->name('profile.photo');
+    Route::delete('/profile/photo',   [PlatformProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
+    Route::post('/profile/password',  [PlatformProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
 });
 
 // ── Platform (Super Admin) ────────────────────────────────────

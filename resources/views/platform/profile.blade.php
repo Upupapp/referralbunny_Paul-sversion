@@ -137,5 +137,43 @@
         </div>
     </form>
 
+    {{-- Change Password --}}
+    <form method="POST" action="{{ route('platform.profile.password') }}"
+          class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        @csrf
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h2 class="text-sm font-semibold text-[#1E1B4B]">Change Password</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Use a strong password of at least 10 characters.</p>
+        </div>
+        <div class="p-6 space-y-4">
+            @if(session('success') && str_contains(session('success'), 'Password'))
+            <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-100 text-sm text-green-700">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                {{ session('success') }}
+            </div>
+            @endif
+            @error('current_password')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+            @error('password')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="form-label">Current password</label>
+                    <input name="current_password" type="password" class="form-input" autocomplete="current-password">
+                </div>
+                <div>
+                    <label class="form-label">New password</label>
+                    <input name="password" type="password" class="form-input" autocomplete="new-password" placeholder="Min. 10 characters">
+                </div>
+                <div>
+                    <label class="form-label">Confirm new password</label>
+                    <input name="password_confirmation" type="password" class="form-input" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="flex justify-end pt-1">
+                <button type="submit" class="btn-primary">Update Password</button>
+            </div>
+        </div>
+    </form>
+
 </div>
 @endsection

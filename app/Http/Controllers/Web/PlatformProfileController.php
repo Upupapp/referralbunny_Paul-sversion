@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -73,5 +74,21 @@ class PlatformProfileController extends Controller
         }
 
         return back()->with('success', 'Profile photo removed.');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $user = Auth::guard('web')->user();
+
+        $request->validate([
+            'current_password'      => ['required', 'current_password:web'],
+            'password'              => ['required', 'string', 'min:10', 'confirmed'],
+            'password_confirmation' => ['required', 'string'],
+        ]);
+
+        $user->update(['password' => Hash::make($request->password)]);
+        Auth::guard('web')->setUser($user->fresh());
+
+        return back()->with('success', 'Password changed successfully.');
     }
 }

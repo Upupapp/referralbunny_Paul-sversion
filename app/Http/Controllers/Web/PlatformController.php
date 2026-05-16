@@ -29,7 +29,10 @@ class PlatformController extends Controller
             ->orderByDesc('count')
             ->get();
 
-        $recentNotifications = Notification::where('is_read', false)
+        $saUserId = (string) auth('web')->id();
+        $recentNotifications = Notification::where('notifiable_type', 'super_admin')
+            ->where('notifiable_id', $saUserId)
+            ->where('is_read', false)
             ->where('is_dismissed', false)
             ->orderByDesc('created_at')
             ->limit(5)
