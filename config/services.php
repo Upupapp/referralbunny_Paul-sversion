@@ -51,4 +51,6 @@ return [
         'redirect_uri'  => env('GOOGLE_CALENDAR_REDIRECT_URI', env('APP_URL', '') . '/google-calendar/callback'),
     ],
 
+    'google_analytics_id' => env('GOOGLE_ANALYTICS_ID'),
+
 ];

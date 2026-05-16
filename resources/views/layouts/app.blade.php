@@ -8,6 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Referral Bunny') — {{ config('app.name') }}</title>
     <link rel="icon" type="image/webp" href="/images/logos/referralbunny-favicon.webp">
+    @include('partials.google-analytics')
     <link rel="apple-touch-icon" href="/images/logos/referralbunny-app-icon.webp">
 
     {{-- Open Graph / Social preview --}}
