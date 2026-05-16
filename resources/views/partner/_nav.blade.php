@@ -11,12 +11,15 @@ try {
 }
 try {
     $partnerNotifUnread = $_partnerUser
-        ? (int) \Illuminate\Support\Facades\DB::table('notifications')
-               ->where('notifiable_type', 'partner')
-               ->where('notifiable_id', (string) $_partnerUser->id)
-               ->where('is_read', false)
-               ->where('is_dismissed', false)
-               ->count()
+        ? (int) \Illuminate\Support\Facades\Cache::remember(
+               "partner_notif_unread:{$_partnerUser->id}", 60,
+               fn() => \Illuminate\Support\Facades\DB::table('notifications')
+                   ->where('notifiable_type', 'partner')
+                   ->where('notifiable_id', (string) $_partnerUser->id)
+                   ->where('is_read', false)
+                   ->where('is_dismissed', false)
+                   ->count()
+           )
         : 0;
 } catch (\Throwable) {
     $partnerNotifUnread = 0;
@@ -96,8 +99,8 @@ try {
         @endif
     </span>
     Notifications
-    @if($partnerUnread > 0)
-    <span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">{{ min($partnerUnread, 99) }}</span>
+    @if($partnerNotifUnread > 0)
+    <span class="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">{{ min($partnerNotifUnread, 99) }}</span>
     @endif
 </a>
 

@@ -95,6 +95,20 @@ class PartnerPortalController extends Controller
         return view('partner.notifications', compact('partner'));
     }
 
+    public function markNotificationsRead()
+    {
+        $partner = $this->partner();
+        DB::table('notifications')
+            ->where('notifiable_type', 'partner')
+            ->where('notifiable_id', (string) $partner->id)
+            ->where('tenant_id', $partner->tenant_id)
+            ->where('is_read', false)
+            ->where('is_dismissed', false)
+            ->update(['is_read' => true]);
+        Cache::forget("partner_notif_unread:{$partner->id}");
+        return response()->json(['ok' => true]);
+    }
+
     public function deals()
     {
         $partner = $this->partner();

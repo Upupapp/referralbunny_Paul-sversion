@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationsController extends Controller
 {
@@ -47,6 +48,9 @@ class NotificationsController extends Controller
     public function markReadForPartner(Request $request, string $notificationId)
     {
         $this->findUserNotification($notificationId)->update(['is_read' => true]);
+        if (Auth::guard('partner')->check()) {
+            Cache::forget('partner_notif_unread:' . Auth::guard('partner')->id());
+        }
         return response()->json(['ok' => true]);
     }
 
@@ -54,6 +58,12 @@ class NotificationsController extends Controller
     {
         [$type, $id] = $this->resolveCurrentUser();
         $tenantId = request()->route('tenantId');
+
+        // For partner guard, derive tenant_id from the authenticated partner user
+        if (!$tenantId && $type === 'partner' && Auth::guard('partner')->check()) {
+            $tenantId = Auth::guard('partner')->user()->tenant_id;
+        }
+
         return Notification::where('id', $notificationId)
             ->where('notifiable_type', $type)
             ->where('notifiable_id', $id)

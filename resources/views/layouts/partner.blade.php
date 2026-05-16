@@ -104,6 +104,33 @@
             </div>
             <div class="flex items-center gap-2">
                 @yield('topbar-actions')
+
+                {{-- Notification bell --}}
+                <a href="{{ route('partner.notifications') }}"
+                   class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
+                   x-data="{ count: 0, _timer: null }"
+                   x-init="
+                       const hdrs = {'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]')?.content??''};
+                       const load = () => fetch('/api/notifications/mine/unread-count',{credentials:'same-origin',headers:hdrs}).then(r=>r.json()).then(d=>count=d.count??0).catch(()=>{});
+                       load();
+                       _timer = setInterval(load, 90000);
+                       document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+                       window.addEventListener('notifications:updated', (e) => { if (typeof e.detail?.unreadCount === 'number') count = e.detail.unreadCount; });
+                   "
+                   @click.prevent="
+                       count = 0;
+                       window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
+                       fetch('/api/notifications/mine/mark-all-read', { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '', 'X-Requested-With': 'XMLHttpRequest' } });
+                       setTimeout(() => { window.location.href = $el.href; }, 150);
+                   "
+                   :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
+                   title="Notifications">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span x-show="count > 0" x-cloak x-text="count > 9 ? '9+' : count"
+                          class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-0.5 bg-blue-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none"></span>
+                </a>
             </div>
         </header>
 

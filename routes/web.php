@@ -224,6 +224,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::delete('/profile/photo',               [PartnerProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
         Route::post('/profile/password',              [PartnerProfileController::class, 'changePassword'])->name('profile.password')->middleware('throttle:5,1');
         Route::get('/notifications',                  [PartnerPortalController::class, 'notifications'])->name('notifications');
+        Route::post('/notifications/mark-all-read',   [PartnerPortalController::class, 'markNotificationsRead'])->name('notifications.mark-all-read');
         Route::post('/notifications/{id}/read',       [\App\Http\Controllers\Web\NotificationsController::class, 'markReadForPartner'])->name('notifications.read');
 
         // ── Note Attachment Download (session auth — opens inline in new tab) ──

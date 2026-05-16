@@ -49,7 +49,17 @@
             </div>
         </template>
 
-        <template x-if="!loading && items.length === 0">
+        <template x-if="!loading && error">
+            <div class="flex flex-col items-center justify-center py-16 text-center px-6">
+                <svg class="w-10 h-10 text-red-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <p class="text-sm font-medium text-gray-500">Could not load notifications</p>
+                <button @click="load()" class="mt-2 text-xs text-blue-600 hover:underline">Try again</button>
+            </div>
+        </template>
+
+        <template x-if="!loading && !error && items.length === 0">
             <div class="flex flex-col items-center justify-center py-16 text-center px-6">
                 <svg class="w-10 h-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -59,7 +69,7 @@
             </div>
         </template>
 
-        <template x-if="!loading && items.length > 0">
+        <template x-if="!loading && !error && items.length > 0">
             <div class="divide-y divide-gray-50">
                 <template x-for="n in items" :key="n.id">
                     <div class="flex items-start gap-3 px-5 py-4 transition-colors"
@@ -114,18 +124,20 @@ function partnerNotifications() {
 
     return {
         items: [], total: 0, unreadCount: 0,
-        loading: false, page: 1, perPage: 20,
+        loading: false, error: false, page: 1, perPage: 20,
         activeTab: 'all',
         tabs: [
-            { key: 'all',         label: 'All' },
+            { key: 'all',           label: 'All' },
             { key: 'deal_pipeline', label: 'Deals' },
-            { key: 'messaging',   label: 'Messages' },
+            { key: 'commission',    label: 'Commissions' },
+            { key: 'messaging',     label: 'Messages' },
         ],
 
         async init() { await this.load(); },
 
         async load() {
             this.loading = true;
+            this.error = false;
             try {
                 const params = new URLSearchParams({
                     limit:  this.perPage,
@@ -133,14 +145,17 @@ function partnerNotifications() {
                     ...(this.activeTab !== 'all' ? { category: this.activeTab } : {}),
                 });
                 const r = await fetch(`/api/notifications/mine?${params}`, {
+                    credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
+                if (!r.ok) throw new Error(r.status);
                 const d = await r.json();
                 this.items       = d.items ?? [];
                 this.total       = d.total ?? 0;
                 this.unreadCount = d.unread_count ?? 0;
             } catch (e) {
                 this.items = [];
+                this.error = true;
             } finally {
                 this.loading = false;
             }
@@ -156,12 +171,13 @@ function partnerNotifications() {
         },
 
         async markAllRead() {
-            await fetch('/api/notifications/mine/mark-all-read', {
+            await fetch('{{ route('partner.notifications.mark-all-read') }}', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
             });
             this.items.forEach(n => n.is_read = true);
             this.unreadCount = 0;
+            window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
         },
 
         prev() { if (this.page > 1) { this.page--; this.load(); } },
