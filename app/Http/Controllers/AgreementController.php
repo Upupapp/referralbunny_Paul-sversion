@@ -138,7 +138,8 @@ class AgreementController extends Controller
             ->where('af.is_active', true)
             ->whereIn('ack.reseller_id', $resellers->pluck('id'))
             ->groupBy('ack.reseller_id')
-            ->pluck(DB::raw('COUNT(*) as cnt'), 'ack.reseller_id')
+            ->select('ack.reseller_id', DB::raw('COUNT(*) as cnt'))
+            ->pluck('cnt', 'reseller_id')
             ->map(fn($v) => (int) $v);
 
         $result = $resellers->map(fn($r) => [

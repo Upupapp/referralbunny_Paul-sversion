@@ -312,7 +312,7 @@ class ResellerPortalController extends Controller
                         $q->orWhere(fn($q2) => $q2->where('al.entity', 'lead')->whereIn('al.entity_id', $leadIds));
                     }
                 })
-                ->when($actActions, fn($q) => $q->whereIn('al.action', $actActions))
+                ->when(!empty($actActions), fn($q) => $q->whereIn('al.action', $actActions))
                 ->select([
                     DB::raw("'al'::text as source"),
                     DB::raw('al.id::text as id'),
@@ -353,7 +353,13 @@ class ResellerPortalController extends Controller
                         'lh.created_at',
                     ]);
 
-                $total = (clone $lhSub)->count() + (clone $alSub)->count();
+                // Count without the LEFT JOIN (cheaper — lead_name is only needed for data rows)
+                $lhCount = DB::table('lead_history as lh')
+                    ->where('lh.tenant_id', $tenantId)
+                    ->whereIn('lh.lead_id', $leadIds)
+                    ->when($lhCategories, fn($q) => $q->whereIn('lh.category', $lhCategories))
+                    ->count();
+                $total = $lhCount + (clone $alSub)->count();
                 $rows  = $lhSub->unionAll($alSub)->orderByDesc('created_at')->limit($perPage)->offset($offset)->get();
             } else {
                 $total = (clone $alSub)->count();
