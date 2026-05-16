@@ -114,6 +114,7 @@ class CriticalActionService
         return Cache::remember($cacheKey, 60, function () use ($tenantId, $resellerName, $resellerId, $limit) {
             $sources = [
                 fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
+                fn() => $this->resellerStalledDeals($tenantId, $resellerName),
                 fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
                 fn() => $this->resellerUnreadMessages($tenantId, $resellerName),
                 fn() => $this->resellerLeadHistory($tenantId, $resellerName),
@@ -232,6 +233,44 @@ class CriticalActionService
             }
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] forPartner:expiring failed', ['partner_id' => $partnerId, 'error' => $e->getMessage()]);
+        }
+
+        // Commission status updates on partner's deals (locked/paid in last 7 days)
+        try {
+            if (!empty($dealIds)) {
+                $commRows = DB::table('leads')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('id', $dealIds)
+                    ->whereIn('commission_status', ['locked', 'paid'])
+                    ->where('updated_at', '>', now()->subDays(7))
+                    ->select('id', 'name', 'commission_status', 'updated_at')
+                    ->orderByDesc('updated_at')
+                    ->limit(3)
+                    ->get();
+
+                foreach ($commRows as $r) {
+                    $actions[] = $this->make([
+                        'type'          => $r->commission_status === 'paid' ? 'commission_paid' : 'commission_locked',
+                        'category'      => 'deal',
+                        'severity'      => $r->commission_status === 'paid' ? 'info' : 'medium',
+                        'summary'       => $r->commission_status === 'paid'
+                            ? "Commission paid for: {$r->name}"
+                            : "Commission locked for: {$r->name}",
+                        'actor_name'    => 'System',
+                        'actor_role'    => 'System',
+                        'related_label' => $r->name,
+                        'related_type'  => 'deal',
+                        'related_id'    => $r->id,
+                        'occurred_at'   => $r->updated_at ?? now(),
+                        'action_url'    => "/partner/deals/{$r->id}",
+                        'action_label'  => 'View Deal',
+                        'action_needed' => false,
+                        'source'        => 'leads',
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] forPartner:commission failed', ['partner_id' => $partnerId, 'error' => $e->getMessage()]);
         }
 
         usort($actions, fn($a, $b) =>
@@ -836,6 +875,38 @@ class CriticalActionService
             Log::warning('[CriticalActionService] resellerPendingApprovals failed', ['error' => $e->getMessage()]);
             return [];
         }
+    }
+
+    private function resellerStalledDeals(string $tenantId, string $resellerName): array
+    {
+        $rows = DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
+            ->whereIn('status', ['active', 'expiring'])
+            ->where('updated_at', '<', now()->subDays(14))
+            ->whereNull('deleted_at')
+            ->select('id', 'name', 'stage', 'updated_at')
+            ->orderBy('updated_at')
+            ->limit(3)
+            ->get();
+
+        return $rows->map(fn($r) => $this->make([
+            'type'          => 'deal_stalled',
+            'category'      => 'deal',
+            'severity'      => 'medium',
+            'summary'       => "Deal hasn't been updated in 14+ days: {$r->name}",
+            'actor_name'    => 'System',
+            'actor_role'    => 'System',
+            'related_label' => $r->name,
+            'related_type'  => 'deal',
+            'related_id'    => $r->id,
+            'occurred_at'   => $r->updated_at ?? now(),
+            'action_url'    => "/reseller/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'Update Deal',
+            'action_needed' => true,
+            'source'        => 'leads',
+            'description'   => 'Add a note or move this deal to keep it active.',
+        ]))->toArray();
     }
 
     private function resellerCommissionUpdates(string $tenantId, string $resellerName): array

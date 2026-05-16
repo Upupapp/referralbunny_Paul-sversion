@@ -141,7 +141,7 @@
                             <div class="flex items-center justify-between text-gray-500">
                                 <span class="flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-                                    Resellers
+                                    Referrers
                                 </span>
                                 <span class="font-semibold text-[#1E1B4B]" x-text="formatLimit(plan.plan_limits_json?.max_resellers)"></span>
                             </div>
@@ -563,7 +563,7 @@ function billingPanel() {
         limitRows: [
             { key: 'max_leads_per_month',    label: 'Leads / mo' },
             { key: 'max_messages_per_month', label: 'Messages / mo' },
-            { key: 'max_resellers',          label: 'Resellers' },
+            { key: 'max_resellers',          label: 'Referrers' },
             { key: 'max_users',              label: 'Users' },
             { key: 'max_storage_mb',         label: 'Storage' },
             { key: 'grace_period_days',      label: 'Grace Period' },

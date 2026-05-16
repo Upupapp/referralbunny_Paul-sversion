@@ -594,7 +594,7 @@ class LguIdsImportService
         try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     self::TENANT_ID,
-                category:     'import',
+                category:     'import_export',
                 priority:     'normal',
                 title:        'LGU IDS Import Ready for Review',
                 body:         "Your import of {$batch->total_rows} rows is ready. {$counts['successful']} ready, {$counts['duplicate']} duplicates, {$counts['unknown_referrer']} unknown referrers.",
@@ -839,7 +839,7 @@ class LguIdsImportService
                             $this->notifications->dispatchToReseller(
                                 resellerId:   (string) $reseller->id,
                                 tenantId:     self::TENANT_ID,
-                                category:     'deal_assigned',
+                                category:     'deal_pipeline',
                                 priority:     'normal',
                                 title:        'New Deal: ' . $dealName,
                                 body:         "A new deal has been assigned to you: {$dealName} in {$stage} stage.",
@@ -907,7 +907,7 @@ class LguIdsImportService
         if ($batch->imported_by_role === 'tenant_admin' && $batch->imported_by_id) {
             try {
                 $this->notifications->dispatch(
-                    category:         'import_' . $status,
+                    category:         'import_export',
                     priority:         $notifyPrio,
                     title:            $notifyTitle,
                     body:             $notifyBody,
@@ -926,7 +926,7 @@ class LguIdsImportService
         if ($executorId && $executorRole === 'tenant_admin' && !in_array($executorId, $notifiedIds)) {
             try {
                 $this->notifications->dispatch(
-                    category:         'import_' . $status,
+                    category:         'import_export',
                     priority:         $notifyPrio,
                     title:            $notifyTitle,
                     body:             $notifyBody,

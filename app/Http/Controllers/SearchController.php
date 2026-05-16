@@ -70,7 +70,11 @@ class SearchController extends Controller
     // GET /api/search/saved
     public function savedSearches(Request $request): JsonResponse
     {
-        return response()->json($this->search->getSavedSearches($request->user()->id));
+        try {
+            return response()->json($this->search->getSavedSearches($request->user()->id));
+        } catch (\Throwable) {
+            return response()->json([]);
+        }
     }
 
     // POST /api/search/saved
@@ -83,15 +87,18 @@ class SearchController extends Controller
             'is_pinned'=> 'nullable|boolean',
         ]);
 
-        $saved = $this->search->saveSearch(
-            $request->user()->id,
-            $data['name'],
-            $data['query'],
-            $data['filters'] ?? [],
-            $data['is_pinned'] ?? false
-        );
-
-        return response()->json($saved, 201);
+        try {
+            $saved = $this->search->saveSearch(
+                $request->user()->id,
+                $data['name'],
+                $data['query'],
+                $data['filters'] ?? [],
+                $data['is_pinned'] ?? false
+            );
+            return response()->json($saved, 201);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Could not save search: ' . $e->getMessage()], 500);
+        }
     }
 
     // DELETE /api/search/saved/{id}

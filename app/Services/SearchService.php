@@ -209,6 +209,8 @@ class SearchService
 
     public function saveSearch(int $userId, string $name, string $query, array $filters, bool $pinned = false): SavedSearch
     {
+        // May throw if saved_searches table does not exist on this deployment;
+        // the controller wraps this in a try/catch and returns a 500 with context.
         return SavedSearch::create([
             'user_id'      => $userId,
             'name'         => $name,
@@ -220,11 +222,16 @@ class SearchService
 
     public function getSavedSearches(int $userId): array
     {
-        return SavedSearch::where('user_id', $userId)
-            ->orderByDesc('is_pinned')
-            ->orderByDesc('created_at')
-            ->get()
-            ->toArray();
+        try {
+            return SavedSearch::where('user_id', $userId)
+                ->orderByDesc('is_pinned')
+                ->orderByDesc('created_at')
+                ->get()
+                ->toArray();
+        } catch (\Throwable) {
+            // saved_searches table may not exist on this deployment
+            return [];
+        }
     }
 
     // ── Favorites ─────────────────────────────────────────────

@@ -662,7 +662,7 @@ class TaskController extends Controller
                         $notifSvc->dispatchToReseller(
                             resellerId:   (string) $freshTask->assigned_to_id,
                             tenantId:     $tenantId,
-                            category:     'task',
+                            category:     'task_approval',
                             priority:     'normal',
                             title:        "Task completed: {$freshTask->title}",
                             body:         "{$actorName} marked this task as done.",
@@ -678,7 +678,7 @@ class TaskController extends Controller
                 try {
                     $notifSvc->dispatchToTenantAdmins(
                         tenantId:     $tenantId,
-                        category:     'task',
+                        category:     'task_approval',
                         priority:     'normal',
                         title:        'Task completed',
                         body:         "{$actorName} completed: \"{$freshTask->title}\".",

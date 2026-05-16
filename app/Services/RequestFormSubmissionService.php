@@ -167,7 +167,7 @@ class RequestFormSubmissionService
                     : "/tenant/{$tenantId}/tasks";
                 try {
                     $notifService->dispatch(
-                        category:         'request_form',
+                        category:         'task_approval',
                         priority:         'urgent',
                         title:            "New request: {$requestLabel}",
                         body:             "\"{$submitterName}\" submitted a request via \"{$form->title}\". Review and respond.",

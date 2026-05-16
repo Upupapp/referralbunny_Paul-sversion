@@ -102,13 +102,16 @@
                         <div class="flex items-center gap-2 shrink-0" x-data="{ open: false }">
                             @if($m->role === 'manager')
                                 {{-- Billing toggle for managers --}}
-                                <form method="POST" action="{{ route('tenant.users.billing-toggle', [$tenant->id, $u->id]) }}">
+                                <form method="POST" action="{{ route('tenant.users.billing-toggle', [$tenant->id, $u->id]) }}"
+                                      x-data="{ toggling: false }" @submit="toggling = true">
                                     @csrf
                                     <input type="hidden" name="enable" value="{{ $m->can_manage_billing ? '0' : '1' }}">
                                     <button type="submit"
-                                            class="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-700 transition-colors"
+                                            :disabled="toggling"
+                                            class="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                             title="{{ $m->can_manage_billing ? 'Disable billing access' : 'Enable billing access' }}">
-                                        {{ $m->can_manage_billing ? 'Billing On' : 'Billing Off' }}
+                                        <span x-show="!toggling">{{ $m->can_manage_billing ? 'Billing On' : 'Billing Off' }}</span>
+                                        <span x-show="toggling" x-cloak>Saving…</span>
                                     </button>
                                 </form>
                             @endif
@@ -124,10 +127,13 @@
                                 <div x-show="open" @click.away="open = false"
                                      class="absolute right-0 mt-1 w-44 bg-white border border-gray-100 rounded-xl shadow-lg z-10 py-1 text-sm">
                                     @if($m->status === 'active')
-                                        <form method="POST" action="{{ route('tenant.users.deactivate', [$tenant->id, $u->id]) }}">
+                                        <form method="POST" action="{{ route('tenant.users.deactivate', [$tenant->id, $u->id]) }}"
+                                              x-data="{ submitting: false }" @submit="submitting = true">
                                             @csrf
-                                            <button type="submit" class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors text-sm">
-                                                Deactivate
+                                            <button type="submit" :disabled="submitting"
+                                                    class="w-full text-left px-3.5 py-2 text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors text-sm disabled:opacity-60">
+                                                <span x-show="!submitting">Deactivate</span>
+                                                <span x-show="submitting" x-cloak>Deactivating…</span>
                                             </button>
                                         </form>
                                     @endif
@@ -155,12 +161,14 @@
                                     class="text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-white transition-colors border border-gray-200">
                                 Keep
                             </button>
-                            <form method="POST" action="{{ route('tenant.users.remove', [$tenant->id, $u->id]) }}">
+                            <form method="POST" action="{{ route('tenant.users.remove', [$tenant->id, $u->id]) }}"
+                                  x-data="{ removing: false }" @submit="removing = true">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit"
-                                        class="text-sm px-3.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-semibold">
-                                    Remove
+                                <button type="submit" :disabled="removing"
+                                        class="text-sm px-3.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-semibold disabled:opacity-60">
+                                    <span x-show="!removing">Remove</span>
+                                    <span x-show="removing" x-cloak>Removing…</span>
                                 </button>
                             </form>
                         </div>

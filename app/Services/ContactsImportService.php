@@ -865,7 +865,7 @@ class ContactsImportService
 
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'import_preview_ready',
+                category:     'import_export',
                 priority:     'normal',
                 title:        'Contacts Import Ready for Review',
                 body:         $body,
@@ -881,7 +881,7 @@ class ContactsImportService
                 $this->notifications->dispatchToReseller(
                     resellerId:   $importedByResellerId,
                     tenantId:     $tenantId,
-                    category:     'import_preview_ready',
+                    category:     'import_export',
                     priority:     'normal',
                     title:        'Contact Import Ready',
                     body:         "Your contact import is ready for review. {$counts['successful']} ready, {$counts['duplicate']} duplicates.",
@@ -1127,7 +1127,7 @@ class ContactsImportService
         try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'import_completed',
+                category:     'import_export',
                 priority:     $failed > 0 ? 'high' : 'normal',
                 title:        $status === 'completed' ? 'Contacts Import Complete' : 'Contacts Import Complete with Warnings',
                 body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",
@@ -1142,7 +1142,7 @@ class ContactsImportService
                 $this->notifications->dispatchToReseller(
                     resellerId:   $executorResellerId,
                     tenantId:     $tenantId,
-                    category:     'import_completed',
+                    category:     'import_export',
                     priority:     'normal',
                     title:        'Contact Import Complete',
                     body:         "Created: $created, Updated: $updated, Skipped: $skipped.",

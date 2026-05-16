@@ -26,7 +26,7 @@
         {{-- Entity type pills --}}
         <div class="mt-4 pt-3 border-t border-gray-100">
             <div class="flex items-center gap-1.5 flex-wrap">
-                @php $typeLabels = [''=> 'All','tenant'=>'Tenants','invoice'=>'Invoices','payment'=>'Payments','promo_code'=>'Promo Codes','promotion'=>'Promotions','approval_request'=>'Approvals','lead'=>'Leads','reseller'=>'Resellers']; @endphp
+                @php $typeLabels = [''=> 'All','tenant'=>'Tenants','invoice'=>'Invoices','payment'=>'Payments','promo_code'=>'Promo Codes','promotion'=>'Promotions','approval_request'=>'Approvals','lead'=>'Leads','reseller'=>'Referrers']; @endphp
                 @foreach($typeLabels as $type => $label)
                 <button @click="filters.type = '{{ $type }}'; offset = 0; runSearch()"
                         :class="filters.type === '{{ $type }}' ? 'tab-active' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"

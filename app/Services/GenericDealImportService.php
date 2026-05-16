@@ -618,7 +618,7 @@ class GenericDealImportService
 
         $this->notifications->dispatchToTenantAdmins(
             tenantId:     $tenantId,
-            category:     'import_preview_ready',
+            category:     'import_export',
             priority:     'normal',
             title:        'Deals Import Ready for Review',
             body:         "Your import of {$batch->total_rows} rows is ready. "
@@ -868,7 +868,7 @@ class GenericDealImportService
         try {
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
-                category:     'import_' . $status,
+                category:     'import_export',
                 priority:     $failed > 0 ? 'high' : 'normal',
                 title:        $titleMap[$status] ?? 'Deals Import Complete',
                 body:         "Created: $created, Updated: $updated, Skipped: $skipped, Failed: $failed.",

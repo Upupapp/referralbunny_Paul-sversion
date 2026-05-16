@@ -385,7 +385,7 @@ class DealCommentController extends Controller
 
             try {
                 $svc->dispatch(
-                    category:          'deals',
+                    category:          'deal_pipeline',
                     priority:          'normal',
                     title:             'You were mentioned in a note',
                     body:              "{$authorName} mentioned you in a note on {$deal->name}.",
