@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    @include('partials.google-analytics')
     <title>Link Expired — ReferralBunny.ai</title>
     <link rel="icon" type="image/webp" href="/images/logos/referralbunny-favicon.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
