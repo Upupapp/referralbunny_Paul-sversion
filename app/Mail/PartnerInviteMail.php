@@ -5,13 +5,13 @@ namespace App\Mail;
 use App\Models\Partner;
 use App\Models\Reseller;
 use App\Models\Tenant;
+use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
 class PartnerInviteMail extends Mailable
 {
-    // Not queued — sends synchronously so no queue worker is required.
-    use SerializesModels;
+    use Queueable, SerializesModels;
 
     public function __construct(
         public readonly Partner   $partner,
