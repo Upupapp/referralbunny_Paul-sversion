@@ -52,7 +52,17 @@
                     <tr class="table-head">
                         <th>Deal</th>
                         <th class="hidden sm:table-cell">Stage</th>
-                        <th class="hidden md:table-cell">Contract Value</th>
+                        <th class="hidden md:table-cell">
+                            <span class="inline-flex items-center gap-1">
+                                Commission Basis
+                                <span title="The pool your share is calculated from: Added Amount × 70%. This is not the full contract value."
+                                      class="cursor-help text-gray-300 hover:text-gray-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </span>
+                            </span>
+                        </th>
                         <th>My Share</th>
                         <th>Status</th>
                         <th>My Estimated Amount</th>
@@ -82,7 +92,12 @@
                             <span class="{{ $stageBadge }}">{{ $stageLabel }}</span>
                         </td>
                         <td class="hidden md:table-cell text-sm text-gray-700 tabular-nums">
-                            ₱{{ number_format($c['deal_value'], 0) }}
+                            @if($c['pool'] > 0)
+                                ₱{{ number_format($c['pool'], 0) }}
+                                <span class="text-[10px] text-gray-400 block">of ₱{{ number_format($c['deal_value'], 0) }} deal</span>
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
                         </td>
                         <td class="text-sm text-[#7B61FF] font-semibold tabular-nums">
                             @if($c['split_type'] === 'percentage')

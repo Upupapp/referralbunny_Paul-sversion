@@ -745,8 +745,9 @@ class PartnerPortalController extends Controller
 
         $commissions = $splits->map(function ($s) use ($deals) {
             $deal = $deals->get($s->deal_id);
-            if (!$deal) return null; // deal fully removed from DB — skip
-            $pool = round((float) ($deal->added_amount ?? 0) * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2);
+            if (!$deal) return null;
+            $addedAmount = (float) ($deal->added_amount ?? 0);
+            $pool = round($addedAmount * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2);
             $myAmount = $s->split_share_type === 'percentage'
                 ? round($pool * (float) $s->split_share_value / 100, 2)
                 : (float) $s->split_share_value;
@@ -754,6 +755,8 @@ class PartnerPortalController extends Controller
                 'deal_id'           => $s->deal_id,
                 'deal_name'         => $deal->name,
                 'deal_value'        => (float) ($deal->deal_value ?? 0),
+                'added_amount'      => $addedAmount,
+                'pool'              => $pool,
                 'deal_stage'        => $deal->stage ?? 'introduction',
                 'deal_status'       => $deal->status ?? 'active',
                 'commission_status' => $deal->commission_status ?? 'pending',
