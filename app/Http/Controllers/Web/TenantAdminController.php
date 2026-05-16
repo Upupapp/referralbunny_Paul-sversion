@@ -185,7 +185,7 @@ class TenantAdminController extends Controller
 
             // New deals since the current user last visited the dashboard (per-user cache)
             try {
-                $userId = auth('tenant')->id() ?? auth('web')->id();
+                $userId = auth('tenant')->id() ?? auth('web')->id() ?? 'anon';
                 $lastSeenDashKey = "lgu_dash_last_seen_{$tenantId}_{$userId}";
                 $lastSeenAt = \Illuminate\Support\Facades\Cache::get($lastSeenDashKey, now()->subHours(24));
 

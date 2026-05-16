@@ -173,7 +173,8 @@ class NotificationDispatchService
         ?string $dedupeSuffix = null,
         array   $metadata     = [],
     ): void {
-        // users table has no status column — select all SA accounts
+        // The `users` table is Super Admin–only by architecture (no tenant users here).
+        // No status column exists — all rows are active SA accounts.
         $admins = DB::table('users')->select('id')->get();
 
         foreach ($admins as $admin) {

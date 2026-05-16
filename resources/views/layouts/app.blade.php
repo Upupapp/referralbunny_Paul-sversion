@@ -453,7 +453,7 @@
                     $isTenantAdmin   = auth('tenant')->check();
                     $authUser        = $isSuperAdmin ? auth('web')->user() : ($isTenantAdmin ? auth('tenant')->user() : null);
                     $displayName     = $isSuperAdmin
-                        ? ($authUser?->name ?? 'Super Admin')
+                        ? ($authUser ? \App\Services\UserDisplayNameService::resolve($authUser, false, 'super_admin') : 'Super Admin')
                         : ($isTenantAdmin
                             ? \App\Services\UserDisplayNameService::resolve($authUser, false, 'tenant_admin')
                             : 'Guest');
@@ -461,7 +461,7 @@
                     $displayPhotoUrl = $authUser
                         ? \App\Services\UserDisplayNameService::photoUrl($authUser)
                         : null;
-                    $displayInit     = $isTenantAdmin && $authUser
+                    $displayInit     = ($isSuperAdmin || $isTenantAdmin) && $authUser
                         ? \App\Services\UserDisplayNameService::initials($authUser)
                         : strtoupper(substr($displayName, 0, 2));
                     $logoutRoute     = $isTenantAdmin ? route('tenant.logout') : route('logout');

@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -81,13 +84,46 @@ class PlatformProfileController extends Controller
         $user = Auth::guard('web')->user();
 
         $request->validate([
-            'current_password'      => ['required', 'current_password:web'],
-            'password'              => ['required', 'string', 'min:10', 'confirmed'],
-            'password_confirmation' => ['required', 'string'],
+            'current_password' => ['required', 'current_password:web'],
+            'password'         => ['required', 'string', 'min:10', 'confirmed'],
         ]);
 
         $user->update(['password' => Hash::make($request->password)]);
         Auth::guard('web')->setUser($user->fresh());
+
+        // Audit log — SA password changes are security-sensitive events
+        try {
+            DB::table('activity_logs')->insert([
+                'id'         => (string) \Illuminate\Support\Str::uuid(),
+                'tenant_id'  => null,
+                'entity'     => 'user',
+                'entity_id'  => (string) $user->id,
+                'action'     => 'password_changed',
+                'actor_type' => 'super_admin',
+                'actor_id'   => (string) $user->id,
+                'actor_name' => $user->name ?? $user->email,
+                'metadata'   => json_encode(['ip' => $request->ip(), 'user_agent' => $request->userAgent()]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[SA] Password change activity log failed', ['error' => $e->getMessage()]);
+        }
+
+        // In-app auth_security notification so the SA is aware of the change
+        try {
+            app(NotificationDispatchService::class)->dispatchToSuperAdmins(
+                category:     'auth_security',
+                priority:     'high',
+                title:        'Super Admin password changed',
+                body:         'Your Super Admin account password was changed. If this was not you, contact your server administrator immediately.',
+                actionUrl:    url('/platform/profile'),
+                actionLabel:  'View Profile',
+                dedupeSuffix: 'sa_pw_change_' . now()->format('YmdH'),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[SA] Password change notification failed', ['error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Password changed successfully.');
     }
