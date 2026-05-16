@@ -98,12 +98,24 @@ class PartnerPortalController extends Controller
     public function deals()
     {
         $partner = $this->partner();
-        $deals   = Lead::whereIn('id', $this->authorizedDealIds())
-            ->where('tenant_id', $partner->tenant_id)
-            ->orderByDesc('created_at')
-            ->paginate(25, ['id', 'name', 'stage', 'status', 'deal_value', 'reseller_name', 'days_left']);
+        $search  = request()->query('search', '');
+        $stage   = request()->query('stage', '');
 
-        return view('partner.deals.index', compact('partner', 'deals'));
+        $query = Lead::whereIn('id', $this->authorizedDealIds())
+            ->where('tenant_id', $partner->tenant_id)
+            ->orderByDesc('created_at');
+
+        if ($search) {
+            $query->where('name', 'ilike', '%' . $search . '%');
+        }
+        if ($stage) {
+            $query->where('stage', $stage);
+        }
+
+        $deals = $query->paginate(25, ['id', 'name', 'stage', 'status', 'deal_value', 'reseller_name', 'days_left'])
+            ->withQueryString();
+
+        return view('partner.deals.index', compact('partner', 'deals', 'search', 'stage'));
     }
 
     public function dealShow(string $dealId)
@@ -130,11 +142,13 @@ class PartnerPortalController extends Controller
             ->where('deal_id', $dealId)
             ->first();
 
-        // Load only this partner's own split — never expose other partners' or referrer's shares
+        // Load only this partner's own split — use partner_user_id (stable FK, not email which can change)
         $myPartnerSplit = \Illuminate\Support\Facades\DB::table('deal_partner_splits')
             ->where('deal_id', $dealId)
             ->where('tenant_id', $partner->tenant_id)
-            ->where('partner_email', $partner->email)
+            ->where('partner_user_id', $partner->id)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
             ->first();
 
         // Compute this partner's peso amount from the deal's commission pool.
@@ -248,6 +262,28 @@ class PartnerPortalController extends Controller
             );
         }
 
+        // Audit log
+        try {
+            \App\Models\ActivityLog::create([
+                'id'        => (string) \Illuminate\Support\Str::uuid(),
+                'tenant_id' => $partner->tenant_id,
+                'user_id'   => (string) $partner->id,
+                'action'    => 'partner_note_added',
+                'entity'    => 'lead',
+                'entity_id' => $dealId,
+                'metadata'  => json_encode([
+                    'note_id'      => $note->id,
+                    'partner_name' => $partner->full_name ?: $partner->email,
+                    'has_body'     => $hasBody,
+                    'has_files'    => $hasFiles,
+                    'timestamp'    => now()->toIso8601String(),
+                ]),
+            ]);
+        } catch (\Throwable) {}
+
+        $partnerName = $partner->full_name ?: $partner->email;
+        $notePreview = $hasBody ? ': "' . \Illuminate\Support\Str::limit($data['body'], 60) . '"' : ' (with attachment)';
+
         // Notify admins
         try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
@@ -255,11 +291,33 @@ class PartnerPortalController extends Controller
                 category:     'deal_pipeline',
                 priority:     'normal',
                 title:        'Partner added a note on a deal',
-                body:         ($partner->full_name ?: $partner->email) . ' added a note on "' . $lead->name . '"' . ($hasBody ? ': "' . \Illuminate\Support\Str::limit($data['body'], 60) . '"' : ' (with attachment)'),
+                body:         "{$partnerName} added a note on \"{$lead->name}\"{$notePreview}",
                 actionUrl:    url("/tenant/{$partner->tenant_id}/deals/{$dealId}"),
                 actionLabel:  'View Deal',
                 dedupeSuffix: 'partner_note:' . $note->id,
             );
+        } catch (\Throwable) {}
+
+        // Notify the assigned referrer
+        try {
+            if ($lead->reseller_name) {
+                $reseller = \App\Models\Reseller::where('tenant_id', $partner->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                    ->first();
+                if ($reseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   $reseller->id,
+                        tenantId:     $partner->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Your Partner added a note on a deal',
+                        body:         "{$partnerName} added a note on \"{$lead->name}\"{$notePreview}",
+                        actionUrl:    url("/reseller/{$partner->tenant_id}/deals/{$dealId}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: 'partner_note_rs:' . $note->id,
+                    );
+                }
+            }
         } catch (\Throwable) {}
 
         return response()->json([
@@ -660,7 +718,7 @@ class PartnerPortalController extends Controller
         $splits = DB::table('deal_partner_splits')
             ->whereIn('deal_id', $dealIds)
             ->where('tenant_id', $partner->tenant_id)
-            ->where('partner_email', $partner->email)
+            ->where('partner_user_id', $partner->id)
             ->whereNull('deleted_at')
             ->where('status', '!=', 'removed')
             ->get();

@@ -252,7 +252,7 @@ class CriticalActionService
                 foreach ($commRows as $r) {
                     $actions[] = $this->make([
                         'type'          => $r->commission_status === 'paid' ? 'commission_paid' : 'commission_locked',
-                        'category'      => 'deal',
+                        'category'      => 'commission',
                         'severity'      => $r->commission_status === 'paid' ? 'info' : 'medium',
                         'summary'       => $r->commission_status === 'paid'
                             ? "Commission paid for: {$r->name}"
@@ -263,9 +263,9 @@ class CriticalActionService
                         'related_type'  => 'deal',
                         'related_id'    => $r->id,
                         'occurred_at'   => $r->updated_at ?? now(),
-                        'action_url'    => "/partner/deals/{$r->id}",
-                        'action_label'  => 'View Deal',
-                        'action_needed' => false,
+                        'action_url'    => "/partner/commissions",
+                        'action_label'  => 'View Commissions',
+                        'action_needed' => $r->commission_status === 'locked',
                         'source'        => 'leads',
                     ]);
                 }

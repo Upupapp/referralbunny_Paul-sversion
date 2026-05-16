@@ -87,6 +87,28 @@ class DealPartnerSplitController extends Controller
                 $lead->id . ':partner_added:' . md5($data['partner_email']),
             );
 
+            // Notify the partner themselves (if they have an account)
+            try {
+                $partnerUserId = \Illuminate\Support\Facades\DB::table('partner_users')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(email) = ?', [strtolower($data['partner_email'])])
+                    ->value('id');
+
+                if ($partnerUserId) {
+                    app(\App\Services\NotificationDispatchService::class)->dispatchToPartner(
+                        partnerId:    (string) $partnerUserId,
+                        tenantId:     $lead->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'You were added as a Partner to a deal',
+                        body:         'You have been added as a Partner to "' . $lead->name . '" with a ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . ' commission split.',
+                        actionUrl:    url("/partner/deals/{$lead->id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: "{$lead->id}:partner_added_self:{$partnerUserId}",
+                    );
+                }
+            } catch (\Throwable) {}
+
             return response()->json($split, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
