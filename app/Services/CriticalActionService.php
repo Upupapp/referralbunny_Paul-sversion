@@ -798,9 +798,17 @@ class CriticalActionService
     private function resellerExpiringDeals(string $tenantId, string $resellerName): array
     {
         // Show deals already marked expiring OR still active but with ≤5 days left
+        $lower = strtolower($resellerName);
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
+            ->where(fn($q) => $q
+                ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                ->orWhereExists(fn($sub) => $sub
+                    ->from('commission_splits')
+                    ->whereColumn('commission_splits.lead_id', 'leads.id')
+                    ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                )
+            )
             ->where(fn($q) =>
                 $q->where('status', 'expiring')
                   ->orWhere(fn($q2) => $q2->where('status', 'active')->where('days_left', '<=', 5))
@@ -831,10 +839,18 @@ class CriticalActionService
 
     private function resellerLeadHistory(string $tenantId, string $resellerName): array
     {
+        $lower = strtolower($resellerName);
         $rows = DB::table('lead_history as h')
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
-            ->whereRaw('LOWER(l.reseller_name) = ?', [strtolower($resellerName)])
+            ->where(fn($q) => $q
+                ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
+                ->orWhereExists(fn($sub) => $sub
+                    ->from('commission_splits')
+                    ->whereColumn('commission_splits.lead_id', 'l.id')
+                    ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                )
+            )
             ->where('h.created_at', '>', now()->subDays(14))
             ->whereIn('h.type', ['stage', 'commission', 'assignment'])
             ->select('h.id', 'h.action', 'h.type', 'h.created_at', 'l.id as lead_id', 'l.name as lead_name')
@@ -906,9 +922,17 @@ class CriticalActionService
 
     private function resellerStalledDeals(string $tenantId, string $resellerName): array
     {
+        $lower = strtolower($resellerName);
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
+            ->where(fn($q) => $q
+                ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                ->orWhereExists(fn($sub) => $sub
+                    ->from('commission_splits')
+                    ->whereColumn('commission_splits.lead_id', 'leads.id')
+                    ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                )
+            )
             ->whereIn('status', ['active', 'expiring'])
             ->where('updated_at', '<', now()->subDays(14))
             ->whereNull('deleted_at')
@@ -938,9 +962,17 @@ class CriticalActionService
 
     private function resellerCommissionUpdates(string $tenantId, string $resellerName): array
     {
+        $lower = strtolower($resellerName);
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
+            ->where(fn($q) => $q
+                ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                ->orWhereExists(fn($sub) => $sub
+                    ->from('commission_splits')
+                    ->whereColumn('commission_splits.lead_id', 'leads.id')
+                    ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                )
+            )
             ->whereIn('commission_status', ['locked', 'paid'])
             ->where('updated_at', '>', now()->subDays(7))
             ->select('id', 'name', 'commission_status', 'deal_value', 'updated_at')
@@ -1341,10 +1373,18 @@ class CriticalActionService
     private function resellerExtensionRequests(string $tenantId, string $resellerName): array
     {
         try {
+            $lower = strtolower($resellerName);
             $rows = DB::table('deal_assignment_extension_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
-                ->whereRaw('LOWER(l.reseller_name) = ?', [strtolower($resellerName)])
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
+                    ->orWhereExists(fn($sub) => $sub
+                        ->from('commission_splits')
+                        ->whereColumn('commission_splits.lead_id', 'l.id')
+                        ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                    )
+                )
                 ->whereIn('r.status', ['pending_review', 'clarification_requested'])
                 ->select('r.id', 'r.status', 'r.requested_days', 'r.created_at', 'l.id as lead_id', 'l.name as lead_name')
                 ->orderByDesc('r.created_at')

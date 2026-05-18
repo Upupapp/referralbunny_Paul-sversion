@@ -324,13 +324,21 @@ class TenantAdminController extends Controller
         $performance = $perfService->forReseller($tenantId, $reseller->name);
         $completeness = $perfService->completenessStatus($reseller);
 
-        // Recent deals (latest 10)
+        // Recent deals (latest 10) — includes co-referrer deals via commission_splits
         $recentDeals = collect();
         try {
+            $lower = strtolower($reseller->name);
             $recentDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('reseller_name', $reseller->name)
                 ->whereNull('deleted_at')
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                    ->orWhereExists(fn($sub) => $sub
+                        ->from('commission_splits')
+                        ->whereColumn('commission_splits.lead_id', 'leads.id')
+                        ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                    )
+                )
                 ->orderByDesc('created_at')
                 ->limit(10)
                 ->get();
@@ -342,7 +350,7 @@ class TenantAdminController extends Controller
         $recentActivity = [];
         try {
             $recentActivity = app(CriticalActionService::class)
-                ->forReseller($tenantId, $reseller->name, 8);
+                ->forReseller($tenantId, $reseller->name, 8, $reseller->id);
         } catch (\Throwable) {}
 
         // Agreements — try new tenant_legal_agreements system first, fall back to legacy
