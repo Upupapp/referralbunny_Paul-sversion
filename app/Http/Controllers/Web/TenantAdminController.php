@@ -68,6 +68,7 @@ class TenantAdminController extends Controller
             // 1. Expiring deals
             $expiringDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
                 ->where('status', 'expiring')
                 ->select('id', 'name', 'days_left', 'deal_value', 'reseller_name')
                 ->orderBy('days_left')
@@ -77,6 +78,7 @@ class TenantAdminController extends Controller
             // 2. New deals since last visit
             $newDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
                 ->where('created_at', '>', $since)
                 ->select('id', 'name', 'stage', 'deal_value', 'reseller_name', 'created_at')
                 ->orderByDesc('created_at')

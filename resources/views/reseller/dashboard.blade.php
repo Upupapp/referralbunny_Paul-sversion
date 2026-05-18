@@ -47,7 +47,7 @@
     </div>
 
     {{-- ── 2. PRIMARY KPI CARDS (Commission · Deals · Pipeline · Partners) ─ --}}
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
         {{-- CARD 1: My Commission ──────────────────────────── --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 col-span-2 sm:col-span-1 xl:col-span-1">

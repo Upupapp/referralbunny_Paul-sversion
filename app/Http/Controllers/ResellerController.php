@@ -147,10 +147,18 @@ class ResellerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $tenantId = $request->input('tenant_id');
+        // Derive tenant from authenticated context; never trust request body for tenant admins
+        $tenantId = TenantContext::id();
+        if (!$tenantId) {
+            if (!TenantContext::isSuperAdmin()) {
+                return response()->json(['error' => 'Tenant context required.'], 403);
+            }
+            // Super admin: accept explicit tenant_id from request and validate it exists
+            $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);
+            $tenantId = $request->input('tenant_id');
+        }
 
         $data = $request->validate([
-            'tenant_id'         => 'required|string|exists:tenants,id',
             'name'              => 'required|string',
             'email'             => 'required|email',
             'status'            => 'nullable|in:invited,active,nda_signed',

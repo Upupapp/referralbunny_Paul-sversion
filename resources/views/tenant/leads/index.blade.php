@@ -45,7 +45,8 @@
                 <thead><tr class="table-head"><th>Lead</th><th>Stage</th><th>Referrer</th><th>Value</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     <template x-if="loading"><tr><td colspan="6" class="py-10 text-center text-gray-400">Loading...</td></tr></template>
-                    <template x-if="!loading && filtered.length === 0"><tr><td colspan="6" class="py-10 text-center text-gray-400">No leads found</td></tr></template>
+                    <template x-if="!loading && loadError"><tr><td colspan="6" class="py-10 text-center text-red-400">Failed to load leads. Please refresh the page.</td></tr></template>
+                    <template x-if="!loading && !loadError && filtered.length === 0"><tr><td colspan="6" class="py-10 text-center text-gray-400">No leads found</td></tr></template>
                     <template x-for="lead in filtered" :key="lead.id">
                         <tr class="table-row cursor-pointer" @click="window.location=`/tenant/{{ $tenant->id }}/leads/${lead.id}`">
                             <td>
@@ -131,7 +132,7 @@
 <script>
 function leadsPage(tenantId, showLocation) {
     return {
-        leads: [], filtered: [], loading: true, showAdd: false, saving: false,
+        leads: [], filtered: [], loading: true, loadError: false, showAdd: false, saving: false,
         search: '', filterStage: '', filterStatus: '', formError: '',
         nameAutoFilled: false,
         form: { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' },
@@ -143,7 +144,7 @@ function leadsPage(tenantId, showLocation) {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
-            } catch(e) { this.leads = []; }
+            } catch(e) { this.leads = []; this.loadError = true; }
             this.filtered = this.leads;
             this.loading = false;
         },

@@ -215,6 +215,7 @@ class CriticalActionService
                 if (!empty($dealIds)) {
                     $expiring = DB::table('leads')
                         ->where('tenant_id', $tenantId)
+                        ->whereNull('deleted_at')
                         ->whereIn('id', $dealIds)
                         ->where('status', 'expiring')
                         ->select('id', 'name', 'days_left', 'updated_at')
@@ -252,6 +253,7 @@ class CriticalActionService
             if (!empty($dealIds)) {
                 $commRows = DB::table('leads')
                     ->where('tenant_id', $tenantId)
+                    ->whereNull('deleted_at')
                     ->whereIn('id', $dealIds)
                     ->whereIn('commission_status', ['locked', 'paid'])
                     ->where('updated_at', '>', now()->subDays(7))

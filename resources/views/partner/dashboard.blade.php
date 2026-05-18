@@ -15,7 +15,7 @@
     </div>
 
     {{-- 3 KPI Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
 
         {{-- Active Deals --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4">
