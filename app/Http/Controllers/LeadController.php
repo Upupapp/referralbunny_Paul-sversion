@@ -1271,10 +1271,12 @@ class LeadController extends Controller
             'splits.*.activity_status' => 'nullable|string',
         ]);
 
-        CommissionSplit::where('lead_id', $lead->id)->delete();
-        foreach ($data['splits'] as $split) {
-            CommissionSplit::create(['lead_id' => $lead->id, ...$split]);
-        }
+        DB::transaction(function () use ($lead, $data) {
+            CommissionSplit::where('lead_id', $lead->id)->delete();
+            foreach ($data['splits'] as $split) {
+                CommissionSplit::create(['lead_id' => $lead->id, ...$split]);
+            }
+        });
 
         LeadHistory::create([
             'lead_id' => $lead->id,
