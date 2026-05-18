@@ -42,7 +42,6 @@
      x-data="dealDetail('{{ $dealId }}', '{{ $tenant->id }}', __dealSsrLead)"
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
-     @open-reassign-deal.window="showReassign = true"
      @open-delete-deal.window="showDeleteConfirm = true"
      @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })"
      @open-add-co-ref.window="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''">
@@ -2495,8 +2494,8 @@ function defaultAmountPrompt(dealId, tenantId) {
 function dealDetail(leadId, tenantId, ssrLead) {
     return {
         lead: ssrLead || null, loading: !ssrLead,
-        showNoteForm: false, showMoveStage: false, showReassign: false,
-        noteText: '', noteAuthor: '', saving: false, reassignName: '',
+        showNoteForm: false, showMoveStage: false,
+        noteText: '', noteAuthor: '', saving: false,
         moveStageNote: '',
         editFinance: false,
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
@@ -2855,35 +2854,6 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     this.$dispatch('show-toast', { type: 'success', message: 'Note saved.' });
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: note.message || 'Failed to save note.' });
-                }
-            } catch(e) {
-                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
-            } finally { this.saving = false; }
-        },
-
-        async reassign() {
-            if (!this.reassignName) return;
-            this.saving = true;
-            try {
-                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
-                const res  = await fetch(`/api/leads/${this.lead.id}/reassign`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify({ reseller_name: this.reassignName }),
-                });
-                const updated = await res.json();
-                if (updated.id) {
-                    this.lead = updated;
-                    this.reassignName = ''; this.showReassign = false;
-                    this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned.' });
-                } else {
-                    this.$dispatch('show-toast', { type: 'error', message: updated.message || updated.error || 'Failed to reassign.' });
                 }
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
