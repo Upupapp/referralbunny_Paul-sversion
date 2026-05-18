@@ -1168,7 +1168,8 @@ class LeadController extends Controller
 
         $oldReferrerName = $lead->reseller_name ?? '';
 
-        $lead->update([
+        // Compute new values before transaction so we capture pre-update model state
+        $updatePayload = [
             'reseller_name'     => $data['reseller_name'],
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
             'days_left'         => ($data['reset_stage'] ?? true)
@@ -1176,7 +1177,20 @@ class LeadController extends Controller
                 : $lead->days_left,
             'status'            => 'active',
             'commission_status' => 'pending',
-        ]);
+        ];
+
+        // Single atomic transaction: lead update + split replacement
+        DB::transaction(function () use ($lead, $data, $updatePayload) {
+            $lead->update($updatePayload);
+            CommissionSplit::where('lead_id', $lead->id)->delete();
+            CommissionSplit::create([
+                'lead_id'         => $lead->id,
+                'reseller_name'   => $data['reseller_name'],
+                'percentage'      => 100,
+                'role'            => 'primary',
+                'activity_status' => 'active',
+            ]);
+        });
 
         // Fetch new reseller once — reused for cache bust + event dispatch below
         $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
@@ -1197,16 +1211,7 @@ class LeadController extends Controller
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
 
-        DB::transaction(function () use ($lead, $data) {
-            CommissionSplit::where('lead_id', $lead->id)->delete();
-            CommissionSplit::create([
-                'lead_id'         => $lead->id,
-                'reseller_name'   => $data['reseller_name'],
-                'percentage'      => 100,
-                'role'            => 'primary',
-                'activity_status' => 'active',
-            ]);
-        });
+        // (split operations now handled in the transaction above)
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,

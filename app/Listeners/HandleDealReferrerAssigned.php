@@ -82,6 +82,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
                 emailKey:       'deal_assigned.' . $event->leadId . '.' . ($resellerId ?? $event->resellerName),
                 subject:        'You\'ve been assigned to a deal: ' . $event->leadName,
                 tenantId:       $event->tenantId,
+                dailyDedup:     true,
             );
         }
 
