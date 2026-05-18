@@ -256,8 +256,16 @@
                             </div>
                         </template>
 
+                        {{-- Search error --}}
+                        <template x-if="searchError">
+                            <div class="text-center py-8 text-gray-400 text-sm">
+                                <svg class="w-6 h-6 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Search is temporarily unavailable. Try again.
+                            </div>
+                        </template>
+
                         {{-- No results --}}
-                        <template x-if="!loading && query && results.length === 0">
+                        <template x-if="!loading && !searchError && query && results.length === 0">
                             <div class="text-center py-8 text-gray-400 text-sm">
                                 No results for "<span x-text="query"></span>"
                                 <div class="mt-2">
@@ -727,7 +735,7 @@ function globalSearch(searchBaseUrl, tenantId) {
     tenantId      = tenantId      || '';
     return {
         open: false, query: '', results: [], total: 0, loading: false,
-        recent: [], command: null, activeIndex: -1,
+        recent: [], command: null, activeIndex: -1, searchError: false,
         confirmOpen: false, pendingAction: null, confirmReason: '', actionBusy: false,
         searchBaseUrl: searchBaseUrl,
 
@@ -753,20 +761,20 @@ function globalSearch(searchBaseUrl, tenantId) {
         },
 
         async liveSearch() {
-            if (!this.query.trim()) { this.results = []; this.command = null; return; }
-            this.loading = true;
+            if (!this.query.trim()) { this.results = []; this.command = null; this.searchError = false; return; }
+            this.loading = true; this.searchError = false;
             try {
                 let url = '/api/search?q=' + encodeURIComponent(this.query) + '&limit=8';
                 if (tenantId) url += '&tenant_id=' + encodeURIComponent(tenantId);
                 const res  = await fetch(url);
-                if (!res.ok) { this.results = []; return; }
+                if (!res.ok) { this.results = []; this.searchError = true; return; }
                 const data = await res.json();
                 this.results     = data.results  || [];
                 this.total       = data.total    || 0;
                 this.command     = data.command  || null;
                 this.activeIndex = -1;
             } catch(e) {
-                this.results = [];
+                this.results = []; this.searchError = true;
             } finally { this.loading = false; }
         },
 

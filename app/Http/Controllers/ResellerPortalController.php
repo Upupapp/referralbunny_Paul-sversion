@@ -30,7 +30,7 @@ class ResellerPortalController extends Controller
         $tenant   = Tenant::findOrFail($tenantId);
 
         // SQL aggregate stats (cached 120s) — no full table scan
-        $perf = app(ReferrerPerformanceService::class)->forReseller($tenantId, $reseller->name);
+        $perf = app(ReferrerPerformanceService::class)->forReseller($tenantId, $reseller->name, $reseller->id);
         $stats = [
             'total'      => $perf['total_deals'],
             'active'     => $perf['active_deals'],
@@ -76,20 +76,28 @@ class ResellerPortalController extends Controller
             });
         } catch (\Throwable) {}
 
-        // ── Unique partner count — query directly from DB (no full lead scan) ──
+        // ── Unique partner count via subquery (avoids PHP array fan-out) ──────
         $partnerCount = 0;
         try {
-            $allLeadIds = Lead::where('tenant_id', $tenantId)
-                ->forResellerOrSplit($reseller->name)
-                ->pluck('id');
-            if ($allLeadIds->isNotEmpty()) {
-                $partnerCount = DB::table('deal_partner_splits')
-                    ->whereIn('deal_id', $allLeadIds)
-                    ->whereNull('deleted_at')
-                    ->where('status', '!=', 'removed')
-                    ->distinct()
-                    ->count('partner_email');
-            }
+            $lower = strtolower($reseller->name);
+            $partnerCount = DB::table('deal_partner_splits')
+                ->whereNull('deal_partner_splits.deleted_at')
+                ->where('deal_partner_splits.status', '!=', 'removed')
+                ->whereIn('deal_partner_splits.deal_id', function ($sub) use ($tenantId, $lower) {
+                    $sub->select('id')->from('leads')
+                        ->where('tenant_id', $tenantId)
+                        ->whereNull('deleted_at')
+                        ->where(fn($q) => $q
+                            ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                            ->orWhereExists(fn($s) => $s
+                                ->from('commission_splits')
+                                ->whereColumn('commission_splits.lead_id', 'leads.id')
+                                ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                            )
+                        );
+                })
+                ->distinct()
+                ->count('partner_email');
         } catch (\Throwable) {}
 
         // ── Unread messages count ──────────────────────────────────────────
@@ -129,37 +137,34 @@ class ResellerPortalController extends Controller
     {
         $reseller = $this->reseller();
         $tenant   = Tenant::findOrFail($tenantId);
-        $calc     = app(\App\Services\CommissionCalculationService::class);
+        $calc = app(\App\Services\CommissionCalculationService::class);
 
-        // ── Summary stats: load leads for commission aggregation (cap at 2000 rows) ──
-        $allLeads = Lead::where('tenant_id', $tenantId)
-            ->forResellerOrSplit($reseller->name)
-            ->select('id', 'deal_value', 'base_cost', 'added_amount', 'commission_status')
-            ->take(2000)
-            ->get();
+        // ── Summary stats: use ReferrerPerformanceService (cached 120s, single SQL aggregate) ──
+        $perf            = app(ReferrerPerformanceService::class)->forReseller($tenantId, $reseller->name, $reseller->id);
+        $commissionStats = [
+            'pending' => $perf['pending_commission'] ?? 0,
+            'locked'  => $perf['locked_commission']  ?? 0,
+            'paid'    => $perf['paid_commission']     ?? 0,
+        ];
 
-        // Load all commission splits for this referrer in a single query
-        $allLeadIds = $allLeads->pluck('id');
-        $allSplits  = $allLeadIds->isNotEmpty()
-            ? DB::table('commission_splits')
-                ->whereIn('lead_id', $allLeadIds)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
-                ->get()
-                ->keyBy('lead_id')
-            : collect();
-
-        $commissionStats = ['pending' => 0, 'locked' => 0, 'paid' => 0];
-        foreach ($allLeads as $lead) {
-            $pool     = $calc->breakdownFromLead($lead)['commission_pool'] ?? 0;
-            $splitRow = $allSplits->get($lead->id);
-            $pct      = $splitRow ? (float) ($splitRow->percentage ?? 100) : 100.0;
-            $mine     = $calc->referrerShare($pool, $pct);
-            $status   = $lead->commission_status ?? 'pending';
-            if (array_key_exists($status, $commissionStats)) {
-                $commissionStats[$status] += $mine;
-            } else {
-                $commissionStats['pending'] += $mine;
-            }
+        // Per-status deal count via a single GROUP BY query (replaces 2000-row PHP scan)
+        try {
+            $statusCountRows = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                    ->orWhereExists(fn($sub) => $sub
+                        ->from('commission_splits')
+                        ->whereColumn('commission_splits.lead_id', 'leads.id')
+                        ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [strtolower($reseller->name)])
+                    )
+                )
+                ->selectRaw('commission_status, COUNT(DISTINCT id) AS cnt')
+                ->groupBy('commission_status')
+                ->pluck('cnt', 'commission_status');
+        } catch (\Throwable) {
+            $statusCountRows = collect();
         }
 
         // ── Paginated display: DB-level pagination (avoids loading all rows into PHP) ──
@@ -197,9 +202,8 @@ class ResellerPortalController extends Controller
         // $leads kept for view back-compat (some Blade sections may reference it)
         $leads = $pagedLeads->getCollection();
 
-        // Per-status deal count from full dataset (not just current page)
-        $statusCounts = $allLeads->groupBy('commission_status')
-            ->map(fn ($group) => $group->count());
+        // Per-status deal count from DB aggregate (replaces $allLeads->groupBy)
+        $statusCounts = $statusCountRows;
 
         return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats', 'pagedLeads', 'statusCounts'));
     }

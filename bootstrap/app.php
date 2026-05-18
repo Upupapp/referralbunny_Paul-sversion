@@ -34,16 +34,19 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthenticated.'], 401);
             }
-            $path = $request->path();
-            if (str_starts_with($path, 'reseller/')) {
-                return redirect()->route('reseller.login');
+            $path    = $request->path();
+            $message = 'Your session has expired. Please sign in to continue.';
+            session()->put('url.intended', $request->url());
+
+            if ($path === 'reseller' || str_starts_with($path, 'reseller/')) {
+                return redirect()->route('reseller.login')->with('status', $message);
             }
-            if (str_starts_with($path, 'partner/')) {
-                return redirect()->route('partner.login');
+            if ($path === 'partner' || str_starts_with($path, 'partner/')) {
+                return redirect()->route('partner.login')->with('status', $message);
             }
-            if (str_starts_with($path, 'tenant/')) {
-                return redirect()->route('tenant.login');
+            if ($path === 'tenant' || str_starts_with($path, 'tenant/')) {
+                return redirect()->route('tenant.login')->with('status', $message);
             }
-            return redirect()->route('login');
+            return redirect()->route('login')->with('status', $message);
         });
     })->create();

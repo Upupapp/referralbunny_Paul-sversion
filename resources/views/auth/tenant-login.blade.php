@@ -184,10 +184,10 @@
             <h1 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:700;color:#111827">Sign in to your account</h1>
             <p style="margin:0 0 2rem;font-size:.6875rem;font-weight:600;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase">Tenant Admin Portal</p>
 
-            @if (request('signed_out'))
+            @if (request('signed_out') || session('status'))
                 <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#16a34a;display:flex;align-items:center;gap:.5rem">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    You have been signed out successfully.
+                    {{ session('status') ?? 'You have been signed out successfully.' }}
                 </div>
             @endif
 

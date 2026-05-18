@@ -36,7 +36,9 @@ class Reseller extends Authenticatable
         });
 
         static::updated(function (self $model) {
-            if (!empty($model->email) && !$model->is_anonymous) {
+            $contactFields = ['name', 'email', 'phone', 'territory', 'job_title', 'department',
+                              'organization', 'location', 'timezone', 'language', 'bio', 'status'];
+            if (!empty($model->email) && !$model->is_anonymous && $model->isDirty($contactFields)) {
                 try {
                     app(\App\Services\ContactSyncService::class)->syncReseller($model);
                 } catch (\Throwable) {}

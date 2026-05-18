@@ -13,9 +13,12 @@ class ReferrerPerformanceService
      * Uses only the existing leads table and approved commission logic.
      * Never invents new LGU IDS formulas.
      */
-    public function forReseller(string $tenantId, string $resellerName): array
+    public function forReseller(string $tenantId, string $resellerName, ?string $resellerId = null): array
     {
-        $cacheKey = "referrer_perf:{$tenantId}:" . md5($resellerName);
+        // Key on reseller ID when available — name-based keys cause cache poisoning on name collisions
+        $cacheKey = $resellerId
+            ? "referrer_perf:{$tenantId}:{$resellerId}"
+            : "referrer_perf:{$tenantId}:" . md5($resellerName);
         return Cache::remember($cacheKey, 120, function () use ($tenantId, $resellerName) {
             return $this->compute($tenantId, $resellerName);
         });

@@ -34,7 +34,7 @@ class ResellerPortalAuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $reseller = Reseller::where('email', strtolower(trim($credentials['email'])))->first();
+        $reseller = Reseller::whereRaw('LOWER(email) = ?', [strtolower(trim($credentials['email']))])->first();
 
         if (!$reseller) {
             return back()->withErrors(['email' => 'No referrer account found with this email.'])->withInput();
@@ -82,7 +82,7 @@ class ResellerPortalAuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $reseller = Reseller::where('email', strtolower(trim($request->email)))->first();
+        $reseller = Reseller::whereRaw('LOWER(email) = ?', [strtolower(trim($request->email))])->first();
 
         // Always return success to prevent email enumeration.
         // Only process reset for fully-activated resellers (password already set).

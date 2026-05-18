@@ -53,6 +53,9 @@ class NotificationsController extends Controller
                 )
                 ->update(['is_read' => true]);
             Cache::forget("notif_unread_{$type}_{$id}");
+            if ($type === 'partner') {
+                Cache::forget("partner_notif_unread:{$id}");
+            }
         }
         return response()->json(['ok' => true]);
     }
@@ -76,6 +79,11 @@ class NotificationsController extends Controller
             $tenantId = Auth::guard('partner')->user()->tenant_id;
         }
 
+        // For non-SA users always require tenant scope to prevent cross-tenant reads
+        if ($type !== 'super_admin' && !$tenantId) {
+            abort(403, 'Tenant context required.');
+        }
+
         return Notification::where('id', $notificationId)
             ->where('notifiable_type', $type)
             ->where('notifiable_id', $id)
@@ -85,13 +93,14 @@ class NotificationsController extends Controller
             ->firstOrFail();
     }
 
+    // Guard order: web first so SA-on-tenant-page resolves as super_admin (matches NotificationController)
     private function resolveCurrentUser(): array
     {
-        if (Auth::guard('tenant')->check()) {
-            return ['tenant_admin', (string) Auth::guard('tenant')->id()];
-        }
         if (Auth::guard('web')->check()) {
             return ['super_admin', (string) Auth::guard('web')->id()];
+        }
+        if (Auth::guard('tenant')->check()) {
+            return ['tenant_admin', (string) Auth::guard('tenant')->id()];
         }
         if (Auth::guard('reseller')->check()) {
             return ['reseller', (string) Auth::guard('reseller')->id()];
