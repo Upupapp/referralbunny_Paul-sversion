@@ -30,14 +30,16 @@ class ReferrerPartnerController extends Controller
     /** Returns all Lead IDs assigned to this reseller in this tenant. */
     private function getMyLeadIds(string $tenantId, Reseller $reseller): array
     {
-        // Primary: reseller is main referrer
+        $lower = strtolower($reseller->name);
+
+        // Primary: reseller is main referrer (subquery + case-insensitive)
         $primary = Lead::where('tenant_id', $tenantId)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [$lower])
             ->pluck('id')
             ->toArray();
 
-        // Secondary: reseller is a co-referrer via commission_splits (subquery — no PHP array fan-out)
-        $secondary = CommissionSplit::where('reseller_name', $reseller->name)
+        // Secondary: reseller is a co-referrer via commission_splits (subquery + case-insensitive)
+        $secondary = CommissionSplit::whereRaw('LOWER(reseller_name) = ?', [$lower])
             ->whereIn('lead_id', Lead::where('tenant_id', $tenantId)->select('id'))
             ->pluck('lead_id')
             ->toArray();
@@ -48,9 +50,9 @@ class ReferrerPartnerController extends Controller
     /** Verify reseller can access a specific deal. */
     private function resellerCanAccessDeal(Reseller $reseller, Lead $lead): bool
     {
-        if ($reseller->name === $lead->reseller_name) return true;
+        if (strtolower($reseller->name) === strtolower($lead->reseller_name ?? '')) return true;
         return CommissionSplit::where('lead_id', $lead->id)
-            ->where('reseller_name', $reseller->name)
+            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
             ->exists();
     }
 
