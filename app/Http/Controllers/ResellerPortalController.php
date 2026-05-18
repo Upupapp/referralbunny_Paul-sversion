@@ -132,8 +132,7 @@ class ResellerPortalController extends Controller
         $calc     = app(\App\Services\CommissionCalculationService::class);
 
         // ── Summary stats: load leads for commission aggregation (cap at 2000 rows) ──
-        $allLeads = Lead::withTrashed()
-            ->where('tenant_id', $tenantId)
+        $allLeads = Lead::where('tenant_id', $tenantId)
             ->forReseller($reseller->name)
             ->select('id', 'deal_value', 'base_cost', 'added_amount', 'commission_status')
             ->take(2000)
@@ -167,8 +166,7 @@ class ResellerPortalController extends Controller
         $perPage = 20;
         $page    = max(1, (int) request()->input('page', 1));
 
-        $pagedQuery = Lead::withTrashed()
-            ->where('tenant_id', $tenantId)
+        $pagedQuery = Lead::where('tenant_id', $tenantId)
             ->forReseller($reseller->name)
             ->select('id', 'name', 'stage', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
             ->orderByDesc('created_at');
@@ -199,7 +197,11 @@ class ResellerPortalController extends Controller
         // $leads kept for view back-compat (some Blade sections may reference it)
         $leads = $pagedLeads->getCollection();
 
-        return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats', 'pagedLeads'));
+        // Per-status deal count from full dataset (not just current page)
+        $statusCounts = $allLeads->groupBy('commission_status')
+            ->map(fn ($group) => $group->count());
+
+        return view('reseller.commission', compact('reseller', 'tenant', 'leads', 'commissionStats', 'pagedLeads', 'statusCounts'));
     }
 
     public function profile($tenantId)

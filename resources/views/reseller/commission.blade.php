@@ -58,7 +58,7 @@
             <p class="text-2xl font-bold tabular-nums" style="color:#1E1B4B">
                 ₱{{ number_format($commissionStats[$card['key']] ?? 0) }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ $leads->where('commission_status', $card['key'])->count() }} deal(s) · your share</p>
+            <p class="text-xs text-gray-400 mt-1">{{ $statusCounts[$card['key']] ?? 0 }} deal(s) · your share</p>
         </div>
         @endforeach
     </div>
