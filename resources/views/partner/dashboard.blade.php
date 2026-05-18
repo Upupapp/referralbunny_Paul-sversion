@@ -48,7 +48,7 @@
         </div>
 
         {{-- Profile completion --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 col-span-2 lg:col-span-1">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 col-span-2 sm:col-span-1">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-xs font-medium text-gray-500">Profile</span>
                 <span class="text-xs font-bold" style="color:#2563EB">{{ $completion }}%</span>

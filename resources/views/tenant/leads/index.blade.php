@@ -138,11 +138,13 @@ function leadsPage(tenantId, showLocation) {
         form: { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' },
 
         async init() {
+            this.loading = true; this.loadError = false;
             try {
                 const res = await fetch(`/api/leads?tenant_id=${tenantId}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
             } catch(e) { this.leads = []; this.loadError = true; }
             this.filtered = this.leads;

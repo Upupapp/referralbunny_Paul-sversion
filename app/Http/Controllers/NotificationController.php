@@ -210,6 +210,9 @@ class NotificationController extends Controller
         if ($type === 'partner') {
             Cache::forget("partner_notif_unread:{$id}");
         }
+        if ($type === 'reseller') {
+            Cache::forget("ca_rs_suppressed:{$id}");
+        }
 
         return response()->json(['ok' => true]);
     }

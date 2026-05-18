@@ -577,6 +577,7 @@ class CriticalActionService
         // Referrer invites approaching 90-day expiry (within 7 days)
         $expiringReferrers = DB::table('resellers')
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->where('status', 'invited')
             ->where('created_at', '<', now()->subDays(83))
             ->where('created_at', '>', now()->subDays(90))
@@ -1147,6 +1148,7 @@ class CriticalActionService
             $rows = DB::table('deal_approval_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
+                ->whereNull('l.deleted_at')
                 ->where('r.type', 'deal_stage_move')
                 ->where('r.status', 'pending')
                 ->select(
@@ -1201,6 +1203,7 @@ class CriticalActionService
             $rows = DB::table('deal_assignment_extension_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
+                ->whereNull('l.deleted_at')
                 ->whereIn('r.status', ['pending_review', 'clarification_requested'])
                 ->select(
                     'r.id', 'r.status', 'r.requested_days', 'r.reason',
@@ -1789,6 +1792,7 @@ class CriticalActionService
         try {
             $rows = DB::table('resellers')
                 ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
                 ->where('status', 'invited')
                 ->where('created_at', '>', now()->subDays(7))
                 ->select('id', 'name', 'email', 'created_at')
@@ -1828,6 +1832,7 @@ class CriticalActionService
                 ->join('leads as l', 'l.id', '=', 'dps.deal_id')
                 ->where('dps.tenant_id', $tenantId)
                 ->whereNull('dps.deleted_at')
+                ->whereNull('l.deleted_at')
                 ->where('dps.status', '!=', 'removed')
                 ->where('dps.created_at', '>', now()->subDays(7))
                 ->select('dps.id', 'dps.partner_name', 'dps.partner_email', 'dps.created_at', 'l.name as deal_name', 'l.id as deal_id')

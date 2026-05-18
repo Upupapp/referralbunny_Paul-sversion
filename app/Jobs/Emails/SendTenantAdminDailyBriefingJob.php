@@ -28,7 +28,7 @@ class SendTenantAdminDailyBriefingJob implements ShouldQueue
             $tenantId = $tenant->id;
 
             // Build data
-            $allLeads     = DB::table('leads')->where('tenant_id', $tenantId)->get();
+            $allLeads     = DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->get();
             $expiringList = $allLeads->whereIn('status', ['expiring'])->map(fn($l) => [
                 'name'     => $l->name,
                 'days_left'=> $l->days_left ?? 0,

@@ -83,6 +83,7 @@ class ResellerController extends Controller
             // Deal counts
             $dealCounts = DB::table('leads')
                 ->where('tenant_id', $effectiveTenantId)
+                ->whereNull('deleted_at')
                 ->whereNotIn('status', ['expired', 'declined'])
                 ->whereIn('reseller_name', $resellerNames)
                 ->groupBy('reseller_name')
@@ -92,6 +93,7 @@ class ResellerController extends Controller
             // Commission: pool per lead × referrer's split % (100% default when no split record)
             $leadsData = DB::table('leads')
                 ->where('tenant_id', $effectiveTenantId)
+                ->whereNull('deleted_at')
                 ->whereNotIn('status', ['expired', 'declined'])
                 ->whereIn('reseller_name', $resellerNames)
                 ->select('id', 'reseller_name', 'deal_value', 'base_cost', 'added_amount', 'tenant_id')

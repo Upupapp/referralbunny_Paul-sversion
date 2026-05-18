@@ -30,6 +30,7 @@ class SendResellerDailySummariesJob implements ShouldQueue
 
             $leads = DB::table('leads')
                 ->where('tenant_id', $reseller->tenant_id)
+                ->whereNull('deleted_at')
                 ->where('reseller_name', $reseller->name)
                 ->get();
 

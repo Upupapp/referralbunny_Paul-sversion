@@ -90,15 +90,16 @@ class CriticalActionsController extends Controller
         }
 
         $categories = [
-            ''          => 'All Categories',
-            'deal'      => 'Deals',
-            'import'    => 'Imports',
-            'task'      => 'Tasks',
-            'messaging' => 'Messages',
-            'user'      => 'Users & Invitations',
-            'export'    => 'Exports',
-            'billing'   => 'Billing',
-            'activity'  => 'Activity',
+            ''           => 'All Categories',
+            'deal'       => 'Deals',
+            'commission' => 'Commission',
+            'import'     => 'Imports',
+            'task'       => 'Tasks',
+            'messaging'  => 'Messages',
+            'user'       => 'Users & Invitations',
+            'export'     => 'Exports',
+            'billing'    => 'Billing',
+            'activity'   => 'Activity',
         ];
 
         $severities = [
