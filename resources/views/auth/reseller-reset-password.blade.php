@@ -40,6 +40,7 @@
     <form method="POST" action="{{ route('reseller.reset-password.post') }}" @submit="sub=true">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
+        <input type="hidden" name="email" value="{{ $email }}">
         <div style="margin-bottom:1rem">
             <label class="field-label">New Password</label>
             <div class="pw-wrap">
