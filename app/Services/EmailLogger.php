@@ -26,14 +26,13 @@ class EmailLogger
     ): bool {
         $dedupKey = $dailyDedup ? $emailKey . '.' . now()->format('Y-m-d') : $emailKey;
 
-        // Idempotency check for scheduled/daily emails
-        if ($dailyDedup) {
-            $alreadySent = EmailLog::where('email_key', $dedupKey)
-                ->whereIn('status', ['sent', 'pending'])
-                ->exists();
-            if ($alreadySent) {
-                return true;
-            }
+        // Idempotency check for ALL emails (daily and one-off).
+        // Prevents duplicate sends when a queued listener retries.
+        $alreadyQueued = EmailLog::where('email_key', $dedupKey)
+            ->whereIn('status', ['sent', 'pending', 'queued'])
+            ->exists();
+        if ($alreadyQueued) {
+            return true;
         }
 
         $log = EmailLog::create([
@@ -43,28 +42,27 @@ class EmailLogger
             'recipient_id'   => $recipientId,
             'tenant_id'      => $tenantId,
             'subject'        => $subject,
-            'status'         => 'pending',
+            'status'         => 'queued',
             'metadata'       => $metadata,
         ]);
 
         try {
-            Mail::send($mailable);
-            $log->update(['status' => 'sent', 'sent_at' => now()]);
+            Mail::queue($mailable);
             return true;
         } catch (\Throwable $e) {
             $log->update(['status' => 'failed', 'failed_at' => now(), 'error_message' => $e->getMessage()]);
-            Log::warning("Email failed [{$emailKey}] to {$recipientEmail}: {$e->getMessage()}");
+            Log::warning("Email queue failed [{$emailKey}] to {$recipientEmail}: {$e->getMessage()}");
             return false;
         }
     }
 
     /**
-     * Check if a daily email was already sent today.
+     * Check if a daily email was already sent (or queued) today.
      */
     public static function sentToday(string $emailKey): bool
     {
         return EmailLog::where('email_key', $emailKey . '.' . now()->format('Y-m-d'))
-            ->whereIn('status', ['sent', 'pending'])
+            ->whereIn('status', ['sent', 'pending', 'queued'])
             ->exists();
     }
 }

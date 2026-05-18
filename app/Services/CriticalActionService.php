@@ -1102,6 +1102,7 @@ class CriticalActionService
             $rows = DB::table('deal_approval_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
+                ->whereNull('l.deleted_at')
                 ->where('r.type', 'deal_archive')
                 ->where('r.status', 'pending')
                 ->select(

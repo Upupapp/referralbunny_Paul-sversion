@@ -145,7 +145,7 @@ class TenantInvitationController extends Controller
                 inviteId:          $invitation->id,
                 relatedDealId:     null,
                 relatedDealName:   null,
-                acceptedAt:        now(),
+                acceptedAt:        now()->toIso8601String(),
             );
         } catch (\Throwable) {}
 

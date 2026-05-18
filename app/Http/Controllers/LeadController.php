@@ -638,6 +638,7 @@ class LeadController extends Controller
         $lead->deleted_by = $actorName;
         $lead->save();
         $lead->delete();
+        Cache::forget("dash_counts:{$tenantId}");
 
         Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
@@ -727,6 +728,7 @@ class LeadController extends Controller
 
         $lead->restore();
         $lead->update(['deleted_by' => null]);
+        Cache::forget("dash_counts:{$tenantId}");
 
         [$actorId, $actorRole, $actorName] = $this->resolveActor();
 
@@ -1189,7 +1191,7 @@ class LeadController extends Controller
             'reseller_name'     => $data['reseller_name'],
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
             'days_left'         => ($data['reset_stage'] ?? true)
-                ? ($this->resolveStageLimit($lead->tenant_id, 'introduction') ?? 21)
+                ? ($this->resolveStageLimit($lead->tenant_id, 'introduction') ?? ($lead->tenant_id === 'lgu-ids' ? 14 : 21))
                 : $lead->days_left,
             'status'            => 'active',
             'commission_status' => 'pending',

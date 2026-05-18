@@ -133,7 +133,10 @@ if ($isAdminMgr) {
         $_suppressedKey = "ca_badge_suppressed:{$tenantId}:{$_caUserId}";
         $_suppressed = \Illuminate\Support\Facades\Cache::has($_suppressedKey);
         if ($_suppressed) {
-            $criticalBadge = 0;
+            // Still surface urgent-severity items even when the badge is suppressed
+            $urgentActions = app(\App\Services\CriticalActionService::class)
+                ->dashboardSummary($tenantId, 100, $_canSeeBilling, $_canSeeExports, $_canSeeUsers);
+            $criticalBadge = count(array_filter($urgentActions, fn($a) => ($a['severity'] ?? '') === 'urgent'));
         } else {
             $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember(
                 $_caBadgeKey, 60,

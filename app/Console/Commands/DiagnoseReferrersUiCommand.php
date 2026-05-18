@@ -151,7 +151,7 @@ class DiagnoseReferrersUiCommand extends Command
             $this->line('<options=bold>=== CACHE REPAIR ===</options=bold>');
             try {
                 \Illuminate\Support\Facades\Cache::forget("tenant_{$tenant->id}_resellers_count");
-                \Illuminate\Support\Facades\Cache::forget("dashboard_{$tenant->id}_counts");
+                \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenant->id}");
                 $this->info("  ✓ Cleared Referrers-related caches for tenant {$tenant->id}.");
             } catch (\Throwable $e) {
                 $this->warn("  Cache clear partial: " . $e->getMessage());

@@ -31,10 +31,6 @@ class HandleInviteAccepted implements ShouldQueue
 {
     public int $tries = 3;
 
-    public function __construct(
-        private NotificationDispatchService $notifications,
-    ) {}
-
     public function handle(InviteAcceptedEvent $event): void
     {
         $dedupBase = "invite_accepted:{$event->tenantId}:{$event->acceptedUserId}";
@@ -76,6 +72,12 @@ class HandleInviteAccepted implements ShouldQueue
                 default    => "{$event->acceptedUserName} accepted the invite and joined as " . ucfirst($event->acceptedRole) . ".",
             };
 
+            // Idempotency: skip on listener retry if the row already exists
+            if (ActivityLog::where('tenant_id', $event->tenantId)
+                ->where('action', 'invite_accepted')
+                ->where('entity_id', $event->acceptedUserId)
+                ->exists()) return;
+
             ActivityLog::create([
                 'id'        => (string) Str::uuid(),
                 'tenant_id' => $event->tenantId,
@@ -94,7 +96,7 @@ class HandleInviteAccepted implements ShouldQueue
                     'invited_by_id'      => $event->invitedById,
                     'related_deal_id'    => $event->relatedDealId,
                     'related_deal_name'  => $event->relatedDealName,
-                    'accepted_at'        => $event->acceptedAt->toIso8601String(),
+                    'accepted_at'        => $event->acceptedAt,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -107,13 +109,20 @@ class HandleInviteAccepted implements ShouldQueue
     private function logAudit(InviteAcceptedEvent $event): void
     {
         try {
+            // Idempotency: skip on listener retry if the audit row already exists
+            $auditEntityId = $event->inviteId ?? $event->acceptedUserId;
+            if (ActivityLog::where('tenant_id', $event->tenantId)
+                ->where('action', 'invite.accepted')
+                ->where('entity_id', $auditEntityId)
+                ->exists()) return;
+
             ActivityLog::create([
                 'id'        => (string) Str::uuid(),
                 'tenant_id' => $event->tenantId,
                 'user_id'   => $event->invitedById,
                 'action'    => 'invite.accepted',
                 'entity'    => 'invite',
-                'entity_id' => $event->inviteId ?? $event->acceptedUserId,
+                'entity_id' => $auditEntityId,
                 'metadata'  => [
                     'audit_event'         => true,
                     'tenant_id'           => $event->tenantId,
@@ -124,7 +133,7 @@ class HandleInviteAccepted implements ShouldQueue
                     'invite_type'         => $event->inviteType,
                     'invited_by_id'       => $event->invitedById,
                     'related_deal_id'     => $event->relatedDealId,
-                    'accepted_at'         => $event->acceptedAt->toIso8601String(),
+                    'accepted_at'         => $event->acceptedAt,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -156,7 +165,7 @@ class HandleInviteAccepted implements ShouldQueue
             );
 
             // In-app notification to inviter
-            $this->notifications->dispatch(
+            app(NotificationDispatchService::class)->dispatch(
                 category:         $this->category($event),
                 priority:         'normal',
                 title:            $title,
@@ -209,7 +218,7 @@ class HandleInviteAccepted implements ShouldQueue
                 $event, forInviter: false
             );
 
-            $this->notifications->dispatchToTenantAdmins(
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $event->tenantId,
                 category:     $this->category($event),
                 priority:     'normal',

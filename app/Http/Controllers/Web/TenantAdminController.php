@@ -454,14 +454,14 @@ class TenantAdminController extends Controller
         $setupUrl = url('/reseller/setup?token=' . $setupToken);
 
         try {
-            \Illuminate\Support\Facades\Mail::to($reseller->email)->send(new \App\Mail\ResellerInvitation(
+            \Illuminate\Support\Facades\Mail::to($reseller->email)->queue(new \App\Mail\ResellerInvitation(
                 resellerName:  $reseller->name,
                 resellerEmail: $reseller->email,
                 tenantName:    $tenant->name ?? 'ReferralBunny',
                 setupUrl:      $setupUrl,
             ));
         } catch (\Throwable $e) {
-            \Log::error('resendReferrerInvite: mail failed', ['reseller_id' => $referrerId, 'error' => $e->getMessage()]);
+            \Log::error('resendReferrerInvite: mail queue failed', ['reseller_id' => $referrerId, 'error' => $e->getMessage()]);
             return back()->withErrors(['invite' => 'Could not send invite email. Please try again or check your mail configuration.']);
         }
 

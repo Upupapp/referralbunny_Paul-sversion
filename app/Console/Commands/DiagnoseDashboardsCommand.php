@@ -293,7 +293,7 @@ class DiagnoseDashboardsCommand extends Command
                 Cache::forget("tenant_{$tid}_plan");
                 Cache::forget("tenant_{$tid}_subscription");
                 Cache::forget("tenant_{$tid}_resellers_count");
-                Cache::forget("dashboard_{$tid}_counts");
+                Cache::forget("dash_counts:{$tid}");
                 $patterns[] = $tid;
             }
             $this->info("  ✓ Cleared dashboard caches for " . count($patterns) . " tenant(s).");

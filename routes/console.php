@@ -16,11 +16,11 @@ Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('As
 // Daily digest: all pending tasks emailed to lgu-ids admin/manager/owner
 Schedule::job(new SendLguIdsPendingTasksDigestJob)
     ->dailyAt('08:00')->timezone('Asia/Manila')
-    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt('2026-05-18'));
+    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt(\Carbon\Carbon::parse('2026-05-18', 'Asia/Manila')));
 // Per-task due-today: one separate email per task due on the day
 Schedule::job(new SendLguIdsTaskDueReminderJob)
     ->dailyAt('07:30')->timezone('Asia/Manila')
-    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt('2026-05-18'));
+    ->skip(fn() => now()->setTimezone('Asia/Manila')->lt(\Carbon\Carbon::parse('2026-05-18', 'Asia/Manila')));
 
 // ── Daily jobs ────────────────────────────────────────────────
 Schedule::command('metrics:calculate')->dailyAt('01:00');

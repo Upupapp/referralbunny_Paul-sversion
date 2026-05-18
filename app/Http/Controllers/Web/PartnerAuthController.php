@@ -180,7 +180,7 @@ class PartnerAuthController extends Controller
                 inviteId:          null,
                 relatedDealId:     $relatedDealPartner?->deal_id,
                 relatedDealName:   $relatedDealName,
-                acceptedAt:        now(),
+                acceptedAt:        now()->toIso8601String(),
             );
         } catch (\Throwable $e) {
             Log::warning('InviteAcceptedEvent dispatch failed for partner: ' . $e->getMessage());

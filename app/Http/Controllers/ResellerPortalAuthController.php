@@ -247,7 +247,7 @@ class ResellerPortalAuthController extends Controller
                 inviteId:          null,
                 relatedDealId:     null,
                 relatedDealName:   null,
-                acceptedAt:        now(),
+                acceptedAt:        now()->toIso8601String(),
             );
         } catch (\Throwable $e) {
             Log::warning('InviteAcceptedEvent dispatch failed for reseller: ' . $e->getMessage());

@@ -1830,7 +1830,7 @@
                 </button>
             </div>
             <div style="padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:12px;color:#92400e;margin-bottom:16px">
-                This resets the stage to Introduction, restarts the pipeline timer, and transfers 100% of the commission pool to the new referrer.
+                This resets the stage to Introduction, restarts the pipeline timer, reassigns 100% of the commission split to the new referrer, and resets commission status to Pending.
             </div>
             <div style="margin-bottom:8px">
                 <label style="display:block;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Select New Referrer</label>
@@ -2132,7 +2132,11 @@ function rbReassignRenderList(query) {
 }
 
 function rbReassignSelect(name) {
-    rbSelectedReseller = (window.rbReferrers || []).find(function(r) { return r.name === name; }) || { name: name };
+    var found = (window.rbReferrers || []).find(function(r) {
+        return r.name && r.name.trim().toLowerCase() === name.trim().toLowerCase();
+    });
+    if (!found) return; // name not in the list — refuse selection
+    rbSelectedReseller = found;
     var btn = document.getElementById('rb-reassign-btn');
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
     var s = document.getElementById('rb-reassign-search');

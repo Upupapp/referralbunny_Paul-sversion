@@ -169,7 +169,7 @@ class LguIdsPurgeDealsCommand extends Command
 
             // Clear caches
             try {
-                \Illuminate\Support\Facades\Cache::forget('dashboard_lgu-ids_counts');
+                \Illuminate\Support\Facades\Cache::forget('dash_counts:lgu-ids');
                 \Illuminate\Support\Facades\Cache::forget('tenant_lgu-ids_leads');
             } catch (\Throwable) {}
         });
