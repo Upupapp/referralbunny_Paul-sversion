@@ -24,6 +24,9 @@ class NotificationsController extends Controller
                 ->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id'))
                 ->update(['is_read' => true]);
             Cache::forget("notif_unread_{$type}_{$id}");
+            if ($type === 'partner') {
+                Cache::forget("partner_notif_unread:{$id}");
+            }
         }
 
         return view('tenant.notifications.index', compact('tenant'));

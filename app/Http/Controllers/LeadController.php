@@ -283,12 +283,15 @@ class LeadController extends Controller
             'data'              => $leadData,
         ]);
 
-        // Bust the reseller activity log lead ID cache so new deal appears immediately
+        // Bust the reseller activity log + performance caches so new deal appears immediately
         if (!empty($data['reseller_name'])) {
             $rid = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
                 ->value('id');
-            if ($rid) Cache::forget("reseller_leadids:{$tenantId}:{$rid}");
+            if ($rid) {
+                Cache::forget("reseller_leadids:{$tenantId}:{$rid}");
+                Cache::forget("referrer_perf:{$tenantId}:{$rid}");
+            }
         }
 
         if ($amountWasDefaulted) {
@@ -1139,12 +1142,22 @@ class LeadController extends Controller
             'commission_status' => 'pending',
         ]);
 
-        // Bust activity log lead ID cache for both old and new resellers
+        // Fetch new reseller once — reused for cache bust + event dispatch below
+        $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
+            ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
+            ->first();
+
+        // Bust activity log + performance caches for both old and new resellers
         foreach (array_filter([$oldReferrerName, $data['reseller_name']]) as $rName) {
-            $rid = Reseller::where('tenant_id', $lead->tenant_id)
-                ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
-                ->value('id');
-            if ($rid) Cache::forget("reseller_leadids:{$lead->tenant_id}:{$rid}");
+            $rid = strtolower($rName) === strtolower($data['reseller_name'])
+                ? $newReseller?->id
+                : Reseller::where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
+                    ->value('id');
+            if ($rid) {
+                Cache::forget("reseller_leadids:{$lead->tenant_id}:{$rid}");
+                Cache::forget("referrer_perf:{$lead->tenant_id}:{$rid}");
+            }
         }
 
         CommissionSplit::where('lead_id', $lead->id)->delete();
@@ -1171,10 +1184,7 @@ class LeadController extends Controller
             ]
         );
 
-        // Resolve new referrer for the event payload
-        $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
-            ->where('name', $data['reseller_name'])
-            ->first();
+        // $newReseller already fetched above for cache bust — reused here
 
         $assignmentType = ($oldReferrerName && $oldReferrerName !== $data['reseller_name'])
             ? 'reassignment'

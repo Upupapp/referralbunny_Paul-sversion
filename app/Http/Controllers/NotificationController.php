@@ -103,7 +103,7 @@ class NotificationController extends Controller
 
     public function markMineRead(Request $request): JsonResponse
     {
-        [$type, $id] = $this->resolveCurrentUser();
+        [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['ok' => false]);
 
         Notification::where('notifiable_type', $type)
@@ -111,11 +111,16 @@ class NotificationController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        // Bust the unread count API cache for all guard types
         Cache::forget("notif_unread_{$type}_{$id}");
-        // Bust the partner nav badge cache (separate key used by _nav.blade.php)
         if ($type === 'partner') {
             Cache::forget("partner_notif_unread:{$id}");
+        }
+        // Sync CA badge so bell + Critical Actions badge clear together
+        if (in_array($type, ['tenant_admin', 'super_admin']) && $tenantId) {
+            Cache::forget("ca_badge_{$tenantId}_{$id}");
+            Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+        } elseif ($type === 'reseller') {
+            Cache::forget("ca_rs_suppressed:{$id}");
         }
 
         return response()->json(['ok' => true]);

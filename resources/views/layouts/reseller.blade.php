@@ -311,6 +311,15 @@
     </div>
 </div>
 
+{{-- Bridge PHP session flash → Alpine toast (legal agreements, etc.) --}}
+@if (session('success'))
+<script>
+    document.addEventListener('alpine:init', () => {
+        setTimeout(() => window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: @json(session('success')) } })), 100);
+    });
+</script>
+@endif
+
 {{-- Toast --}}
 <div x-data="{ toasts: [], add(d){ const id=Date.now()+Math.random(); this.toasts.push({...d,id}); setTimeout(()=>this.remove(id), d.duration||4000); }, remove(id){ this.toasts=this.toasts.filter(t=>t.id!==id); } }"
      @show-toast.window="add($event.detail)"
