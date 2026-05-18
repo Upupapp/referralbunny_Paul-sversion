@@ -27,6 +27,12 @@ class NotificationsController extends Controller
             if ($type === 'partner') {
                 Cache::forget("partner_notif_unread:{$id}");
             }
+            if ($type === 'reseller') {
+                Cache::forget("ca_rs_suppressed:{$id}");
+            } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
+                Cache::forget("ca_badge_{$tenantId}_{$id}");
+                Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+            }
         }
 
         return view('tenant.notifications.index', compact('tenant'));

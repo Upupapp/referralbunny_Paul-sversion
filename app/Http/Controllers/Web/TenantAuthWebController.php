@@ -59,7 +59,7 @@ class TenantAuthWebController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('tenant.login');
+        return redirect(route('tenant.login') . '?signed_out=1');
     }
 
     /**

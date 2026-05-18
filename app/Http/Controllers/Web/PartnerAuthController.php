@@ -65,7 +65,7 @@ class PartnerAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('partner.login');
+        return redirect(route('partner.login') . '?signed_out=1');
     }
 
     public function showSetup(Request $request)

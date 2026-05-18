@@ -77,7 +77,7 @@ class ResellerPortalAuthController extends Controller
         Auth::guard('reseller')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('reseller.login');
+        return redirect(route('reseller.login') . '?signed_out=1');
     }
 
     public function showForgotPassword()

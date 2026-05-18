@@ -193,6 +193,10 @@
 
                 <button type="submit" class="btn-primary">Sign In</button>
             </form>
+
+            <p style="margin-top:1.5rem;font-size:.75rem;color:#9ca3af;text-align:center;max-width:340px">
+                Forgot your password? Contact your platform administrator to reset it.
+            </p>
         </div>
 
         {{-- RIGHT — brand panel --}}
