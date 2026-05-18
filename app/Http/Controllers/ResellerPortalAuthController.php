@@ -84,8 +84,11 @@ class ResellerPortalAuthController extends Controller
 
         $reseller = Reseller::where('email', strtolower(trim($request->email)))->first();
 
-        // Always return success to prevent email enumeration
-        if ($reseller) {
+        // Always return success to prevent email enumeration.
+        // Only process reset for fully-activated resellers (password already set).
+        // Unactivated accounts (pending invite setup) must use their invite link —
+        // overwriting setup_token here would break their invite URL permanently.
+        if ($reseller && $reseller->password) {
             $token      = Str::random(64);
             $tenantName = DB::table('tenants')->where('id', $reseller->tenant_id)->value('name') ?? 'Referral Bunny';
             $resetUrl   = url('/reseller/reset-password?token=' . $token . '&email=' . urlencode($reseller->email));
@@ -147,8 +150,9 @@ class ResellerPortalAuthController extends Controller
         }
 
         DB::table('resellers')->where('id', $reseller->id)->update([
-            'password'    => Hash::make($data['password']),
-            'setup_token' => null,
+            'password'               => Hash::make($data['password']),
+            'setup_token'            => null,
+            'setup_token_created_at' => null,
         ]);
 
         return redirect()->route('reseller.login')
