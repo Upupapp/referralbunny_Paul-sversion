@@ -152,6 +152,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
             'tenant_id'     => $event->tenantId,
             'reseller_name' => $event->resellerName,
             'error'         => $exception->getMessage(),
+            'exception'     => (string) $exception,
         ]);
     }
 }
