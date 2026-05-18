@@ -27,24 +27,15 @@ class ReferrerPartnerController extends Controller
         abort(403, 'Reseller authentication required.');
     }
 
-    /** Returns all Lead IDs assigned to this reseller in this tenant. */
+    /** Returns all Lead IDs assigned to this reseller in this tenant (primary or co-referrer). */
     private function getMyLeadIds(string $tenantId, Reseller $reseller): array
     {
-        $lower = strtolower($reseller->name);
-
-        // Primary: reseller is main referrer (subquery + case-insensitive)
-        $primary = Lead::where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+        // Single query via scopeForResellerOrSplit: covers both leads.reseller_name
+        // and commission_splits in one orWhereExists, case-insensitive.
+        return Lead::where('tenant_id', $tenantId)
+            ->forResellerOrSplit($reseller->name)
             ->pluck('id')
-            ->toArray();
-
-        // Secondary: reseller is a co-referrer via commission_splits (subquery + case-insensitive)
-        $secondary = CommissionSplit::whereRaw('LOWER(reseller_name) = ?', [$lower])
-            ->whereIn('lead_id', Lead::where('tenant_id', $tenantId)->select('id'))
-            ->pluck('lead_id')
-            ->toArray();
-
-        return array_values(array_unique(array_merge($primary, $secondary)));
+            ->all();
     }
 
     /** Verify reseller can access a specific deal. */

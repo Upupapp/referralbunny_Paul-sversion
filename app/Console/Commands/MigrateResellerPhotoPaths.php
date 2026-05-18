@@ -40,12 +40,17 @@ class MigrateResellerPhotoPaths extends Command
             }
 
             if (!Storage::disk('public')->exists($oldPath)) {
-                $this->warn("  Missing: {$oldPath} (DB updated to new path anyway)");
+                $this->warn("  Missing on disk: {$oldPath} — skipping file move, DB NOT updated");
                 $missing++;
-            } else {
-                Storage::disk('public')->move($oldPath, $newPath);
-                $moved++;
+                continue;
             }
+            // Ensure destination directory exists before moving
+            $dir = dirname($newPath);
+            if (!Storage::disk('public')->exists($dir)) {
+                Storage::disk('public')->makeDirectory($dir);
+            }
+            Storage::disk('public')->move($oldPath, $newPath);
+            $moved++;
 
             DB::table('resellers')->where('id', $row->id)->update(['profile_photo_path' => $newPath]);
         }
