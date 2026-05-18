@@ -36,10 +36,9 @@ class ReferrerPartnerController extends Controller
             ->pluck('id')
             ->toArray();
 
-        // Secondary: reseller is a co-referrer via commission_splits
-        $allTenantLeadIds = Lead::where('tenant_id', $tenantId)->pluck('id')->toArray();
+        // Secondary: reseller is a co-referrer via commission_splits (subquery — no PHP array fan-out)
         $secondary = CommissionSplit::where('reseller_name', $reseller->name)
-            ->whereIn('lead_id', $allTenantLeadIds)
+            ->whereIn('lead_id', Lead::where('tenant_id', $tenantId)->select('id'))
             ->pluck('lead_id')
             ->toArray();
 

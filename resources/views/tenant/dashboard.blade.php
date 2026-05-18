@@ -61,7 +61,6 @@ document.addEventListener('alpine:init', () => {
                          style="background:{{ $k['bg'] }};color:{{ $k['color'] }}">{!! $k['icon'] !!}</div>
                     <span class="kpi-label text-xs sm:text-sm font-medium text-gray-600 truncate">{{ $k['label'] }}</span>
                 </div>
-                <button class="text-gray-300 hover:text-gray-500 font-bold shrink-0 ml-1" style="font-size:14px;line-height:1">⋮</button>
             </div>
             {{-- Row 2: slider line --}}
             <div class="relative mb-3" style="height:2px;background:#f3f4f6;border-radius:9999px">

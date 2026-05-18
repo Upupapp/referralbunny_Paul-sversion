@@ -124,8 +124,9 @@ class GoogleCalendarController extends Controller
             ->first();
 
         if ($integration) {
-            // Delete from Google Calendar first, then purge DB records
-            foreach ($integration->calendarEvents as $evt) {
+            // Fetch once — avoids lazy-load requery; only pull the two columns needed
+            $events = $integration->calendarEvents()->get(['entity_type', 'entity_id']);
+            foreach ($events as $evt) {
                 \App\Jobs\DeleteGoogleCalendarEvent::dispatch($evt->entity_type, $evt->entity_id);
             }
             $integration->calendarEvents()->delete();

@@ -564,6 +564,7 @@ class RequestFormController extends Controller
                 ->with('error', 'No forms selected.');
         }
 
+        // Explicit tenant_id scope prevents IDOR — only forms owned by this tenant are deleted
         $forms = RequestForm::where('tenant_id', $tenantId)->whereIn('id', $ids)->get();
 
         DB::transaction(function () use ($forms) {

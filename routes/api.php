@@ -181,7 +181,6 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('billing/audit-log',                      [BillingController::class, 'auditLog']);
     Route::get('billing/tenants/{tenantId}/subscription',[BillingController::class, 'tenantSubscription']);
     Route::get('billing/tenants/{tenantId}/plan-usage',  [BillingController::class, 'tenantPlanUsage']);
-    Route::get('export/billing',                         [TenantMetricController::class, 'exportLeads']);
 
     // Billing — writes (rate-limited: 20/min)
     Route::middleware('throttle:20,1')->group(function () {

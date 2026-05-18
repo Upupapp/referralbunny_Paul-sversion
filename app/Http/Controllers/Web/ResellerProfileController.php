@@ -63,7 +63,7 @@ class ResellerProfileController extends Controller
         }
 
         $path = $request->file('photo')->storeAs(
-            "profile-photos/reseller/{$reseller->id}",
+            "profile-photos/{$reseller->tenant_id}/reseller/{$reseller->id}",
             Str::random(32) . '.' . $request->file('photo')->extension(),
             'public'
         );
