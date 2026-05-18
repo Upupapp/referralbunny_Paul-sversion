@@ -138,7 +138,15 @@
     <div class="flex-1 flex flex-col min-w-0">
 
         {{-- Global search overlay --}}
-        <div x-data="globalSearch()" x-init="initSearch()"
+        @php
+            $isSuperAdmin   = Auth::guard('web')->check();
+            $layoutTenantId = request()->route('tenantId') ?? null;
+            $searchBaseUrl  = $isSuperAdmin
+                ? '/platform/search'
+                : ($layoutTenantId ? "/tenant/{$layoutTenantId}/leads" : '/');
+            $searchTenantParam = (!$isSuperAdmin && $layoutTenantId) ? $layoutTenantId : '';
+        @endphp
+        <div x-data="globalSearch('{{ $searchBaseUrl }}', '{{ $searchTenantParam }}')" x-init="initSearch()"
              @keydown.window="handleKey($event)">
 
             {{-- Search overlay backdrop --}}
@@ -251,7 +259,7 @@
                             <div class="text-center py-8 text-gray-400 text-sm">
                                 No results for "<span x-text="query"></span>"
                                 <div class="mt-2">
-                                    <a :href="'/platform/search?q=' + encodeURIComponent(query)"
+                                    <a :href="searchBaseUrl + '?q=' + encodeURIComponent(query)"
                                        @click="open = false"
                                        class="text-purple-600 hover:text-purple-700 text-xs font-medium">
                                         Search all data →
@@ -267,7 +275,7 @@
                             <span><kbd class="bg-gray-100 px-1 rounded border border-gray-200">↑↓</kbd> navigate</span>
                             <span><kbd class="bg-gray-100 px-1 rounded border border-gray-200">↵</kbd> open</span>
                         </div>
-                        <a :href="'/platform/search?q=' + encodeURIComponent(query)"
+                        <a :href="searchBaseUrl + '?q=' + encodeURIComponent(query)"
                            x-show="query" @click="open = false"
                            class="text-purple-600 hover:text-purple-700 font-medium">
                             Full search →
@@ -712,11 +720,14 @@ function notifPanel() {
     }
 }
 
-function globalSearch() {
+function globalSearch(searchBaseUrl, tenantId) {
+    searchBaseUrl = searchBaseUrl || '/platform/search';
+    tenantId      = tenantId      || '';
     return {
         open: false, query: '', results: [], total: 0, loading: false,
         recent: [], command: null, activeIndex: -1,
         confirmOpen: false, pendingAction: null, confirmReason: '', actionBusy: false,
+        searchBaseUrl: searchBaseUrl,
 
         async initSearch() {
             window.addEventListener('open-search', () => {
@@ -725,7 +736,7 @@ function globalSearch() {
             });
             try {
                 const res  = await fetch('/api/search/recent');
-                this.recent = await res.json();
+                if (res.ok) this.recent = await res.json();
             } catch(e) {}
         },
 
@@ -743,12 +754,17 @@ function globalSearch() {
             if (!this.query.trim()) { this.results = []; this.command = null; return; }
             this.loading = true;
             try {
-                const res  = await fetch('/api/search?q=' + encodeURIComponent(this.query) + '&limit=8');
+                let url = '/api/search?q=' + encodeURIComponent(this.query) + '&limit=8';
+                if (tenantId) url += '&tenant_id=' + encodeURIComponent(tenantId);
+                const res  = await fetch(url);
+                if (!res.ok) { this.results = []; return; }
                 const data = await res.json();
                 this.results     = data.results  || [];
                 this.total       = data.total    || 0;
                 this.command     = data.command  || null;
                 this.activeIndex = -1;
+            } catch(e) {
+                this.results = [];
             } finally { this.loading = false; }
         },
 
@@ -761,7 +777,7 @@ function globalSearch() {
             } else if (this.command?.action === 'navigate') {
                 window.location.href = this.command.url;
             } else {
-                window.location.href = '/platform/search?q=' + encodeURIComponent(this.query);
+                window.location.href = searchBaseUrl + '?q=' + encodeURIComponent(this.query);
             }
             this.open = false;
         },
