@@ -1127,6 +1127,12 @@ class LeadController extends Controller
 
     public function reassign(Request $request, Lead $lead): JsonResponse
     {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can reassign deals.'], 403);
+        }
+
+        $lead->assertBelongsToCurrentTenant();
+
         $data = $request->validate([
             'reseller_name' => 'required|string',
             'reset_stage'   => 'boolean',
@@ -1137,7 +1143,7 @@ class LeadController extends Controller
         $lead->update([
             'reseller_name'     => $data['reseller_name'],
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
-            'days_left'         => 21,
+            'days_left'         => $this->resolveStageLimit($lead->tenant_id, 'introduction') ?? 21,
             'status'            => 'active',
             'commission_status' => 'pending',
         ]);
@@ -1158,6 +1164,7 @@ class LeadController extends Controller
                 Cache::forget("reseller_leadids:{$lead->tenant_id}:{$rid}");
                 Cache::forget("referrer_perf:{$lead->tenant_id}:{$rid}");
             }
+            Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
 
         CommissionSplit::where('lead_id', $lead->id)->delete();

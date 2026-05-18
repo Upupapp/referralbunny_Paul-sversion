@@ -1696,7 +1696,6 @@
     </div>
 
     {{-- Link Contact Modal --}}
-    <template x-teleport="body">
     <div x-show="showLinkContact" style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] flex items-end sm:items-center justify-center p-4"
          @keydown.escape.window="showLinkContact = false">
@@ -1775,7 +1774,6 @@
             </div>
         </div>
     </div>
-    </template>
 
     {{-- Move Stage Modal — 100% plain JS, zero Alpine dependency --}}
     <div id="rb-move-stage-modal"

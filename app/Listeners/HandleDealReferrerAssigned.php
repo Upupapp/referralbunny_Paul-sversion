@@ -7,9 +7,10 @@ use App\Mail\ResellerDealAssigned;
 use App\Models\Reseller;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 
-class HandleDealReferrerAssigned
+class HandleDealReferrerAssigned implements ShouldQueue
 {
     public function handle(DealReferrerAssigned $event): void
     {
