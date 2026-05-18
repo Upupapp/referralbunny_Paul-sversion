@@ -65,8 +65,9 @@
                 You have been signed out successfully.
             </div>
             @elseif (session('success'))
-            <div style="display:flex;align-items:center;gap:.75rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem">
-                <p style="margin:0;font-size:.875rem;color:#166534">{{ session('success') }}</p>
+            <div style="display:flex;align-items:center;gap:.5rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#166534">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                {{ session('success') }}
             </div>
             @elseif (session('status'))
             <div style="display:flex;align-items:center;gap:.5rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#1d4ed8">

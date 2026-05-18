@@ -15,7 +15,6 @@ class NotificationsController extends Controller
     {
         $tenant = Tenant::findOrFail($tenantId);
 
-        // Auto-mark all as read when the notifications page is opened
         [$type, $id] = $this->resolveCurrentUser();
         if ($type && $id) {
             Notification::where('notifiable_type', $type)
@@ -23,16 +22,7 @@ class NotificationsController extends Controller
                 ->where('is_read', false)
                 ->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id'))
                 ->update(['is_read' => true]);
-            Cache::forget("notif_unread_{$type}_{$id}");
-            if ($type === 'partner') {
-                Cache::forget("partner_notif_unread:{$id}");
-            }
-            if ($type === 'reseller') {
-                Cache::forget("ca_rs_suppressed:{$id}");
-            } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
-                Cache::forget("ca_badge_{$tenantId}_{$id}");
-                Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
-            }
+            $this->bustBadgeCaches($type, $id, $tenantId);
         }
 
         return view('tenant.notifications.index', compact('tenant'));
@@ -61,17 +51,7 @@ class NotificationsController extends Controller
                     $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')
                 )
                 ->update(['is_read' => true]);
-            Cache::forget("notif_unread_{$type}_{$id}");
-            if ($type === 'partner') {
-                Cache::forget("partner_notif_unread:{$id}");
-            }
-            // Also clear Critical Actions badge so bell + CA badge stay in sync
-            if ($type === 'reseller') {
-                Cache::forget("ca_rs_suppressed:{$id}");
-            } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
-                Cache::forget("ca_badge_{$tenantId}_{$id}");
-                Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
-            }
+            $this->bustBadgeCaches($type, $id, $tenantId);
         }
         return response()->json(['ok' => true]);
     }
@@ -85,17 +65,29 @@ class NotificationsController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    private function bustBadgeCaches(string $type, string $id, string $tenantId): void
+    {
+        Cache::forget("notif_unread_{$type}_{$id}");
+        if ($type === 'partner') {
+            Cache::forget("partner_notif_unread:{$id}");
+        }
+        if ($type === 'reseller') {
+            Cache::forget("ca_rs_suppressed:{$id}");
+        } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
+            Cache::forget("ca_badge_{$tenantId}_{$id}");
+            Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+        }
+    }
+
     private function findUserNotification(string $notificationId): Notification
     {
         [$type, $id] = $this->resolveCurrentUser();
         $tenantId = request()->route('tenantId');
 
-        // For partner guard, derive tenant_id from the authenticated partner user
         if (!$tenantId && $type === 'partner' && Auth::guard('partner')->check()) {
             $tenantId = Auth::guard('partner')->user()->tenant_id;
         }
 
-        // For non-SA users always require tenant scope to prevent cross-tenant reads
         if ($type !== 'super_admin' && !$tenantId) {
             abort(403, 'Tenant context required.');
         }
@@ -109,7 +101,7 @@ class NotificationsController extends Controller
             ->firstOrFail();
     }
 
-    // Guard order: web first so SA-on-tenant-page resolves as super_admin (matches NotificationController)
+    // Guard order: web first so SA-on-tenant-page resolves as super_admin
     private function resolveCurrentUser(): array
     {
         if (Auth::guard('web')->check()) {
