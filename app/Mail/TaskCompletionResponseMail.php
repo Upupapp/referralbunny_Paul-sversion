@@ -19,7 +19,7 @@ class TaskCompletionResponseMail extends Mailable implements ShouldQueue
         public readonly string  $emailSubject,
         public readonly string  $bodyPlain,
         public readonly string  $bodyHtml,
-        public readonly array   $attachments,
+        public readonly array   $fileAttachments,
         public readonly string  $taskTitle,
         public readonly string  $tenantId,
         // Legacy compat — prefer bodyHtml/bodyPlain
@@ -39,7 +39,7 @@ class TaskCompletionResponseMail extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         $out = [];
-        foreach ($this->attachments as $att) {
+        foreach ($this->fileAttachments as $att) {
             try {
                 if (isset($att['path']) && \Illuminate\Support\Facades\Storage::disk($att['disk'] ?? 'local')->exists($att['path'])) {
                     $out[] = \Illuminate\Mail\Mailables\Attachment::fromStorageDisk(

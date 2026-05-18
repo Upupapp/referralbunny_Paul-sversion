@@ -139,7 +139,7 @@ class TaskCompletionService
                         emailSubject:  $subject,
                         bodyPlain:     EmailContentFormatter::sanitizePlainText($body),
                         bodyHtml:      $bodyHtml,
-                        attachments:   $attachmentPaths,
+                        fileAttachments: $attachmentPaths,
                         taskTitle:     $task->title,
                         tenantId:      $task->tenant_id,
                     ));
