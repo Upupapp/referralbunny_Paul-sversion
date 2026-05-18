@@ -382,7 +382,6 @@
                 <tbody>
                     @forelse($rows as $row)
                     @php
-                        $statusKey = $row->status ?? 'ready';
                         $computed     = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
                         $rawError = $row->error_message ?? null;
                         // Sanitise legacy raw SQL errors stored before the friendly-error update
@@ -395,7 +394,16 @@
                             }
                             return strlen($m) > 200 ? 'An unexpected error occurred. Please contact support.' : $m;
                         })($rawError) : null;
-                        $errors = $errorMessage ? [$errorMessage] : [];
+                        $errors  = $errorMessage ? [$errorMessage] : [];
+                        $hasLead = !empty($row->created_deal_id);
+                        $statusKey = match(true) {
+                            !empty($errorMessage)                                                            => 'failed',
+                            $hasLead && in_array($row->row_action, ['overwrite', 'merge'])                   => 'updated',
+                            $hasLead                                                                         => 'created',
+                            $row->row_action === 'skip'                                                      => 'skipped',
+                            in_array($row->row_action, ['blocked', 'failed'])                                => 'blocked',
+                            default                                                                          => $row->validation_status ?? 'ready',
+                        };
                         $rowBorder = match($statusKey) {
                             'completed','created' => 'border-l-2 border-l-[#7B61FF]',
                             'updated'             => 'border-l-2 border-l-blue-400',
@@ -403,14 +411,18 @@
                             default               => '',
                         };
                         $badgeMap = [
-                            'created'   => ['badge-green',  'Created'],
-                            'updated'   => ['badge-blue',   'Updated'],
-                            'skipped'   => ['badge-gray',   'Skipped'],
-                            'failed'    => ['badge-red',    'Failed'],
-                            'blocked'   => ['badge-gray',   'Blocked'],
-                            'completed' => ['badge-green',  'Completed'],
+                            'created'          => ['badge-green',  'Created'],
+                            'updated'          => ['badge-blue',   'Updated'],
+                            'skipped'          => ['badge-gray',   'Skipped'],
+                            'failed'           => ['badge-red',    'Failed'],
+                            'blocked'          => ['badge-gray',   'Blocked'],
+                            'completed'        => ['badge-green',  'Completed'],
+                            'ready'            => ['badge-gray',   'Queued'],
+                            'duplicate'        => ['badge-orange', 'Duplicate'],
+                            'unknown_referrer' => ['badge-blue',   'Unknown Referrer'],
+                            'needs_review'     => ['badge-orange', 'Needs Review'],
                         ];
-                        $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst($statusKey)];
+                        $sb = $badgeMap[$statusKey] ?? ['badge-gray', ucfirst(str_replace('_', ' ', $statusKey))];
                     @endphp
                     <tr class="table-row {{ $rowBorder }}">
                         <td class="text-xs text-gray-400 tabular-nums">

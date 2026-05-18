@@ -272,9 +272,16 @@
                 <tbody>
                     @forelse($rows as $row)
                     @php
-                        $statusKey = $row->status ?? 'ready';
-                        $computed  = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
-                        $errors    = is_array($row->errors) ? $row->errors : (json_decode($row->errors, true) ?? []);
+                        $computed    = is_array($row->computed_data) ? $row->computed_data : (json_decode($row->computed_data, true) ?? []);
+                        $errors      = is_array($row->issue_codes) ? $row->issue_codes : (json_decode($row->issue_codes, true) ?? []);
+                        $hasContact  = !empty($row->created_deal_id) || !empty($row->updated_contact_id ?? null);
+                        $statusKey   = match(true) {
+                            !empty($row->error_message)                                                       => 'failed',
+                            $row->row_action === 'skip'                                                       => 'skipped',
+                            in_array($row->row_action, ['blocked', 'failed'])                                 => 'blocked',
+                            in_array($row->row_action, ['create', 'update', 'overwrite', 'merge']) && $hasContact => $row->row_action === 'create' ? 'created' : 'updated',
+                            default                                                                           => $row->validation_status ?? 'ready',
+                        };
                         $rowBorder = match($statusKey) {
                             'completed','created' => 'border-l-2 border-l-emerald-400',
                             'updated'             => 'border-l-2 border-l-blue-400',

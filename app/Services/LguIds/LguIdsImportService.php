@@ -861,7 +861,11 @@ class LguIdsImportService
                 }
             } catch (\Throwable $e) {
                 $friendly = $this->friendlyError($e->getMessage());
-                $row->update(['error_message' => $friendly]);
+                $row->update([
+                    'error_message'    => $friendly,
+                    'row_action'       => 'failed',
+                    'validation_status'=> 'failed',
+                ]);
                 $errors[] = "Row {$row->row_number}: {$friendly}";
                 $failed++;
             }
@@ -869,7 +873,7 @@ class LguIdsImportService
 
         $status = match (true) {
             $failed > 0 && $created === 0 && $updated === 0 => 'failed',
-            $failed > 0 || $skipped > 0                     => 'completed_with_warnings',
+            $failed > 0                                      => 'completed_with_warnings',
             default                                          => 'completed',
         };
 
@@ -900,7 +904,7 @@ class LguIdsImportService
         $notifyTitle  = $titleMap[$status] ?? 'Import Complete';
         $notifyBody   = "\"{$batch->file_name}\" — Created: $created, Updated: $updated, Skipped: $skipped" . ($failed > 0 ? ", Failed: $failed." : '.');
         $notifyPrio   = $failed > 0 ? 'high' : 'normal';
-        $reportUrl    = "/tenant/" . self::TENANT_ID . "/imports/lgu-ids/{$batch->id}/report";
+        $reportUrl    = '/tenant/' . self::TENANT_ID . '/imports/lgu-ids/' . $batch->id;
         $notifiedIds  = [];
 
         // Notify the user who originally uploaded the file
@@ -948,7 +952,10 @@ class LguIdsImportService
     public function generateFailedRowsCsv(ImportBatch $batch): string
     {
         $rows = ImportBatchRow::where('import_batch_id', $batch->id)
-            ->whereIn('validation_status', ['failed', 'blocked'])
+            ->where(fn($q) => $q
+                ->whereIn('validation_status', ['failed', 'blocked'])
+                ->orWhereNotNull('error_message')
+            )
             ->get();
 
         $lines   = [];

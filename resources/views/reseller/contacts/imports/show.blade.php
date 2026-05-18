@@ -100,8 +100,8 @@
                             'review'           => ['bg-gray-100 text-gray-500',   'Already Exists'],
                             'failed'           => ['bg-red-100 text-red-600',     'Failed'],
                         ];
-                        // blocked + error_message = actual runtime failure, show as Failed
-                        if ($row->row_action === 'blocked' && $row->error_message) {
+                        // Any error_message = actual runtime failure, show as Failed
+                        if (!empty($row->error_message)) {
                             [$actCls, $actLabel] = ['bg-red-100 text-red-600', 'Failed'];
                         } else {
                             [$actCls, $actLabel] = $actionLabels[$row->row_action] ?? ['bg-gray-100 text-gray-500', ucfirst($row->row_action ?? '—')];

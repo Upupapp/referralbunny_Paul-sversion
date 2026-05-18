@@ -1200,7 +1200,10 @@ class ContactsImportService
     public function generateFailedRowsCsv(ImportBatch $batch): string
     {
         $rows = ImportBatchRow::where('import_batch_id', $batch->id)
-            ->whereIn('validation_status', ['failed', 'blocked'])
+            ->where(fn($q) => $q
+                ->whereIn('validation_status', ['failed', 'blocked'])
+                ->orWhereNotNull('error_message')
+            )
             ->get();
 
         $lines   = [];
