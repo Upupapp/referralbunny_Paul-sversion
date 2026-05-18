@@ -553,14 +553,28 @@ function recordDetail(leadId, tenantId) {
             if (!this.reassignName) return;
             this.saving = true;
             try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const res = await fetch(`/api/leads/${this.lead.id}/reassign`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
                     body: JSON.stringify({ reseller_name: this.reassignName }),
                 });
                 const updated = await res.json();
-                if (updated.id) this.lead = updated;
-                this.reassignName = ''; this.showReassign = false;
+                if (updated.id) {
+                    this.lead = updated;
+                    this.reassignName = ''; this.showReassign = false;
+                    this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: updated.message || updated.error || 'Failed to reassign.' });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
         },
     }

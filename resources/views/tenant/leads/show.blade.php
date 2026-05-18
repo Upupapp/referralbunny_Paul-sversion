@@ -223,7 +223,12 @@ function leadDetail(leadId, tenantId) {
                     this.lead = data;
                     this.showReassign = false;
                     this.reassignName = '';
+                    this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.message || data.error || 'Failed to reassign.' });
                 }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.saving = false; }
         },
     }

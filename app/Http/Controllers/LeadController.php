@@ -1171,7 +1171,9 @@ class LeadController extends Controller
         $lead->update([
             'reseller_name'     => $data['reseller_name'],
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
-            'days_left'         => $this->resolveStageLimit($lead->tenant_id, 'introduction') ?? 21,
+            'days_left'         => ($data['reset_stage'] ?? true)
+                ? ($this->resolveStageLimit($lead->tenant_id, 'introduction') ?? 21)
+                : $lead->days_left,
             'status'            => 'active',
             'commission_status' => 'pending',
         ]);
@@ -1195,14 +1197,16 @@ class LeadController extends Controller
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
 
-        CommissionSplit::where('lead_id', $lead->id)->delete();
-        CommissionSplit::create([
-            'lead_id'         => $lead->id,
-            'reseller_name'   => $data['reseller_name'],
-            'percentage'      => 100,
-            'role'            => 'primary',
-            'activity_status' => 'active',
-        ]);
+        DB::transaction(function () use ($lead, $data) {
+            CommissionSplit::where('lead_id', $lead->id)->delete();
+            CommissionSplit::create([
+                'lead_id'         => $lead->id,
+                'reseller_name'   => $data['reseller_name'],
+                'percentage'      => 100,
+                'role'            => 'primary',
+                'activity_status' => 'active',
+            ]);
+        });
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,

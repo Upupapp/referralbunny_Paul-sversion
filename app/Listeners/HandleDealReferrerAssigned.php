@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class HandleDealReferrerAssigned implements ShouldQueue
 {
+    public int $tries = 3;
+
     public function handle(DealReferrerAssigned $event): void
     {
         $dispatcher = app(NotificationDispatchService::class);
