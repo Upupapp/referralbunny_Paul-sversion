@@ -615,7 +615,10 @@ class LeadController extends Controller
             }
         }
 
-        return response()->json($lead->fresh(['commissionSplits', 'notes', 'history']));
+        return response()->json(
+            $lead->fresh(['commissionSplits', 'notes'])
+                 ->load(['history' => fn($q) => $q->orderByDesc('created_at')->limit(50)])
+        );
     }
 
     public function destroy(Lead $lead): JsonResponse
@@ -1134,7 +1137,10 @@ class LeadController extends Controller
             }
         } catch (\Throwable) {}
 
-        return response()->json($lead->fresh(['commissionSplits', 'history']));
+        return response()->json(
+            $lead->fresh(['commissionSplits'])
+                 ->load(['history' => fn($q) => $q->orderByDesc('created_at')->limit(50)])
+        );
     }
 
     public function addNote(Request $request, Lead $lead): JsonResponse
@@ -1253,7 +1259,10 @@ class LeadController extends Controller
             assignedByRole:  $actorRoleRa,
         );
 
-        return response()->json($lead->fresh(['commissionSplits', 'history']));
+        return response()->json(
+            $lead->fresh(['commissionSplits'])
+                 ->load(['history' => fn($q) => $q->orderByDesc('created_at')->limit(50)])
+        );
     }
 
     public function updateCommissionSplits(Request $request, Lead $lead): JsonResponse

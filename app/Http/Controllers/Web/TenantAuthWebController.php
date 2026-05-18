@@ -114,7 +114,7 @@ class TenantAuthWebController extends Controller
             return back()->withErrors(['tenant_id' => 'You do not have access to that workspace.']);
         }
 
-        return redirect()->route('tenant.dashboard', $tenantId);
+        return redirect()->intended(route('tenant.dashboard', $tenantId));
     }
 
     // ── Forgot / Reset Password ──────────────────────────────────────────────
