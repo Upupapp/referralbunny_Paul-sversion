@@ -66,7 +66,7 @@ class LeadController extends Controller
         }
 
         if ($request->filled('reseller_name')) {
-            $query->forReseller($request->reseller_name);
+            $query->forResellerOrSplit($request->reseller_name);
         }
 
         // Paginate to prevent OOM on large tenants; callers may request all via per_page=all

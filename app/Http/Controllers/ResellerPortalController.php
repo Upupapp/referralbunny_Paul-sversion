@@ -133,7 +133,7 @@ class ResellerPortalController extends Controller
 
         // ── Summary stats: load leads for commission aggregation (cap at 2000 rows) ──
         $allLeads = Lead::where('tenant_id', $tenantId)
-            ->forReseller($reseller->name)
+            ->forResellerOrSplit($reseller->name)
             ->select('id', 'deal_value', 'base_cost', 'added_amount', 'commission_status')
             ->take(2000)
             ->get();
@@ -167,7 +167,7 @@ class ResellerPortalController extends Controller
         $page    = max(1, (int) request()->input('page', 1));
 
         $pagedQuery = Lead::where('tenant_id', $tenantId)
-            ->forReseller($reseller->name)
+            ->forResellerOrSplit($reseller->name)
             ->select('id', 'name', 'stage', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
             ->orderByDesc('created_at');
 

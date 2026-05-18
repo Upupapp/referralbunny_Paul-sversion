@@ -91,4 +91,18 @@ class Lead extends Model
     {
         $q->whereRaw('LOWER(reseller_name) = ?', [strtolower($name)]);
     }
+
+    /** Matches deals where reseller is primary referrer OR a co-referrer via commission_splits. */
+    public function scopeForResellerOrSplit(\Illuminate\Database\Eloquent\Builder $q, string $name): void
+    {
+        $lower = strtolower($name);
+        $q->where(function ($q) use ($lower) {
+            $q->whereRaw('LOWER(reseller_name) = ?', [$lower])
+              ->orWhereExists(fn ($sub) =>
+                  $sub->from('commission_splits')
+                      ->whereColumn('commission_splits.lead_id', 'leads.id')
+                      ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+              );
+        });
+    }
 }
