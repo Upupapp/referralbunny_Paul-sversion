@@ -26,12 +26,14 @@ class SearchController extends Controller
         $query   = $request->get('q', '');
         $limit   = min((int) $request->get('limit', 20), 50);
         $offset  = (int) $request->get('offset', 0);
+        // tenant_id is always derived from authenticated session, never from user input
+        $sessionTenantId = \App\Services\TenantContext::id();
         $filters = array_filter([
             'type'      => $request->get('type'),
             'status'    => $request->get('status'),
             'from'      => $request->get('from'),
             'to'        => $request->get('to'),
-            'tenant_id' => $request->get('tenant_id'),
+            'tenant_id' => $sessionTenantId, // ignore any frontend-supplied tenant_id
         ]);
 
         if (strlen($query) < 1) {

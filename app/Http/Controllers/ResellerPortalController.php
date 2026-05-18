@@ -291,14 +291,19 @@ class ResellerPortalController extends Controller
         $page     = max(1, (int) request('page', 1));
         $offset   = ($page - 1) * $perPage;
 
+        // Cache lead IDs for 60s — avoids a full pluck on every pagination click
         $leadIds = [];
         try {
-            $leadIds = Lead::withTrashed()
-                ->where('tenant_id', $tenantId)
-                ->forResellerOrSplit($reseller->name)
-                ->pluck('id')
-                ->map(fn($id) => (string) $id)
-                ->toArray();
+            $leadIds = \Illuminate\Support\Facades\Cache::remember(
+                "reseller_leadids:{$tenantId}:{$reseller->id}",
+                60,
+                fn() => Lead::withTrashed()
+                    ->where('tenant_id', $tenantId)
+                    ->forResellerOrSplit($reseller->name)
+                    ->pluck('id')
+                    ->map(fn($id) => (string) $id)
+                    ->toArray()
+            );
         } catch (\Throwable) {}
 
         $lhCategories = match($filter) {

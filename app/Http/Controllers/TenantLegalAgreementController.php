@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\TenantLegalAgreement;
 use App\Models\TenantLegalAgreementAcceptance;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,8 @@ class TenantLegalAgreementController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $tenantId = $request->query('tenant_id');
+        // Always derive from authenticated session; query param is a hint for SA context-switching only
+        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if (!$tenantId) return response()->json(['error' => 'tenant_id required'], 422);
 
         $agreements = TenantLegalAgreement::where('tenant_id', $tenantId)

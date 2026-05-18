@@ -85,7 +85,7 @@ class TenantAuthWebController extends Controller
         }
 
         if ($memberships->count() === 1) {
-            return redirect()->route('tenant.dashboard', $memberships->first()->tenant_id);
+            return redirect()->intended(route('tenant.dashboard', $memberships->first()->tenant_id));
         }
 
         return view('auth.tenant-select-workspace', compact('memberships', 'user'));

@@ -30,26 +30,39 @@ class ReferrerPerformanceService
         $lower = strtolower($resellerName);
 
         try {
-            // Join commission_splits to get per-deal split percentage for this reseller.
-            // Covers both primary referrer and co-referrer (secondary split) deals.
-            $agg = DB::table('leads AS l')
-                ->leftJoin('commission_splits AS cs', function ($join) use ($lower) {
-                    $join->on('cs.lead_id', '=', 'l.id')
-                         ->whereRaw('LOWER(cs.reseller_name) = ?', [$lower]);
-                })
-                ->where('l.tenant_id', $tenantId)
-                ->whereRaw('(LOWER(l.reseller_name) = ? OR cs.lead_id IS NOT NULL)', [$lower])
-                ->whereNull('l.deleted_at')
+            // DISTINCT ON (l.id) deduplicates leads before aggregating so that a lead with
+            // multiple commission_splits rows for the same reseller is counted exactly once.
+            // The ORDER BY l.id, cs.id NULLS LAST picks the split row (non-null) over no-split.
+            $inner = "
+                SELECT DISTINCT ON (l.id)
+                    l.id,
+                    l.status,
+                    l.stage,
+                    l.deal_value,
+                    l.added_amount,
+                    l.commission_status,
+                    l.created_at,
+                    COALESCE(cs.percentage, 100.0) AS percentage
+                FROM leads AS l
+                LEFT JOIN commission_splits AS cs
+                    ON cs.lead_id = l.id AND LOWER(cs.reseller_name) = ?
+                WHERE l.tenant_id = ?
+                  AND (LOWER(l.reseller_name) = ? OR cs.lead_id IS NOT NULL)
+                  AND l.deleted_at IS NULL
+                ORDER BY l.id, cs.id NULLS LAST
+            ";
+
+            $agg = DB::table(DB::raw("({$inner}) AS deduped"), [$lower, $tenantId, $lower])
                 ->selectRaw("
-                    COUNT(DISTINCT l.id)                                                                                                                  AS total,
-                    SUM(CASE WHEN l.status IN ('active','expiring') THEN 1 ELSE 0 END)                                                                    AS active,
-                    SUM(CASE WHEN l.status = 'expiring'             THEN 1 ELSE 0 END)                                                                    AS expiring,
-                    SUM(CASE WHEN l.stage  = 'paid'                 THEN 1 ELSE 0 END)                                                                    AS paid,
-                    COALESCE(SUM(l.deal_value), 0)                                                                                                        AS total_value,
-                    COALESCE(SUM(CASE WHEN l.commission_status='pending' THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS pending_comm,
-                    COALESCE(SUM(CASE WHEN l.commission_status='locked'  THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS locked_comm,
-                    COALESCE(SUM(CASE WHEN l.commission_status='paid'    THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS paid_comm,
-                    MAX(l.created_at)                                                                                                                     AS last_deal_at
+                    COUNT(*)                                                                                                            AS total,
+                    SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                                                   AS active,
+                    SUM(CASE WHEN status = 'expiring'             THEN 1 ELSE 0 END)                                                   AS expiring,
+                    SUM(CASE WHEN stage  = 'paid'                 THEN 1 ELSE 0 END)                                                   AS paid,
+                    COALESCE(SUM(deal_value), 0)                                                                                       AS total_value,
+                    COALESCE(SUM(CASE WHEN commission_status='pending' THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS pending_comm,
+                    COALESCE(SUM(CASE WHEN commission_status='locked'  THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS locked_comm,
+                    COALESCE(SUM(CASE WHEN commission_status='paid'    THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS paid_comm,
+                    MAX(created_at)                                                                                                    AS last_deal_at
                 ")->first();
         } catch (\Throwable) {
             $agg = null;

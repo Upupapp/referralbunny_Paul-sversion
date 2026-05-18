@@ -62,7 +62,7 @@ class ResellerPortalAuthController extends Controller
             return redirect()->route('tenant.legal-agreements.accept', $reseller->tenant_id);
         }
 
-        return redirect()->route('reseller.dashboard', $reseller->tenant_id);
+        return redirect()->intended(route('reseller.dashboard', $reseller->tenant_id));
     }
 
     public function logout(Request $request)

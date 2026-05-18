@@ -129,13 +129,14 @@ class BillingController extends Controller
             'id'            => (string) \Illuminate\Support\Str::uuid(),
             'tenant_id'     => $tenantId,
             'category'      => 'billing',
-            'type'          => 'access_extended',
+            'type'          => 'info',
             'priority'      => 'high',
             'message'       => "R Bunny extended your access by {$data['days']} day" . ($data['days'] > 1 ? 's' : '') . '.' . ($data['note'] ? ' ' . $data['note'] : ''),
             'channel'       => 'in_app',
             'is_read'       => false,
             'is_dismissed'  => false,
             'metadata_json' => [
+                'event'       => 'access_extended',
                 'days'        => $data['days'],
                 'note'        => $data['note'] ?? null,
                 'extended_at' => now()->toISOString(),
@@ -144,15 +145,19 @@ class BillingController extends Controller
             'sent_at'       => now(),
         ]);
 
-        // Email placeholder — wire up when mail provider is integrated
-        // TODO: dispatch(new \App\Jobs\SendAccessExtendedEmail($tenant, $data['days'], $data['note'] ?? null));
-        \Illuminate\Support\Facades\Log::info('[EMAIL PLACEHOLDER] Access extended notification', [
-            'tenant_id'    => $tenantId,
-            'to'           => $tenant->admin_email,
-            'days'         => $data['days'],
-            'note'         => $data['note'] ?? null,
-            'subject'      => "R Bunny extended your access by {$data['days']} day(s) — {$tenant->name}",
-        ]);
+        // Send access-extended email to tenant admin
+        try {
+            if ($tenant->admin_email) {
+                \Illuminate\Support\Facades\Mail::queue(
+                    new \App\Mail\AccessExtendedMail($tenant, $data['days'], $data['note'] ?? null)
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Access extended email failed', [
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+            ]);
+        }
 
         // Audit log
         BillingAuditLog::log('access_extended', [

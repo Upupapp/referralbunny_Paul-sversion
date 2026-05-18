@@ -56,6 +56,13 @@ class NotificationsController extends Controller
             if ($type === 'partner') {
                 Cache::forget("partner_notif_unread:{$id}");
             }
+            // Also clear Critical Actions badge so bell + CA badge stay in sync
+            if ($type === 'reseller') {
+                Cache::forget("ca_rs_suppressed:{$id}");
+            } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
+                Cache::forget("ca_badge_{$tenantId}_{$id}");
+                Cache::forget("ca_badge_suppressed:{$id}");
+            }
         }
         return response()->json(['ok' => true]);
     }

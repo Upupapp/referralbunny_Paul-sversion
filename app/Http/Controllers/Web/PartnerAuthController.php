@@ -56,7 +56,7 @@ class PartnerAuthController extends Controller
         Auth::guard('partner')->login($partner, $request->boolean('remember'));
         $request->session()->regenerate();
 
-        return redirect()->route('partner.dashboard');
+        return redirect()->intended(route('partner.dashboard'));
     }
 
     public function logout(Request $request)
