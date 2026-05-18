@@ -9,6 +9,7 @@ use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class HandleDealReferrerAssigned implements ShouldQueue
 {
@@ -146,7 +147,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
 
     public function failed(DealReferrerAssigned $event, \Throwable $exception): void
     {
-        \Illuminate\Support\Facades\Log::error('[HandleDealReferrerAssigned] Failed after all retries', [
+        Log::error('[HandleDealReferrerAssigned] Failed after all retries', [
             'lead_id'       => $event->leadId,
             'tenant_id'     => $event->tenantId,
             'reseller_name' => $event->resellerName,

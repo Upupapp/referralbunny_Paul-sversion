@@ -529,8 +529,19 @@ class LeadController extends Controller
             }
         }
 
+        $oldResellerName     = $lead->reseller_name ?? '';
         $oldCommissionStatus = $lead->commission_status;
         $lead->update($data);
+
+        // Bust CA cache when reseller, commission status, or stage changes
+        if (isset($data['reseller_name']) || isset($data['commission_status']) || isset($data['stage'])) {
+            foreach (array_unique(array_filter([$oldResellerName, $lead->reseller_name ?? ''])) as $rName) {
+                $rid = Reseller::where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
+                    ->value('id');
+                Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
+            }
+        }
 
         // Fire commission status event AFTER the DB write succeeds
         $newCommissionStatus = $lead->fresh()->commission_status;
@@ -730,6 +741,14 @@ class LeadController extends Controller
             'tenant_id'   => $lead->tenant_id,
             'restored_by' => $actorName,
         ]);
+
+        // Bust CA cache so restored deal surfaces immediately for the reseller
+        if ($lead->reseller_name) {
+            $rid = \App\Models\Reseller::where('tenant_id', $lead->tenant_id)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                ->value('id');
+            Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($rid ?? '')));
+        }
 
         // Notify admins and the assigned referrer
         try {
@@ -1046,6 +1065,14 @@ class LeadController extends Controller
             } catch (\Throwable) {}
         }
 
+        // Bust CA cache before notifications — guaranteed even if dispatch throws
+        if ($lead->reseller_name) {
+            $caRid = Reseller::where('tenant_id', $lead->tenant_id)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                ->value('id');
+            Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
+        }
+
         // Notify tenant admins and assigned referrer about stage movement
         try {
             $stageName  = ucwords(str_replace('_', ' ', $targetStage));
@@ -1068,7 +1095,6 @@ class LeadController extends Controller
                 $reseller = Reseller::where('tenant_id', $lead->tenant_id)
                     ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                     ->first();
-                Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($reseller?->id ?? '')));
                 if ($reseller) {
                     app(NotificationDispatchService::class)->dispatchToReseller(
                         resellerId:   (string) $reseller->id,
