@@ -267,8 +267,9 @@ class ResellerController extends Controller
         }
 
         // ── Create the reseller record ────────────────────────────────────
-        $setupToken      = Str::random(64);
-        $data['email']   = $normalizedEmail;
+        $setupToken          = Str::random(64);
+        $data['tenant_id']   = $tenantId;       // always from TenantContext, never from request body
+        $data['email']       = $normalizedEmail;
         $data['setup_token'] = $setupToken;
         $data['status']      = 'invited';
 
