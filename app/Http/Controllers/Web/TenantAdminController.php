@@ -158,14 +158,17 @@ class TenantAdminController extends Controller
             $criticalActions = [];
         }
 
-        // Extra dashboard counts
+        // Extra dashboard counts — cached 60s; short TTL keeps the KPI badges fresh without
+        // hitting the DB on every page load (4 queries → 0 queries for non-first visitors)
         try {
-            $dashboardCounts = [
-                'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', 'expiring')->count(),
-                'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
-                'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
-                'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
-            ];
+            $dashboardCounts = Cache::remember("dash_counts:{$tenantId}", 60, function () use ($tenantId) {
+                return [
+                    'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', 'expiring')->count(),
+                    'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
+                    'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
+                    'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
+                ];
+            });
         } catch (\Throwable) {
             $dashboardCounts = ['expiring_deals' => 0, 'pending_invites' => 0, 'import_warnings' => 0, 'missing_referrer' => 0];
         }

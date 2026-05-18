@@ -7,7 +7,9 @@ use App\Mail\InviterActivationMail;
 use App\Models\ActivityLog;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -25,8 +27,10 @@ use Illuminate\Support\Str;
  * Tenant isolation: all recipient lookups are scoped to event.tenantId — never trusts
  * any frontend-supplied value.
  */
-class HandleInviteAccepted
+class HandleInviteAccepted implements ShouldQueue
 {
+    public int $tries = 3;
+
     public function __construct(
         private NotificationDispatchService $notifications,
     ) {}
@@ -281,5 +285,15 @@ class HandleInviteAccepted
             'partner'  => 'Partner',
             default    => ucfirst($event->acceptedRole),
         };
+    }
+
+    public function failed(InviteAcceptedEvent $event, \Throwable $exception): void
+    {
+        Log::error('[HandleInviteAccepted] Failed after all retries', [
+            'tenant_id'        => $event->tenantId,
+            'accepted_user_id' => $event->acceptedUserId,
+            'invite_type'      => $event->inviteType,
+            'error'            => $exception->getMessage(),
+        ]);
     }
 }

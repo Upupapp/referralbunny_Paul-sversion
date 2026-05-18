@@ -7,10 +7,14 @@ use App\Mail\ResellerWelcome;
 use App\Mail\TenantAdminNewReseller;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class HandleResellerJoined
+class HandleResellerJoined implements ShouldQueue
 {
+    public int $tries = 3;
+
     public function handle(ResellerJoined $event): void
     {
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
@@ -83,5 +87,14 @@ class HandleResellerJoined
                 tenantId:       $event->tenantId,
             );
         }
+    }
+
+    public function failed(ResellerJoined $event, \Throwable $exception): void
+    {
+        Log::error('[HandleResellerJoined] Failed after all retries', [
+            'reseller_id' => $event->resellerId,
+            'tenant_id'   => $event->tenantId,
+            'error'       => $exception->getMessage(),
+        ]);
     }
 }

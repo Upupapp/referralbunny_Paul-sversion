@@ -103,7 +103,7 @@ class InvitationReminderService
         }
 
         try {
-            Mail::send(new TenantInvitationReminderMail($invitation));
+            Mail::queue(new TenantInvitationReminderMail($invitation));
         } catch (\Throwable) {
             return false;
         }
@@ -154,7 +154,7 @@ class InvitationReminderService
         // Email on second inviter reminder (day 5) only
         if ($newCount >= 2) {
             try {
-                Mail::send(new TenantInviterReminderMail($invitation, $inviter));
+                Mail::queue(new TenantInviterReminderMail($invitation, $inviter));
             } catch (\Throwable) {
                 // silent — in-app still fired
             }

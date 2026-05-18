@@ -1172,6 +1172,16 @@ class LeadController extends Controller
             'reset_stage'   => 'boolean',
         ]);
 
+        // Validate the referrer exists and is active/invited in this tenant
+        $referrerExists = \App\Models\Reseller::where('tenant_id', $lead->tenant_id)
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($data['reseller_name']))])
+            ->whereIn('status', ['active', 'nda_signed', 'invited'])
+            ->exists();
+
+        if (!$referrerExists) {
+            return response()->json(['error' => 'No active referrer found with that name in this workspace.'], 422);
+        }
+
         $oldReferrerName = $lead->reseller_name ?? '';
 
         // Compute new values before transaction so we capture pre-update model state

@@ -102,6 +102,7 @@ class SendLguIdsPendingTasksDigestJob implements ShouldQueue
 
         foreach ($admins as $admin) {
             $emailKey = "lgu_ids.task_digest.{$admin->email}";
+            if (EmailLogger::sentToday($emailKey)) continue;
 
             EmailLogger::send(
                 mailable: new LguIdsPendingTasksDigestMail(

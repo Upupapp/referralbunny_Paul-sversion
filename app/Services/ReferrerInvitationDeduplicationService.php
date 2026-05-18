@@ -186,7 +186,7 @@ class ReferrerInvitationDeduplicationService
         string   $actorRole  = 'system'
     ): bool {
         try {
-            Mail::send(new ResellerInvitation(
+            Mail::queue(new ResellerInvitation(
                 resellerName:  $reseller->name,
                 resellerEmail: $reseller->email,
                 tenantName:    $tenantName,
