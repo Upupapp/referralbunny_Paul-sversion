@@ -292,6 +292,7 @@ class LeadController extends Controller
                 Cache::forget("reseller_leadids:{$tenantId}:{$rid}");
                 Cache::forget("referrer_perf:{$tenantId}:{$rid}");
             }
+            Cache::forget("ca_reseller:{$tenantId}:" . md5($data['reseller_name'] . ':' . ($rid ?? '')));
         }
 
         if ($amountWasDefaulted) {
@@ -1067,6 +1068,7 @@ class LeadController extends Controller
                 $reseller = Reseller::where('tenant_id', $lead->tenant_id)
                     ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                     ->first();
+                Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($reseller?->id ?? '')));
                 if ($reseller) {
                     app(NotificationDispatchService::class)->dispatchToReseller(
                         resellerId:   (string) $reseller->id,

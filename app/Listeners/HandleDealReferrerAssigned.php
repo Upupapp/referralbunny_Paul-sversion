@@ -143,4 +143,14 @@ class HandleDealReferrerAssigned implements ShouldQueue
             }
         }
     }
+
+    public function failed(DealReferrerAssigned $event, \Throwable $exception): void
+    {
+        \Illuminate\Support\Facades\Log::error('[HandleDealReferrerAssigned] Failed after all retries', [
+            'lead_id'       => $event->leadId,
+            'tenant_id'     => $event->tenantId,
+            'reseller_name' => $event->resellerName,
+            'error'         => $exception->getMessage(),
+        ]);
+    }
 }
