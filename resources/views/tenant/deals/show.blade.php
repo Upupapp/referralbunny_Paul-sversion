@@ -20,7 +20,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
     </button>
-    <button onclick="if(window.rbDealRef){window.rbDealRef.showReassign=true}else{window.dispatchEvent(new CustomEvent('open-reassign-deal'))}" class="btn-secondary text-sm">
+    <button onclick="rbOpenReassign()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
@@ -1819,31 +1819,33 @@
         </div>
     </div>
 
-    {{-- Reassign Modal --}}
-    <div x-show="showReassign" style="display:none" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
-            <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-[#1E1B4B]">Reassign Record</h3>
-                <button @click="showReassign = false; reassignName = ''" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    {{-- Reassign Modal — pure JS, zero Alpine dependency --}}
+    <div id="rb-reassign-modal"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
+         onclick="if(event.target===this)rbCloseReassign()">
+        <div style="background:white;border-radius:20px;width:100%;max-width:380px;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.2)" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Reassign Record</h3>
+                <button onclick="rbCloseReassign()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px;line-height:0">
+                    <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+            <div style="padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:12px;color:#92400e;margin-bottom:16px">
                 This resets the stage to Introduction, restarts the pipeline timer, and transfers 100% of the commission pool to the new referrer.
             </div>
-            <div>
+            <div style="margin-bottom:16px">
                 <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">New Referrer Name *</label>
-                <input type="text" x-model="reassignName"
-                       style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box"
+                <input id="rb-reassign-name" type="text" oninput="rbReassignSyncBtn()"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;font-family:inherit"
                        placeholder="Referrer full name">
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px">
-                <button @click="showReassign = false; reassignName = ''"
-                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
-                <button @click="reassign()" :disabled="!reassignName || saving"
-                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#FF5733;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s"
-                        :style="(!reassignName || saving) ? 'opacity:0.5;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
-                        x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
+                <button onclick="rbCloseReassign()"
+                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+                <button id="rb-reassign-btn" onclick="rbConfirmReassign()" disabled
+                        style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#FF5733;color:white;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.5;transition:opacity .15s;font-family:inherit">
+                    Confirm Reassign
+                </button>
             </div>
         </div>
     </div>
@@ -2051,8 +2053,66 @@ function rbConfirmMove() {
 }
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') rbCloseMoveStage();
+    if (e.key === 'Escape') { rbCloseMoveStage(); rbCloseReassign(); }
 });
+
+// ── Reassign modal — pure JS ──────────────────────────────────────────────
+
+function rbOpenReassign() {
+    var m   = document.getElementById('rb-reassign-modal');
+    var inp = document.getElementById('rb-reassign-name');
+    var btn = document.getElementById('rb-reassign-btn');
+    if (!m) return;
+    if (inp) { inp.value = ''; inp.focus && setTimeout(function(){ inp.focus(); }, 50); }
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; btn.textContent = 'Confirm Reassign'; }
+    m.style.display = 'flex';
+}
+
+function rbCloseReassign() {
+    var m = document.getElementById('rb-reassign-modal');
+    if (m) m.style.display = 'none';
+}
+
+function rbReassignSyncBtn() {
+    var inp = document.getElementById('rb-reassign-name');
+    var btn = document.getElementById('rb-reassign-btn');
+    if (!btn || !inp) return;
+    var ok = inp.value.trim().length > 0;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.5';
+    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
+}
+
+async function rbConfirmReassign() {
+    var inp = document.getElementById('rb-reassign-name');
+    var btn = document.getElementById('rb-reassign-btn');
+    if (!inp || !inp.value.trim()) return;
+    var name   = inp.value.trim();
+    var leadId = window.rbLead && window.rbLead.id;
+    if (!leadId) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Reassigning…'; btn.style.opacity = '0.7'; }
+    var csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+    try {
+        var res     = await fetch('/api/leads/' + leadId + '/reassign', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ reseller_name: name }),
+        });
+        var updated = await res.json();
+        if (updated.id) {
+            if (window.rbDealRef) window.rbDealRef.lead = updated;
+            window.rbLead = updated;
+            rbCloseReassign();
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Deal reassigned.' } }));
+        } else {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: updated.message || updated.error || 'Failed to reassign.' } }));
+            if (btn) { btn.disabled = false; btn.textContent = 'Confirm Reassign'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+        }
+    } catch(e) {
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
+        if (btn) { btn.disabled = false; btn.textContent = 'Confirm Reassign'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    }
+}
 
 // ── Self-contained Activity History component ─────────────────────────────
 // Decoupled from dealDetail scope to avoid Alpine scope-chain lookup failures.
