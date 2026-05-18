@@ -105,6 +105,7 @@ class NotificationController extends Controller
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['ok' => false]);
+        if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('notifiable_type', $type)
             ->where('notifiable_id', $id)
@@ -193,6 +194,7 @@ class NotificationController extends Controller
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['ok' => false], 403);
+        if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('id', $notifId)
             ->where('notifiable_type', $type)
@@ -207,6 +209,7 @@ class NotificationController extends Controller
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['ok' => false], 401);
+        if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('notifiable_type', $type)
             ->where('notifiable_id', $id)
@@ -247,8 +250,10 @@ class NotificationController extends Controller
         if (Auth::guard('tenant')->check()) {
             $user     = Auth::guard('tenant')->user();
             $tenantId = request()->route('tenantId')
-                ?? \App\Models\TenantMembership::where('tenant_user_id', $user->id)
-                    ->where('status', 'active')->value('tenant_id');
+                ?? Cache::remember("tenant_user_primary_tenant:{$user->id}", 300, fn() =>
+                    \App\Models\TenantMembership::where('tenant_user_id', $user->id)
+                        ->where('status', 'active')->value('tenant_id')
+                );
             return ['tenant_admin', (string) $user->id, $tenantId];
         }
         if (Auth::guard('reseller')->check()) {
