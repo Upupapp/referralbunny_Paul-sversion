@@ -61,7 +61,7 @@ class NotificationsController extends Controller
                 Cache::forget("ca_rs_suppressed:{$id}");
             } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
                 Cache::forget("ca_badge_{$tenantId}_{$id}");
-                Cache::forget("ca_badge_suppressed:{$id}");
+                Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
             }
         }
         return response()->json(['ok' => true]);

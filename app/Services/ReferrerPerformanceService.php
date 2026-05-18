@@ -52,7 +52,8 @@ class ReferrerPerformanceService
                 ORDER BY l.id, cs.id NULLS LAST
             ";
 
-            $agg = DB::table(DB::raw("({$inner}) AS deduped"), [$lower, $tenantId, $lower])
+            $agg = DB::query()
+                ->fromRaw("({$inner}) AS deduped", [$lower, $tenantId, $lower])
                 ->selectRaw("
                     COUNT(*)                                                                                                            AS total,
                     SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                                                   AS active,

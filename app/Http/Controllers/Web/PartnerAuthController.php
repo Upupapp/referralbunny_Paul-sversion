@@ -235,14 +235,14 @@ class PartnerAuthController extends Controller
         $partner = Partner::where('email', strtolower(trim($request->email)))->first();
 
         // Always return success to prevent email enumeration
-        if ($partner && $partner->status === 'active') {
+        if ($partner && $partner->status === 'active' && $partner->password) {
             $token    = Str::random(64);
-            $resetUrl = url('/partner/reset-password?token=' . $token);
+            $resetUrl = url('/partner/reset-password?token=' . $token . '&email=' . urlencode($partner->email));
 
-            $partner->update(['setup_token' => $token]);
+            $partner->update(['setup_token' => Hash::make($token)]);
 
             try {
-                Mail::send(new PartnerPasswordReset(
+                Mail::queue(new PartnerPasswordReset(
                     partnerName:  $partner->full_name ?: $partner->email,
                     partnerEmail: $partner->email,
                     tenantName:   $partner->tenant?->name ?? 'ReferralBunny',
@@ -259,29 +259,31 @@ class PartnerAuthController extends Controller
     public function showResetPassword(Request $request)
     {
         $token = $request->query('token');
-        if (!$token) {
+        $email = $request->query('email');
+        if (!$token || !$email) {
             return redirect()->route('partner.login');
         }
 
-        $partner = Partner::where('setup_token', $token)->first();
-        if (!$partner) {
+        $partner = Partner::whereRaw('lower(email) = ?', [strtolower($email)])->first();
+        if (!$partner || !$partner->setup_token || !Hash::check($token, $partner->setup_token)) {
             return redirect()->route('partner.login')
                 ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
         }
 
-        return view('auth.partner-reset-password', compact('token'));
+        return view('auth.partner-reset-password', compact('token', 'email'));
     }
 
     public function resetPassword(Request $request)
     {
         $data = $request->validate([
             'token'                 => 'required|string',
+            'email'                 => 'required|email',
             'password'              => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
-        $partner = Partner::where('setup_token', $data['token'])->first();
-        if (!$partner) {
+        $partner = Partner::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
+        if (!$partner || !$partner->setup_token || !Hash::check($data['token'], $partner->setup_token)) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
 

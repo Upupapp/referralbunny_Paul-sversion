@@ -42,6 +42,7 @@
     <form method="POST" action="{{ route('partner.reset-password.post') }}" @submit="sub=true">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
+        <input type="hidden" name="email" value="{{ $email }}">
         <div style="margin-bottom:1rem">
             <label class="field-label">New Password <span style="font-size:.75rem;color:#9ca3af;font-weight:400">— min. 8 characters</span></label>
             <div class="pw-wrap">

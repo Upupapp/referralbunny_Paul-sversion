@@ -35,7 +35,7 @@ class AccessExtendedMail extends Mailable
             with: [
                 'tenantId'        => $this->tenant->id,
                 'tenantName'      => $this->tenant->name,
-                'tenantAdminName' => $this->tenant->name,
+                'tenantAdminName' => $this->tenant->admin_name ?? $this->tenant->name,
                 'days'            => $this->days,
                 'note'            => $this->note,
             ],

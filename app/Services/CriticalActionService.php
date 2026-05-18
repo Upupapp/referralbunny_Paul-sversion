@@ -801,6 +801,7 @@ class CriticalActionService
         $lower = strtolower($resellerName);
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->where(fn($q) => $q
                 ->whereRaw('LOWER(reseller_name) = ?', [$lower])
                 ->orWhereExists(fn($sub) => $sub
@@ -843,6 +844,7 @@ class CriticalActionService
         $rows = DB::table('lead_history as h')
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
+            ->whereNull('l.deleted_at')
             ->where(fn($q) => $q
                 ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
                 ->orWhereExists(fn($sub) => $sub
@@ -965,6 +967,7 @@ class CriticalActionService
         $lower = strtolower($resellerName);
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->where(fn($q) => $q
                 ->whereRaw('LOWER(reseller_name) = ?', [$lower])
                 ->orWhereExists(fn($sub) => $sub
