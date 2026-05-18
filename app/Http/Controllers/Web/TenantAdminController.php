@@ -300,6 +300,7 @@ class TenantAdminController extends Controller
         try {
             $referrerSummary = DB::table('resellers')
                 ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
                 ->selectRaw("
                     COUNT(*) as total,
                     SUM(CASE WHEN status IN ('active','nda_signed') THEN 1 ELSE 0 END) as active,
@@ -479,6 +480,7 @@ class TenantAdminController extends Controller
 
         $resellers = DB::table('resellers')
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->whereIn('status', ['active', 'invited'])
             ->select('id', 'name', 'email')
             ->orderBy('name')

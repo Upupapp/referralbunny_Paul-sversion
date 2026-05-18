@@ -63,7 +63,7 @@ class SendTenantAdminDailyBriefingJob implements ShouldQueue
                         tenantName:   $tenant->name,
                         expiringDeals: count($expiringList),
                         newDeals:     count($newDealsList),
-                        newResellers: DB::table('resellers')->where('tenant_id', $tenantId)->where('created_at', '>=', $since)->count(),
+                        newResellers: DB::table('resellers')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereNotIn('status', ['deactivated'])->where('created_at', '>=', $since)->count(),
                         activeDeals:  $allLeads->whereIn('status', ['active', 'expiring'])->count(),
                         expiringList: $expiringList,
                         newDealsList: $newDealsList,

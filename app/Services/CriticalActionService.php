@@ -1590,7 +1590,7 @@ class CriticalActionService
      * Admins should review to ensure the new amount is correct before commission finalises.
      * Resolves automatically after 2 days (the admin has had time to review).
      */
-    private function recentReferrerAmountChanges(string $tenantId, \Carbon\Carbon $since): array
+    private function recentReferrerAmountChanges(string $tenantId, mixed $since = null): array
     {
         try {
             $cutoff = now()->subDays(2); // Only show within 2-day review window
