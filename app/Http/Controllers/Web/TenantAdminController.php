@@ -249,6 +249,16 @@ class TenantAdminController extends Controller
             ->first();
         $ssrLead = $lead?->toArray();
 
+        // Referrer list for the reassign picker — active + invited only
+        $referrers = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['active', 'nda_signed', 'invited'])
+            ->select('id', 'name', 'email', 'status')
+            ->orderBy('name')
+            ->get()
+            ->toArray();
+
         // Load pending approval requests for admin review panel
         $pendingApprovals = [];
         try {
@@ -261,7 +271,7 @@ class TenantAdminController extends Controller
         } catch (\Throwable) {}
 
         return view('tenant.deals.show', array_merge(
-            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals],
+            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals, 'referrers' => $referrers],
             $this->configMeta($tenantId)
         ));
     }

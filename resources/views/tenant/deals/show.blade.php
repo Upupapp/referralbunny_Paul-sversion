@@ -32,7 +32,7 @@
 @endsection
 
 @section('content')
-<script>var __dealSsrLead = @json($ssrLead ?? null); var __tenantId = '{{ $tenant->id }}';</script>
+<script>var __dealSsrLead = @json($ssrLead ?? null); var __tenantId = '{{ $tenant->id }}'; var rbReferrers = @json($referrers ?? []);</script>
 <style>
 /* Financial breakdown layout â€" guaranteed, no Tailwind compile dependency */
 .fin-row{display:flex!important;justify-content:space-between;align-items:center}
@@ -1818,13 +1818,13 @@
         </div>
     </div>
 
-    {{-- Reassign Modal — pure JS, zero Alpine dependency --}}
+    {{-- Reassign Modal — searchable referrer picker, pure JS --}}
     <div id="rb-reassign-modal"
          style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px"
          onclick="if(event.target===this)rbCloseReassign()">
-        <div style="background:white;border-radius:20px;width:100%;max-width:380px;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.2)" onclick="event.stopPropagation()">
+        <div style="background:white;border-radius:20px;width:100%;max-width:420px;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.2)" onclick="event.stopPropagation()">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Reassign Record</h3>
+                <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Reassign Deal</h3>
                 <button onclick="rbCloseReassign()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px;line-height:0">
                     <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -1832,11 +1832,14 @@
             <div style="padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;font-size:12px;color:#92400e;margin-bottom:16px">
                 This resets the stage to Introduction, restarts the pipeline timer, and transfers 100% of the commission pool to the new referrer.
             </div>
-            <div style="margin-bottom:16px">
-                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">New Referrer Name *</label>
-                <input id="rb-reassign-name" type="text" oninput="rbReassignSyncBtn()"
-                       style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;font-family:inherit"
-                       placeholder="Referrer full name">
+            <div style="margin-bottom:8px">
+                <label style="display:block;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Select New Referrer</label>
+                <input id="rb-reassign-search" type="text" oninput="rbReassignFilter()" autocomplete="off"
+                       style="width:100%;padding:9px 12px 9px 36px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;color:#1E1B4B;background:white;outline:none;box-sizing:border-box;font-family:inherit;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%239ca3af' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:10px center;background-size:16px"
+                       placeholder="Search referrers…">
+            </div>
+            <div id="rb-reassign-list"
+                 style="max-height:220px;overflow-y:auto;border:1.5px solid #e5e7eb;border-radius:12px;margin-bottom:16px">
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px">
                 <button onclick="rbCloseReassign()"
@@ -2055,44 +2058,101 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { rbCloseMoveStage(); rbCloseReassign(); }
 });
 
-// ── Reassign modal — pure JS ──────────────────────────────────────────────
+// ── Reassign modal — searchable referrer picker, pure JS ─────────────────
+
+var rbSelectedReseller = null;
 
 function rbOpenReassign() {
     var m   = document.getElementById('rb-reassign-modal');
-    var inp = document.getElementById('rb-reassign-name');
+    var s   = document.getElementById('rb-reassign-search');
     var btn = document.getElementById('rb-reassign-btn');
     if (!m) return;
-    if (inp) { inp.value = ''; inp.focus && setTimeout(function(){ inp.focus(); }, 50); }
+    rbSelectedReseller = null;
+    if (s) s.value = '';
     if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; btn.textContent = 'Confirm Reassign'; }
+    rbReassignRenderList('');
     m.style.display = 'flex';
+    if (s) setTimeout(function() { s.focus(); }, 50);
 }
 
 function rbCloseReassign() {
     var m = document.getElementById('rb-reassign-modal');
     if (m) m.style.display = 'none';
+    rbSelectedReseller = null;
 }
 
-function rbReassignSyncBtn() {
-    var inp = document.getElementById('rb-reassign-name');
+function rbReassignFilter() {
+    var s = document.getElementById('rb-reassign-search');
+    rbReassignRenderList(s ? s.value.trim().toLowerCase() : '');
+}
+
+function rbReassignRenderList(query) {
+    var list = document.getElementById('rb-reassign-list');
+    if (!list) return;
+    var currentName = (window.rbLead && window.rbLead.reseller_name)
+        ? window.rbLead.reseller_name.trim().toLowerCase() : '';
+    var all = window.rbReferrers || [];
+    var rows = query ? all.filter(function(r) { return r.name && r.name.toLowerCase().includes(query); }) : all;
+    if (rows.length === 0) {
+        list.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">'
+            + (all.length === 0 ? 'No referrers in this workspace yet.' : 'No referrers match your search.') + '</div>';
+        return;
+    }
+    list.innerHTML = rows.map(function(r, idx) {
+        var isCurrent  = r.name && r.name.trim().toLowerCase() === currentName;
+        var isSelected = rbSelectedReseller && rbSelectedReseller.name === r.name;
+        var isLast     = idx === rows.length - 1;
+        var border     = isLast ? 'none' : '1px solid #f3f4f6';
+        var badge = r.status === 'invited'
+            ? '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#D97706;font-weight:600;flex-shrink:0">Invited</span>'
+            : '<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:#D1FAE5;color:#065F46;font-weight:600;flex-shrink:0">Active</span>';
+        var check = isSelected
+            ? '<svg style="width:15px;height:15px;flex-shrink:0;margin-left:6px" fill="none" stroke="#4F46E5" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : '';
+        if (isCurrent) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';background:#f9fafb;cursor:not-allowed">'
+                + '<div style="min-width:0;flex:1">'
+                + '<div style="font-size:13px;font-weight:600;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.name) + '</div>'
+                + '<div style="font-size:11px;color:#d1d5db;margin-top:1px">Currently assigned</div>'
+                + '</div>'
+                + badge
+                + '</div>';
+        }
+        return '<div onclick="rbReassignSelect(' + JSON.stringify(r.name) + ')" '
+            + 'style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';cursor:pointer;background:' + (isSelected ? '#EEF2FF' : 'white') + ';transition:background .1s" '
+            + 'onmouseenter="if(this.getAttribute(\'data-sel\')!==\'1\')this.style.background=\'#f9fafb\'" '
+            + 'onmouseleave="this.style.background=this.getAttribute(\'data-sel\')===\'1\'?\'#EEF2FF\':\'white\'" '
+            + 'data-sel="' + (isSelected ? '1' : '0') + '">'
+            + '<div style="min-width:0;flex:1">'
+            + '<div style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.name) + '</div>'
+            + (r.email ? '<div style="font-size:11px;color:#9ca3af;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.email) + '</div>' : '')
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:8px">' + badge + check + '</div>'
+            + '</div>';
+    }).join('');
+}
+
+function rbReassignSelect(name) {
+    rbSelectedReseller = (window.rbReferrers || []).find(function(r) { return r.name === name; }) || { name: name };
     var btn = document.getElementById('rb-reassign-btn');
-    if (!btn || !inp) return;
-    var ok = inp.value.trim().length > 0;
-    btn.disabled = !ok;
-    btn.style.opacity = ok ? '1' : '0.5';
-    btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    var s = document.getElementById('rb-reassign-search');
+    rbReassignRenderList(s ? s.value.trim().toLowerCase() : '');
+}
+
+function rbEscHtml(str) {
+    return str ? String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
 }
 
 async function rbConfirmReassign() {
-    var inp = document.getElementById('rb-reassign-name');
-    var btn = document.getElementById('rb-reassign-btn');
-    if (!inp || !inp.value.trim()) return;
-    var name   = inp.value.trim();
+    if (!rbSelectedReseller) return;
+    var name   = rbSelectedReseller.name;
+    var btn    = document.getElementById('rb-reassign-btn');
     var leadId = window.rbLead && window.rbLead.id;
     if (!leadId) return;
     if (btn) { btn.disabled = true; btn.textContent = 'Reassigning…'; btn.style.opacity = '0.7'; }
     var csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
     try {
-        var res     = await fetch('/api/leads/' + leadId + '/reassign', {
+        var res = await fetch('/api/leads/' + leadId + '/reassign', {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
             body: JSON.stringify({ reseller_name: name }),
@@ -2102,7 +2162,7 @@ async function rbConfirmReassign() {
             if (window.rbDealRef) window.rbDealRef.lead = updated;
             window.rbLead = updated;
             rbCloseReassign();
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Deal reassigned.' } }));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Deal reassigned to ' + name + '.' } }));
         } else {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: updated.message || updated.error || 'Failed to reassign.' } }));
             if (btn) { btn.disabled = false; btn.textContent = 'Confirm Reassign'; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
