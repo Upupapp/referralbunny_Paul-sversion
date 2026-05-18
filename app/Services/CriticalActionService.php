@@ -1006,6 +1006,7 @@ class CriticalActionService
 
     private function resellerImportEvents(string $tenantId, string $resellerId): array
     {
+        try {
         $rows = DB::table('activity_logs')
             ->where('tenant_id', $tenantId)
             ->where('entity', 'reseller')
@@ -1048,6 +1049,10 @@ class CriticalActionService
                 'source'        => 'activity_logs',
             ]);
         })->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerImportEvents failed', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 
     private function pendingExportRequests(string $tenantId): array

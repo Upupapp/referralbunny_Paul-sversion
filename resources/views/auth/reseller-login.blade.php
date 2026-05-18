@@ -59,9 +59,19 @@
             <h1 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:700;color:#111827">Sign in to your account</h1>
             <p style="margin:0 0 2rem;font-size:.6875rem;font-weight:600;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase">Referrer Portal</p>
 
-            @if (session('success') || session('status'))
+            @if (request('signed_out'))
+            <div style="display:flex;align-items:center;gap:.5rem;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#16a34a">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                You have been signed out successfully.
+            </div>
+            @elseif (session('success'))
             <div style="display:flex;align-items:center;gap:.75rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem">
-                <p style="margin:0;font-size:.875rem;color:#166534">{{ session('success') ?? session('status') }}</p>
+                <p style="margin:0;font-size:.875rem;color:#166534">{{ session('success') }}</p>
+            </div>
+            @elseif (session('status'))
+            <div style="display:flex;align-items:center;gap:.5rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#1d4ed8">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {{ session('status') }}
             </div>
             @endif
             @if ($errors->any())

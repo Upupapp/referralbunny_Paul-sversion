@@ -314,8 +314,8 @@
 {{-- Bridge PHP session flash → Alpine toast (legal agreements, etc.) --}}
 @if (session('success'))
 <script>
-    document.addEventListener('alpine:init', () => {
-        setTimeout(() => window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: @json(session('success')) } })), 100);
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: @json(session('success')) } })), 200);
     });
 </script>
 @endif

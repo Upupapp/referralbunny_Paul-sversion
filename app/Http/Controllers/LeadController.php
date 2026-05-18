@@ -443,7 +443,7 @@ class LeadController extends Controller
         try {
             if (!$lead->reseller_name) return;
             $reseller = Reseller::where('tenant_id', $lead->tenant_id)
-                ->where('name', $lead->reseller_name)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                 ->first();
             if (!$reseller) return;
             app(NotificationDispatchService::class)->dispatchToReseller(
@@ -1065,7 +1065,7 @@ class LeadController extends Controller
 
             if ($lead->reseller_name) {
                 $reseller = Reseller::where('tenant_id', $lead->tenant_id)
-                    ->where('name', $lead->reseller_name)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                     ->first();
                 if ($reseller) {
                     app(NotificationDispatchService::class)->dispatchToReseller(
