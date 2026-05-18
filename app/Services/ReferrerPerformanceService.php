@@ -23,23 +23,30 @@ class ReferrerPerformanceService
 
     private function compute(string $tenantId, string $resellerName): array
     {
-        $pr = CommissionCalculationService::COMMISSION_POOL_RATE;
+        $pr    = CommissionCalculationService::COMMISSION_POOL_RATE;
+        $lower = strtolower($resellerName);
 
         try {
-            $agg = DB::table('leads')
-                ->where('tenant_id', $tenantId)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
-                ->whereNull('deleted_at')
+            // Join commission_splits to get per-deal split percentage for this reseller.
+            // Covers both primary referrer and co-referrer (secondary split) deals.
+            $agg = DB::table('leads AS l')
+                ->leftJoin('commission_splits AS cs', function ($join) use ($lower) {
+                    $join->on('cs.lead_id', '=', 'l.id')
+                         ->whereRaw('LOWER(cs.reseller_name) = ?', [$lower]);
+                })
+                ->where('l.tenant_id', $tenantId)
+                ->whereRaw('(LOWER(l.reseller_name) = ? OR cs.lead_id IS NOT NULL)', [$lower])
+                ->whereNull('l.deleted_at')
                 ->selectRaw("
-                    COUNT(*)                                                                         AS total,
-                    SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                AS active,
-                    SUM(CASE WHEN status = 'expiring'             THEN 1 ELSE 0 END)                AS expiring,
-                    SUM(CASE WHEN stage  = 'paid'                 THEN 1 ELSE 0 END)                AS paid,
-                    COALESCE(SUM(deal_value), 0)                                                     AS total_value,
-                    COALESCE(SUM(CASE WHEN commission_status='pending' THEN added_amount * {$pr} ELSE 0 END), 0) AS pending_comm,
-                    COALESCE(SUM(CASE WHEN commission_status='locked'  THEN added_amount * {$pr} ELSE 0 END), 0) AS locked_comm,
-                    COALESCE(SUM(CASE WHEN commission_status='paid'    THEN added_amount * {$pr} ELSE 0 END), 0) AS paid_comm,
-                    MAX(created_at)                                                                  AS last_deal_at
+                    COUNT(DISTINCT l.id)                                                                                                                  AS total,
+                    SUM(CASE WHEN l.status IN ('active','expiring') THEN 1 ELSE 0 END)                                                                    AS active,
+                    SUM(CASE WHEN l.status = 'expiring'             THEN 1 ELSE 0 END)                                                                    AS expiring,
+                    SUM(CASE WHEN l.stage  = 'paid'                 THEN 1 ELSE 0 END)                                                                    AS paid,
+                    COALESCE(SUM(DISTINCT l.deal_value), 0)                                                                                               AS total_value,
+                    COALESCE(SUM(CASE WHEN l.commission_status='pending' THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS pending_comm,
+                    COALESCE(SUM(CASE WHEN l.commission_status='locked'  THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS locked_comm,
+                    COALESCE(SUM(CASE WHEN l.commission_status='paid'    THEN l.added_amount * {$pr} * COALESCE(cs.percentage,100.0)/100.0 ELSE 0 END),0) AS paid_comm,
+                    MAX(l.created_at)                                                                                                                     AS last_deal_at
                 ")->first();
         } catch (\Throwable) {
             $agg = null;
@@ -63,13 +70,18 @@ class ReferrerPerformanceService
         // Overdue updates — leads that haven't been updated in >14 days
         $overdueUpdates = 0;
         try {
-            $overdueUpdates = DB::table('leads')
-                ->where('tenant_id', $tenantId)
-                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($resellerName)])
-                ->whereIn('status', ['active', 'expiring'])
-                ->where('updated_at', '<', now()->subDays(14))
-                ->whereNull('deleted_at')
-                ->count();
+            $overdueUpdates = DB::table('leads AS l')
+                ->leftJoin('commission_splits AS cs2', function ($join) use ($lower) {
+                    $join->on('cs2.lead_id', '=', 'l.id')
+                         ->whereRaw('LOWER(cs2.reseller_name) = ?', [$lower]);
+                })
+                ->where('l.tenant_id', $tenantId)
+                ->whereRaw('(LOWER(l.reseller_name) = ? OR cs2.lead_id IS NOT NULL)', [$lower])
+                ->whereIn('l.status', ['active', 'expiring'])
+                ->where('l.updated_at', '<', now()->subDays(14))
+                ->whereNull('l.deleted_at')
+                ->distinct()
+                ->count('l.id');
         } catch (\Throwable) {}
 
         return [

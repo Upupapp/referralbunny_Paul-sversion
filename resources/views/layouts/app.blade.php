@@ -143,7 +143,9 @@
             $layoutTenantId = request()->route('tenantId') ?? null;
             $searchBaseUrl  = $isSuperAdmin
                 ? '/platform/search'
-                : ($layoutTenantId ? "/tenant/{$layoutTenantId}/leads" : '/');
+                : ($layoutTenantId
+                    ? "/tenant/{$layoutTenantId}/leads"
+                    : route('tenant.select-workspace'));
             $searchTenantParam = (!$isSuperAdmin && $layoutTenantId) ? $layoutTenantId : '';
         @endphp
         <div x-data="globalSearch('{{ $searchBaseUrl }}', '{{ $searchTenantParam }}')" x-init="initSearch()"
@@ -444,7 +446,7 @@
                             if (auth('tenant')->check() && isset($tenant)) {
                                 $notifAllUrl = route('tenant.notifications', $tenant->id);
                             } elseif (auth('web')->check()) {
-                                $notifAllUrl = route('platform.dashboard');
+                                $notifAllUrl = route('platform.dashboard'); // TODO: add platform notifications page
                             }
                         @endphp
                         <div class="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">

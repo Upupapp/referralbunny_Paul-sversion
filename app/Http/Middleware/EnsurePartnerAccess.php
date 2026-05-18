@@ -22,13 +22,8 @@ class EnsurePartnerAccess
                     ->withErrors(['email' => 'Account is not active. Please contact the workspace administrator.']);
             }
 
-            // Verify partner belongs to the route's tenant (cross-tenant prevention)
-            $routeTenantId = $request->route('tenantId');
-            if ($routeTenantId && (string) $partner->tenant_id !== (string) $routeTenantId) {
-                Auth::guard('partner')->logout();
-                return redirect()->route('partner.login')
-                    ->withErrors(['access' => 'You do not have access to this tenant.']);
-            }
+            // Partner routes have no {tenantId} segment — tenant isolation is enforced
+            // via auth('partner')->user()->tenant_id in every controller, not the URL.
 
             return $next($request);
         }

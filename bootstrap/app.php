@@ -27,5 +27,23 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (
+            \Illuminate\Auth\AuthenticationException $e,
+            \Illuminate\Http\Request $request
+        ) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+            $path = $request->path();
+            if (str_starts_with($path, 'reseller/')) {
+                return redirect()->route('reseller.login');
+            }
+            if (str_starts_with($path, 'partner/')) {
+                return redirect()->route('partner.login');
+            }
+            if (str_starts_with($path, 'tenant/')) {
+                return redirect()->route('tenant.login');
+            }
+            return redirect()->route('login');
+        });
     })->create();

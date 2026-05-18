@@ -52,6 +52,7 @@ class NotificationsController extends Controller
                     $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')
                 )
                 ->update(['is_read' => true]);
+            Cache::forget("notif_unread_{$type}_{$id}");
         }
         return response()->json(['ok' => true]);
     }

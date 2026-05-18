@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\FeatureAccessService;
 use App\Services\NotificationService;
+use App\Services\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -60,6 +61,11 @@ class FeatureAccessMiddleware
 
     private function resolveTenantId(Request $request): ?string
     {
+        // Prefer TenantContext set by SetApiTenantContext middleware
+        if ($id = TenantContext::id()) {
+            return $id;
+        }
+
         // Route parameter: /tenant/{tenantId}/...
         if ($request->route('tenantId')) {
             return $request->route('tenantId');
@@ -69,8 +75,7 @@ class FeatureAccessMiddleware
             return is_object($tenant) ? $tenant->id : $tenant;
         }
 
-        // Request body or query string
-        return $request->input('tenant_id') ?? $request->query('tenant_id');
+        return null;
     }
 
     private function checkFeatureFlag(string $tenantId, string $resource): array

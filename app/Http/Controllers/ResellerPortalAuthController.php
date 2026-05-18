@@ -88,12 +88,15 @@ class ResellerPortalAuthController extends Controller
         if ($reseller) {
             $token      = Str::random(64);
             $tenantName = DB::table('tenants')->where('id', $reseller->tenant_id)->value('name') ?? 'Referral Bunny';
-            $resetUrl   = url('/reseller/reset-password?token=' . $token);
+            $resetUrl   = url('/reseller/reset-password?token=' . $token . '&email=' . urlencode($reseller->email));
 
-            DB::table('resellers')->where('id', $reseller->id)->update(['setup_token' => $token]);
+            DB::table('resellers')->where('id', $reseller->id)->update([
+                'setup_token'            => Hash::make($token),
+                'setup_token_created_at' => now(),
+            ]);
 
             try {
-                Mail::send(new ResellerPasswordReset(
+                Mail::queue(new ResellerPasswordReset(
                     resellerName:  $reseller->name,
                     resellerEmail: $reseller->email,
                     tenantName:    $tenantName,
@@ -110,28 +113,37 @@ class ResellerPortalAuthController extends Controller
     public function showResetPassword(Request $request)
     {
         $token = $request->query('token');
-        if (!$token) return redirect()->route('reseller.login');
+        $email = $request->query('email');
+        if (!$token || !$email) return redirect()->route('reseller.login');
 
-        $reseller = Reseller::where('setup_token', $token)->first();
-        if (!$reseller) {
+        $reseller = Reseller::whereRaw('lower(email) = ?', [strtolower($email)])->first();
+        if (!$reseller || !$reseller->setup_token || !Hash::check($token, $reseller->setup_token)) {
             return redirect()->route('reseller.login')
                 ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
         }
+        if ($reseller->setup_token_created_at && $reseller->setup_token_created_at->lt(now()->subHour())) {
+            return redirect()->route('reseller.login')
+                ->withErrors(['reset' => 'This reset link has expired. Please request a new one.']);
+        }
 
-        return view('auth.reseller-reset-password', compact('token'));
+        return view('auth.reseller-reset-password', compact('token', 'email'));
     }
 
     public function resetPassword(Request $request)
     {
         $data = $request->validate([
             'token'                 => 'required|string',
+            'email'                 => 'required|email',
             'password'              => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string',
         ]);
 
-        $reseller = Reseller::where('setup_token', $data['token'])->first();
-        if (!$reseller) {
+        $reseller = Reseller::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
+        if (!$reseller || !$reseller->setup_token || !Hash::check($data['token'], $reseller->setup_token)) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
+        }
+        if ($reseller->setup_token_created_at && $reseller->setup_token_created_at->lt(now()->subHour())) {
+            return back()->withErrors(['token' => 'This reset link has expired. Please request a new one.']);
         }
 
         DB::table('resellers')->where('id', $reseller->id)->update([

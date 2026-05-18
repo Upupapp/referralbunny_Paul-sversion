@@ -51,7 +51,7 @@ class ResellerPortalController extends Controller
         $leadCommissionMap = [];
         try {
             $recent = Lead::where('tenant_id', $tenantId)
-                ->forReseller($reseller->name)
+                ->forResellerOrSplit($reseller->name)
                 ->orderByDesc('created_at')
                 ->limit(6)
                 ->select('id', 'name', 'stage', 'status', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'days_left', 'reseller_name', 'created_at')
@@ -80,7 +80,7 @@ class ResellerPortalController extends Controller
         $partnerCount = 0;
         try {
             $allLeadIds = Lead::where('tenant_id', $tenantId)
-                ->forReseller($reseller->name)
+                ->forResellerOrSplit($reseller->name)
                 ->pluck('id');
             if ($allLeadIds->isNotEmpty()) {
                 $partnerCount = DB::table('deal_partner_splits')
@@ -291,7 +291,7 @@ class ResellerPortalController extends Controller
         try {
             $leadIds = Lead::withTrashed()
                 ->where('tenant_id', $tenantId)
-                ->forReseller($reseller->name)
+                ->forResellerOrSplit($reseller->name)
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
                 ->toArray();
@@ -761,7 +761,7 @@ class ResellerPortalController extends Controller
 
         // ── Own deals (by expiry date) ────────────────────────────────────────
         Lead::where('tenant_id', $tenantId)
-            ->forReseller($reseller->name)
+            ->forResellerOrSplit($reseller->name)
             ->whereIn('status', ['active', 'expiring'])
             ->whereNotNull('days_left')
             ->where('days_left', '>=', 0)
