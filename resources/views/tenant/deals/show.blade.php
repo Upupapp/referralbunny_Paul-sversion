@@ -20,7 +20,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
     </button>
-    <button onclick="window.dispatchEvent(new CustomEvent('open-reassign-deal'))" class="btn-secondary text-sm">
+    <button onclick="if(window.rbDealRef){window.rbDealRef.showReassign=true}else{window.dispatchEvent(new CustomEvent('open-reassign-deal'))}" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
@@ -2823,7 +2823,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     this.reassignName = ''; this.showReassign = false;
                     this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned.' });
                 } else {
-                    this.$dispatch('show-toast', { type: 'error', message: updated.message || 'Failed to reassign.' });
+                    this.$dispatch('show-toast', { type: 'error', message: updated.message || updated.error || 'Failed to reassign.' });
                 }
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
