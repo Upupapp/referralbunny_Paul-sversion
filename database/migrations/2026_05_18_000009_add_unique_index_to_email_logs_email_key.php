@@ -10,18 +10,16 @@ return new class extends Migration
     public function up(): void
     {
         // Remove duplicate email_key rows that existed before EmailLogger gained its
-        // universal pre-insert dedup check (commit 4216763). Keep the most recent
-        // record per key; drop older duplicates so the UNIQUE index can be created.
+        // universal pre-insert dedup check (commit 4216763). Use ctid (PostgreSQL
+        // physical row identifier) to keep exactly one row per key regardless of
+        // created_at ties, then create the UNIQUE index.
         DB::statement("
-            DELETE FROM email_logs a
-            USING (
-                SELECT email_key, MAX(created_at) AS latest
+            DELETE FROM email_logs
+            WHERE ctid NOT IN (
+                SELECT MIN(ctid)
                 FROM email_logs
                 GROUP BY email_key
-                HAVING COUNT(*) > 1
-            ) b
-            WHERE a.email_key = b.email_key
-              AND a.created_at < b.latest
+            )
         ");
 
         // UNIQUE index makes EmailLogger dedup a DB-level guarantee, not just
