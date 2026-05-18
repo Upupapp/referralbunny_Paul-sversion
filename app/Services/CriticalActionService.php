@@ -516,7 +516,7 @@ class CriticalActionService
                 'previewing'             => ['medium', "{$typeLabel} upload in progress: {$r->file_name}",      $batchBase,           'Review Upload',    true],
                 'processing'              => ['high',   "{$typeLabel} stuck — processing for 15+ minutes: {$r->file_name}", $batchBase, 'View Import',  true],
                 'failed'                  => ['high',   "{$typeLabel} failed: {$r->file_name}",                 "{$batchBase}/report", 'View Report',     true],
-                'completed_with_warnings' => ['medium', "{$typeLabel} completed with warnings: {$r->file_name}","{$batchBase}/report", 'View Report',     true],
+                'completed_with_warnings' => ['medium', "{$typeLabel} completed with warnings: {$r->file_name}" . ($r->failed_rows > 0 ? " — {$r->failed_rows} row(s) failed" : ''), "{$batchBase}/report", 'View Report', true],
                 default                   => ['info',   "{$typeLabel} completed: {$r->file_name}",              "{$batchBase}/report", 'View Report',     false],
             };
 
