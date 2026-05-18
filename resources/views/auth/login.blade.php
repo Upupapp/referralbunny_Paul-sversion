@@ -138,7 +138,7 @@
 
             @if (request('signed_out'))
                 <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#16a34a;display:flex;align-items:center;gap:.5rem">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     You have been signed out successfully.
                 </div>
             @elseif (session('success'))

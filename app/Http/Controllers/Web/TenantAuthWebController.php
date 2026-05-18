@@ -202,7 +202,7 @@ class TenantAuthWebController extends Controller
         DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
 
         return redirect()->route('tenant.login')
-            ->with('status', 'Password updated successfully. You can now sign in with your new password.');
+            ->with('success', 'Password updated successfully. You can now sign in with your new password.');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

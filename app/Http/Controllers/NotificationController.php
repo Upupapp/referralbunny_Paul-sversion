@@ -109,6 +109,7 @@ class NotificationController extends Controller
         Notification::where('notifiable_type', $type)
             ->where('notifiable_id', $id)
             ->where('is_read', false)
+            ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
             ->update(['is_read' => true]);
 
         Cache::forget("notif_unread_{$type}_{$id}");
@@ -210,6 +211,7 @@ class NotificationController extends Controller
             ->where('notifiable_id', $id)
             ->where('is_read', false)
             ->where('is_dismissed', false)
+            ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
             ->update(['is_read' => true]);
 
         Cache::forget("notif_unread_{$type}_{$id}");
