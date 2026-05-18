@@ -60,7 +60,9 @@ class NotificationsController extends Controller
     {
         $this->findUserNotification($notificationId)->update(['is_read' => true]);
         if (Auth::guard('partner')->check()) {
-            Cache::forget('partner_notif_unread:' . Auth::guard('partner')->id());
+            $partnerId = (string) Auth::guard('partner')->id();
+            Cache::forget('partner_notif_unread:' . $partnerId);
+            Cache::forget("notif_unread_partner_{$partnerId}");
         }
         return response()->json(['ok' => true]);
     }
