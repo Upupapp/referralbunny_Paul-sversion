@@ -191,12 +191,13 @@ class NotificationController extends Controller
     /** Mark a single notification as read — called from web routes (tenant/reseller portals). */
     public function markNotifRead(Request $request, string $notifId): \Illuminate\Http\JsonResponse
     {
-        [$type, $id] = $this->resolveCurrentUser();
+        [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['ok' => false], 403);
 
         Notification::where('id', $notifId)
             ->where('notifiable_type', $type)
             ->where('notifiable_id', $id)
+            ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
             ->update(['is_read' => true]);
 
         return response()->json(['ok' => true]);
