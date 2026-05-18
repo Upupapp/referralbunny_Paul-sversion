@@ -55,6 +55,13 @@ class ResellerPortalAuthController extends Controller
         Auth::guard('reseller')->login($reseller, $request->boolean('remember'));
         $request->session()->regenerate();
 
+        // Copy session-expiry intended URL into the agreements flow key so it survives
+        // an inline agreements redirect (EnsureLegalAgreementsAccepted middleware handles
+        // this automatically for direct navigation, but not for the inline login check)
+        if ($intended = session()->get('url.intended')) {
+            session(['legal_agreements.intended_url' => $intended]);
+        }
+
         // Redirect to agreements page if there are pending required agreements
         if (TenantLegalAgreementController::hasPending(
             $reseller->tenant_id, 'reseller', (string) $reseller->id, 'referrer'

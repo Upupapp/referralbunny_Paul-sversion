@@ -283,6 +283,14 @@ class LeadController extends Controller
             'data'              => $leadData,
         ]);
 
+        // Bust the reseller activity log lead ID cache so new deal appears immediately
+        if (!empty($data['reseller_name'])) {
+            $rid = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
+                ->value('id');
+            if ($rid) Cache::forget("reseller_leadids:{$tenantId}:{$rid}");
+        }
+
         if ($amountWasDefaulted) {
             try {
                 app(\App\Services\DealActivityService::class)->record(
@@ -1130,6 +1138,14 @@ class LeadController extends Controller
             'status'            => 'active',
             'commission_status' => 'pending',
         ]);
+
+        // Bust activity log lead ID cache for both old and new resellers
+        foreach (array_filter([$oldReferrerName, $data['reseller_name']]) as $rName) {
+            $rid = Reseller::where('tenant_id', $lead->tenant_id)
+                ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
+                ->value('id');
+            if ($rid) Cache::forget("reseller_leadids:{$lead->tenant_id}:{$rid}");
+        }
 
         CommissionSplit::where('lead_id', $lead->id)->delete();
         CommissionSplit::create([
