@@ -102,12 +102,9 @@ class InvitationReminderService
             return false;
         }
 
-        try {
-            Mail::queue(new TenantInvitationReminderMail($invitation));
-        } catch (\Throwable) {
-            return false;
-        }
-
+        // Update DB counter BEFORE queuing so that if Mail::queue fails the counter
+        // still advances — preventing the scheduler from immediately re-queuing the
+        // same reminder on the next tick (which would cause duplicate delivery on retry).
         $newCount = $invitation->reminder_count + 1;
         $next     = $this->nextInviteeReminderAt($invitation, $newCount);
 
@@ -116,6 +113,15 @@ class InvitationReminderService
             'last_reminder_sent_at'  => now(),
             'next_reminder_at'       => $next,
         ]);
+
+        try {
+            Mail::queue(new TenantInvitationReminderMail($invitation));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[InvitationReminderService] Failed to queue invitee reminder', [
+                'invitation_id' => $invitation->id,
+                'error'         => $e->getMessage(),
+            ]);
+        }
 
         return true;
     }
@@ -151,15 +157,7 @@ class InvitationReminderService
             metadata:         ['invitation_id' => $invitation->id],
         );
 
-        // Email on second inviter reminder (day 5) only
-        if ($newCount >= 2) {
-            try {
-                Mail::queue(new TenantInviterReminderMail($invitation, $inviter));
-            } catch (\Throwable) {
-                // silent — in-app still fired
-            }
-        }
-
+        // DB update first — same safe-ordering rationale as sendInviteeReminder()
         $nextAt = $this->nextInviterReminderAt($invitation, $newCount);
 
         $invitation->update([
@@ -167,6 +165,15 @@ class InvitationReminderService
             'last_inviter_reminder_at' => now(),
             'next_inviter_reminder_at' => $nextAt,
         ]);
+
+        // Email on second inviter reminder (day 5) only
+        if ($newCount >= 2) {
+            try {
+                Mail::queue(new TenantInviterReminderMail($invitation, $inviter));
+            } catch (\Throwable) {
+                // silent — in-app notification already fired above
+            }
+        }
 
         return true;
     }

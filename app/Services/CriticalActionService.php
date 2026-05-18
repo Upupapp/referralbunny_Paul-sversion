@@ -1796,6 +1796,15 @@ class CriticalActionService
                 ->whereNull('deleted_at')
                 ->where('status', 'invited')
                 ->where('created_at', '>', now()->subDays(7))
+                // Exclude referrers who already have an active deal — they've been
+                // onboarded into the pipeline; "send setup link" prompt is misleading.
+                ->whereNotExists(fn($q) => $q
+                    ->from('leads')
+                    ->where('leads.tenant_id', $tenantId)
+                    ->whereNull('leads.deleted_at')
+                    ->whereNotIn('leads.status', ['expired', 'declined'])
+                    ->whereRaw('LOWER(leads.reseller_name) = LOWER(resellers.name)')
+                )
                 ->select('id', 'name', 'email', 'created_at')
                 ->orderByDesc('created_at')
                 ->limit(5)
@@ -1816,7 +1825,7 @@ class CriticalActionService
                 'action_label'  => 'View Referrer',
                 'action_needed' => true,
                 'source'        => 'resellers',
-                'description'   => 'A new Referrer has been invited. Send their setup link if they haven\'t joined yet.',
+                'description'   => 'A new Referrer has been invited and is awaiting account activation.',
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] newReferrerSignups failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);

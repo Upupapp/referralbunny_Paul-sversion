@@ -1197,7 +1197,12 @@ class LeadController extends Controller
             'commission_status' => 'pending',
         ];
 
-        // Single atomic transaction: lead update + split replacement
+        // Single atomic transaction: lead update + split replacement.
+        // CommissionSplit has no tenant_id column — it is a child of Lead and inherits
+        // tenant isolation via the lead_id FK. Tenant safety here relies on the
+        // assertBelongsToCurrentTenant() guard above (line ~1168), which is the single
+        // point of enforcement. Do NOT remove that guard without adding tenant_id to
+        // commission_splits first.
         DB::transaction(function () use ($lead, $data, $updatePayload) {
             $lead->update($updatePayload);
             CommissionSplit::where('lead_id', $lead->id)->delete();
