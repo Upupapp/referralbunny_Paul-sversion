@@ -624,7 +624,6 @@ class LguIdsImportService
     {
         $batch->update(['status' => 'processing', 'started_at' => now()]);
 
-        $rows    = ImportBatchRow::where('import_batch_id', $batch->id)->get();
         $created = 0;
         $updated = 0;
         $skipped = 0;
@@ -640,7 +639,10 @@ class LguIdsImportService
                 ->toArray();
         } catch (\Throwable) {}
 
-        foreach ($rows as $row) {
+        ImportBatchRow::where('import_batch_id', $batch->id)
+            ->orderBy('id')
+            ->chunkById(100, function ($chunk) use ($batch, $stageRulesMap, &$created, &$updated, &$skipped, &$failed, &$errors) {
+        foreach ($chunk as $row) {
             if ($row->row_action === 'blocked') { $skipped++; continue; }
             if ($row->row_action === 'skip')    { $skipped++; continue; }
 
@@ -870,6 +872,7 @@ class LguIdsImportService
                 $failed++;
             }
         }
+        }); // end chunkById
 
         $status = match (true) {
             $failed > 0 && $created === 0 && $updated === 0 => 'failed',

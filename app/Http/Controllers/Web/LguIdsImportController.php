@@ -307,11 +307,13 @@ class LguIdsImportController extends Controller
         $tenant = $this->resolveTenant($tenantId);
         $batch  = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
 
-        $rows    = ImportBatchRow::where('import_batch_id', $batchId)
+        $rows = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
-            ->get();
-        $grouped = $rows->groupBy('validation_status');
-        $summary = $rows->groupBy('validation_status')->map->count();
+            ->paginate(100);
+
+        // summary_json on $batch carries totals; grouped/summary not used in show view
+        $grouped = collect();
+        $summary = collect();
 
         return view('tenant.imports.lgu_ids.show', compact('tenant', 'batch', 'rows', 'grouped', 'summary'));
     }

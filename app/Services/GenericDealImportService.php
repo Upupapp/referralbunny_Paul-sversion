@@ -661,14 +661,16 @@ class GenericDealImportService
         $batch->update(['status' => 'processing', 'started_at' => now()]);
 
         $settings = $this->getSettings($tenantId);
-        $rows     = ImportBatchRow::where('import_batch_id', $batch->id)->get();
         $created  = 0;
         $updated  = 0;
         $skipped  = 0;
         $failed   = 0;
         $errors   = [];
 
-        foreach ($rows as $row) {
+        ImportBatchRow::where('import_batch_id', $batch->id)
+            ->orderBy('id')
+            ->chunkById(100, function ($chunk) use ($batch, $tenantId, $settings, &$created, &$updated, &$skipped, &$failed, &$errors) {
+        foreach ($chunk as $row) {
             // Skip blocked / manually skipped rows
             if (in_array($row->row_action, ['blocked', 'skip'], true)) {
                 $skipped++;
@@ -844,6 +846,7 @@ class GenericDealImportService
                 $failed++;
             }
         }
+        }); // end chunkById
 
         $status = match (true) {
             $failed > 0 && $created === 0 && $updated === 0 => 'failed',
