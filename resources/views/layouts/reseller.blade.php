@@ -317,7 +317,7 @@
      aria-live="polite"
      aria-atomic="true"
      class="fixed bottom-5 right-4 left-4 sm:left-auto sm:right-5 z-[200] flex flex-col gap-2 items-end pointer-events-none"
-     style="max-width:min(360px, 100%)"
+     style="max-width:min(360px, 100%)">
     <template x-for="toast in toasts" :key="toast.id">
         <div class="pointer-events-auto flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl shadow-2xl text-sm font-medium"
              role="alert"

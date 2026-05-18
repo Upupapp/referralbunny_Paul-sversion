@@ -207,6 +207,11 @@ class NotificationController extends Controller
             ->where('is_dismissed', false)
             ->update(['is_read' => true]);
 
+        Cache::forget("notif_unread_{$type}_{$id}");
+        if ($type === 'partner') {
+            Cache::forget("partner_notif_unread:{$id}");
+        }
+
         return response()->json(['message' => 'All marked as read.']);
     }
 
