@@ -42,6 +42,9 @@ class NotificationController extends Controller
         if (!$type || !$id) {
             return response()->json([]);
         }
+        if ($type !== 'super_admin' && !$tenantId) {
+            return response()->json(['items' => [], 'total' => 0, 'unread_count' => 0], 403);
+        }
 
         $q = NotificationDispatchService::queryForUser($type, $id, $tenantId)
             ->orderByDesc('created_at');
@@ -90,6 +93,7 @@ class NotificationController extends Controller
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['count' => 0]);
+        if ($type !== 'super_admin' && !$tenantId) return response()->json(['count' => 0], 403);
 
         $count = Cache::remember("notif_unread_{$type}_{$id}", 20, fn() =>
             NotificationDispatchService::queryForUser($type, $id, $tenantId)
@@ -104,7 +108,7 @@ class NotificationController extends Controller
     public function markMineRead(Request $request): JsonResponse
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
-        if (!$type || !$id) return response()->json(['ok' => false]);
+        if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('notifiable_type', $type)
@@ -193,7 +197,7 @@ class NotificationController extends Controller
     public function markNotifRead(Request $request, string $notifId): \Illuminate\Http\JsonResponse
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
-        if (!$type || !$id) return response()->json(['ok' => false], 403);
+        if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('id', $notifId)
@@ -202,13 +206,18 @@ class NotificationController extends Controller
             ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
             ->update(['is_read' => true]);
 
+        Cache::forget("notif_unread_{$type}_{$id}");
+        if ($type === 'partner') {
+            Cache::forget("partner_notif_unread:{$id}");
+        }
+
         return response()->json(['ok' => true]);
     }
 
     public function markAllRead(Request $request): JsonResponse
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
-        if (!$type || !$id) return response()->json(['ok' => false], 401);
+        if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('notifiable_type', $type)

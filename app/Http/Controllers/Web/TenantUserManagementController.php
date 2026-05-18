@@ -400,6 +400,7 @@ class TenantUserManagementController extends Controller
         // Invalidate the cached membership and nav role so access is revoked immediately
         Cache::forget("tenant_membership:{$userId}:{$tenantId}");
         Cache::forget("nav_role:{$tenantId}:{$userId}");
+        Cache::forget("tenant_user_primary_tenant:{$userId}");
 
         $userName = $membership->tenantUser?->first_name
             ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
@@ -485,6 +486,7 @@ class TenantUserManagementController extends Controller
         // Invalidate the cached membership and nav role so access is revoked immediately
         Cache::forget("tenant_membership:{$userId}:{$tenantId}");
         Cache::forget("nav_role:{$tenantId}:{$userId}");
+        Cache::forget("tenant_user_primary_tenant:{$userId}");
 
         $removedUser  = $membership->tenantUser;
         $removedEmail = $removedUser?->email ?? 'A team member';

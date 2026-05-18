@@ -1822,7 +1822,6 @@
     </div>
 
     {{-- Reassign Modal --}}
-    <template x-teleport="body">
     <div x-show="showReassign" style="display:none" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
             <div class="flex items-center justify-between">
@@ -1850,7 +1849,6 @@
             </div>
         </div>
     </div>
-    </template>
 
     {{-- ── Delete Deal Confirmation Modal ──────────────────────────────── --}}
     <div x-show="showDeleteConfirm" style="display:none"
