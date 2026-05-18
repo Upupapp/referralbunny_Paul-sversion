@@ -890,6 +890,7 @@ class CriticalActionService
             $rows = DB::table('deal_approval_requests as dar')
                 ->join('leads as l', 'l.id', '=', 'dar.deal_id')
                 ->where('dar.tenant_id', $tenantId)
+                ->whereNull('l.deleted_at')
                 ->where('dar.status', 'pending')
                 ->where('dar.requested_by_type', 'reseller')
                 ->where('dar.requested_by_id', $reseller)
@@ -1380,6 +1381,7 @@ class CriticalActionService
             $rows = DB::table('deal_assignment_extension_requests as r')
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
+                ->whereNull('l.deleted_at')
                 ->where(fn($q) => $q
                     ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
                     ->orWhereExists(fn($sub) => $sub
