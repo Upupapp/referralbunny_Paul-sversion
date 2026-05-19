@@ -410,7 +410,7 @@ class ResellerDealController extends Controller
 
         // Activity log AFTER commit — never let logging failure roll back the business action
         try {
-            app(DealActivityService::class)->record($lead->fresh(), 'Deal amount updated by referrer', 'amount', [
+            app(DealActivityService::class)->record($lead->fresh(), 'Deal amount updated by referrer', 'financial', [
                 'category'   => 'financial',
                 'reseller'   => $reseller->name,
                 'actor_name' => $reseller->name,
