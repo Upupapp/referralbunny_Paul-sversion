@@ -523,7 +523,7 @@
                                 <p class="text-xs text-gray-400 mt-0.5">{{ $item['summary'] }}</p>
                             @endif
                             <p class="text-[10px] text-gray-300 mt-0.5">
-                                {{ isset($item['occurred_at']) ? \Carbon\Carbon::parse($item['occurred_at'])->diffForHumans() : '' }}
+                                {{ $item['occurred_ago'] ?? '' }}
                             </p>
                         </div>
                     </div>

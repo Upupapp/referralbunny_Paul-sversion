@@ -179,7 +179,7 @@
                                 // An item is "new" only if the user HAS visited before AND it
                                 // occurred after their last visit. Null lastSeenAt = never visited
                                 // → nothing is highlighted as "new" (no baseline to compare).
-                                $isNew  = $lastSeenAt && isset($action['occurred_at']) && $action['occurred_at']->isAfter($lastSeenAt);
+                                $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                             @endphp
                             <tr class="table-row {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
                                 <td>
@@ -243,7 +243,7 @@
                 @foreach($result['items'] as $action)
                     @php
                         $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
-                        $isNew  = $lastSeenAt && isset($action['occurred_at']) && $action['occurred_at']->isAfter($lastSeenAt);
+                        $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                     @endphp
                     <div class="p-4 space-y-2 {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
                         <div class="flex items-center justify-between gap-2 flex-wrap">

@@ -41,7 +41,7 @@ class CriticalActionService
         // Dashboard widget: severity-first so urgent items are never buried by recent low-severity ones
         usort($all, fn($a, $b) =>
             (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
-            ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+            ?: strtotime($b['occurred_at']) <=> strtotime($a['occurred_at'])
         );
         return array_slice($all, 0, $limit);
     }
@@ -91,12 +91,12 @@ class CriticalActionService
         $sort = $filters['sort'] ?? 'recency_desc';
         if ($sort === 'recency_asc') {
             usort($all, fn($a, $b) =>
-                $a['occurred_at']->timestamp <=> $b['occurred_at']->timestamp
+                strtotime($a['occurred_at']) <=> strtotime($b['occurred_at'])
                 ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
             );
         } else {
             usort($all, fn($a, $b) =>
-                $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+                strtotime($b['occurred_at']) <=> strtotime($a['occurred_at'])
                 ?: (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
             );
         }
@@ -149,7 +149,7 @@ class CriticalActionService
 
             usort($items, fn($a, $b) =>
                 (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
-                ?: $b['occurred_at']->timestamp <=> $a['occurred_at']->timestamp
+                ?: strtotime($b['occurred_at']) <=> strtotime($a['occurred_at'])
             );
 
             return array_slice($items, 0, $limit);
@@ -1881,8 +1881,11 @@ class CriticalActionService
             ? $data['occurred_at']
             : \Carbon\Carbon::parse($data['occurred_at']);
 
+        // Store occurred_at as ISO string — Carbon instances cannot be safely
+        // serialized/deserialized through PHP's object serializer (cache).
+        // Callers that need Carbon should call Carbon::parse($item['occurred_at']).
         return array_merge($data, [
-            'occurred_at'  => $occurredAt,
+            'occurred_at'  => $occurredAt->toIso8601String(),
             'occurred_ago' => $occurredAt->diffForHumans(),
             'occurred_fmt' => $occurredAt->format('M j, Y g:i A'),
         ]);
