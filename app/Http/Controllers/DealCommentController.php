@@ -197,7 +197,13 @@ class DealCommentController extends Controller
             try {
                 $lead = Lead::find($dealId);
                 if ($lead) {
-                    $label = $visibility === 'internal_admin' ? 'Internal note' : 'Note';
+                    if ($visibility === 'internal_admin') {
+                        $label = 'Internal note';
+                    } elseif ($hasFiles && !$hasBody) {
+                        $label = 'Attachment';
+                    } else {
+                        $label = 'Note';
+                    }
                     app(\App\Services\DealActivityService::class)->noteAdded(
                         $lead,
                         $comment->body ?? '',

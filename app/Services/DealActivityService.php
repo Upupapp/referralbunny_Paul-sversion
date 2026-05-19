@@ -226,14 +226,15 @@ class DealActivityService
 
     public function noteAdded(Lead $lead, string $body, array $options = []): void
     {
-        $preview = mb_strlen($body) > 60 ? mb_substr($body, 0, 60) . '…' : $body;
-        $label   = $options['label'] ?? 'Note';
-        $action  = $preview ? "{$label} added: \"{$preview}\"" : "{$label} added";
+        $preview    = mb_strlen($body) > 60 ? mb_substr($body, 0, 60) . '…' : $body;
+        $label      = $options['label'] ?? 'Note';
+        $action     = $preview ? "{$label} added: \"{$preview}\"" : "{$label} added";
+        $recordOpts = array_diff_key($options, ['label' => true]); // strip UI-only key
 
         $this->record($lead, $action, 'note', array_merge([
             'category'   => 'note',
             'new_values' => $preview ? ['preview' => $preview] : null,
-        ], $options));
+        ], $recordOpts));
     }
 
     // ── Assignment events ─────────────────────────────────────────────────────
