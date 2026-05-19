@@ -2120,7 +2120,8 @@ function rbReassignRenderList(query) {
                 + badge
                 + '</div>';
         }
-        return '<div onclick="rbReassignSelect(' + JSON.stringify(r.name) + ')" '
+        return '<div onclick="rbReassignSelect(this.dataset.name)" '
+            + 'data-name="' + rbEscHtml(r.name) + '" '
             + 'style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';cursor:pointer;background:' + (isSelected ? '#EEF2FF' : 'white') + ';transition:background .1s" '
             + 'onmouseenter="if(this.getAttribute(\'data-sel\')!==\'1\')this.style.background=\'#f9fafb\'" '
             + 'onmouseleave="this.style.background=this.getAttribute(\'data-sel\')===\'1\'?\'#EEF2FF\':\'white\'" '

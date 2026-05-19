@@ -278,6 +278,7 @@ class ResellerPortalController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
         \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
+        \Illuminate\Support\Facades\Cache::forget("ca_rs_suppressed:{$reseller->id}");
 
         return view('reseller.notifications', compact('reseller', 'tenant'));
     }
