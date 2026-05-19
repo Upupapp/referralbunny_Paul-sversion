@@ -89,9 +89,8 @@ class CriticalActionsController extends Controller
         // Bust both legacy and new fast-badge cache keys so the nav counter resets.
         if ($userId) {
             Cache::put($seenCacheKey, now()->toIso8601String(), now()->addDays(30));
-            // Forget both key formats and suppress for 5 min — opening the page = "seen all"
+            // Forget badge keys and suppress for 5 min — opening the page = "seen all"
             Cache::forget("ca_badge_{$tenantId}_{$userId}");
-            Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
             Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
             Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
         }
@@ -124,7 +123,7 @@ class CriticalActionsController extends Controller
             'filters'     => $filters,
             'categories'  => $categories,
             'severities'  => $severities,
-            'actingRole'  => $membership?->role ?? ($canSeeBilling ? 'super_admin' : 'admin'),
+            'actingRole'  => $membership?->role ?? ($isSuperAdmin ? 'super_admin' : 'admin'),
             'lastSeenAt'  => $lastSeenAt ? Carbon::parse($lastSeenAt) : null,
         ]);
     }
@@ -137,12 +136,12 @@ class CriticalActionsController extends Controller
         // Tenant isolation: verify the caller belongs to this tenant (prevents IDOR).
         // Super-admins are exempt — they have cross-tenant access.
         if (! $isSuperAdmin && $actingUser) {
-            $hasMembership = TenantMembership::where('tenant_user_id', $actingUser->id)
+            $membership = TenantMembership::where('tenant_user_id', $actingUser->id)
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
-                ->exists();
+                ->first();
 
-            if (! $hasMembership) {
+            if (! $membership || $membership->role === 'member') {
                 return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
             }
         } elseif (! $isSuperAdmin) {
@@ -153,11 +152,8 @@ class CriticalActionsController extends Controller
 
         if ($userId) {
             Cache::put("ca_last_seen_{$tenantId}_{$userId}", now()->toIso8601String(), now()->addDays(30));
-            // Bust both legacy and new fast-badge keys
             Cache::forget("ca_badge_{$tenantId}_{$userId}");
-            Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
             Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
-            // Suppress badge for 5 minutes so it doesn't instantly reappear
             Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
         }
 
@@ -175,11 +171,11 @@ class CriticalActionsController extends Controller
         $actingUser   = Auth::guard('tenant')->user();
 
         if (! $isSuperAdmin && $actingUser) {
-            $hasMembership = TenantMembership::where('tenant_user_id', $actingUser->id)
+            $membership = TenantMembership::where('tenant_user_id', $actingUser->id)
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
-                ->exists();
-            if (! $hasMembership) {
+                ->first();
+            if (! $membership || $membership->role === 'member') {
                 return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
             }
         } elseif (! $isSuperAdmin) {
@@ -213,9 +209,8 @@ class CriticalActionsController extends Controller
             ['dismissed_at', 'action_type']
         );
 
-        // Bust badge cache so count updates promptly (mirrors markAllRead key set)
+        // Bust badge cache so count updates promptly
         Cache::forget("ca_badge_{$tenantId}_{$userId}");
-        Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
         Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
         // Bust dismissed-fingerprint cache so the next masterList() reflects this
         // dismissal immediately without waiting for the 30 s TTL to expire.
