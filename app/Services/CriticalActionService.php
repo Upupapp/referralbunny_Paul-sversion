@@ -228,6 +228,24 @@ class CriticalActionService
             fn() => $this->forTenant($tenantId, $opts)
         );
 
+        // Filter out actions the current user has dismissed
+        if (! empty($filters['user_id'])) {
+            try {
+                $dismissed = \Illuminate\Support\Facades\DB::table('critical_action_dismissals')
+                    ->where('tenant_id', $tenantId)
+                    ->where('user_id', $filters['user_id'])
+                    ->where('user_type', $filters['user_type'] ?? 'tenant_user')
+                    ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                    ->pluck('fingerprint')
+                    ->flip() // convert to hash map for O(1) lookup
+                    ->all();
+
+                if (! empty($dismissed)) {
+                    $all = array_filter($all, fn($a) => ! isset($dismissed[$a['fingerprint'] ?? '']));
+                }
+            } catch (\Throwable) {}
+        }
+
         // Apply filters
         if (! empty($filters['severity'])) {
             $all = array_filter($all, fn($a) => $a['severity'] === $filters['severity']);

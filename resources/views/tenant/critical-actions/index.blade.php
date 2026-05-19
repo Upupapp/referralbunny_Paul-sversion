@@ -85,6 +85,7 @@
     <form method="GET" action="{{ route('tenant.critical-actions', $tenant->id) }}" class="card space-y-3">
         <div class="flex flex-col sm:flex-row gap-3">
             {{-- Search --}}
+
             <div class="search-group flex-1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
@@ -99,27 +100,44 @@
             <button type="submit" class="btn-primary shrink-0">Search</button>
         </div>
 
-        <div class="filter-bar">
-            <label class="filter-pill" :class="''" >
-                <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
-                <select name="severity" onchange="this.form.submit()">
-                    @foreach($severities as $val => $label)
-                        <option value="{{ $val }}" {{ ($filters['severity'] ?? '') === $val ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </label>
+        {{-- Severity pills --}}
+        <div class="flex flex-wrap gap-1.5">
+            @foreach($severities as $val => $label)
+                @php
+                    $isActive = ($filters['severity'] ?? '') === $val;
+                    $sevColors = match($val) {
+                        'urgent' => ['active' => 'bg-red-600 text-white border-red-600',    'inactive' => 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'],
+                        'high'   => ['active' => 'bg-orange-500 text-white border-orange-500', 'inactive' => 'border-gray-200 text-gray-500 hover:border-orange-300 hover:text-orange-600'],
+                        'medium' => ['active' => 'bg-amber-500 text-white border-amber-500',   'inactive' => 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'],
+                        'low'    => ['active' => 'bg-blue-500 text-white border-blue-500',     'inactive' => 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'],
+                        'info'   => ['active' => 'bg-gray-500 text-white border-gray-500',     'inactive' => 'border-gray-200 text-gray-500 hover:border-gray-400'],
+                        default  => ['active' => 'bg-[#7B61FF] text-white border-[#7B61FF]',   'inactive' => 'border-gray-200 text-gray-500 hover:border-purple-300 hover:text-[#7B61FF]'],
+                    };
+                    $url = request()->url() . '?' . http_build_query(array_merge(request()->except(['severity','page']), $val ? ['severity' => $val] : []));
+                @endphp
+                <a href="{{ $url }}"
+                   class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-colors no-underline {{ $isActive ? $sevColors['active'] : $sevColors['inactive'] }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
 
-            <label class="filter-pill">
-                <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
-                <select name="category" onchange="this.form.submit()">
-                    @foreach($categories as $val => $label)
-                        <option value="{{ $val }}" {{ ($filters['category'] ?? '') === $val ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </label>
+        {{-- Category pills --}}
+        <div class="flex flex-wrap gap-1.5">
+            @foreach($categories as $val => $label)
+                @php
+                    $isActive = ($filters['category'] ?? '') === $val;
+                    $url = request()->url() . '?' . http_build_query(array_merge(request()->except(['category','page']), $val ? ['category' => $val] : []));
+                @endphp
+                <a href="{{ $url }}"
+                   class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-colors no-underline {{ $isActive ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'border-gray-200 text-gray-500 hover:border-purple-300 hover:text-[#7B61FF]' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
 
+        {{-- Date range + clear --}}
+        <div class="flex flex-wrap gap-1.5 items-center">
             <label class="filter-pill" title="From date">
                 <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <span style="font-size:10px;color:#9ca3af;margin-right:2px">From</span>
@@ -138,7 +156,7 @@
                 <a href="{{ route('tenant.critical-actions', $tenant->id) }}"
                    class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50 no-underline">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    Clear filters
+                    Clear all
                 </a>
             @endif
         </div>
@@ -245,12 +263,33 @@
                                     <p class="text-[10px] text-gray-400 mt-0.5">{{ $action['occurred_fmt'] ?? '' }}</p>
                                 </td>
                                 <td @click.stop>
-                                    @if($action['action_url'])
-                                        <a href="{{ $action['action_url'] }}"
-                                           class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors whitespace-nowrap">
-                                            {{ $action['action_label'] ?? 'Open' }} →
-                                        </a>
-                                    @endif
+                                    <div class="flex items-center gap-2 justify-end">
+                                        @if($action['action_url'])
+                                            <a href="{{ $action['action_url'] }}"
+                                               class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors whitespace-nowrap">
+                                                {{ $action['action_label'] ?? 'Open' }} →
+                                            </a>
+                                        @endif
+                                        @if($action['dismissible'] ?? false)
+                                            <button x-data="{ dismissing: false, dismissed: false }"
+                                                    x-show="!dismissed" x-cloak
+                                                    @click.prevent="if(dismissing||dismissed) return; dismissing=true;
+                                                        fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {
+                                                            method:'POST', credentials:'same-origin',
+                                                            headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Content-Type':'application/json','Accept':'application/json'},
+                                                            body: JSON.stringify({fingerprint:'{{ $action['fingerprint'] ?? '' }}', action_type:'{{ $action['type'] ?? '' }}'})
+                                                        }).then(r=>r.json()).then(d=>{
+                                                            if(d.success){ dismissed=true; $el.closest('tr').style.opacity='0'; setTimeout(()=>$el.closest('tr').remove(),300); }
+                                                            else { dismissing=false; }
+                                                        }).catch(()=>{ dismissing=false; })"
+                                                    :disabled="dismissing"
+                                                    title="Dismiss this item"
+                                                    class="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-40">
+                                                <svg x-show="!dismissing" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                <svg x-show="dismissing" x-cloak class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -265,7 +304,7 @@
                         $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
                         $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                     @endphp
-                    <div class="p-4 space-y-2 {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400 ca-new-row' : '' }}">
+                    <div class="p-4 space-y-2 ca-mobile-card {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400 ca-new-row' : '' }}">
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-1.5">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
@@ -279,12 +318,31 @@
                             <span class="text-[10px] text-gray-400">{{ $action['occurred_ago'] }}</span>
                         </div>
                         <p class="text-sm font-medium text-[#1E1B4B]">{{ $action['summary'] }}</p>
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between gap-2">
                             <p class="text-xs text-gray-500">{{ $action['actor_name'] }} · {{ $action['actor_role'] }}</p>
-                            @if($action['action_url'])
-                                <a href="{{ $action['action_url'] }}"
-                                   class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">{{ $action['action_label'] ?? 'Open' }} →</a>
-                            @endif
+                            <div class="flex items-center gap-2 shrink-0">
+                                @if($action['action_url'])
+                                    <a href="{{ $action['action_url'] }}"
+                                       class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">{{ $action['action_label'] ?? 'Open' }} →</a>
+                                @endif
+                                @if($action['dismissible'] ?? false)
+                                    <button x-data="{ dismissing: false }"
+                                            @click.prevent="if(dismissing) return; dismissing=true;
+                                                fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {
+                                                    method:'POST', credentials:'same-origin',
+                                                    headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Content-Type':'application/json','Accept':'application/json'},
+                                                    body: JSON.stringify({fingerprint:'{{ $action['fingerprint'] ?? '' }}', action_type:'{{ $action['type'] ?? '' }}'})
+                                                }).then(r=>r.json()).then(d=>{
+                                                    if(d.success){ $el.closest('.ca-mobile-card').style.opacity='0'; setTimeout(()=>$el.closest('.ca-mobile-card').remove(),300); }
+                                                    else { dismissing=false; }
+                                                }).catch(()=>{ dismissing=false; })"
+                                            :disabled="dismissing"
+                                            title="Dismiss"
+                                            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @endforeach

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class CriticalActionsController extends Controller
 {
@@ -53,6 +54,9 @@ class CriticalActionsController extends Controller
         $canSeeExports = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
             || $this->permissions->can($membership, 'approve_export_requests');
 
+        $userId     = $actingUser?->id ?? ($isSuperAdmin ? Auth::guard('web')->id() : null);
+        $userType   = $isSuperAdmin && !$actingUser ? 'web' : 'tenant_user';
+
         $validSorts = ['recency_desc', 'recency_asc'];
         $filters = [
             'search'           => $request->input('search'),
@@ -70,13 +74,14 @@ class CriticalActionsController extends Controller
             'until'            => $request->filled('until')
                 ? Carbon::parse($request->input('until'))->endOfDay()
                 : null,
+            'user_id'          => $userId,
+            'user_type'        => $userType,
         ];
 
         $result = $this->service->masterList($tenantId, $filters, 25);
 
         // Track "last seen" so new items can be highlighted.
         // Read the previous timestamp BEFORE updating it.
-        $userId      = $actingUser?->id ?? ($isSuperAdmin ? Auth::guard('web')->id() : null);
         $seenCacheKey = "ca_last_seen_{$tenantId}_{$userId}";
         $lastSeenAt   = $userId ? Cache::get($seenCacheKey) : null;
 
@@ -157,6 +162,59 @@ class CriticalActionsController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'All critical actions marked as seen.']);
+    }
+
+    /**
+     * Dismiss a single dismissible critical action for the current user.
+     * POST /tenant/{tenantId}/critical-actions/dismiss
+     * Body: { fingerprint, action_type }
+     */
+    public function dismiss(string $tenantId, Request $request): \Illuminate\Http\JsonResponse
+    {
+        $isSuperAdmin = Auth::guard('web')->check();
+        $actingUser   = Auth::guard('tenant')->user();
+
+        if (! $isSuperAdmin && $actingUser) {
+            $hasMembership = TenantMembership::where('tenant_user_id', $actingUser->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->exists();
+            if (! $hasMembership) {
+                return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
+            }
+        } elseif (! $isSuperAdmin) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $fingerprint = $request->input('fingerprint');
+        $actionType  = $request->input('action_type', '');
+
+        if (! $fingerprint || strlen($fingerprint) > 64) {
+            return response()->json(['success' => false, 'message' => 'Invalid fingerprint.'], 422);
+        }
+
+        $userId   = $actingUser?->id ?? Auth::guard('web')->id();
+        $userType = ($isSuperAdmin && ! $actingUser) ? 'web' : 'tenant_user';
+
+        \Illuminate\Support\Facades\DB::table('critical_action_dismissals')->upsert(
+            [
+                'tenant_id'    => $tenantId,
+                'user_id'      => $userId,
+                'user_type'    => $userType,
+                'fingerprint'  => $fingerprint,
+                'action_type'  => $actionType,
+                'dismissed_at' => now(),
+                'expires_at'   => null,
+            ],
+            ['tenant_id', 'user_id', 'user_type', 'fingerprint'],
+            ['dismissed_at', 'action_type']
+        );
+
+        // Bust badge cache so count updates promptly
+        Cache::forget("ca_badge_{$tenantId}_{$userId}");
+        Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
+
+        return response()->json(['success' => true]);
     }
 
     /**
