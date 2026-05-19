@@ -25,7 +25,8 @@ return new class extends Migration
         try {
             DB::statement("ALTER TABLE lead_history ADD CONSTRAINT lead_history_type_check
                 CHECK (type = ANY (ARRAY['assignment','commission','expiry','stage','financial',
-                                        'note','partner','deal','import','amount','referrer','system']))");
+                                        'note','partner','deal','import','amount','referrer',
+                                        'approval','archive','system']))");
         } catch (\Throwable) {}
     }
 };
