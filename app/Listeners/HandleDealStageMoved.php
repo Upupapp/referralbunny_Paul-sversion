@@ -48,7 +48,7 @@ class HandleDealStageMoved implements ShouldQueue
             ),
             recipientEmail: $email,
             recipientType:  'reseller',
-            emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage,
+            emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage . '.' . now()->format('Ymd'),
             subject:        "Deal stage updated: {$event->leadName} → " . ucfirst(str_replace('_', ' ', $event->toStage)),
             recipientId:    $resellerId,
             tenantId:       $event->tenantId,
