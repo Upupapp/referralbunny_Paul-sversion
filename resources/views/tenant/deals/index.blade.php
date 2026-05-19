@@ -446,7 +446,7 @@
                     <p class="text-sm font-semibold text-[#1E1B4B]">
                         <span x-text="archivedLeads.length"></span> archived deal<span x-show="archivedLeads.length !== 1">s</span>
                     </p>
-                    <p class="text-xs text-gray-400 mt-0.5">Deals are permanently deleted 10 days after archiving. Restore any deal before it expires.</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Soft-deleted deals are purged after 10 days. Status-archived deals (approved archive requests) can be reactivated.</p>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -477,18 +477,26 @@
                                 </td>
                                 <td class="hidden sm:table-cell text-sm text-gray-600" x-text="deal.reseller_name || '—'"></td>
                                 <td class="text-sm font-semibold text-[#1E1B4B]" x-text="deal.deal_value ? '₱' + Number(deal.deal_value).toLocaleString() : '—'"></td>
-                                <td class="hidden md:table-cell text-xs text-gray-500" x-text="deal.deleted_by || 'Admin'"></td>
+                                <td class="hidden md:table-cell text-xs text-gray-500" x-text="deal.archive_type === 'status_archived' ? 'Approval' : (deal.deleted_by || 'Admin')"></td>
                                 <td class="hidden md:table-cell text-xs text-gray-500" x-text="archiveDate(deal.deleted_at)"></td>
                                 <td>
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                                          :class="{
-                                              'bg-red-100 text-red-700':    deal.days_until_purge <= 2,
-                                              'bg-amber-100 text-amber-700': deal.days_until_purge > 2 && deal.days_until_purge <= 5,
-                                              'bg-gray-100 text-gray-600':  deal.days_until_purge > 5,
-                                          }">
-                                        <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <span x-text="deal.days_until_purge === 0 ? 'Purging soon' : (deal.days_until_purge + 'd left')"></span>
-                                    </span>
+                                    <template x-if="deal.archive_type === 'status_archived'">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                                            Approved archive
+                                        </span>
+                                    </template>
+                                    <template x-if="deal.archive_type !== 'status_archived'">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                                              :class="{
+                                                  'bg-red-100 text-red-700':    deal.days_until_purge <= 2,
+                                                  'bg-amber-100 text-amber-700': deal.days_until_purge > 2 && deal.days_until_purge <= 5,
+                                                  'bg-gray-100 text-gray-600':  deal.days_until_purge > 5,
+                                              }">
+                                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <span x-text="deal.days_until_purge === 0 ? 'Purging soon' : (deal.days_until_purge + 'd left')"></span>
+                                        </span>
+                                    </template>
                                 </td>
                                 <td>
                                     <div class="flex items-center gap-2">
@@ -497,13 +505,15 @@
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50">
                                             <svg x-show="restoring === deal.id" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                             <svg x-show="restoring !== deal.id" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                            <span x-text="restoring === deal.id ? 'Restoring…' : 'Restore'"></span>
+                                            <span x-text="restoring === deal.id ? 'Restoring…' : (deal.archive_type === 'status_archived' ? 'Reactivate' : 'Restore')"></span>
                                         </button>
+                                        <template x-if="deal.archive_type !== 'status_archived'">
                                         <button @click="openForceDelete(deal)"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
                                             <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             Delete
                                         </button>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>

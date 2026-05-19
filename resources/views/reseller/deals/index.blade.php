@@ -32,7 +32,18 @@
             </button>
         </div>
         <div class="filter-bar">
-            <label class="filter-pill" :class="filterStatus ? 'active' : ''">
+            {{-- Archived toggle — mutually exclusive with status/stage filters --}}
+            <button @click="toggleArchived()"
+                    :class="filterArchived ? 'active !border-gray-400 !text-gray-700' : ''"
+                    class="filter-pill gap-1.5">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                <span x-text="filterArchived ? 'Archived' : 'Archived'"></span>
+                <span x-show="archivedLoaded && archivedLeads.length > 0"
+                      class="inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold rounded-full"
+                      :class="filterArchived ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-600'"
+                      x-text="archivedLeads.length"></span>
+            </button>
+            <label class="filter-pill" :class="(filterStatus && !filterArchived) ? 'active' : ''" x-show="!filterArchived">
                 <select x-effect="$el.value = filterStatus" @change="filterStatus = $event.target.value; applyFilters()">
                     <option value="">All Status</option>
                     <option value="active">Active</option>
@@ -41,7 +52,7 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            <label class="filter-pill" :class="filterStage ? 'active' : ''">
+            <label class="filter-pill" :class="(filterStage && !filterArchived) ? 'active' : ''" x-show="!filterArchived">
                 <select x-effect="$el.value = filterStage" @change="filterStage = $event.target.value; applyFilters()">
                     <option value="">All Stages</option>
                     <option value="introduction">Introduction</option>
@@ -52,8 +63,8 @@
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
-            {{-- Partner filter — only shown when at least one deal has a partner --}}
-            <template x-if="uniquePartners.length > 0">
+            {{-- Partner filter — only shown when at least one deal has a partner and not in archived mode --}}
+            <template x-if="uniquePartners.length > 0 && !filterArchived">
             <label class="filter-pill" :class="filterPartner ? 'active' : ''">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
                 <select x-effect="$el.value = filterPartner" @change="filterPartner = $event.target.value; applyFilters()">
@@ -72,6 +83,7 @@
                     Clear
                 </button>
             </template>
+
         </div>
     </div>
 
@@ -123,10 +135,20 @@
                 <tbody>
                     <template x-if="filtered.length === 0 && !loading">
                         <tr><td colspan="8" class="py-14 text-center">
-                            <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
-                            <p class="text-gray-400 text-sm font-medium">No deals yet</p>
-                            <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
-                            <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Create a Deal</button>
+                            <img :src="filterArchived ? '/images/mascots/r-bunny-sleeping.webp' : '/images/mascots/r-bunny-sleeping.webp'" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
+                            <template x-if="filterArchived">
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">No archived deals</p>
+                                    <p class="text-xs text-gray-400 mt-1">Archived deals will appear here once approved by an admin.</p>
+                                </div>
+                            </template>
+                            <template x-if="!filterArchived">
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">No deals yet</p>
+                                    <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
+                                    <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Create a Deal</button>
+                                </div>
+                            </template>
                         </td></tr>
                     </template>
                     <template x-for="d in filtered" :key="d.id">
@@ -188,7 +210,7 @@
                             </td>
                             <td>
                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
-                                      :class="{'bg-emerald-100 text-emerald-700':d.status==='active','bg-amber-100 text-amber-700':d.status==='expiring','bg-red-100 text-red-600':d.status==='expired','bg-gray-100 text-gray-500':!['active','expiring','expired'].includes(d.status||'')}"
+                                      :class="{'bg-emerald-100 text-emerald-700':d.status==='active','bg-amber-100 text-amber-700':d.status==='expiring','bg-red-100 text-red-600':d.status==='expired','bg-gray-200 text-gray-600':d.status==='archived','bg-gray-100 text-gray-500':!['active','expiring','expired','archived'].includes(d.status||'')}"
                                       x-text="d.status || 'active'"></span>
                             </td>
                             <td x-show="d.stage !== 'paid'">
@@ -428,6 +450,7 @@ function resellerDeals(tenantId, resellerName) {
     return {
         leads: [], filtered: [], loading: true,
         search: '', filterStatus: '', filterStage: '', filterPartner: '',
+        filterArchived: false, archivedLeads: [], archivedLoaded: false,
         showClaim: false, claimStep: 1, dealMode: 'standard',
         claimProvince: '', availableOrgs: [], loadingOrgs: false,
         selectedOrg: null, saving: false, claimError: '',
@@ -484,15 +507,35 @@ function resellerDeals(tenantId, resellerName) {
         },
 
         applyFilters() {
-            const q  = this.search.toLowerCase();
-            const fp = this.filterPartner.toLowerCase();
-            this.filtered = this.leads.filter(d => {
+            const q    = this.search.toLowerCase();
+            const fp   = this.filterPartner.toLowerCase();
+            const pool = this.filterArchived ? this.archivedLeads : this.leads;
+            this.filtered = pool.filter(d => {
                 const matchQ  = !q  || (d.name||'').toLowerCase().includes(q);
-                const matchSt = !this.filterStatus || d.status === this.filterStatus;
-                const matchSg = !this.filterStage  || d.stage  === this.filterStage;
+                const matchSt = this.filterArchived || !this.filterStatus || d.status === this.filterStatus;
+                const matchSg = this.filterArchived || !this.filterStage  || d.stage  === this.filterStage;
                 const matchPa = !fp || (d.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
                 return matchQ && matchSt && matchSg && matchPa;
             });
+        },
+
+        async toggleArchived() {
+            this.filterArchived = !this.filterArchived;
+            this.filterStatus = ''; this.filterStage = ''; this.filterPartner = '';
+            if (this.filterArchived && !this.archivedLoaded) {
+                this.loading = true;
+                try {
+                    const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1&status=archived`, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    const data = await res.json();
+                    this.archivedLeads = Array.isArray(data) ? data : (data.data || []);
+                    this.archivedLoaded = true;
+                } catch(e) { this.archivedLeads = []; }
+                this.loading = false;
+            }
+            this.applyFilters();
         },
 
         async loadAvailableOrgs() {

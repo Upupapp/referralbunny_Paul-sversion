@@ -22,6 +22,7 @@
 
     $pendingStageMoveRequest  = collect($pendingApprovals)->where('type', 'deal_stage_move')->first();
     $pendingArchiveRequest    = collect($pendingApprovals)->where('type', 'deal_archive')->first();
+    $isArchived               = $lead->status === 'archived';
 
     $stageColors = ['introduction'=>'#9CA3AF','presentation'=>'#3B82F6','contract_sent'=>'#F59E0B','signed'=>'#8B5CF6','paid'=>'#10B981'];
     $stageColor  = $stageColors[$lead->stage] ?? '#9CA3AF';
@@ -101,7 +102,17 @@ window.__rsDeal = {
     </div>
     @endif
 
-    @if($pendingArchiveRequest)
+    @if($isArchived)
+    <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-gray-100 border border-gray-300">
+        <svg class="w-5 h-5 text-gray-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/>
+        </svg>
+        <div>
+            <p class="text-sm font-semibold text-gray-700">This deal has been archived</p>
+            <p class="text-xs text-gray-500 mt-0.5">Archived deals are read-only. Contact an admin if you need to reactivate this deal.</p>
+        </div>
+    </div>
+    @elseif($pendingArchiveRequest)
     <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-red-50 border border-red-200">
         <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/>
@@ -132,10 +143,14 @@ window.__rsDeal = {
                               style="background:{{ $stageColor }}">
                             {{ $stageLabels[$lead->stage] ?? ucfirst($lead->stage) }}
                         </span>
-                        @if($lead->status === 'expiring')
+                        @if($isArchived)
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-600 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
+                            Archived
+                        </span>
+                        @elseif($lead->status === 'expiring')
                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Expiring</span>
-                        @endif
-                        @if($lead->status === 'expired')
+                        @elseif($lead->status === 'expired')
                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600">Expired</span>
                         @endif
                     </div>
@@ -278,7 +293,7 @@ window.__rsDeal = {
 
         {{-- ── Bottom zone: Action Bar ──────────────────────────── --}}
         <div class="mt-5 pt-4 border-t border-gray-100">
-
+        @if(!$isArchived)
             {{-- ── Desktop: two explicit flex rows of 3 ── --}}
             <div class="hidden sm:block space-y-2 mb-3">
                 {{-- Row 1 --}}
@@ -420,6 +435,7 @@ window.__rsDeal = {
                 </div>
                 @endif
             </div>
+        @endif
 
         </div>
     </div>
@@ -470,6 +486,7 @@ window.__rsDeal = {
                     {{ $primarySplits->count() + $secondarySplits->count() + count($partnerSplits) }} listed
                 </span>
             </div>
+            @if(!$isArchived)
             <div class="flex items-center gap-2">
                 <button @click="showAddReferrer = true"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
@@ -482,6 +499,7 @@ window.__rsDeal = {
                     Partner
                 </button>
             </div>
+            @endif
         </div>
 
         {{-- Column headers --}}
@@ -609,7 +627,7 @@ window.__rsDeal = {
                         <p class="text-sm font-bold text-blue-700">₱{{ number_format($rAmt, 0) }}</p>
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
-                    @if($splitCanEdit)
+                    @if($splitCanEdit && !$isArchived)
                     <button @click="editing = true"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
@@ -729,7 +747,9 @@ window.__rsDeal = {
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Notes</h2>
+            @if(!$isArchived)
             <button @click="showAddNote = true" class="text-xs text-teal-600 font-semibold hover:underline">+ Add Note</button>
+            @endif
         </div>
         @if(count($notes) === 0)
         <div class="px-5 py-8 text-center">

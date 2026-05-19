@@ -69,6 +69,13 @@ class LeadController extends Controller
             $query->forResellerOrSplit($request->reseller_name);
         }
 
+        // Archived deals are excluded by default; pass status=archived to show only archived.
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        } else {
+            $query->where('status', '!=', 'archived');
+        }
+
         // Paginate to prevent OOM on large tenants; callers may request all via per_page=all
         $perPage = $request->get('per_page', 200); // default raised from 50 → 200
         if ($perPage === 'all' && TenantContext::isSuperAdmin()) {
@@ -694,18 +701,40 @@ class LeadController extends Controller
             return response()->json(['error' => 'Tenant context required.'], 403);
         }
 
-        $leads = Lead::onlyTrashed()
+        // Soft-deleted leads (hard-archived by admin)
+        $softDeleted = Lead::onlyTrashed()
             ->where('tenant_id', $tenantId)
             ->select(['id', 'tenant_id', 'name', 'stage', 'status', 'reseller_name', 'deal_value', 'commission_status', 'deleted_at', 'deleted_by'])
             ->orderBy('deleted_at', 'desc')
-            ->limit(500) // archived deals are purged after 10 days; a 500-row cap is safe
+            ->limit(500)
             ->get()
             ->map(function (Lead $lead) {
                 $arr = $lead->toArray();
                 $daysSince = (int) $lead->deleted_at->diffInDays(now());
                 $arr['days_until_purge'] = max(0, 10 - $daysSince);
+                $arr['archive_type'] = 'deleted';
                 return $arr;
             });
+
+        // Status-archived leads (approved archive requests — not soft-deleted)
+        $statusArchived = Lead::where('tenant_id', $tenantId)
+            ->where('status', 'archived')
+            ->select(['id', 'tenant_id', 'name', 'stage', 'status', 'reseller_name', 'deal_value', 'commission_status', 'updated_at'])
+            ->orderBy('updated_at', 'desc')
+            ->limit(500)
+            ->get()
+            ->map(function (Lead $lead) {
+                $arr = $lead->toArray();
+                $arr['deleted_at']      = $lead->updated_at; // approximation for display
+                $arr['deleted_by']      = null;
+                $arr['days_until_purge'] = null;
+                $arr['archive_type']    = 'status_archived';
+                return $arr;
+            });
+
+        $leads = $softDeleted->concat($statusArchived)
+            ->sortByDesc('deleted_at')
+            ->values();
 
         return response()->json($leads);
     }
@@ -717,6 +746,18 @@ class LeadController extends Controller
         }
 
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+
+        // Check status-archived first (not soft-deleted — approved via archive request)
+        $statusArchived = Lead::where('tenant_id', $tenantId)
+            ->where('id', $leadId)
+            ->where('status', 'archived')
+            ->first();
+
+        if ($statusArchived) {
+            $statusArchived->update(['status' => 'active']);
+            return response()->json(['success' => true, 'message' => 'Deal reactivated.']);
+        }
+
         $lead = Lead::onlyTrashed()
             ->where('tenant_id', $tenantId)
             ->where('id', $leadId)
