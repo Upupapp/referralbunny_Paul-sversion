@@ -31,10 +31,14 @@ class NotificationDispatchService
         ?string $deduplicationKey  = null,
         array   $metadata          = [],
     ): ?Notification {
-        // Dedup check
+        // Dedup check — scoped to tenant_id when available to prevent theoretical
+        // cross-tenant collisions if deal IDs are ever non-UUID (e.g., sequential ints).
         if ($deduplicationKey) {
-            $exists = Notification::where('deduplication_key', $deduplicationKey)->exists();
-            if ($exists) return null;
+            $q = Notification::where('deduplication_key', $deduplicationKey);
+            if ($tenantId) {
+                $q->where('tenant_id', $tenantId);
+            }
+            if ($q->exists()) return null;
         }
 
         return Notification::create([
