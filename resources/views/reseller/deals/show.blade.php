@@ -42,7 +42,7 @@ window.__rsDeal = {
 <div x-data="rsDealData()" class="space-y-5 max-w-3xl mx-auto">
 
     {{-- ── LGU IDS Default Amount Confirmation Prompt (Referrer) ── --}}
-    @if(($lead->data['amount_defaulted'] ?? false) && ($lead->data['amount_confirmation_status'] ?? '') === 'pending')
+    @if(!$isArchived && ($lead->data['amount_defaulted'] ?? false) && ($lead->data['amount_confirmation_status'] ?? '') === 'pending')
     <div x-data="{ visible: true, busy: false, err: null }" x-show="visible" x-cloak x-transition
          class="flex flex-col sm:flex-row sm:items-start gap-4 px-5 py-4 rounded-2xl bg-amber-50 border border-amber-200">
         <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">

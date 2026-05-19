@@ -37,7 +37,7 @@
                     :class="filterArchived ? 'active !border-gray-400 !text-gray-700' : ''"
                     class="filter-pill gap-1.5">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
-                <span x-text="filterArchived ? 'Archived' : 'Archived'"></span>
+                <span>Archived</span>
                 <span x-show="archivedLoaded && archivedLeads.length > 0"
                       class="inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold rounded-full"
                       :class="filterArchived ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-600'"

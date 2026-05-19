@@ -755,6 +755,36 @@ class LeadController extends Controller
 
         if ($statusArchived) {
             $statusArchived->update(['status' => 'active']);
+
+            // Log activity
+            try {
+                app(\App\Services\DealActivityService::class)->record(
+                    $statusArchived,
+                    'Deal reactivated by admin — status changed from archived to active.',
+                    'deal',
+                );
+            } catch (\Throwable) {}
+
+            // Notify assigned referrer
+            try {
+                $reseller = \App\Models\Reseller::where('tenant_id', $statusArchived->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($statusArchived->reseller_name ?? '')])
+                    ->first();
+                if ($reseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   (string) $reseller->id,
+                        tenantId:     $statusArchived->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        'Your deal has been reactivated',
+                        body:         '"' . $statusArchived->name . '" has been reactivated by an admin and is now active again.',
+                        actionUrl:    "/reseller/{$statusArchived->tenant_id}/deals/{$statusArchived->id}",
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $statusArchived->id . ':reactivated:' . now()->format('YmdHi'),
+                    );
+                }
+            } catch (\Throwable) {}
+
             return response()->json(['success' => true, 'message' => 'Deal reactivated.']);
         }
 

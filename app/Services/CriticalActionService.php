@@ -1551,7 +1551,7 @@ class CriticalActionService
         try {
             $rows = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->whereNotIn('status', ['expired', 'declined'])
+                ->whereNotIn('status', ['expired', 'declined', 'archived'])
                 ->whereNull('deleted_at')
                 ->whereRaw("data::jsonb->>'amount_defaulted' = 'true'")
                 ->whereRaw("data::jsonb->>'amount_confirmation_status' = 'pending'")
