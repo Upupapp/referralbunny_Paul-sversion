@@ -290,8 +290,8 @@ document.addEventListener('alpine:init', () => {
                             @if($action['action_url'])
                                 <a href="{{ $action['action_url'] }}"
                                    class="text-[10px] font-semibold text-[#7B61FF] hover:text-purple-800 shrink-0 mt-1 transition-colors"
-                                   aria-label="Open {{ $action['summary'] }}">
-                                    Open
+                                   aria-label="{{ $action['action_label'] ?? 'Open' }}: {{ $action['summary'] }}">
+                                    {{ $action['action_label'] ?? 'Open' }}
                                 </a>
                             @endif
                         </div>

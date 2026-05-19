@@ -79,7 +79,7 @@ class ResellerPortalController extends Controller
         // ── Unique partner count via subquery (avoids PHP array fan-out) ──────
         $partnerCount = 0;
         try {
-            $lower = strtolower($reseller->name);
+            $lower = strtolower($reseller->name ?? '');
             $partnerCount = DB::table('deal_partner_splits')
                 ->whereNull('deal_partner_splits.deleted_at')
                 ->where('deal_partner_splits.status', '!=', 'removed')

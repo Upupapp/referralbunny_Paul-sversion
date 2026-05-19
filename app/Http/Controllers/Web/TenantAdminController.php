@@ -166,14 +166,12 @@ class TenantAdminController extends Controller
                     'expiring_deals'   => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', 'expiring')->count(),
                     'pending_invites'  => DB::table('tenant_invitations')->where('tenant_id', $tenantId)->where('status', 'pending')->where('expires_at', '>', now())->count(),
                     'import_warnings'  => DB::table('import_batches')->where('tenant_id', $tenantId)->where('status', 'completed_with_warnings')->where('created_at', '>', now()->subDays(14))->count(),
-                    'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereNull('reseller_name')->whereIn('status', ['active', 'expiring'])->count(),
+                    'missing_referrer' => DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where(fn($q) => $q->whereNull('reseller_name')->orWhere('reseller_name', ''))->whereIn('status', ['active', 'expiring'])->count(),
                 ];
             });
         } catch (\Throwable) {
             $dashboardCounts = ['expiring_deals' => 0, 'pending_invites' => 0, 'import_warnings' => 0, 'missing_referrer' => 0];
         }
-
-        $expiryAlert = null;
 
         // Pending tasks widget — shown on every dashboard load for lgu-ids
         $pendingTasks = collect();
@@ -210,7 +208,7 @@ class TenantAdminController extends Controller
         }
 
         return view('tenant.dashboard', array_merge(
-            compact('tenant', 'metric', 'accessExtendedNotif', 'expiryAlert', 'dailyBriefing',
+            compact('tenant', 'metric', 'accessExtendedNotif', 'dailyBriefing',
                     'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling',
                     'pendingTasks', 'newDealsSinceLastSession'),
             $this->configMeta($tenantId)
