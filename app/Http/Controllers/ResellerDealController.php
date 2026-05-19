@@ -1212,15 +1212,12 @@ class ResellerDealController extends Controller
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {
                 $archiveReason = $approval->reason ?? ($approval->request_payload['reason'] ?? null);
-                $updateData = [
+                $lead->update([
                     'status'         => 'archived',
                     'archive_reason' => $archiveReason,
-                ];
-                // archived_at column added in migration_v44; fall back gracefully if not yet migrated
-                try {
-                    $updateData['archived_at'] = now();
-                } catch (\Throwable) {}
-                $lead->update($updateData);
+                    'archived_at'    => now(),
+                ]);
+                \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
 
                 app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
                     'category'   => 'archive',
