@@ -188,7 +188,7 @@ class LeadController extends Controller
         $data = $request->validate([
             'name'               => 'required|string',
             'stage'              => 'required|string',
-            'status'             => 'nullable|in:active,expiring,expired,reassigned,declined,archived',
+            'status'             => 'nullable|in:active,expiring,expired,reassigned,declined',
             'days_left'          => 'nullable|integer',
             'reseller_name'      => 'required|string',
             'new_reseller_email' => 'nullable|email',
@@ -483,7 +483,7 @@ class LeadController extends Controller
         $data = $request->validate([
             'name'              => 'sometimes|string',
             'stage'             => 'sometimes|string',
-            'status'            => 'sometimes|in:active,expiring,expired,reassigned,declined,archived',
+            'status'            => 'sometimes|in:active,expiring,expired,reassigned,declined',
             'days_left'         => 'sometimes|integer',
             'reseller_name'     => 'sometimes|string',
             'commission_status' => 'sometimes|in:pending,locked,paid',

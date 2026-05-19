@@ -30,6 +30,9 @@ return new class extends Migration
     {
         try {
             DB::statement('ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_status_check');
+        } catch (\Throwable) {}
+
+        try {
             DB::statement("ALTER TABLE leads ADD CONSTRAINT leads_status_check
                 CHECK (status = ANY (ARRAY[
                     'active'::text, 'expiring'::text, 'expired'::text,
