@@ -19,8 +19,8 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable(); // null = permanent; datetime = auto-resurface
 
             $table->index(['tenant_id', 'user_id', 'user_type']);
-            $table->index('fingerprint');
-            // One dismissal per user per fingerprint (upsert-safe)
+            // The unique constraint below already covers (tenant_id, user_id, user_type, fingerprint)
+            // and is used by upsert(). A bare fingerprint index would be redundant — removed.
             $table->unique(['tenant_id', 'user_id', 'user_type', 'fingerprint'], 'ca_dismissals_unique');
         });
     }

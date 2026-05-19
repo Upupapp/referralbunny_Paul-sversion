@@ -297,9 +297,11 @@ $workspaceBadge += $criticalBadge;
          when the 60s critical-badge poller fires without a full page reload. --}}
     <div x-data="{
             wsTotal: {{ (int) $workspaceBadge }},
+            criticalCount: {{ (int) $criticalBadge }},
             init() {
                 window.addEventListener('critical-badge:updated', (e) => {
                     const newCritical = typeof e.detail?.count === 'number' ? e.detail.count : {{ (int) $criticalBadge }};
+                    this.criticalCount = newCritical;
                     this.wsTotal = Math.max(0, {{ (int) ($taskBadge + $msgBadge) }} + newCritical);
                 });
             }
@@ -316,7 +318,7 @@ $workspaceBadge += $criticalBadge;
             {{-- Live total: hidden at 0, capped at 9+ (consistent with notification bell). --}}
             <span x-show="wsTotal > 0" x-cloak
                   class="nav-badge nav-badge-orange mr-1"
-                  :aria-label="[criticalCount > 0 ? criticalCount + ' critical' : '', $taskBadge > 0 ? '{{ $taskBadge }} tasks' : '', $msgBadge > 0 ? '{{ $msgBadge }} messages' : ''].filter(Boolean).join(', ') + ' — ' + wsTotal + ' total item' + (wsTotal === 1 ? '' : 's') + ' need attention'"
+                  :aria-label="[criticalCount > 0 ? criticalCount + ' critical' : '', {{ (int) $taskBadge }} > 0 ? '{{ (int) $taskBadge }} tasks' : '', {{ (int) $msgBadge }} > 0 ? '{{ (int) $msgBadge }} messages' : ''].filter(Boolean).join(', ') + ' — ' + wsTotal + ' total item' + (wsTotal === 1 ? '' : 's') + ' need attention'"
                   x-text="wsTotal > 99 ? '99+' : wsTotal"></span>
             @if($workspaceBadge > 0)
                 <noscript><span class="nav-badge nav-badge-orange mr-1">{{ $workspaceBadge > 99 ? '99+' : $workspaceBadge }}</span></noscript>

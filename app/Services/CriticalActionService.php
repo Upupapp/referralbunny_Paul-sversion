@@ -228,17 +228,25 @@ class CriticalActionService
             fn() => $this->forTenant($tenantId, $opts)
         );
 
-        // Filter out actions the current user has dismissed
+        // Filter out actions the current user has dismissed.
+        // Cached for 30 s per user — invalidated immediately on dismiss so UX stays snappy.
         if (! empty($filters['user_id'])) {
             try {
-                $dismissed = \Illuminate\Support\Facades\DB::table('critical_action_dismissals')
-                    ->where('tenant_id', $tenantId)
-                    ->where('user_id', $filters['user_id'])
-                    ->where('user_type', $filters['user_type'] ?? 'tenant_user')
-                    ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->pluck('fingerprint')
-                    ->flip() // convert to hash map for O(1) lookup
-                    ->all();
+                $userType          = $filters['user_type'] ?? 'tenant_user';
+                $dismissedCacheKey = "ca_dismissed:{$tenantId}:{$filters['user_id']}:{$userType}";
+
+                $dismissed = Cache::remember(
+                    $dismissedCacheKey,
+                    30,
+                    fn() => \Illuminate\Support\Facades\DB::table('critical_action_dismissals')
+                        ->where('tenant_id', $tenantId)
+                        ->where('user_id', $filters['user_id'])
+                        ->where('user_type', $userType)
+                        ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                        ->pluck('fingerprint')
+                        ->flip() // convert to hash map for O(1) lookup
+                        ->all()
+                );
 
                 if (! empty($dismissed)) {
                     $all = array_filter($all, fn($a) => ! isset($dismissed[$a['fingerprint'] ?? '']));

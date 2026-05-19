@@ -277,11 +277,22 @@
                                                         fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {
                                                             method:'POST', credentials:'same-origin',
                                                             headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Content-Type':'application/json','Accept':'application/json'},
-                                                            body: JSON.stringify({fingerprint:'{{ $action['fingerprint'] ?? '' }}', action_type:'{{ $action['type'] ?? '' }}'})
+                                                            body: JSON.stringify({fingerprint:'{{ e($action['fingerprint'] ?? '') }}', action_type:'{{ e($action['type'] ?? '') }}'})
                                                         }).then(r=>r.json()).then(d=>{
-                                                            if(d.success){ dismissed=true; $el.closest('tr').style.opacity='0'; setTimeout(()=>$el.closest('tr').remove(),300); }
-                                                            else { dismissing=false; }
-                                                        }).catch(()=>{ dismissing=false; })"
+                                                            if(d.success){
+                                                                dismissed=true;
+                                                                const row=$el.closest('tr');
+                                                                row.style.transition='opacity .3s';
+                                                                row.style.opacity='0';
+                                                                setTimeout(()=>row.remove(),300);
+                                                            } else {
+                                                                dismissing=false;
+                                                                window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'error',message:'Could not dismiss this item. Please try again.'}}));
+                                                            }
+                                                        }).catch(()=>{
+                                                            dismissing=false;
+                                                            window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'error',message:'Could not dismiss this item. Please check your connection.'}}));
+                                                        })"
                                                     :disabled="dismissing"
                                                     title="Dismiss this item"
                                                     class="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-40">
@@ -326,20 +337,33 @@
                                        class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">{{ $action['action_label'] ?? 'Open' }} →</a>
                                 @endif
                                 @if($action['dismissible'] ?? false)
-                                    <button x-data="{ dismissing: false }"
-                                            @click.prevent="if(dismissing) return; dismissing=true;
+                                    <button x-data="{ dismissing: false, dismissed: false }"
+                                            x-show="!dismissed" x-cloak
+                                            @click.prevent="if(dismissing||dismissed) return; dismissing=true;
                                                 fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {
                                                     method:'POST', credentials:'same-origin',
                                                     headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Content-Type':'application/json','Accept':'application/json'},
-                                                    body: JSON.stringify({fingerprint:'{{ $action['fingerprint'] ?? '' }}', action_type:'{{ $action['type'] ?? '' }}'})
+                                                    body: JSON.stringify({fingerprint:'{{ e($action['fingerprint'] ?? '') }}', action_type:'{{ e($action['type'] ?? '') }}'})
                                                 }).then(r=>r.json()).then(d=>{
-                                                    if(d.success){ $el.closest('.ca-mobile-card').style.opacity='0'; setTimeout(()=>$el.closest('.ca-mobile-card').remove(),300); }
-                                                    else { dismissing=false; }
-                                                }).catch(()=>{ dismissing=false; })"
+                                                    if(d.success){
+                                                        dismissed=true;
+                                                        const card=$el.closest('.ca-mobile-card');
+                                                        card.style.transition='opacity .3s';
+                                                        card.style.opacity='0';
+                                                        setTimeout(()=>card.remove(),300);
+                                                    } else {
+                                                        dismissing=false;
+                                                        window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'error',message:'Could not dismiss this item. Please try again.'}}));
+                                                    }
+                                                }).catch(()=>{
+                                                    dismissing=false;
+                                                    window.dispatchEvent(new CustomEvent('show-toast',{detail:{type:'error',message:'Could not dismiss this item. Please check your connection.'}}));
+                                                })"
                                             :disabled="dismissing"
-                                            title="Dismiss"
-                                            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            title="Dismiss this item"
+                                            class="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-40">
+                                        <svg x-show="!dismissing" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        <svg x-show="dismissing" x-cloak class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
                                     </button>
                                 @endif
                             </div>

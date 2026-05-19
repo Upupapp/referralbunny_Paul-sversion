@@ -187,9 +187,12 @@ class CriticalActionsController extends Controller
         }
 
         $fingerprint = $request->input('fingerprint');
-        $actionType  = $request->input('action_type', '');
+        // Truncate action_type defensively — it's informational metadata only, not a key.
+        $actionType  = substr((string) $request->input('action_type', ''), 0, 100);
 
-        if (! $fingerprint || strlen($fingerprint) > 64) {
+        // MD5 fingerprints are always exactly 32 lowercase hex characters.
+        // Reject anything else to prevent garbage from entering the dismissals table.
+        if (! $fingerprint || ! preg_match('/^[a-f0-9]{32}$/', $fingerprint)) {
             return response()->json(['success' => false, 'message' => 'Invalid fingerprint.'], 422);
         }
 
@@ -210,9 +213,13 @@ class CriticalActionsController extends Controller
             ['dismissed_at', 'action_type']
         );
 
-        // Bust badge cache so count updates promptly
+        // Bust badge cache so count updates promptly (mirrors markAllRead key set)
         Cache::forget("ca_badge_{$tenantId}_{$userId}");
+        Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
         Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
+        // Bust dismissed-fingerprint cache so the next masterList() reflects this
+        // dismissal immediately without waiting for the 30 s TTL to expire.
+        Cache::forget("ca_dismissed:{$tenantId}:{$userId}:{$userType}");
 
         return response()->json(['success' => true]);
     }
