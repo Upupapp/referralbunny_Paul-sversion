@@ -1201,10 +1201,12 @@
                     </template>
                 </div>
 
-                {{-- Add Partner modal --}}
+                {{-- Add Partner modal — outer div controls visibility only; centering lives on the inner wrapper --}}
                 <div x-show="showAdd"
-                     style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px"
+                     style="position:fixed;inset:0;z-index:9998;"
                      @keydown.escape.window="showAdd = false; clearContact(); formError = ''">
+                    <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:16px;background:rgba(0,0,0,.5)"
+                         @click.self="showAdd = false; clearContact(); formError = ''">
                     <div style="background:white;border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6;position:sticky;top:0;background:white;z-index:1">
                             <div>
@@ -1222,12 +1224,13 @@
                         <div class="relative">
                             <input type="text"
                                    x-model="contactQuery"
-                                   @input.debounce.300ms="contactOpen = true; searchContacts()"
+                                   @input.debounce.300ms="contactOpen = true; searchContacts(); form.partner_name = contactQuery.trim()"
+                                   @blur="if (!contactSelected && contactQuery.trim()) form.partner_name = contactQuery.trim()"
                                    @keydown.escape="contactOpen = false"
                                    @keydown.arrow-down.prevent="contactFocusIdx = Math.min(contactFocusIdx + 1, contactOptions.length - 1)"
                                    @keydown.arrow-up.prevent="contactFocusIdx = Math.max(contactFocusIdx - 1, -1)"
                                    @keydown.enter.prevent="if(contactFocusIdx >= 0 && contactOptions[contactFocusIdx]) selectContact(contactOptions[contactFocusIdx])"
-                                   placeholder="Search contacts by name or email…"
+                                   placeholder="Partner name or search contacts…"
                                    autocomplete="off"
                                    class="form-input text-xs pr-7">
                             <div class="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
@@ -1279,6 +1282,15 @@
                         <button type="button" @click="clearContact()" class="text-gray-400 hover:text-gray-600 shrink-0">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
+                    </div>
+
+                    {{-- Optional email (shown when no contact selected from dropdown) --}}
+                    <div x-show="!contactSelected" class="space-y-1">
+                        <label class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Email <span class="font-normal normal-case">(optional — triggers invite)</span></label>
+                        <input type="email" x-model="form.partner_email"
+                               placeholder="partner@example.com"
+                               class="form-input text-xs"
+                               autocomplete="off">
                     </div>
 
                     {{-- Duplicate partner warning --}}
@@ -1345,6 +1357,7 @@
 
                         </div>{{-- /modal body --}}
                     </div>{{-- /modal card --}}
+                    </div>{{-- /centering wrapper --}}
                 </div>{{-- /modal overlay --}}
             </div>
 
@@ -3233,8 +3246,9 @@ function partnerSplitSection(dealId, tenantId) {
 
         // True if the selected partner email already has a split on this deal
         isDuplicate() {
-            if (!this.form.partner_email.trim()) return false;
-            const email = this.form.partner_email.toLowerCase().trim();
+            // Only check email duplicates when an email is actually provided
+            const email = (this.form.partner_email || '').toLowerCase().trim();
+            if (!email) return false;
             return this.splits.some(function(s) { return (s.partner_email || '').toLowerCase() === email; });
         },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
@@ -3312,7 +3326,6 @@ function partnerSplitSection(dealId, tenantId) {
         async addSplit() {
             this.formError = '';
             if (!this.form.partner_name.trim()) { this.formError = 'Partner name is required.'; return; }
-            if (!this.form.partner_email.trim()) { this.formError = 'Partner email is required.'; return; }
             if (this.form.split_share_value <= 0) { this.formError = 'Split share must be greater than 0.'; return; }
             if (this.isDuplicate()) {
                 this.formError = 'This partner already has a split on this deal. Remove their existing entry first if you want to change it.';
