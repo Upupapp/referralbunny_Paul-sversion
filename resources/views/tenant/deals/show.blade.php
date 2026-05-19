@@ -689,46 +689,114 @@
                     </template>
                 </div>
 
-                {{-- Add Co-Referrer modal — placed outside conditional wrapper so it can display regardless --}}
+                {{-- Add Co-Referrer modal — outer div only controls visibility; centering is on inner wrapper
+                     so Alpine's x-show toggling display:none/block never breaks the flex layout --}}
                 <div x-show="showAddCoRef" x-cloak
-                     style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+                     style="position:fixed;inset:0;z-index:9999;"
                      @keydown.escape.window="showAddCoRef = false">
-                    <div style="background:white;border-radius:20px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
-                            <div>
-                                <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
-                                <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
+                    {{-- Backdrop + centering wrapper — always display:flex --}}
+                    <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:16px;background:rgba(0,0,0,.5)"
+                         @click.self="showAddCoRef = false">
+
+                        <div x-data="{ crSearch: '', crOpen: false,
+                                        crFiltered() {
+                                            var q = this.crSearch.toLowerCase();
+                                            return (window.rbReferrers || []).filter(function(r) {
+                                                return !q || (r.name && r.name.toLowerCase().includes(q))
+                                                          || (r.email && r.email.toLowerCase().includes(q));
+                                            }).slice(0, 8);
+                                        },
+                                        crPick(r) { coRefEmail = r.email; this.crSearch = r.name + ' — ' + r.email; this.crOpen = false; },
+                                        crInput() { coRefEmail = this.crSearch.includes('@') ? this.crSearch.trim() : ''; this.crOpen = true; }
+                                      }"
+                             style="background:white;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.2)"
+                             @click.stop>
+
+                            {{-- Header --}}
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
+                                <div>
+                                    <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
+                                    <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
+                                </div>
+                                <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
+                                    <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
                             </div>
-                            <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
-                                <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-                            <div>
-                                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Email Address <span style="color:#ef4444">*</span></label>
-                                <input x-model="coRefEmail" type="email" placeholder="referrer@example.com"
-                                       style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+
+                            {{-- Body --}}
+                            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+
+                                {{-- Referrer search + email --}}
+                                <div style="position:relative">
+                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Search Referrer or Enter Email <span style="color:#ef4444">*</span></label>
+                                    <div style="position:relative">
+                                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#9ca3af;pointer-events:none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                        <input x-model="crSearch" type="text"
+                                               placeholder="Name or email address…"
+                                               autocomplete="off"
+                                               style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                               @focus="crOpen = true; $event.target.style.borderColor='#7B61FF'"
+                                               @blur="setTimeout(() => crOpen = false, 160); $event.target.style.borderColor='#e5e7eb'"
+                                               @input="crInput()">
+                                    </div>
+
+                                    {{-- Dropdown --}}
+                                    <div x-show="crOpen && crSearch.length > 0"
+                                         style="position:absolute;left:0;right:0;top:calc(100% + 4px);background:white;border:1.5px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:20;max-height:200px;overflow-y:auto">
+                                        <template x-if="crFiltered().length === 0">
+                                            <div style="padding:14px;text-align:center;color:#9ca3af;font-size:12px">
+                                                No match — if this is a new email, it will receive an invite.
+                                            </div>
+                                        </template>
+                                        <template x-for="r in crFiltered()" :key="r.email">
+                                            <div @mousedown.prevent="crPick(r)"
+                                                 style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f9fafb"
+                                                 @mouseenter="$event.currentTarget.style.background='#f5f3ff'"
+                                                 @mouseleave="$event.currentTarget.style.background='white'">
+                                                <div style="pointer-events:none;min-width:0;flex:1">
+                                                    <p style="font-size:13px;font-weight:600;color:#1E1B4B;margin:0" x-text="r.name"></p>
+                                                    <p style="font-size:11px;color:#9ca3af;margin:0" x-text="r.email"></p>
+                                                </div>
+                                                <span :style="r.status === 'invited' ? 'background:#FEF3C7;color:#D97706' : 'background:#D1FAE5;color:#065F46'"
+                                                      style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;flex-shrink:0;margin-left:8px;pointer-events:none"
+                                                      x-text="r.status === 'invited' ? 'Invited' : 'Active'"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    {{-- Selected email indicator --}}
+                                    <p x-show="coRefEmail" style="font-size:11px;color:#7B61FF;margin-top:4px">
+                                        Email: <span x-text="coRefEmail" style="font-weight:600"></span>
+                                    </p>
+                                </div>
+
+                                {{-- Commission % --}}
+                                <div>
+                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
+                                    <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
+                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                    <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
+                                </div>
+
+                                <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
                             </div>
-                            <div>
-                                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
-                                <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
-                                       style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
-                                <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
+
+                            {{-- Footer --}}
+                            <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
+                                <button @click="showAddCoRef = false"
+                                        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                    Cancel
+                                </button>
+                                <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
+                                        :disabled="!coRefEmail || coRefSaving"
+                                        style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
+                                        :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
+                                        x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
                             </div>
-                            <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
-                        </div>
-                        <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
-                            <button @click="showAddCoRef = false"
-                                    style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
-                                Cancel
-                            </button>
-                            <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
-                                    :disabled="!coRefEmail || coRefSaving"
-                                    style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
-                                    :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
-                                    x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
+
                         </div>
                     </div>
                 </div>
