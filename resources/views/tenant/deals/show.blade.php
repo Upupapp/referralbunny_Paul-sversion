@@ -44,7 +44,8 @@
      @open-move-stage-deal.window="showMoveStage = true"
      @open-delete-deal.window="showDeleteConfirm = true"
      @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })"
-     @open-add-co-ref.window="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''">
+     @open-add-co-ref.window="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
+     @coref-pick.window="coRefEmail = $event.detail.email">
 
     <a href="{{ route('tenant.deals', $tenant->id) }}"
        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
@@ -698,7 +699,7 @@
                     <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:16px;background:rgba(0,0,0,.5)"
                          @click.self="showAddCoRef = false">
 
-                        <div x-data="{ crSearch: '', crOpen: false,
+                        <div x-data="{ crSearch: '', crOpen: false, coRefType: 'pct', coRefFixed: '',
                                         crFiltered() {
                                             var q = this.crSearch.toLowerCase();
                                             return (window.rbReferrers || []).filter(function(r) {
@@ -749,7 +750,7 @@
                                             </div>
                                         </template>
                                         <template x-for="r in crFiltered()" :key="r.id || r.email || r.name">
-                                            <div @mousedown.prevent="coRefEmail = r.email; crSearch = r.name + (r.email ? ' — ' + r.email : ''); crOpen = false"
+                                            <div @mousedown.prevent="$dispatch('coref-pick', { email: r.email }); crSearch = r.name + (r.email ? ' — ' + r.email : ''); crOpen = false"
                                                  style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f9fafb"
                                                  @mouseenter="$event.currentTarget.style.background='#f5f3ff'"
                                                  @mouseleave="$event.currentTarget.style.background='white'">
@@ -770,13 +771,43 @@
                                     </p>
                                 </div>
 
-                                {{-- Commission % --}}
+                                {{-- Commission share — % or ₱ toggle --}}
                                 <div>
-                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Commission Share (%)</label>
-                                    <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
-                                           style="width:100%;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                           @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
-                                    <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register the co-referrer without a share.</p>
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                                        <label style="font-size:11px;font-weight:600;color:#374151">Commission Share</label>
+                                        <div style="display:flex;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:11px;font-weight:600">
+                                            <button type="button" @click="coRefType='pct'"
+                                                    :style="coRefType==='pct' ? 'background:#7B61FF;color:white' : 'background:white;color:#6b7280'"
+                                                    style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s">%</button>
+                                            <button type="button" @click="coRefType='fixed'"
+                                                    :style="coRefType==='fixed' ? 'background:#7B61FF;color:white' : 'background:white;color:#6b7280'"
+                                                    style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s">₱ Fixed</button>
+                                        </div>
+                                    </div>
+
+                                    <template x-if="coRefType === 'pct'">
+                                        <div>
+                                            <div style="position:relative">
+                                                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#9ca3af;pointer-events:none">%</span>
+                                                <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
+                                                       style="width:100%;padding:8px 12px 8px 26px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                            </div>
+                                            <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register without a share. Max 100%.</p>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="coRefType === 'fixed'">
+                                        <div>
+                                            <div style="position:relative">
+                                                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#9ca3af;pointer-events:none">₱</span>
+                                                <input x-model="coRefFixed" type="number" min="0" step="1" placeholder="0"
+                                                       style="width:100%;padding:8px 12px 8px 26px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
+                                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                            </div>
+                                            <p style="font-size:11px;color:#9ca3af;margin-top:4px">Fixed peso amount from the commission pool.</p>
+                                        </div>
+                                    </template>
                                 </div>
 
                                 <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
@@ -788,10 +819,13 @@
                                         style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                                     Cancel
                                 </button>
-                                <button @click="adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
-                                        :disabled="!coRefEmail || coRefSaving"
+                                <button @click="if (coRefType === 'fixed') {
+                                            var pool = (window.rbLead && window.rbLead.added_amount) ? parseFloat(window.rbLead.added_amount) * 0.70 : 0;
+                                            coRefPct = pool > 0 ? String(Math.min(100, Math.round(parseFloat(coRefFixed || 0) / pool * 10000) / 100)) : '0';
+                                        }; adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
+                                        :disabled="!coRefEmail || coRefSaving || (coRefType==='pct' ? false : !coRefFixed)"
                                         style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
-                                        :style="(!coRefEmail || coRefSaving) ? 'opacity:.5;cursor:not-allowed' : ''"
+                                        :style="(!coRefEmail || coRefSaving || (coRefType==='pct' ? false : !coRefFixed)) ? 'opacity:.5;cursor:not-allowed' : ''"
                                         x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
                             </div>
 
@@ -1545,9 +1579,15 @@
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         Loading notes…
                     </div>
-                    <div x-show="!loadingComments && comments.length === 0" class="flex flex-col items-center text-center py-8 text-gray-300">
-                        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <p class="text-sm">No notes yet. Add the first update for this deal.</p>
+                    <div x-show="!loadingComments && comments.length === 0" class="flex flex-col items-center text-center py-8 px-4">
+                        <img src="/images/mascots/r-bunny-rocket.webp" alt="" aria-hidden="true"
+                             class="w-16 h-16 object-contain mb-3 opacity-80">
+                        <p class="text-sm font-semibold text-[#1E1B4B] mb-1">No notes yet!</p>
+                        <p class="text-xs text-gray-400 max-w-xs leading-relaxed">R Bunny is waiting for the first update on this deal. Drop a note — progress, blockers, wins — anything that keeps the team in the loop.</p>
+                        <p class="text-[10px] text-[#7B61FF] font-semibold mt-2 cursor-pointer hover:underline"
+                           @click="$el.closest('.space-y-4')?.querySelector('textarea')?.focus()">
+                            + Write the first note →
+                        </p>
                     </div>
                     <div x-show="!loadingComments && comments.length" class="space-y-4">
                         <template x-for="c in comments" :key="c.id">
