@@ -708,124 +708,150 @@
                                             }).slice(0, 8);
                                         }
                                       }"
-                             style="background:white;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.2)"
+                             style="background:white;border-radius:24px;max-width:460px;width:100%;box-shadow:0 32px 72px rgba(30,27,75,.18);overflow:hidden"
                              @click.stop>
 
                             {{-- Header --}}
-                            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6">
-                                <div>
-                                    <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Co-Referrer</p>
-                                    <p style="font-size:11px;color:#9ca3af;margin-top:2px">Assign a share of the commission pool to another referrer.</p>
+                            <div style="background:linear-gradient(135deg,#EDE9FE,#F5F3FF);padding:20px 24px 16px;border-bottom:1px solid #e5e7eb">
+                                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                                    <div style="display:flex;align-items:center;gap:10px">
+                                        <div style="width:36px;height:36px;border-radius:10px;background:#7B61FF;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                            <svg style="width:18px;height:18px;color:white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:15px;font-weight:700;color:#1E1B4B;margin:0">Add Co-Referrer</p>
+                                            <p style="font-size:11px;color:#7B61FF;margin:2px 0 0;font-weight:500">Commission pool share assignment</p>
+                                        </div>
+                                    </div>
+                                    <button @click="showAddCoRef = false" style="width:28px;height:28px;border-radius:8px;background:rgba(123,97,255,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#7B61FF;flex-shrink:0">
+                                        <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
                                 </div>
-                                <button @click="showAddCoRef = false" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
-                                    <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                </button>
                             </div>
 
                             {{-- Body --}}
-                            <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+                            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
 
-                                {{-- Referrer search + email --}}
+                                {{-- Referrer search --}}
                                 <div style="position:relative">
-                                    <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Search Referrer or Enter Email <span style="color:#ef4444">*</span></label>
+                                    <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">
+                                        Select Referrer <span style="color:#ef4444">*</span>
+                                    </label>
                                     <div style="position:relative">
-                                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#9ca3af;pointer-events:none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#9ca3af;pointer-events:none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                         </svg>
                                         <input x-model="crSearch" type="text"
-                                               placeholder="Name or email address…"
+                                               placeholder="Search by name or type email address…"
                                                autocomplete="off"
-                                               style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                               @focus="crOpen = true; $event.target.style.borderColor='#7B61FF'"
-                                               @blur="setTimeout(() => crOpen = false, 160); $event.target.style.borderColor='#e5e7eb'"
+                                               style="width:100%;padding:10px 12px 10px 33px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s"
+                                               @focus="crOpen = true; $event.target.style.borderColor='#7B61FF'; $event.target.style.boxShadow='0 0 0 3px rgba(123,97,255,.1)'"
+                                               @blur="setTimeout(() => crOpen = false, 160); $event.target.style.borderColor='#e5e7eb'; $event.target.style.boxShadow='none'"
                                                @input="coRefEmail = crSearch.includes('@') ? crSearch.trim() : ''; crOpen = true">
                                     </div>
 
                                     {{-- Dropdown --}}
                                     <div x-show="crOpen && crSearch.length > 0"
-                                         style="position:absolute;left:0;right:0;top:calc(100% + 4px);background:white;border:1.5px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:20;max-height:200px;overflow-y:auto">
+                                         style="position:absolute;left:0;right:0;top:calc(100% + 4px);background:white;border:1.5px solid #e5e7eb;border-radius:14px;box-shadow:0 12px 32px rgba(30,27,75,.12);z-index:20;max-height:210px;overflow-y:auto">
                                         <template x-if="crFiltered().length === 0">
-                                            <div style="padding:14px;text-align:center;color:#9ca3af;font-size:12px">
-                                                No match — if this is a new email, it will receive an invite.
+                                            <div style="padding:16px;text-align:center;color:#9ca3af;font-size:12px">
+                                                <svg style="width:20px;height:20px;margin:0 auto 6px;opacity:.4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                                No match — entering a new email will send an invitation.
                                             </div>
                                         </template>
                                         <template x-for="r in crFiltered()" :key="r.id || r.email || r.name">
                                             <div @mousedown.prevent="$dispatch('coref-pick', { email: r.email }); crSearch = r.name + (r.email ? ' — ' + r.email : ''); crOpen = false"
-                                                 style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f9fafb"
-                                                 @mouseenter="$event.currentTarget.style.background='#f5f3ff'"
+                                                 style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #f9fafb;transition:background .1s"
+                                                 @mouseenter="$event.currentTarget.style.background='#F5F3FF'"
                                                  @mouseleave="$event.currentTarget.style.background='white'">
+                                                <div style="width:32px;height:32px;border-radius:50%;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#7B61FF;flex-shrink:0;pointer-events:none"
+                                                     x-text="r.name ? r.name.slice(0,2).toUpperCase() : '?'"></div>
                                                 <div style="pointer-events:none;min-width:0;flex:1">
-                                                    <p style="font-size:13px;font-weight:600;color:#1E1B4B;margin:0" x-text="r.name"></p>
-                                                    <p style="font-size:11px;color:#9ca3af;margin:0" x-text="r.email"></p>
+                                                    <p style="font-size:13px;font-weight:600;color:#1E1B4B;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="r.name"></p>
+                                                    <p style="font-size:11px;color:#9ca3af;margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" x-text="r.email"></p>
                                                 </div>
                                                 <span :style="r.status === 'invited' ? 'background:#FEF3C7;color:#D97706' : 'background:#D1FAE5;color:#065F46'"
-                                                      style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;flex-shrink:0;margin-left:8px;pointer-events:none"
+                                                      style="font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;flex-shrink:0;pointer-events:none"
                                                       x-text="r.status === 'invited' ? 'Invited' : 'Active'"></span>
                                             </div>
                                         </template>
                                     </div>
 
-                                    {{-- Selected email indicator --}}
-                                    <p x-show="coRefEmail" style="font-size:11px;color:#7B61FF;margin-top:4px">
-                                        Email: <span x-text="coRefEmail" style="font-weight:600"></span>
-                                    </p>
+                                    {{-- Selected confirmation chip --}}
+                                    <div x-show="coRefEmail" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:4px 10px">
+                                        <svg style="width:11px;height:11px;color:#7B61FF;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                        <span style="font-size:11px;color:#7B61FF;font-weight:600" x-text="coRefEmail"></span>
+                                    </div>
                                 </div>
 
-                                {{-- Commission share — % or ₱ toggle --}}
+                                {{-- Commission share type toggle + input --}}
                                 <div>
-                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                                        <label style="font-size:11px;font-weight:600;color:#374151">Commission Share</label>
-                                        <div style="display:flex;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:11px;font-weight:600">
-                                            <button type="button" @click="coRefType='pct'"
-                                                    :style="coRefType==='pct' ? 'background:#7B61FF;color:white' : 'background:white;color:#6b7280'"
-                                                    style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s">%</button>
-                                            <button type="button" @click="coRefType='fixed'"
-                                                    :style="coRefType==='fixed' ? 'background:#7B61FF;color:white' : 'background:white;color:#6b7280'"
-                                                    style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s">₱ Fixed</button>
-                                        </div>
+                                    <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">
+                                        Commission Share
+                                    </label>
+                                    {{-- Segmented control --}}
+                                    <div style="display:inline-flex;background:#F3F4F6;border-radius:10px;padding:3px;margin-bottom:10px;gap:2px">
+                                        <button type="button" @click="coRefType='pct'"
+                                                style="padding:5px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;outline:none"
+                                                :style="coRefType==='pct'
+                                                    ? 'background:white;color:#7B61FF;box-shadow:0 1px 4px rgba(0,0,0,.12)'
+                                                    : 'background:transparent;color:#9ca3af'">
+                                            % Percentage
+                                        </button>
+                                        <button type="button" @click="coRefType='fixed'"
+                                                style="padding:5px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;outline:none"
+                                                :style="coRefType==='fixed'
+                                                    ? 'background:white;color:#7B61FF;box-shadow:0 1px 4px rgba(0,0,0,.12)'
+                                                    : 'background:transparent;color:#9ca3af'">
+                                            ₱ Fixed Amount
+                                        </button>
                                     </div>
 
                                     <template x-if="coRefType === 'pct'">
                                         <div>
                                             <div style="position:relative">
-                                                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#9ca3af;pointer-events:none">%</span>
+                                                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#7B61FF;pointer-events:none">%</span>
                                                 <input x-model="coRefPct" type="number" min="0" max="100" step="0.01" placeholder="0"
-                                                       style="width:100%;padding:8px 12px 8px 26px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                                       style="width:100%;padding:10px 12px 10px 28px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;font-weight:600;color:#1E1B4B;outline:none;box-sizing:border-box;transition:border-color .15s"
+                                                       @focus="$event.target.style.borderColor='#7B61FF'; $event.target.style.boxShadow='0 0 0 3px rgba(123,97,255,.1)'"
+                                                       @blur="$event.target.style.borderColor='#e5e7eb'; $event.target.style.boxShadow='none'">
                                             </div>
-                                            <p style="font-size:11px;color:#9ca3af;margin-top:4px">Enter 0 to register without a share. Max 100%.</p>
+                                            <p style="font-size:11px;color:#9ca3af;margin-top:5px">0% registers the co-referrer without a share allocation. Max 100%.</p>
                                         </div>
                                     </template>
 
                                     <template x-if="coRefType === 'fixed'">
                                         <div>
                                             <div style="position:relative">
-                                                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#9ca3af;pointer-events:none">₱</span>
+                                                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:600;color:#7B61FF;pointer-events:none">₱</span>
                                                 <input x-model="coRefFixed" type="number" min="0" step="1" placeholder="0"
-                                                       style="width:100%;padding:8px 12px 8px 26px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
-                                                       @focus="$event.target.style.borderColor='#7B61FF'" @blur="$event.target.style.borderColor='#e5e7eb'">
+                                                       style="width:100%;padding:10px 12px 10px 28px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:14px;font-weight:600;color:#1E1B4B;outline:none;box-sizing:border-box;transition:border-color .15s"
+                                                       @focus="$event.target.style.borderColor='#7B61FF'; $event.target.style.boxShadow='0 0 0 3px rgba(123,97,255,.1)'"
+                                                       @blur="$event.target.style.borderColor='#e5e7eb'; $event.target.style.boxShadow='none'">
                                             </div>
-                                            <p style="font-size:11px;color:#9ca3af;margin-top:4px">Fixed peso amount from the commission pool.</p>
+                                            <p style="font-size:11px;color:#9ca3af;margin-top:5px">Fixed peso amount deducted from the commission pool.</p>
                                         </div>
                                     </template>
                                 </div>
 
-                                <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px" x-text="coRefErr"></div>
+                                <div x-show="coRefErr" style="font-size:12px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:10px 12px;border-radius:10px" x-text="coRefErr"></div>
                             </div>
 
                             {{-- Footer --}}
-                            <div style="display:flex;gap:10px;padding:14px 20px 18px;border-top:1px solid #f3f4f6">
+                            <div style="display:flex;gap:10px;padding:16px 24px 20px;border-top:1px solid #f3f4f6;background:#fafafa">
                                 <button @click="showAddCoRef = false"
-                                        style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                        style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s"
+                                        @mouseenter="$event.target.style.background='#f9fafb'"
+                                        @mouseleave="$event.target.style.background='white'">
                                     Cancel
                                 </button>
                                 <button @click="if (coRefType === 'fixed') {
                                             var pool = (window.rbLead && window.rbLead.added_amount) ? parseFloat(window.rbLead.added_amount) * 0.70 : 0;
                                             coRefPct = pool > 0 ? String(Math.min(100, Math.round(parseFloat(coRefFixed || 0) / pool * 10000) / 100)) : '0';
                                         }; adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
-                                        :disabled="!coRefEmail || coRefSaving || (coRefType==='pct' ? false : !coRefFixed)"
-                                        style="flex:1;padding:9px;border-radius:10px;background:#2563eb;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
-                                        :style="(!coRefEmail || coRefSaving || (coRefType==='pct' ? false : !coRefFixed)) ? 'opacity:.5;cursor:not-allowed' : ''"
+                                        :disabled="!coRefEmail || coRefSaving || (coRefType==='fixed' && !coRefFixed)"
+                                        style="flex:1;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,.3);transition:opacity .15s"
+                                        :style="(!coRefEmail || coRefSaving || (coRefType==='fixed' && !coRefFixed)) ? 'opacity:.45;cursor:not-allowed;box-shadow:none' : 'opacity:1'"
                                         x-text="coRefSaving ? 'Adding…' : 'Add Co-Referrer'">Add Co-Referrer</button>
                             </div>
 
