@@ -51,19 +51,21 @@ class DealPartnerSplitController extends Controller
 
         $data = $request->validate([
             'partner_name'      => 'required|string|max:255',
-            'partner_email'     => 'required|email|max:255',
+            'partner_email'     => 'nullable|email|max:255', // optional — triggers invite when provided
             'split_share_value' => 'required|numeric|min:0',
             'split_share_type'  => 'nullable|in:percentage,fixed_amount',
             'currency'          => 'nullable|string|max:10',
             'source'            => 'nullable|in:manual,import,admin_edit,referrer_added',
         ]);
 
+        $partnerEmail = !empty($data['partner_email']) ? strtolower(trim($data['partner_email'])) : null;
+
         try {
             $split = $this->service->upsert(
                 tenantId:     $tenantId,
                 dealId:       $lead->id,
                 partnerName:  $data['partner_name'],
-                partnerEmail: $data['partner_email'],
+                partnerEmail: $partnerEmail ?? '',
                 splitValue:   (float) $data['split_share_value'],
                 splitType:    $data['split_share_type']  ?? 'percentage',
                 currency:     $data['currency']           ?? 'PHP',
@@ -71,10 +73,10 @@ class DealPartnerSplitController extends Controller
                 actorId:      $this->resolveActorId(),
             );
 
-            // Record activity — this was completely missing before
+            // Record activity
             $this->activity->partnerSplitAdded($lead, [
                 'partner_name'      => $data['partner_name'],
-                'partner_email'     => $data['partner_email'],
+                'partner_email'     => $partnerEmail,
                 'split_share_value' => $data['split_share_value'],
                 'split_share_type'  => $data['split_share_type'] ?? 'percentage',
             ]);
@@ -84,15 +86,17 @@ class DealPartnerSplitController extends Controller
                 $lead,
                 'Partner added to your deal',
                 $data['partner_name'] . ' was added as a Partner to "' . $lead->name . '" with a ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . ' split.',
-                $lead->id . ':partner_added:' . md5($data['partner_email']),
+                $lead->id . ':partner_added:' . md5($partnerEmail ?? $data['partner_name']),
             );
 
             // Notify the partner themselves (if they have an account)
             try {
-                $partnerUserId = \Illuminate\Support\Facades\DB::table('partner_users')
-                    ->where('tenant_id', $lead->tenant_id)
-                    ->whereRaw('LOWER(email) = ?', [strtolower($data['partner_email'])])
-                    ->value('id');
+                $partnerUserId = $partnerEmail
+                    ? \Illuminate\Support\Facades\DB::table('partner_users')
+                        ->where('tenant_id', $lead->tenant_id)
+                        ->whereRaw('LOWER(email) = ?', [$partnerEmail])
+                        ->value('id')
+                    : null;
 
                 if ($partnerUserId) {
                     app(\App\Services\NotificationDispatchService::class)->dispatchToPartner(

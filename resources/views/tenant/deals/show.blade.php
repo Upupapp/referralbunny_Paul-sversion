@@ -1337,7 +1337,7 @@
                                 <span x-text="'= ₱' + Math.round(dealValue * form.split_share_value / 100).toLocaleString('en-PH') + ' of contract value'"></span>
                             </template>
                             <template x-if="form.split_share_type === 'fixed_amount'">
-                                <span x-text="'~ ' + (dealValue > 0 ? (form.split_share_value / dealValue * 100).toFixed(1) : '0') + '% of contract value'"></span>
+                                <span x-text="'~ ' + (commPool > 0 ? (form.split_share_value / commPool * 100).toFixed(1) : '0') + '% of commission pool'"></span>
                             </template>
                         </div>
                         {{-- Over-cap warning --}}
@@ -3350,7 +3350,7 @@ function partnerSplitSection(dealId, tenantId) {
                     method:      'POST',
                     credentials: 'same-origin',
                     headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body:        JSON.stringify({ ...this.form, tenant_id: tenantId }),
+                    body:        JSON.stringify({ ...this.form, partner_email: this.form.partner_email.trim() || null, tenant_id: tenantId }),
                 });
                 const data = await res.json();
                 if (res.ok) {
