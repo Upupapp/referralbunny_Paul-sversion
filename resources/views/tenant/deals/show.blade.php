@@ -829,7 +829,15 @@
                                                        @focus="$event.target.style.borderColor='#7B61FF'; $event.target.style.boxShadow='0 0 0 3px rgba(123,97,255,.1)'"
                                                        @blur="$event.target.style.borderColor='#e5e7eb'; $event.target.style.boxShadow='none'">
                                             </div>
-                                            <p style="font-size:11px;color:#9ca3af;margin-top:5px">Fixed peso amount deducted from the commission pool.</p>
+                                            <template x-if="(window.rbLead && window.rbLead.added_amount) > 0 && coRefFixed > 0">
+                                                <p style="font-size:11px;color:#7B61FF;margin-top:5px;font-weight:600"
+                                                   x-text="'≈ ' + Math.min(100, Math.round(parseFloat(coRefFixed) / (parseFloat(window.rbLead.added_amount) * 0.70) * 10000) / 100).toFixed(2) + '% of the commission pool (₱' + Math.round(parseFloat(window.rbLead.added_amount) * 0.70).toLocaleString() + ')'">
+                                                </p>
+                                            </template>
+                                            <template x-if="!(window.rbLead && window.rbLead.added_amount > 0)">
+                                                <p style="font-size:11px;color:#d97706;margin-top:5px">⚠ Commission pool not set — enter a % instead or set Added Amount on the deal first.</p>
+                                            </template>
+                                            <p style="font-size:11px;color:#9ca3af;margin-top:3px">Fixed peso amount from the commission pool. Converted to % on save.</p>
                                         </div>
                                     </template>
                                 </div>

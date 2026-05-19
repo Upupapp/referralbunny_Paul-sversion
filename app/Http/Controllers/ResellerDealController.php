@@ -716,10 +716,12 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
-        $existingTotal = CommissionSplit::where('lead_id', $lead->id)->sum('percentage');
-        if ($existingTotal + $percentage > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $existingTotal, 2));
-            return response()->json(['error' => "Total splits cannot exceed 100%. Available: {$available}%.", 'max_percentage' => $available], 422);
+        $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
+            ->where('role', 'secondary')
+            ->sum('percentage');
+        if ($existingSecondary + $percentage > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
+            return response()->json(['error' => "Co-referrer splits cannot exceed 100% combined. Available: {$available}%.", 'max_percentage' => $available], 422);
         }
 
         DB::beginTransaction();
@@ -999,12 +1001,15 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
-        // Prevent total splits from exceeding 100%
-        $existingTotal = CommissionSplit::where('lead_id', $lead->id)->sum('percentage');
-        if ($existingTotal + $percentage > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $existingTotal, 2));
+        // Prevent secondary splits from exceeding 100% combined.
+        // Primary referrer's 100% is the baseline that gets shared — exclude it from the cap.
+        $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
+            ->where('role', 'secondary')
+            ->sum('percentage');
+        if ($existingSecondary + $percentage > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
             return response()->json([
-                'error' => "Total commission split cannot exceed 100%. You can allocate up to {$available}% to this co-referrer.",
+                'error' => "Co-referrer splits cannot exceed 100% combined. You can allocate up to {$available}% to this co-referrer.",
                 'max_percentage' => $available,
             ], 422);
         }
