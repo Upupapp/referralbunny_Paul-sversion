@@ -1144,8 +1144,8 @@ document.addEventListener('alpine:init', () => {
 <script>
 function tenantDashboard(tenantId, currentResellerName) {
     return {
-        leads: [], resellers: [], funnel: [], stats: {}, metric: {},
-        maxCount: 1, maxLeadCount: 1, subscription: null,
+        leads: [], resellers: [], stats: {}, metric: {},
+        maxLeadCount: 1, subscription: null,
         showAdd: false, saving: false, dealSearch: '', addError: '',
         pipelinePeriod: 'All Time', trendPeriod: 'Monthly', referrerPeriod: 'This Month',
 
@@ -1176,10 +1176,9 @@ function tenantDashboard(tenantId, currentResellerName) {
 
             // Load leads + resellers with high per_page so KPI totals are accurate.
             // Both controllers cap at 200 max; this is the best we can do client-side.
-            const [lRes, rRes, fRes, mRes, sRes] = await Promise.all([
+            const [lRes, rRes, mRes, sRes] = await Promise.all([
                 fetch(`/api/leads?tenant_id=${tenantId}&per_page=200`, hdrs),
                 fetch(`/api/resellers?tenant_id=${tenantId}&per_page=200`, hdrs),
-                fetch(`/api/analytics/funnel?tenant_id=${tenantId}`, hdrs),
                 fetch(`/api/metrics/${tenantId}`, hdrs),
                 fetch(`/api/billing/tenants/${tenantId}/subscription`, hdrs),
             ]);
@@ -1199,13 +1198,6 @@ function tenantDashboard(tenantId, currentResellerName) {
             } catch(e) {}
 
             try {
-                if (fRes.ok) {
-                    const fData = await fRes.json();
-                    this.funnel = Array.isArray(fData) ? fData : [];
-                }
-            } catch(e) { this.funnel = []; }
-
-            try {
                 if (mRes.ok) {
                     const mData = await mRes.json();
                     this.stats  = mData.detail ?? {};
@@ -1219,7 +1211,6 @@ function tenantDashboard(tenantId, currentResellerName) {
                 }
             } catch(e) {}
 
-            this.maxCount     = Math.max(...(this.funnel.map(f=>f.count)), 1);
             this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
         },
 
@@ -1235,12 +1226,6 @@ function tenantDashboard(tenantId, currentResellerName) {
             if (v >= 1000) return '₱' + Math.round(v / 1000) + 'K';
             return '₱' + v.toLocaleString();
         },
-        get sortedResellers() {
-            return [...this.resellers].sort((a, b) =>
-                this.resellerPipeline(b) - this.resellerPipeline(a)
-            );
-        },
-
         // ── Computed ──────────────────────────────────────────
         pipelineValue() {
             const t = this.leads.reduce((s,l)=>s+(Number(l.deal_value)||0), 0);
@@ -1505,7 +1490,6 @@ function tenantDashboard(tenantId, currentResellerName) {
 
                 if (lead.id) {
                     this.leads.unshift(lead);
-                    this.maxCount     = Math.max(...this.funnel.map(f => f.count), 1);
                     this.maxLeadCount = Math.max(...this.stageSummary().map(s => s.count), 1);
                 }
 
