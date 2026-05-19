@@ -159,11 +159,11 @@
         <div class="space-y-2.5">
             @php
                 $dupOptions = [
-                    'allow'            => ['label' => 'Allow',                 'desc' => 'Create a new deal even if a duplicate exists.'],
-                    'block'            => ['label' => 'Block',                  'desc' => 'Reject any row that matches an existing deal.'],
-                    'require_review'   => ['label' => 'Require Review',         'desc' => 'Flag duplicates for manual review before importing.'],
-                    'allow_merge'      => ['label' => 'Allow Merge (Approved)', 'desc' => 'Merge missing fields into the existing deal after review.'],
-                    'allow_overwrite'  => ['label' => 'Allow Overwrite (Approved)', 'desc' => 'Overwrite all fields in the existing deal after review.'],
+                    'allow'              => ['label' => 'Allow',                     'desc' => 'Create a new deal even if a duplicate exists.'],
+                    'block'              => ['label' => 'Block',                      'desc' => 'Reject any row that matches an existing deal.'],
+                    'require_review'     => ['label' => 'Require Review',             'desc' => 'Flag duplicates for manual review before importing.'],
+                    'merge_approved'     => ['label' => 'Allow Merge (Approved)',     'desc' => 'Merge missing fields into the existing deal after review.'],
+                    'overwrite_approved' => ['label' => 'Allow Overwrite (Approved)', 'desc' => 'Overwrite all fields in the existing deal after review.'],
                 ];
                 $currentDup = $settings->duplicate_handling ?? 'require_review';
             @endphp
@@ -197,12 +197,12 @@
                     'flag_review'    => ['label' => 'Flag for Review',     'desc' => 'Mark the row for review — do not import until resolved.'],
                     'reject'         => ['label' => 'Reject Row',          'desc' => 'Reject any row whose organization is not found.'],
                 ];
-                $currentOrg = $settings->unknown_org_handling ?? 'auto_create';
+                $currentOrg = $settings->unknown_org_behavior ?? 'auto_create';
             @endphp
             @foreach($orgOptions as $value => $opt)
             <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                 <input type="radio"
-                       name="unknown_org_handling"
+                       name="unknown_org_behavior"
                        value="{{ $value }}"
                        {{ $currentOrg === $value ? 'checked' : '' }}
                        class="mt-0.5 text-[#7B61FF] border-gray-300">
@@ -225,9 +225,9 @@
         <div class="space-y-2.5">
             @php
                 $perms = [
-                    'allow_referrer_imports'       => 'Allow Referrer imports (referrers can upload their own deal files)',
-                    'allow_referrer_new_deals'     => 'Allow Referrer to add new deals manually',
-                    'allow_referrer_partner_emails' => 'Allow Referrer to add Partner emails on their deals',
+                    'allow_referrer_import'      => 'Allow Referrer imports (referrers can upload their own deal files)',
+                    'allow_referrer_new_deals'   => 'Allow Referrer to add new deals manually',
+                    'allow_referrer_partner_add' => 'Allow Referrer to add Partner emails on their deals',
                 ];
             @endphp
             @foreach($perms as $field => $permLabel)

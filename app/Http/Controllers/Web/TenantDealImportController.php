@@ -530,8 +530,8 @@ class TenantDealImportController extends Controller
             'allow_referrer_partner_add' => 'boolean',
             'duplicate_handling'         => 'required|in:allow,block,require_review,merge_approved,overwrite_approved',
             'unknown_org_behavior'       => 'required|in:auto_create,flag_review,reject',
-            'unknown_referrer_behavior'  => 'required|in:flag_invite,reject',
-            'unknown_partner_behavior'   => 'required|in:flag_invite,reject',
+            'unknown_referrer_behavior'  => 'nullable|in:flag_invite,reject',
+            'unknown_partner_behavior'   => 'nullable|in:flag_invite,reject',
         ]);
 
         $settings = TenantImportSettings::forTenant($tenantId);

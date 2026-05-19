@@ -276,6 +276,7 @@
                                     <p class="text-xs text-gray-400 mt-0.5">Referrers cannot refer deals without signing this.</p>
                                 </div>
                                 <button type="button" @click="form.is_required = !form.is_required"
+                                        :aria-checked="form.is_required.toString()" role="switch"
                                         :class="form.is_required ? 'bg-purple-600' : 'bg-gray-300'"
                                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-4">
                                     <span :class="form.is_required ? 'translate-x-6' : 'translate-x-1'"
@@ -411,6 +412,7 @@
                                     <p class="text-xs text-gray-400 mt-0.5">Referrers cannot refer deals without this document being approved.</p>
                                 </div>
                                 <button type="button" @click="form.is_required = !form.is_required"
+                                        :aria-checked="form.is_required.toString()" role="switch"
                                         :class="form.is_required ? 'bg-[#7B61FF]' : 'bg-gray-300'"
                                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-4">
                                     <span :class="form.is_required ? 'translate-x-6' : 'translate-x-1'"
@@ -578,6 +580,7 @@
                                     <p class="text-xs text-gray-400 mt-0.5">Users must accept this before accessing the workspace.</p>
                                 </div>
                                 <button type="button" @click="form.is_required = !form.is_required"
+                                        :aria-checked="form.is_required.toString()" role="switch"
                                         :class="form.is_required ? 'bg-[#7B61FF]' : 'bg-gray-300'"
                                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-4">
                                     <span :class="form.is_required ? 'translate-x-6' : 'translate-x-1'"
@@ -643,7 +646,9 @@
             <div class="card border border-red-100">
                 <h3 class="font-semibold text-red-600 text-sm mb-2">Danger Zone</h3>
                 <p class="text-xs text-gray-400 mb-3">Irreversible actions that affect this tenant's data.</p>
-                <button class="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50 w-full">
+                <button type="button" disabled
+                        title="Contact support to archive this tenant workspace."
+                        class="btn-secondary text-sm text-red-400 border-red-100 cursor-not-allowed w-full opacity-60">
                     Archive Tenant
                 </button>
             </div>
@@ -755,10 +760,12 @@ function agreementManager(tenantId) {
         async deleteAgreement(id) {
             if (!confirm('Delete this agreement? This will also remove all acknowledgment records for this agreement.')) return;
             try {
-                await fetch(`/api/agreements/${id}`, {
+                const res = await fetch(`/api/agreements/${id}`, {
                     method: 'DELETE',
+                    credentials: 'same-origin',
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                 });
+                if (!res.ok) throw new Error('Failed to delete');
                 this.agreements = this.agreements.filter(a => a.id !== id);
                 this.$dispatch('show-toast', { type: 'success', message: 'Agreement deleted.' });
             } catch(e) {
@@ -857,10 +864,12 @@ function requiredDocManager(tenantId) {
         async deleteDoc(id) {
             if (!confirm('Delete this document requirement? This will also remove all submission records.')) return;
             try {
-                await fetch(`/api/required-documents/${id}`, {
+                const res = await fetch(`/api/required-documents/${id}`, {
                     method: 'DELETE',
+                    credentials: 'same-origin',
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                 });
+                if (!res.ok) throw new Error('Failed to delete');
                 this.docs = this.docs.filter(d => d.id !== id);
                 this.$dispatch('show-toast', { type: 'success', message: 'Document requirement deleted.' });
             } catch(e) {
