@@ -541,6 +541,8 @@ class LeadController extends Controller
 
         $oldResellerName     = $lead->reseller_name ?? '';
         $oldCommissionStatus = $lead->commission_status;
+        $oldStageForEvent    = $lead->stage          ?? '';
+        $oldStatusForEvent   = $lead->status         ?? '';
         $lead->update($data);
 
         // Bust CA cache when reseller, commission status, or stage changes
@@ -566,10 +568,17 @@ class LeadController extends Controller
             );
         }
 
+        // Resolve actor once — used by stage-moved and declined notifications below
+        $needsActorForNotify = (isset($data['stage']) && $data['stage'] !== $oldStageForEvent && !empty($lead->reseller_name))
+                            || (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined' && !empty($lead->reseller_name));
+
+        $actorNameForNotify = null;
+        if ($needsActorForNotify) {
+            [, , $actorNameForNotify] = $this->resolveActor();
+        }
+
         // Stage moved by admin — notify assigned reseller
-        $oldStageForEvent = $lead->getOriginal('stage') ?? '';
         if (isset($data['stage']) && $data['stage'] !== $oldStageForEvent && !empty($lead->reseller_name)) {
-            [, , $actorNameForStage] = $this->resolveActor();
             DealStageMoved::dispatch(
                 leadId:       $lead->id,
                 leadName:     $lead->name,
@@ -578,13 +587,12 @@ class LeadController extends Controller
                 fromStage:    $oldStageForEvent,
                 toStage:      $data['stage'],
                 dealValue:    (float) ($lead->deal_value ?? 0),
-                movedByName:  $actorNameForStage ?? 'Admin',
+                movedByName:  $actorNameForNotify ?? 'Admin',
             );
         }
 
-        // Deal declined by admin — notify assigned reseller
-        if (isset($data['status']) && $data['status'] === 'declined' && !empty($lead->reseller_name)) {
-            [, , $actorNameForDecline] = $this->resolveActor();
+        // Deal declined by admin — notify only on the transition (not on repeat updates)
+        if (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined' && !empty($lead->reseller_name)) {
             DealDeclined::dispatch(
                 leadId:        $lead->id,
                 leadName:      $lead->name,
@@ -592,7 +600,7 @@ class LeadController extends Controller
                 resellerName:  $lead->reseller_name,
                 stage:         $lead->stage,
                 dealValue:     (float) ($lead->deal_value ?? 0),
-                declinedByName: $actorNameForDecline ?? 'Admin',
+                declinedByName: $actorNameForNotify ?? 'Admin',
             );
         }
 

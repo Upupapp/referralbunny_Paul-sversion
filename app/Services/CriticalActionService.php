@@ -894,6 +894,7 @@ class CriticalActionService
                 ->join('leads as l', 'l.id', '=', 'dar.deal_id')
                 ->where('dar.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
+                ->where('l.status', '!=', 'archived')
                 ->where('dar.status', 'pending')
                 ->where('dar.requested_by_type', 'reseller')
                 ->where('dar.requested_by_id', $reseller)
