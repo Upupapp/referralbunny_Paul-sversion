@@ -55,14 +55,17 @@
                 </div>
                 <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $card['color'] }}"></span>
             </div>
-            <p class="text-2xl font-bold tabular-nums" style="color:#1E1B4B">
-                ₱{{ number_format($commissionStats[$card['key']] ?? 0) }}
-            </p>
+            <div class="flex items-baseline gap-1 mt-1">
+                <p class="text-2xl font-bold tabular-nums" style="color:#1E1B4B">
+                    ₱{{ number_format($commissionStats[$card['key']] ?? 0) }}
+                </p>
+                <span class="text-[10px] text-gray-400 font-medium">*</span>
+            </div>
             <p class="text-xs text-gray-400 mt-1">{{ $statusCounts[$card['key']] ?? 0 }} deal(s) · your share</p>
+            <p class="text-[10px] text-gray-400 mt-1.5">* Subject to applicable taxes &amp; deductions</p>
         </div>
         @endforeach
     </div>
-    <p class="text-[10px] text-gray-400 -mt-2">* All amounts are estimates and subject to appropriate taxes and deductions.</p>
 
     {{-- Deal Commission List --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
