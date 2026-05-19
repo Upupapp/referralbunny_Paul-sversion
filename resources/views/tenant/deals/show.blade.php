@@ -1568,7 +1568,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                 </svg>
                                 <p style="font-weight:600;color:#6b7280;margin-bottom:4px" x-text="ahFilter === 'all' ? 'No activity recorded yet.' : 'No ' + ahFilter + ' activity yet.'"></p>
-                                <p style="font-size:11px">Activity will appear here when stage, financial, partner, or commission changes are made.</p>
+                                <p style="font-size:11px">Activity will appear here when notes are added or stage, financial, partner, or commission changes are made.</p>
                             </div>
                         </template>
 
@@ -1594,6 +1594,9 @@
                                             </template>
                                             <template x-if="event.type === 'assignment' || event.category === 'assignment'">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                            </template>
+                                            <template x-if="event.type === 'note' || event.category === 'note'">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                             </template>
                                             <template x-if="event.type === 'import' || event.category === 'import'">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -2192,6 +2195,7 @@ function dealActivityHistory(initialHistory) {
             { key: 'partner',    label: 'Partner'    },
             { key: 'commission', label: 'Commission' },
             { key: 'assignment', label: 'Referrer'   },
+            { key: 'note',       label: 'Notes'      },
             { key: 'import',     label: 'Import'     },
         ],
 
@@ -2212,6 +2216,7 @@ function dealActivityHistory(initialHistory) {
                 financial:  'background:#fef3c7;color:#d97706',
                 commission: 'background:#dcfce7;color:#16a34a',
                 assignment: 'background:#e0f2fe;color:#0284c7',
+                note:       'background:#f0fdf4;color:#16a34a',
                 import:     'background:#f3f4f6;color:#6b7280',
                 deal:       'background:#f3f4f6;color:#6b7280',
             };

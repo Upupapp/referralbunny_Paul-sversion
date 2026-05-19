@@ -1158,6 +1158,13 @@ class LeadController extends Controller
         ]);
 
         $note = LeadNote::create(['lead_id' => $lead->id, ...$data]);
+
+        try {
+            app(\App\Services\DealActivityService::class)->noteAdded($lead, $data['text'] ?? '', [
+                'actor_name' => $data['author'] ?? null,
+            ]);
+        } catch (\Throwable) {}
+
         return response()->json($note, 201);
     }
 

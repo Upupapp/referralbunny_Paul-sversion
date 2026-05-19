@@ -192,6 +192,21 @@ class DealCommentController extends Controller
         // Audit log
         $this->auditLog($tenantId, $dealId, $actorId, 'deal_comment_created');
 
+        // Lead history — only top-level notes (not replies); internal notes labelled distinctly
+        if (empty($data['parent_comment_id'])) {
+            try {
+                $lead = Lead::find($dealId);
+                if ($lead) {
+                    $label = $visibility === 'internal_admin' ? 'Internal note' : 'Note';
+                    app(\App\Services\DealActivityService::class)->noteAdded(
+                        $lead,
+                        $comment->body ?? '',
+                        ['label' => $label, 'metadata' => ['comment_id' => $comment->id, 'visibility' => $visibility]]
+                    );
+                }
+            } catch (\Throwable) {}
+        }
+
         // Reload with relations — wrapped so a missing table never 500s the response
         try {
             $comment->load(['attachments', 'mentions']);

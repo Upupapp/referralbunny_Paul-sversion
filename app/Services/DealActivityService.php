@@ -222,6 +222,20 @@ class DealActivityService
         );
     }
 
+    // ── Note events ───────────────────────────────────────────────────────────
+
+    public function noteAdded(Lead $lead, string $body, array $options = []): void
+    {
+        $preview = mb_strlen($body) > 60 ? mb_substr($body, 0, 60) . '…' : $body;
+        $label   = $options['label'] ?? 'Note';
+        $action  = $preview ? "{$label} added: \"{$preview}\"" : "{$label} added";
+
+        $this->record($lead, $action, 'note', array_merge([
+            'category'   => 'note',
+            'new_values' => $preview ? ['preview' => $preview] : null,
+        ], $options));
+    }
+
     // ── Assignment events ─────────────────────────────────────────────────────
 
     public function referrerReassigned(Lead $lead, string $oldName, string $newName): void

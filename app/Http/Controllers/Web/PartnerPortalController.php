@@ -310,6 +310,21 @@ class PartnerPortalController extends Controller
             ]);
         } catch (\Throwable) {}
 
+        // Lead history
+        try {
+            $partnerActorName = $partner->full_name ?: $partner->email;
+            app(\App\Services\DealActivityService::class)->noteAdded(
+                $lead,
+                $hasBody ? ($data['body'] ?? '') : '',
+                [
+                    'label'      => $hasFiles && !$hasBody ? 'Attachment' : 'Note',
+                    'actor_name' => $partnerActorName,
+                    'actor_role' => 'Partner',
+                    'metadata'   => ['note_id' => $note->id, 'has_files' => $hasFiles],
+                ]
+            );
+        } catch (\Throwable) {}
+
         $partnerName = $partner->full_name ?: $partner->email;
         $notePreview = $hasBody ? ': "' . \Illuminate\Support\Str::limit($data['body'], 60) . '"' : ' (with attachment)';
 

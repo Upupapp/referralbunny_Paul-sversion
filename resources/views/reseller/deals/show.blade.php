@@ -776,15 +776,28 @@ window.__rsDeal = {
         @if(count($history) === 0)
         <div class="px-5 py-8 text-center text-xs text-gray-400">No activity recorded yet.</div>
         @else
+        @php
+        $dotColors = [
+            'stage'      => '#7B61FF',
+            'financial'  => '#D97706',
+            'partner'    => '#2563EB',
+            'commission' => '#16A34A',
+            'assignment' => '#0284C7',
+            'note'       => '#16A34A',
+            'import'     => '#9CA3AF',
+        ];
+        @endphp
         <div class="divide-y divide-gray-50">
             @foreach($history as $h)
+            @php $dot = $dotColors[$h->category ?? $h->type ?? ''] ?? '#D1D5DB'; @endphp
             <div class="px-5 py-3 flex items-start gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-gray-300 mt-2 shrink-0"></span>
+                <span class="w-1.5 h-1.5 rounded-full mt-2 shrink-0" style="background:{{ $dot }}"></span>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs text-gray-700">{{ $h->action ?? 'Activity recorded' }}</p>
-                    @if($h->actor_name ?? null)
-                    <p class="text-[10px] text-gray-400 mt-0.5">{{ $h->actor_name }} · {{ \Carbon\Carbon::parse($h->created_at)->diffForHumans() }}</p>
-                    @endif
+                    <p class="text-[10px] text-gray-400 mt-0.5">
+                        @if($h->actor_name ?? null){{ $h->actor_name }} · @endif
+                        {{ \Carbon\Carbon::parse($h->created_at)->diffForHumans() }}
+                    </p>
                 </div>
             </div>
             @endforeach
