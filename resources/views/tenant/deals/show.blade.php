@@ -2099,6 +2099,7 @@ function rbReassignRenderList(query) {
     if (rows.length === 0) {
         list.innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">'
             + (all.length === 0 ? 'No referrers in this workspace yet.' : 'No referrers match your search.') + '</div>';
+        list.onclick = null;
         return;
     }
     list.innerHTML = rows.map(function(r, idx) {
@@ -2112,7 +2113,7 @@ function rbReassignRenderList(query) {
         var check = isSelected
             ? '<svg style="width:15px;height:15px;flex-shrink:0;margin-left:6px" fill="none" stroke="#4F46E5" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : '';
         if (isCurrent) {
-            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';background:#f9fafb;cursor:not-allowed">'
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';background:#f9fafb;cursor:not-allowed" data-current="1">'
                 + '<div style="min-width:0;flex:1">'
                 + '<div style="font-size:13px;font-weight:600;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.name) + '</div>'
                 + '<div style="font-size:11px;color:#d1d5db;margin-top:1px">Currently assigned</div>'
@@ -2120,19 +2121,31 @@ function rbReassignRenderList(query) {
                 + badge
                 + '</div>';
         }
-        return '<div onclick="rbReassignSelect(this.dataset.name)" '
-            + 'data-name="' + rbEscHtml(r.name) + '" '
-            + 'style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';cursor:pointer;background:' + (isSelected ? '#EEF2FF' : 'white') + ';transition:background .1s" '
-            + 'onmouseenter="if(this.getAttribute(\'data-sel\')!==\'1\')this.style.background=\'#f9fafb\'" '
-            + 'onmouseleave="this.style.background=this.getAttribute(\'data-sel\')===\'1\'?\'#EEF2FF\':\'white\'" '
-            + 'data-sel="' + (isSelected ? '1' : '0') + '">'
-            + '<div style="min-width:0;flex:1">'
+        return '<div data-name="' + rbEscHtml(r.name) + '" '
+            + 'data-sel="' + (isSelected ? '1' : '0') + '" '
+            + 'style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:' + border + ';cursor:pointer;background:' + (isSelected ? '#EEF2FF' : 'white') + ';transition:background .1s">'
+            + '<div style="min-width:0;flex:1;pointer-events:none">'
             + '<div style="font-size:13px;font-weight:600;color:#1E1B4B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.name) + '</div>'
             + (r.email ? '<div style="font-size:11px;color:#9ca3af;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rbEscHtml(r.email) + '</div>' : '')
             + '</div>'
-            + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:8px">' + badge + check + '</div>'
+            + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:8px;pointer-events:none">' + badge + check + '</div>'
             + '</div>';
     }).join('');
+
+    // Event delegation — one listener on the container, no inline onclick needed.
+    // pointer-events:none on children ensures e.target is always the row div.
+    list.onclick = function(e) {
+        var row = e.target.closest('[data-name]');
+        if (row && row.dataset.name) rbReassignSelect(row.dataset.name);
+    };
+    list.onmouseover = function(e) {
+        var row = e.target.closest('[data-name]');
+        if (row && row.dataset.sel !== '1') row.style.background = '#f9fafb';
+    };
+    list.onmouseout = function(e) {
+        var row = e.target.closest('[data-name]');
+        if (row) row.style.background = row.dataset.sel === '1' ? '#EEF2FF' : 'white';
+    };
 }
 
 function rbReassignSelect(name) {
