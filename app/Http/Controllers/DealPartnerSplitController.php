@@ -217,12 +217,14 @@ class DealPartnerSplitController extends Controller
                     'split_share_type'  => $oldSplit->split_share_type,
                 ]);
 
-                // Notify assigned referrer
+                // Dedup per deal + 5-minute window so removing multiple partners quickly
+                // sends one notification to the referrer, not one per split.
+                $dedupWindow = (int) floor(time() / 300);
                 $this->notifyAssignedReferrer(
                     $lead,
                     'Partner removed from your deal',
                     ($oldSplit->partner_name ?? 'A Partner') . ' was removed from "' . $lead->name . '".',
-                    $lead->id . ':partner_removed:' . $splitId,
+                    $lead->id . ':partner_removed:' . $dedupWindow,
                 );
 
                 // Notify the removed partner

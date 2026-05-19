@@ -430,6 +430,9 @@ class ReferrerPartnerController extends Controller
                 'metadata'   => $reason ? ['reason' => $reason] : [],
             ]);
 
+            // Dedup key is scoped to deal + actor + 5-minute window so removing multiple
+            // partners from the same deal in quick succession produces ONE notification.
+            $dedupWindow = (int) floor(time() / 300); // bucket changes every 5 minutes
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
@@ -438,7 +441,7 @@ class ReferrerPartnerController extends Controller
                 body:         $reseller->name . ' removed ' . $split->partner_name . ' from "' . $lead->name . '".',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
                 actionLabel:  'Review Deal',
-                dedupeSuffix: $lead->id . ':partner_removed:' . $splitId,
+                dedupeSuffix: $lead->id . ':partner_removed:' . $reseller->id . ':' . $dedupWindow,
             );
         } catch (\Throwable $e) {
             Log::error('ReferrerPartnerController::removeFromDeal failed', [
