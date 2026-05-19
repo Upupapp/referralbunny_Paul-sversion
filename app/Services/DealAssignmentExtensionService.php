@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\DealExtensionApproved;
 use App\Models\ActivityLog;
 use App\Models\DealAssignmentExtensionRequest;
 use App\Models\Lead;
@@ -131,6 +132,16 @@ class DealAssignmentExtensionService
             'approved_days'   => $approvedDays,
             'new_days_left'   => $newDaysLeft,
         ]);
+
+        DealExtensionApproved::dispatch(
+            leadId:       $deal->id,
+            leadName:     $deal->name,
+            tenantId:     $tenantId,
+            resellerName: $deal->reseller_name ?? '',
+            approvedDays: $approvedDays,
+            newDaysLeft:  $newDaysLeft,
+            adminNote:    $adminNote,
+        );
 
         return $request->fresh();
     }

@@ -3,15 +3,23 @@
 namespace App\Providers;
 
 use App\Events\CommissionStatusChanged;
+use App\Events\DealAmountUpdated;
 use App\Events\DealCreated;
+use App\Events\DealDeclined;
 use App\Events\DealExpired;
+use App\Events\DealExtensionApproved;
 use App\Events\DealReferrerAssigned;
+use App\Events\DealStageMoved;
 use App\Events\InviteAcceptedEvent;
 use App\Events\ResellerJoined;
 use App\Listeners\HandleCommissionStatusChanged;
+use App\Listeners\HandleDealAmountUpdated;
 use App\Listeners\HandleDealCreated;
+use App\Listeners\HandleDealDeclined;
 use App\Listeners\HandleDealExpired;
+use App\Listeners\HandleDealExtensionApproved;
 use App\Listeners\HandleDealReferrerAssigned;
+use App\Listeners\HandleDealStageMoved;
 use App\Listeners\HandleInviteAccepted;
 use App\Listeners\HandleResellerJoined;
 use App\Models\Lead;
@@ -45,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(CommissionStatusChanged::class,  HandleCommissionStatusChanged::class);
         Event::listen(DealExpired::class,              HandleDealExpired::class);
         Event::listen(InviteAcceptedEvent::class,      HandleInviteAccepted::class);
+        Event::listen(DealStageMoved::class,           HandleDealStageMoved::class);
+        Event::listen(DealAmountUpdated::class,        HandleDealAmountUpdated::class);
+        Event::listen(DealExtensionApproved::class,    HandleDealExtensionApproved::class);
+        Event::listen(DealDeclined::class,             HandleDealDeclined::class);
 
         // Google Calendar sync observers
         Task::observe(TaskGoogleCalendarObserver::class);

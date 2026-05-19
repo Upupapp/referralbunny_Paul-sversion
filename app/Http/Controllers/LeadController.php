@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Events\CommissionStatusChanged;
+use App\Events\DealAmountUpdated;
 use App\Events\DealCreated as DealCreatedEvent;
+use App\Events\DealDeclined;
 use App\Events\DealReferrerAssigned;
+use App\Events\DealStageMoved;
 use App\Mail\ResellerInvitation;
 use App\Models\DealPartner;
 use App\Models\Lead;
@@ -563,6 +566,36 @@ class LeadController extends Controller
             );
         }
 
+        // Stage moved by admin — notify assigned reseller
+        $oldStageForEvent = $lead->getOriginal('stage') ?? '';
+        if (isset($data['stage']) && $data['stage'] !== $oldStageForEvent && !empty($lead->reseller_name)) {
+            [, , $actorNameForStage] = $this->resolveActor();
+            DealStageMoved::dispatch(
+                leadId:       $lead->id,
+                leadName:     $lead->name,
+                tenantId:     $lead->tenant_id,
+                resellerName: $lead->reseller_name,
+                fromStage:    $oldStageForEvent,
+                toStage:      $data['stage'],
+                dealValue:    (float) ($lead->deal_value ?? 0),
+                movedByName:  $actorNameForStage ?? 'Admin',
+            );
+        }
+
+        // Deal declined by admin — notify assigned reseller
+        if (isset($data['status']) && $data['status'] === 'declined' && !empty($lead->reseller_name)) {
+            [, , $actorNameForDecline] = $this->resolveActor();
+            DealDeclined::dispatch(
+                leadId:        $lead->id,
+                leadName:      $lead->name,
+                tenantId:      $lead->tenant_id,
+                resellerName:  $lead->reseller_name,
+                stage:         $lead->stage,
+                dealValue:     (float) ($lead->deal_value ?? 0),
+                declinedByName: $actorNameForDecline ?? 'Admin',
+            );
+        }
+
         // ── Audit: log financial changes to deal history ──────────────
         $newDealValue   = (float) ($lead->deal_value   ?? 0);
         $newBaseCost    = (float) ($lead->base_cost     ?? 0);
@@ -574,6 +607,20 @@ class LeadController extends Controller
 
         if ($financialChanged) {
             [$actorId, $actorRole, $actorName] = $this->resolveActor();
+
+            // Email assigned reseller that the deal amount changed
+            if (!empty($lead->reseller_name)) {
+                DealAmountUpdated::dispatch(
+                    leadId:        $lead->id,
+                    leadName:      $lead->name,
+                    tenantId:      $lead->tenant_id,
+                    resellerName:  $lead->reseller_name,
+                    oldAmount:     $oldDealValue,
+                    newAmount:     (float) ($lead->deal_value ?? 0),
+                    updatedByName: $actorName ?? 'Admin',
+                );
+            }
+
             app(\App\Services\DealActivityService::class)->financialBreakdownChanged(
                 $lead,
                 ['deal_value' => $oldDealValue,   'base_cost' => $oldBaseCost,   'added_amount' => $oldAddedAmount],

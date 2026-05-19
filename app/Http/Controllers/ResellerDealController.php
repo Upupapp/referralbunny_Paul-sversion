@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\DealStageMoved;
 use App\Mail\ResellerInvitation;
 use App\Models\DealApprovalRequest;
 use App\Models\Lead;
@@ -1215,6 +1216,17 @@ class ResellerDealController extends Controller
                         'old_values' => ['stage' => $oldStage],
                         'new_values' => ['stage' => $targetStage],
                     ]);
+
+                    DealStageMoved::dispatch(
+                        leadId:       $lead->id,
+                        leadName:     $lead->name,
+                        tenantId:     $lead->tenant_id,
+                        resellerName: $lead->reseller_name ?? '',
+                        fromStage:    $oldStage,
+                        toStage:      $targetStage,
+                        dealValue:    (float) ($lead->deal_value ?? 0),
+                        movedByName:  $reviewerName,
+                    );
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {
                 $archiveReason = $approval->reason ?? ($approval->request_payload['reason'] ?? null);
