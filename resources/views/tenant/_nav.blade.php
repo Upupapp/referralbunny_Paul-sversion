@@ -124,10 +124,24 @@ if ($isAdminMgr) {
         $_caUserId   = auth('tenant')->id() ?? auth('web')->id();
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
         // Badge suppressed if user clicked "Mark all as seen" (lasts 5 min)
-        // Derive permission flags from role — matches what TenantAdminController::dashboard() computes
+        // Derive permission flags matching CriticalActionsController gates exactly.
+        // Owners/admins/super_admins see everything. Managers are checked per-permission
+        // so the badge count matches what they can actually see on the actions page.
         $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
-        $_canSeeExports = $isAdminMgr;
-        $_canSeeUsers   = $isAdminMgr;
+        $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        if ($navRole === 'manager' && $_caUserId) {
+            $_mgMembership = \Illuminate\Support\Facades\Cache::remember(
+                "nav_membership:{$tenantId}:{$_caUserId}", 60,
+                fn() => \App\Models\TenantMembership::where('tenant_user_id', $_caUserId)
+                    ->where('tenant_id', $tenantId)->where('status', 'active')->first()
+            );
+            if ($_mgMembership) {
+                $_permSvc       = app(\App\Services\PermissionService::class);
+                $_canSeeExports = $_permSvc->can($_mgMembership, 'approve_export_requests');
+                $_canSeeUsers   = $_permSvc->can($_mgMembership, 'invite_tenant_staff');
+            }
+        }
 
         // Bypass suppressor for urgent-severity actions so critical alerts always show
         $_suppressedKey = "ca_badge_suppressed:{$tenantId}:{$_caUserId}";
