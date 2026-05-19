@@ -202,7 +202,7 @@ class CriticalActionsController extends Controller
         }
 
         // Derive permission flags (mirrors _nav.blade.php logic exactly)
-        $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
+        $_canSeeBilling = in_array($navRole, ['owner', 'admin', 'super_admin']);
         $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
         $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
 

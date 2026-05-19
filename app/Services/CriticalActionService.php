@@ -1883,7 +1883,7 @@ class CriticalActionService
                 $isPaid = $r->stage === 'paid';
                 return $this->make([
                     'type'          => 'commission_review_pending',
-                    'category'      => 'deal',
+                    'category'      => 'commission',
                     'severity'      => $isPaid ? 'high' : 'medium',
                     'summary'       => 'Commission review needed: ' . $r->name,
                     'actor_name'    => $r->reseller_name ?? 'Referrer',

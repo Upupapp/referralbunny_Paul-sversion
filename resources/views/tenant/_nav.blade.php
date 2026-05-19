@@ -127,7 +127,7 @@ if ($isAdminMgr) {
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
         // Derive permission flags matching CriticalActionsController gates exactly.
         // Owners/admins/super_admins see everything. Managers are checked per-permission.
-        $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
+        $_canSeeBilling = in_array($navRole, ['owner', 'admin', 'super_admin']);
         $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
         $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
         if ($navRole === 'manager' && $_caUserId) {
