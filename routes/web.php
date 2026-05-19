@@ -298,6 +298,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');
     Route::delete('/deals/{dealId}/splits/{splitId}',  [\App\Http\Controllers\ResellerDealController::class, 'adminRemoveCoReferrer'])->name('deals.splits.remove');
     Route::post('/deals/{dealId}/referrers',           [\App\Http\Controllers\ResellerDealController::class, 'adminAddReferrer'])->name('deals.referrers');
+    Route::post('/approvals/{approvalId}/approve',     [\App\Http\Controllers\ResellerDealController::class, 'approveRequest'])->name('approvals.approve');
+    Route::post('/approvals/{approvalId}/reject',      [\App\Http\Controllers\ResellerDealController::class, 'rejectRequest'])->name('approvals.reject');
     Route::get('/contacts',        [TenantAdminController::class, 'contacts'])->name('contacts');
     Route::get('/organizations',   [TenantAdminController::class, 'organizations'])->name('organizations');
     Route::get('/referrers',               [TenantAdminController::class, 'referrers'])->name('referrers');

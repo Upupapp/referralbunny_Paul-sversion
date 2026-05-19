@@ -3488,7 +3488,7 @@ function rbApprovalPanel() {
             this.apBusy = true;
             try {
                 const tenantId = this.$el.dataset.tenantId ?? window.__tenantId;
-                const res = await fetch(`/reseller/${tenantId}/approvals/${approvalId}/approve`, {
+                const res = await fetch(`/tenant/${tenantId}/approvals/${approvalId}/approve`, {
                     method: 'POST', credentials: 'same-origin', headers: hdr(),
                     body: JSON.stringify({ reviewer_note: note || null }),
                 });
@@ -3510,7 +3510,7 @@ function rbApprovalPanel() {
             this.apBusy = true;
             try {
                 const tenantId = this.$el.dataset.tenantId ?? window.__tenantId;
-                const res = await fetch(`/reseller/${tenantId}/approvals/${approvalId}/reject`, {
+                const res = await fetch(`/tenant/${tenantId}/approvals/${approvalId}/reject`, {
                     method: 'POST', credentials: 'same-origin', headers: hdr(),
                     body: JSON.stringify({ reviewer_note: note }),
                 });

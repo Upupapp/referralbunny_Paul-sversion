@@ -1211,10 +1211,9 @@ class ResellerDealController extends Controller
                     ]);
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {
-                // TEST — use archived_at + archive_reason instead of conflating with 'expired' status
                 $archiveReason = $approval->reason ?? ($approval->request_payload['reason'] ?? null);
                 $updateData = [
-                    'status'         => 'declined',
+                    'status'         => 'archived',
                     'archive_reason' => $archiveReason,
                 ];
                 // archived_at column added in migration_v44; fall back gracefully if not yet migrated
