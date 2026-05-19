@@ -384,23 +384,24 @@ document.addEventListener('alpine:init', () => {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-5">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Pipeline</h3>
-                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
+                <select x-model="pipelinePeriod"
+                        class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
                     <option>Monthly</option><option>Quarterly</option><option>All Time</option>
                 </select>
             </div>
 
             {{-- Empty state --}}
-            <div x-show="funnel.length===0"
+            <div x-show="funnelForPeriod().every(s=>s.count===0)"
                  class="flex flex-col items-center justify-center text-center py-8">
                 <p class="text-sm text-gray-300 font-medium">No deals yet</p>
-                <p class="text-xs text-gray-300 mt-0.5">Pipeline will appear as deals are submitted</p>
+                <p class="text-xs text-gray-300 mt-0.5" x-text="pipelinePeriod==='All Time' ? 'Pipeline will appear as deals are submitted' : 'No deals in this period'"></p>
             </div>
 
             {{-- Chart: fixed 140px bar area + 24px labels = 164px total --}}
-            <div x-show="funnel.length>0">
+            <div x-show="funnelForPeriod().some(s=>s.count>0)">
                 {{-- Bars --}}
                 <div class="flex items-end justify-around gap-2" style="height:140px">
-                    <template x-for="stage in funnel" :key="stage.stage">
+                    <template x-for="stage in funnelForPeriod()" :key="stage.stage">
                         <div x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
                              class="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer relative"
                              style="max-width:60px;height:140px">
@@ -417,7 +418,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                             {{-- Bar itself --}}
                             <div class="w-full rounded-t-lg overflow-hidden transition-all duration-300 relative"
-                                 :style="`height:${maxCount>0 ? Math.max(6, (stage.count/maxCount)*118) : 6}px`">
+                                 :style="`height:${maxCountForPeriod()>0 ? Math.max(6, (stage.count/maxCountForPeriod())*118) : 6}px`">
                                 {{-- Base fill --}}
                                 <div class="absolute inset-0 transition-opacity duration-200"
                                      style="background:rgba(123,97,255,0.08)"
@@ -435,7 +436,7 @@ document.addEventListener('alpine:init', () => {
                 </div>
                 {{-- X-axis stage labels --}}
                 <div class="flex items-start justify-around gap-2 mt-2 border-t border-gray-50 pt-2">
-                    <template x-for="stage in funnel" :key="'lbl_'+stage.stage">
+                    <template x-for="stage in funnelForPeriod()" :key="'lbl_'+stage.stage">
                         <span class="flex-1 text-center text-[9px] text-gray-400 leading-tight px-0.5 truncate"
                               style="max-width:60px"
                               x-text="stage.label"></span>
@@ -449,7 +450,8 @@ document.addEventListener('alpine:init', () => {
             {{-- Header --}}
             <div class="flex items-center justify-between mb-2 shrink-0">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Referral Trend</h3>
-                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none">
+                <select x-model="trendPeriod"
+                        class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
                     <option>Monthly</option><option>Weekly</option>
                 </select>
             </div>
@@ -460,7 +462,7 @@ document.addEventListener('alpine:init', () => {
                     <svg class="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 9L6 4l4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     conversion
                 </span>
-                <span class="text-xs text-gray-400">6-month trend</span>
+                <span class="text-xs text-gray-400" x-text="trendPeriod==='Weekly' ? '6-week trend' : '6-month trend'"></span>
             </div>
             {{-- SVG fills remaining space --}}
             <div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end">
@@ -497,13 +499,14 @@ document.addEventListener('alpine:init', () => {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-[#1E1B4B]">Top Referrers</h3>
-                <select class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
+                <select x-model="referrerPeriod"
+                        class="text-xs text-gray-500 border border-gray-100 rounded-lg px-2.5 py-1.5 bg-gray-50 outline-none focus:ring-1 focus:ring-violet-200">
                     <option>Today</option><option>This Week</option><option>This Month</option>
                 </select>
             </div>
 
             <div class="space-y-1 overflow-y-auto" style="max-height:220px" x-show="resellers.length>0">
-                <template x-for="(r,i) in sortedResellers.slice(0,8)" :key="r.id">
+                <template x-for="(r,i) in sortedReferrersForPeriod().slice(0,8)" :key="r.id">
                     <div class="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
                         {{-- Avatar --}}
                         <div class="relative shrink-0">
@@ -1144,6 +1147,7 @@ function tenantDashboard(tenantId, currentResellerName) {
         leads: [], resellers: [], funnel: [], stats: {}, metric: {},
         maxCount: 1, maxLeadCount: 1, subscription: null,
         showAdd: false, saving: false, dealSearch: '', addError: '',
+        pipelinePeriod: 'All Time', trendPeriod: 'Monthly', referrerPeriod: 'This Month',
 
         // LGU search
         lguQuery: '', lguResults: [], lguDropdown: false, lguSearching: false,
@@ -1324,8 +1328,58 @@ function tenantDashboard(tenantId, currentResellerName) {
             return Math.max(0, Math.ceil((new Date(this.subscription.trial_end_date)-new Date())/86400000));
         },
 
+        // ── Chart period helpers ──────────────────────────────
+        leadsInPeriod(period) {
+            const now = new Date();
+            let start = null;
+            if (period === 'Today') {
+                start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else if (period === 'This Week') {
+                start = new Date(now); start.setDate(start.getDate() - start.getDay()); start.setHours(0,0,0,0);
+            } else if (period === 'This Month' || period === 'Monthly') {
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else if (period === 'Quarterly') {
+                start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+            }
+            return start ? this.leads.filter(l => l.created_at && new Date(l.created_at) >= start) : this.leads;
+        },
+        funnelForPeriod() {
+            const leads = this.leadsInPeriod(this.pipelinePeriod);
+            return [
+                {stage:'introduction',  label:'Introduction'},
+                {stage:'presentation',  label:'Presentation'},
+                {stage:'contract_sent', label:'Contract Sent'},
+                {stage:'signed',        label:'Signed'},
+                {stage:'paid',          label:'Paid'},
+            ].map(s => ({...s, count: leads.filter(l => l.stage === s.stage).length}));
+        },
+        maxCountForPeriod() {
+            return Math.max(...this.funnelForPeriod().map(f => f.count), 1);
+        },
+        sortedReferrersForPeriod() {
+            const leads = this.leadsInPeriod(this.referrerPeriod);
+            return [...this.resellers].sort((a, b) => {
+                const pip = r => leads
+                    .filter(l => l.reseller_name === r.name && !['cancelled','archived'].includes(l.status))
+                    .reduce((s, l) => s + (parseFloat(l.deal_value) || 0), 0);
+                return pip(b) - pip(a);
+            });
+        },
+
         // ── Area chart ────────────────────────────────────────
         areaChartData() {
+            if (this.trendPeriod === 'Weekly') {
+                const weeks = [];
+                for (let i = 5; i >= 0; i--) {
+                    const start = new Date(); start.setDate(start.getDate() - start.getDay() - i * 7); start.setHours(0,0,0,0);
+                    const end   = new Date(start); end.setDate(end.getDate() + 7);
+                    weeks.push({
+                        label: 'W' + (6 - i),
+                        count: this.leads.filter(l => l.created_at && new Date(l.created_at) >= start && new Date(l.created_at) < end).length,
+                    });
+                }
+                return weeks;
+            }
             const months = [];
             for (let i=5; i>=0; i--) {
                 const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
