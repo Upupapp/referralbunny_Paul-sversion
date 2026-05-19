@@ -212,7 +212,9 @@
                     <tbody>
                         @foreach($result['items'] as $action)
                             @php
-                                $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
+                                // 'normal' is an alias for 'low' in SEVERITY_ORDER — normalise it so the pill renders blue not gray.
+                                $sevKey = ($action['severity'] === 'normal') ? 'low' : ($action['severity'] ?? 'info');
+                                $sev    = $severityConfig[$sevKey] ?? $severityConfig['info'];
                                 $icon   = $categoryIcons[$action['category']] ?? $categoryIcons['activity'];
                                 // An item is "new" only if the user HAS visited before AND it
                                 // occurred after their last visit. Null lastSeenAt = never visited
@@ -312,7 +314,8 @@
             <div class="md:hidden divide-y divide-gray-50">
                 @foreach($result['items'] as $action)
                     @php
-                        $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
+                        $sevKey = ($action['severity'] === 'normal') ? 'low' : ($action['severity'] ?? 'info');
+                        $sev    = $severityConfig[$sevKey] ?? $severityConfig['info'];
                         $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                     @endphp
                     <div class="p-4 space-y-2 ca-mobile-card {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400 ca-new-row' : '' }}">

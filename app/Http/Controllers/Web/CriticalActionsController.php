@@ -199,7 +199,7 @@ class CriticalActionsController extends Controller
         $userId   = $actingUser?->id ?? Auth::guard('web')->id();
         $userType = ($isSuperAdmin && ! $actingUser) ? 'web' : 'tenant_user';
 
-        \Illuminate\Support\Facades\DB::table('critical_action_dismissals')->upsert(
+        DB::table('critical_action_dismissals')->upsert(
             [
                 'tenant_id'    => $tenantId,
                 'user_id'      => $userId,
