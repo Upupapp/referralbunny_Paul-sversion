@@ -316,7 +316,7 @@ $workspaceBadge += $criticalBadge;
             {{-- Live total: hidden at 0, capped at 9+ (consistent with notification bell). --}}
             <span x-show="wsTotal > 0" x-cloak
                   class="nav-badge nav-badge-orange mr-1"
-                  :aria-label="wsTotal + ' item' + (wsTotal === 1 ? '' : 's') + ' need attention'"
+                  :aria-label="[criticalCount > 0 ? criticalCount + ' critical' : '', $taskBadge > 0 ? '{{ $taskBadge }} tasks' : '', $msgBadge > 0 ? '{{ $msgBadge }} messages' : ''].filter(Boolean).join(', ') + ' — ' + wsTotal + ' total item' + (wsTotal === 1 ? '' : 's') + ' need attention'"
                   x-text="wsTotal > 99 ? '99+' : wsTotal"></span>
             @if($workspaceBadge > 0)
                 <noscript><span class="nav-badge nav-badge-orange mr-1">{{ $workspaceBadge > 99 ? '99+' : $workspaceBadge }}</span></noscript>

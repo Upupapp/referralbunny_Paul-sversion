@@ -52,11 +52,18 @@
                             fetch('{{ route('tenant.critical-actions.mark-all-read', $tenant->id) }}', {
                                 method:'POST', credentials:'same-origin',
                                 headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
-                            }).then(()=>{
+                            }).then(r => r.ok ? r : Promise.reject(r)).then(()=>{
                                 done=true; loading=false;
-                                // Notify the nav badge poller so it resets without waiting for next poll
                                 window.dispatchEvent(new CustomEvent('critical-badge:cleared'));
-                            }).catch(()=>{ loading=false; })"
+                                // Hide all New badges on the page without a full reload
+                                document.querySelectorAll('.ca-new-badge').forEach(el => el.remove());
+                                document.querySelectorAll('.ca-new-row').forEach(el => {
+                                    el.classList.remove('bg-amber-50/60','border-l-2','border-l-amber-400');
+                                });
+                            }).catch(()=>{
+                                loading=false;
+                                window.dispatchEvent(new CustomEvent('show-toast', {detail:{type:'error',message:'Could not mark as seen. Please try refreshing.'}}));
+                            })"
                         class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-60"
                         :disabled="loading || done">
                     <svg x-show="!done && !loading" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,7 +201,7 @@
                                 // → nothing is highlighted as "new" (no baseline to compare).
                                 $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                             @endphp
-                            <tr class="table-row {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
+                            <tr class="table-row {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400 ca-new-row' : '' }}">
                                 <td>
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
@@ -202,7 +209,7 @@
                                             {{ $sev['label'] }}
                                         </span>
                                         @if($isNew)
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide">New</span>
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide ca-new-badge">New</span>
                                         @endif
                                     </div>
                                 </td>
@@ -258,7 +265,7 @@
                         $sev    = $severityConfig[$action['severity']] ?? $severityConfig['info'];
                         $isNew  = $lastSeenAt && isset($action['occurred_at']) && \Carbon\Carbon::parse($action['occurred_at'])->isAfter($lastSeenAt);
                     @endphp
-                    <div class="p-4 space-y-2 {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400' : '' }}">
+                    <div class="p-4 space-y-2 {{ $isNew ? 'bg-amber-50/60 border-l-2 border-l-amber-400 ca-new-row' : '' }}">
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-1.5">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold {{ $sev['bg'] }} {{ $sev['text'] }}">
@@ -266,7 +273,7 @@
                                     {{ $sev['label'] }}
                                 </span>
                                 @if($isNew)
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide">New</span>
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-white uppercase tracking-wide ca-new-badge">New</span>
                                 @endif
                             </div>
                             <span class="text-[10px] text-gray-400">{{ $action['occurred_ago'] }}</span>

@@ -173,7 +173,7 @@ class ResellerPortalController extends Controller
 
         $pagedQuery = Lead::where('tenant_id', $tenantId)
             ->forResellerOrSplit($reseller->name)
-            ->select('id', 'name', 'stage', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
+            ->select('id', 'name', 'stage', 'status', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'reseller_name', 'deleted_at')
             ->orderByDesc('created_at');
 
         $pagedLeads = $pagedQuery->paginate($perPage, ['*'], 'page', $page);

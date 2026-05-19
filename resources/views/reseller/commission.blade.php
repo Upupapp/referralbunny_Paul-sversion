@@ -89,10 +89,22 @@
                     $aa  = (float) ($lead->added_amount ?? 0);
                     $bc  = (float) ($lead->base_cost ?? 0);
                     $cv  = ($bc + $aa) ?: (float) ($lead->deal_value ?? 0);
+                    // Terminal deal statuses override commission status display
+                    $dealStatus = $lead->status ?? null;
+                    $isTerminal = in_array($dealStatus, ['archived', 'declined', 'expired']);
+                    $terminalStyles = match($dealStatus) {
+                        'archived' => ['bg' => '#F3F4F6', 'text' => '#6B7280'],
+                        'declined' => ['bg' => '#FEE2E2', 'text' => '#DC2626'],
+                        'expired'  => ['bg' => '#FEF3C7', 'text' => '#D97706'],
+                        default    => null,
+                    };
                 @endphp
                 <tr class="table-row">
                     <td>
-                        <p class="font-medium text-sm" style="color:#1E1B4B">{{ $lead->name }}</p>
+                        <a href="{{ route('reseller.deals.show', [$tenant->id, $lead->id]) }}"
+                           class="font-medium text-sm hover:text-[#7B61FF] transition-colors" style="color:#1E1B4B">
+                            {{ $lead->name }}
+                        </a>
                         <p class="text-xs text-gray-400 capitalize">{{ str_replace('_', ' ', $lead->stage) }}</p>
                     </td>
                     <td class="text-sm font-semibold tabular-nums" style="color:#1E1B4B">₱{{ number_format((int)$cv) }}</td>
@@ -106,10 +118,18 @@
                         @endif
                     </td>
                     <td>
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
-                              style="background:{{ $lead->commission_status === 'paid' ? '#D1FAE5' : ($lead->commission_status === 'locked' ? '#FEF3C7' : '#EDE9FE') }};color:{{ $lead->commission_status === 'paid' ? '#065F46' : ($lead->commission_status === 'locked' ? '#D97706' : '#7B61FF') }}">
-                            {{ $lead->commission_status ?? 'pending' }}
-                        </span>
+                        @if($isTerminal && $terminalStyles)
+                            {{-- Deal is in a terminal state — show deal status, not commission status --}}
+                            <span class="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
+                                  style="background:{{ $terminalStyles['bg'] }};color:{{ $terminalStyles['text'] }}">
+                                {{ ucfirst($dealStatus) }}
+                            </span>
+                        @else
+                            <span class="text-xs px-2.5 py-1 rounded-full font-medium capitalize"
+                                  style="background:{{ $lead->commission_status === 'paid' ? '#D1FAE5' : ($lead->commission_status === 'locked' ? '#FEF3C7' : '#EDE9FE') }};color:{{ $lead->commission_status === 'paid' ? '#065F46' : ($lead->commission_status === 'locked' ? '#D97706' : '#7B61FF') }}">
+                                {{ $lead->commission_status ?? 'pending' }}
+                            </span>
+                        @endif
                     </td>
                 </tr>
                 @endforeach
