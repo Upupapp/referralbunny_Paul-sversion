@@ -145,17 +145,28 @@ document.addEventListener('alpine:init', () => {
                     $isOverdue = $dueAt && $dueAt->isPast();
                     $isDueToday = $dueAt && $dueAt->isSameDay(now()->setTimezone($tz));
                 @endphp
-                <div class="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 transition-colors">
+                <a href="{{ route('tenant.tasks.show', [$tenant->id, $task->id]) }}"
+                   class="flex items-center gap-3 px-5 py-3 hover:bg-amber-50/50 transition-colors group">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 {{ $p['bg'] }} {{ $p['text'] }}">
                         {{ $p['label'] }}
                     </span>
-                    <p class="flex-1 text-sm font-medium text-[#1E1B4B] truncate">{{ $task->title }}</p>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-[#1E1B4B] truncate group-hover:text-[#4C3FA0] transition-colors">{{ $task->title }}</p>
+                        @if(($task->status ?? '') === 'in_progress')
+                        <p class="text-[10px] text-blue-500 font-medium mt-0.5">In progress</p>
+                        @elseif(($task->status ?? '') === 'waiting')
+                        <p class="text-[10px] text-amber-500 font-medium mt-0.5">Waiting</p>
+                        @endif
+                    </div>
                     @if($dueAt)
                     <span class="text-[11px] font-semibold shrink-0 {{ $isOverdue ? 'text-red-600' : ($isDueToday ? 'text-amber-600' : 'text-gray-400') }}">
                         {{ $isOverdue ? 'Overdue' : ($isDueToday ? 'Due today' : $dueAt->format('M j')) }}
                     </span>
                     @endif
-                </div>
+                    <svg class="w-3.5 h-3.5 shrink-0 text-gray-300 group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
                 @endforeach
             </div>
             @if($pendingTasks->count() > 8)
@@ -168,7 +179,17 @@ document.addEventListener('alpine:init', () => {
             @endif
         </div>
         @else
-        <div></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center py-10">
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <p class="text-sm font-semibold text-[#1E1B4B]">All caught up!</p>
+                <p class="text-xs text-gray-400 mt-0.5">No pending tasks right now.</p>
+            </div>
+        </div>
         @endif
 
         {{-- RIGHT: New Deals Since Last Session --}}
