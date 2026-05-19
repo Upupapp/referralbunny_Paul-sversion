@@ -445,7 +445,7 @@
                 <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
                     <p class="text-sm font-semibold text-[#1E1B4B]">Associated Deals ({{ $recentDeals->count() }})</p>
                     @if($performance['total_deals'] > 10)
-                        <a href="{{ route('tenant.deals', $tenant->id) }}" class="text-xs text-[#7B61FF] hover:underline">View all</a>
+                        <a href="{{ route('tenant.deals', $tenant->id) }}?reseller_name={{ urlencode($reseller->name) }}" class="text-xs text-[#7B61FF] hover:underline">View all →</a>
                     @endif
                 </div>
 

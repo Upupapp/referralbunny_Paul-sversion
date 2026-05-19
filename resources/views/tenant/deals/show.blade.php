@@ -3544,7 +3544,15 @@ function rbApprovalPanel() {
                 const d = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(d.error || 'Approval failed.');
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Request approved and executed.' } }));
-                setTimeout(() => window.location.reload(), 900);
+                if (d.type === 'deal_archive') {
+                    const rn = window.__dealSsrLead?.reseller_name;
+                    const dest = rn
+                        ? `/tenant/{{ $tenant->id }}/deals?reseller_name=${encodeURIComponent(rn)}`
+                        : `/tenant/{{ $tenant->id }}/deals`;
+                    setTimeout(() => { window.location.href = dest; }, 900);
+                } else {
+                    setTimeout(() => window.location.reload(), 900);
+                }
             } catch(e) {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: e.message || 'Could not approve. Try again.' } }));
             } finally { this.apBusy = false; }

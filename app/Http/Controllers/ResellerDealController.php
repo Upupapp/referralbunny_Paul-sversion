@@ -1285,7 +1285,7 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'type' => $approval->type]);
     }
 
     public function rejectRequest(Request $request, string $tenantId, string $approvalId): JsonResponse
