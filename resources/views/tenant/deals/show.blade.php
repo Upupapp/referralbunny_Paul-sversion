@@ -705,9 +705,7 @@
                                                 return !q || (r.name && r.name.toLowerCase().includes(q))
                                                           || (r.email && r.email.toLowerCase().includes(q));
                                             }).slice(0, 8);
-                                        },
-                                        crPick(r) { coRefEmail = r.email; this.crSearch = r.name + ' — ' + r.email; this.crOpen = false; },
-                                        crInput() { coRefEmail = this.crSearch.includes('@') ? this.crSearch.trim() : ''; this.crOpen = true; }
+                                        }
                                       }"
                              style="background:white;border-radius:20px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.2)"
                              @click.stop>
@@ -739,7 +737,7 @@
                                                style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box"
                                                @focus="crOpen = true; $event.target.style.borderColor='#7B61FF'"
                                                @blur="setTimeout(() => crOpen = false, 160); $event.target.style.borderColor='#e5e7eb'"
-                                               @input="crInput()">
+                                               @input="coRefEmail = crSearch.includes('@') ? crSearch.trim() : ''; crOpen = true">
                                     </div>
 
                                     {{-- Dropdown --}}
@@ -750,8 +748,8 @@
                                                 No match — if this is a new email, it will receive an invite.
                                             </div>
                                         </template>
-                                        <template x-for="r in crFiltered()" :key="r.email">
-                                            <div @mousedown.prevent="crPick(r)"
+                                        <template x-for="r in crFiltered()" :key="r.id || r.email || r.name">
+                                            <div @mousedown.prevent="coRefEmail = r.email; crSearch = r.name + (r.email ? ' — ' + r.email : ''); crOpen = false"
                                                  style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;border-bottom:1px solid #f9fafb"
                                                  @mouseenter="$event.currentTarget.style.background='#f5f3ff'"
                                                  @mouseleave="$event.currentTarget.style.background='white'">
