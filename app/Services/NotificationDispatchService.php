@@ -60,6 +60,15 @@ class NotificationDispatchService
 
     /**
      * Dispatch to all active tenant admins (owners + admins) in a tenant.
+     *
+     * When a dedupeSuffix is provided we run a single prefix EXISTS check against
+     * the notifications table before loading the admin-list JOIN query.  On a dedup
+     * hit (e.g. second partner removal within the same 5-minute bucket) this saves
+     * the admin-list JOIN, all per-admin EXISTS checks, and all INSERT attempts —
+     * replacing them with one indexed-column EXISTS query.
+     *
+     * Key pattern checked: "{category}:%:{dedupeSuffix}" — matches any per-admin key
+     * written by a previous successful dispatch with the same suffix.
      */
     public function dispatchToTenantAdmins(
         string  $tenantId,
@@ -72,6 +81,18 @@ class NotificationDispatchService
         ?string $dedupeSuffix = null,
         array   $metadata     = [],
     ): void {
+        // ── Tenant-level dedup short-circuit ─────────────────────────────────
+        // Check if any per-admin notification with this dedup suffix already exists
+        // for this tenant before paying for the admin-list JOIN query.
+        // LIKE on deduplication_key: "{category}:%:{dedupeSuffix}" — the % matches
+        // any admin UUID. This is an indexed prefix scan when the column is indexed.
+        if ($dedupeSuffix) {
+            $alreadySent = Notification::where('tenant_id', $tenantId)
+                ->where('deduplication_key', 'like', "{$category}:%:{$dedupeSuffix}")
+                ->exists();
+            if ($alreadySent) return;
+        }
+
         $admins = DB::table('tenant_memberships as tm')
             ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
             ->where('tm.tenant_id', $tenantId)

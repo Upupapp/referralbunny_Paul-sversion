@@ -591,6 +591,201 @@ class CriticalActionsTest extends TestCase
         );
     }
 
+    // ── 12. Dismiss endpoint ──────────────────────────────────────
+
+    private function makeFingerprint(string ...$parts): string
+    {
+        return md5(implode(':', $parts));
+    }
+
+    /** @test */
+    public function admin_can_dismiss_a_dismissible_action()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+
+        $fingerprint = $this->makeFingerprint('new_referrer_invited', 'resellers', 'reseller', 'some-id');
+
+        $this->actingAs($admin, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+                'fingerprint' => $fingerprint,
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('critical_action_dismissals', [
+            'tenant_id'   => $tenant->id,
+            'user_id'     => $admin->id,
+            'fingerprint' => $fingerprint,
+        ]);
+    }
+
+    /** @test */
+    public function dismiss_is_idempotent_via_upsert()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+
+        $fingerprint = $this->makeFingerprint('new_referrer_invited', 'resellers', 'reseller', 'some-id');
+
+        // Dismiss twice — should not throw a unique violation
+        $this->actingAs($admin, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+                'fingerprint' => $fingerprint,
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertOk();
+
+        $this->actingAs($admin, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+                'fingerprint' => $fingerprint,
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        // Only one row should exist
+        $this->assertDatabaseCount('critical_action_dismissals', 1);
+    }
+
+    /** @test */
+    public function member_cannot_call_dismiss_endpoint()
+    {
+        $tenant = $this->createTenant();
+        $member = $this->createTenantUser();
+        $this->createMembership($tenant, $member, 'member');
+
+        $this->actingAs($member, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+                'fingerprint' => $this->makeFingerprint('new_referrer_invited', 'resellers', 'reseller', 'x'),
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertForbidden();
+    }
+
+    /** @test */
+    public function cross_tenant_dismiss_is_blocked()
+    {
+        $tenantA = $this->createTenant();
+        $tenantB = $this->createTenant();
+        $adminA  = $this->createTenantUser();
+        $this->createMembership($tenantA, $adminA, 'admin');
+        // adminA has no membership in tenantB
+
+        $this->actingAs($adminA, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenantB->id), [
+                'fingerprint' => $this->makeFingerprint('new_referrer_invited', 'resellers', 'reseller', 'x'),
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertForbidden();
+    }
+
+    /** @test */
+    public function dismiss_rejects_invalid_fingerprint()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+
+        // Not a valid MD5 (non-hex, wrong length)
+        $this->actingAs($admin, 'tenant')
+            ->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+                'fingerprint' => 'not-a-valid-md5',
+                'action_type' => 'new_referrer_invited',
+            ])
+            ->assertStatus(422);
+    }
+
+    /** @test */
+    public function unauthenticated_dismiss_is_rejected()
+    {
+        $tenant = $this->createTenant();
+
+        $this->postJson(route('tenant.critical-actions.dismiss', $tenant->id), [
+            'fingerprint' => $this->makeFingerprint('new_referrer_invited', 'resellers', 'reseller', 'x'),
+            'action_type' => 'new_referrer_invited',
+        ])
+        ->assertRedirect(); // auth middleware redirects
+    }
+
+    /** @test */
+    public function dismissed_action_does_not_appear_in_master_list()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+
+        // Create an info-severity reseller (invited) so a new_referrer_invited action exists
+        DB::table('resellers')->insert([
+            'id'                => (string) Str::uuid(),
+            'tenant_id'         => $tenant->id,
+            'name'              => 'Invited Referrer',
+            'email'             => 'invited@example.com',
+            'status'            => 'invited',
+            'assigned_leads'    => 0,
+            'closed_value'      => 0,
+            'performance_score' => 0,
+            'is_anonymous'      => false,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $service = app(CriticalActionService::class);
+        $filters = [
+            'can_see_billing' => true,
+            'can_see_users'   => true,
+            'can_see_exports' => true,
+            'user_id'         => $admin->id,
+            'user_type'       => 'tenant_user',
+            'page'            => 1,
+        ];
+
+        // Before dismiss: action should be present
+        $resultBefore = $service->masterList($tenant->id, $filters, 100);
+        $typesBefore  = array_column($resultBefore['items'], 'type');
+        $this->assertContains('new_referrer_invited', $typesBefore,
+            'Expected new_referrer_invited action before dismiss');
+
+        // Find its fingerprint
+        $inviteActions = array_filter($resultBefore['items'], fn($a) => $a['type'] === 'new_referrer_invited');
+        $action        = array_values($inviteActions)[0];
+        $fingerprint   = $action['fingerprint'];
+
+        // Dismiss it
+        DB::table('critical_action_dismissals')->insert([
+            'tenant_id'    => $tenant->id,
+            'user_id'      => $admin->id,
+            'user_type'    => 'tenant_user',
+            'fingerprint'  => $fingerprint,
+            'action_type'  => 'new_referrer_invited',
+            'dismissed_at' => now(),
+            'expires_at'   => null,
+        ]);
+
+        // After dismiss: action must not appear
+        \Illuminate\Support\Facades\Cache::forget("ca_dismissed:{$tenant->id}:{$admin->id}:tenant_user");
+        $resultAfter = $service->masterList($tenant->id, $filters, 100);
+        $typesAfter  = array_column($resultAfter['items'], 'type');
+
+        $this->assertNotContains('new_referrer_invited', $typesAfter,
+            'Dismissed action must not appear in masterList()');
+    }
+
+    /** @test */
+    public function member_cannot_call_mark_all_read_endpoint()
+    {
+        $tenant = $this->createTenant();
+        $member = $this->createTenantUser();
+        $this->createMembership($tenant, $member, 'member');
+
+        $this->actingAs($member, 'tenant')
+            ->postJson(route('tenant.critical-actions.mark-all-read', $tenant->id))
+            ->assertForbidden();
+    }
+
     /** @test */
     public function role_visibility_billing_is_restricted_to_owners_and_admins()
     {

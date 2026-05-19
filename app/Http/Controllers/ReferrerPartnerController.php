@@ -432,13 +432,15 @@ class ReferrerPartnerController extends Controller
 
             // Dedup key is scoped to deal + actor + 5-minute window so removing multiple
             // partners from the same deal in quick succession produces ONE notification.
+            // Body is generic ("a partner") because only the first removal fires within the window;
+            // admins can see the full partner list via the "Review Deal" CTA link.
             $dedupWindow = (int) floor(time() / 300); // bucket changes every 5 minutes
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'normal',
                 title:        'Partner removed from deal',
-                body:         $reseller->name . ' removed ' . $split->partner_name . ' from "' . $lead->name . '".',
+                body:         $reseller->name . ' removed a partner from "' . $lead->name . '". Review the deal to see the current partner list.',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':partner_removed:' . $reseller->id . ':' . $dedupWindow,

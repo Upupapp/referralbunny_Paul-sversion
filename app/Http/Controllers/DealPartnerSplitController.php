@@ -219,12 +219,16 @@ class DealPartnerSplitController extends Controller
 
                 // Dedup per deal + 5-minute window so removing multiple partners quickly
                 // sends one notification to the referrer, not one per split.
+                // Body is generic ("a partner") because only the first removal fires within the window;
+                // referrer can view the full partner list on the deal page via the "View Deal" CTA.
+                // The 'admin:' segment scopes this key to admin-initiated removals, preventing
+                // collision with any future referrer-initiated removal keys on the same deal.
                 $dedupWindow = (int) floor(time() / 300);
                 $this->notifyAssignedReferrer(
                     $lead,
                     'Partner removed from your deal',
-                    ($oldSplit->partner_name ?? 'A Partner') . ' was removed from "' . $lead->name . '".',
-                    $lead->id . ':partner_removed:' . $dedupWindow,
+                    'A partner was removed from "' . $lead->name . '". View the deal to see the current partner list.',
+                    $lead->id . ':partner_removed:admin:' . $dedupWindow,
                 );
 
                 // Notify the removed partner
