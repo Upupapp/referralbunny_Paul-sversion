@@ -46,7 +46,7 @@ class HandleDealAmountUpdated implements ShouldQueue
             ),
             recipientEmail: $email,
             recipientType:  'reseller',
-            emailKey:       'deal_amount_updated.' . $event->leadId . '.' . now()->format('YmdHi'),
+            emailKey:       'deal_amount_updated.' . $event->leadId,
             subject:        "Deal amount updated: {$event->leadName}",
             recipientId:    $resellerId,
             tenantId:       $event->tenantId,
