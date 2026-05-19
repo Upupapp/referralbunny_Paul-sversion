@@ -10,6 +10,7 @@ use App\Events\DealExpired;
 use App\Events\DealExtensionApproved;
 use App\Events\DealReferrerAssigned;
 use App\Events\DealStageMoved;
+use App\Events\ImportFailed;
 use App\Events\InviteAcceptedEvent;
 use App\Events\ResellerJoined;
 use App\Listeners\HandleCommissionStatusChanged;
@@ -20,6 +21,7 @@ use App\Listeners\HandleDealExpired;
 use App\Listeners\HandleDealExtensionApproved;
 use App\Listeners\HandleDealReferrerAssigned;
 use App\Listeners\HandleDealStageMoved;
+use App\Listeners\HandleImportFailed;
 use App\Listeners\HandleInviteAccepted;
 use App\Listeners\HandleResellerJoined;
 use App\Models\Lead;
@@ -57,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(DealAmountUpdated::class,        HandleDealAmountUpdated::class);
         Event::listen(DealExtensionApproved::class,    HandleDealExtensionApproved::class);
         Event::listen(DealDeclined::class,             HandleDealDeclined::class);
+        Event::listen(ImportFailed::class,             HandleImportFailed::class);
 
         // Google Calendar sync observers
         Task::observe(TaskGoogleCalendarObserver::class);

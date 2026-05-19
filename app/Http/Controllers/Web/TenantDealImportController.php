@@ -407,6 +407,21 @@ class TenantDealImportController extends Controller
             \Illuminate\Support\Facades\Log::error('DealImport::execute failed', [
                 'tenant_id' => $tenantId, 'batch_id' => $batchId, 'error' => $e->getMessage(),
             ]);
+            // Fire ImportFailed event AFTER the catch block (no open transaction here)
+            // so the listener can notify admins without blocking the redirect.
+            try {
+                \App\Events\ImportFailed::dispatch(
+                    batchId:    $batchId,
+                    tenantId:   $tenantId,
+                    fileName:   $batch->file_name ?? 'import.csv',
+                    importType: $batch->import_type ?? 'deals',
+                    status:     'failed',
+                    failedRows: 0,
+                    totalRows:  $batch->total_rows ?? 0,
+                    actorId:    $this->authId(),
+                    actorRole:  $this->authRole(),
+                );
+            } catch (\Throwable) {}
             return redirect()
                 ->route($routes['preview'], [$tenantId, $batchId])
                 ->withErrors(['import' => 'Import failed. Please try again or contact support.']);
@@ -436,6 +451,24 @@ class TenantDealImportController extends Controller
             // Never block the import redirect for a logging failure
         }
 
+        // ── Fire ImportFailed event for completed_with_warnings ────────
+        // 'failed' case is handled above in the catch block.
+        // Here we handle the partial-success case after the activity log.
+        if (($result['failed'] ?? 0) > 0 && isset($batch->status) && $batch->status === 'completed_with_warnings') {
+            try {
+                \App\Events\ImportFailed::dispatch(
+                    batchId:    $batchId,
+                    tenantId:   $tenantId,
+                    fileName:   $batch->file_name ?? 'import.csv',
+                    importType: $batch->import_type ?? 'deals',
+                    status:     'completed_with_warnings',
+                    failedRows: $result['failed'],
+                    totalRows:  $batch->total_rows ?? ($result['created'] + $result['updated'] + $result['skipped'] + $result['failed']),
+                    actorId:    $this->authId(),
+                    actorRole:  $this->authRole(),
+                );
+            } catch (\Throwable) {}
+        }
 
         return redirect()
             ->route($routes['show'], [$tenantId, $batchId])

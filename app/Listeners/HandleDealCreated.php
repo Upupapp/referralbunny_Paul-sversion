@@ -7,10 +7,20 @@ use App\Mail\ResellerDealCreated;
 use App\Mail\TenantAdminNewDeal;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class HandleDealCreated
+/**
+ * Queued so that email + notification I/O never blocks the deal-creation request.
+ * Fire AFTER successful DB commit — callers use dispatchAfterResponse() or
+ * fire the event outside the transaction block.
+ */
+class HandleDealCreated implements ShouldQueue
 {
+    public int $tries = 3;
+    public int $backoff = 10;
+
     public function handle(DealCreated $event): void
     {
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
@@ -106,5 +116,14 @@ class HandleDealCreated
                 tenantId:       $event->tenantId,
             );
         }
+    }
+
+    public function failed(DealCreated $event, \Throwable $exception): void
+    {
+        Log::error('[HandleDealCreated] Failed after all retries', [
+            'tenant_id' => $event->tenantId,
+            'lead_id'   => $event->leadId,
+            'error'     => $exception->getMessage(),
+        ]);
     }
 }

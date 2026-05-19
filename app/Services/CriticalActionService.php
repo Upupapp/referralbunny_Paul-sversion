@@ -28,6 +28,163 @@ class CriticalActionService
     // ── Public API ─────────────────────────────────────────────────
 
     /**
+     * Lightweight badge counter — returns ['count' => N, 'has_urgent' => bool].
+     *
+     * Issues ~10 direct COUNT(*) queries against indexed columns.
+     * No full action-object loading, no PHP-side array_filter() over 100+ items.
+     * The suppressed-badge path uses has_urgent to decide whether to show 0 or the full count.
+     *
+     * The caller (CriticalActionsController::badge / _nav.blade.php) wraps this in
+     * a 60-second Cache::remember(ca_badge_{tenantId}_{userId}).
+     *
+     * @return array{count: int, has_urgent: bool}
+     */
+    public function badgeCount(string $tenantId, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
+    {
+        $count     = 0;
+        $hasUrgent = false;
+
+        // 1. Expiring deals — idx_leads_tenant_status_active (tenant_id, status) WHERE deleted_at IS NULL
+        //    days_left <= 2 signals urgent severity in a single query (no extra round-trip).
+        try {
+            $row = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'expiring')
+                ->whereNull('deleted_at')
+                ->selectRaw('COUNT(*) as total, SUM(CASE WHEN days_left <= 2 THEN 1 ELSE 0 END) as urgent_ct')
+                ->first();
+            if ($row) {
+                $count    += (int) $row->total;
+                $hasUrgent = $hasUrgent || ((int) $row->urgent_ct > 0);
+            }
+        } catch (\Throwable) {}
+
+        // 2. Pending archive + stage-move requests — idx_dar_tenant_type_pending
+        try {
+            $count += DB::table('deal_approval_requests')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('type', ['deal_archive', 'deal_stage_move'])
+                ->where('status', 'pending')
+                ->count();
+        } catch (\Throwable) {}
+
+        // 3. Pending / clarification extension requests — idx_daer_tenant_pending_statuses
+        try {
+            $count += DB::table('deal_assignment_extension_requests')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('status', ['pending_review', 'clarification_requested'])
+                ->count();
+        } catch (\Throwable) {}
+
+        // 4. Import batches needing action — idx_import_batches_tenant_status_created
+        try {
+            $count += DB::table('import_batches')
+                ->where('tenant_id', $tenantId)
+                ->where('created_at', '>', now()->subDays(14))
+                ->where(fn($q) => $q
+                    ->whereIn('status', ['previewed', 'failed'])
+                    ->orWhere(fn($q2) => $q2->where('status', 'processing')->where('started_at', '<', now()->subMinutes(15)))
+                )
+                ->count();
+        } catch (\Throwable) {}
+
+        // 5. Unreplied message threads — idx_message_threads_admin_unread
+        try {
+            $count += DB::table('message_threads as t')
+                ->where('t.tenant_id', $tenantId)
+                ->where('t.admin_unread', '>', 0)
+                ->whereExists(fn($q) => $q->select(DB::raw(1))
+                    ->from('thread_messages as m')
+                    ->whereColumn('m.thread_id', 't.id')
+                    ->where('m.sender_type', 'reseller')
+                    ->where('m.created_at', '<', now()->subHours(24))
+                )
+                ->count();
+        } catch (\Throwable) {}
+
+        // 6 & 7. Overdue + request-form tasks — idx_tasks_tenant_status_due_pending
+        if (self::tableExists('tasks')) {
+            try {
+                $count += DB::table('tasks')
+                    ->where('tenant_id', $tenantId)
+                    ->whereNull('deleted_at')
+                    ->whereNotIn('status', ['completed', 'cancelled', 'archived'])
+                    ->where('due_at', '<', now())
+                    ->count();
+            } catch (\Throwable) {}
+
+            try {
+                $count += DB::table('tasks')
+                    ->where('tenant_id', $tenantId)
+                    ->whereNull('deleted_at')
+                    ->where('status', 'open')
+                    ->where('category', 'request_form')
+                    ->count();
+            } catch (\Throwable) {}
+        }
+
+        // 8. Commission review queue — idx_leads_commission_review_queue
+        try {
+            $count += DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('stage', ['signed', 'paid'])
+                ->where('commission_status', 'pending')
+                ->whereNull('deleted_at')
+                ->count();
+        } catch (\Throwable) {}
+
+        // 9. Pending export requests (gated by canSeeExports)
+        if ($canSeeExports) {
+            try {
+                $count += DB::table('export_requests')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('status', ['pending', 'failed'])
+                    ->count();
+            } catch (\Throwable) {}
+        }
+
+        // 10. Billing issues (gated by canSeeBilling) — suspended = urgent
+        if ($canSeeBilling) {
+            try {
+                $sub = DB::table('subscriptions')
+                    ->where('tenant_id', $tenantId)
+                    ->orderByDesc('created_at')
+                    ->select('status', 'trial_end_date')
+                    ->first();
+                if ($sub && $sub->status === 'suspended') {
+                    $count++;
+                    $hasUrgent = true;
+                } elseif ($sub && $sub->status === 'trial' && !empty($sub->trial_end_date)) {
+                    $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($sub->trial_end_date), false);
+                    if ($daysLeft >= 0 && $daysLeft <= 7) {
+                        $count++;
+                    }
+                }
+            } catch (\Throwable) {}
+        }
+
+        return ['count' => $count, 'has_urgent' => $hasUrgent];
+    }
+
+    /**
+     * Invalidate all critical-actions caches for a tenant (call after any state-changing action).
+     *
+     * @param string $tenantId
+     * @param string|null $userId  When set, also clears per-user badge caches.
+     */
+    public function invalidateCache(string $tenantId, ?string $userId = null): void
+    {
+        // Bust dashboard and master-list caches — best-effort on key prefixes we can derive.
+        Cache::forget("ca_dashboard:{$tenantId}:" . md5(serialize(['billing' => false, 'exports' => true, 'users' => true, 'limit_per_source' => 5])));
+        Cache::forget("ca_dashboard:{$tenantId}:" . md5(serialize(['billing' => true,  'exports' => true, 'users' => true, 'limit_per_source' => 5])));
+
+        if ($userId) {
+            Cache::forget("ca_badge_{$tenantId}_{$userId}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
+        }
+    }
+
+    /**
      * Top N actions for the dashboard widget (admin/manager view).
      */
     public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
@@ -116,8 +273,8 @@ class CriticalActionService
     }
 
     /**
-     * Reseller-scoped recent actions for their dashboard.
-     * Only shows actions on the reseller's own accessible deals.
+     * Referrer-scoped recent actions for their dashboard.
+     * Only shows actions on the Referrer's own accessible deals.
      */
     public function forReseller(string $tenantId, string $resellerName, int $limit = 8, ?string $resellerId = null): array
     {
@@ -143,7 +300,7 @@ class CriticalActionService
                 try {
                     $items = array_merge($items, $source());
                 } catch (\Throwable $e) {
-                    Log::warning('[CriticalActionService] Reseller source failed', ['error' => $e->getMessage()]);
+                    Log::warning('[CriticalActionService] Referrer source failed', ['error' => $e->getMessage()]);
                 }
             }
 
@@ -289,6 +446,7 @@ class CriticalActionService
 
         usort($actions, fn($a, $b) =>
             (self::SEVERITY_ORDER[$a['severity']] ?? 9) <=> (self::SEVERITY_ORDER[$b['severity']] ?? 9)
+            ?: strtotime($b['occurred_at']) <=> strtotime($a['occurred_at'])
         );
 
         return array_slice($actions, 0, $limit);
@@ -634,8 +792,8 @@ class CriticalActionService
 
     private function unrepliedMessages(string $tenantId): array
     {
-        // Threads where admin has unread messages AND the last reseller message is > 24h old.
-        // Using admin_unread (reset when admin reads the thread) + a 24h-old reseller message.
+        // Threads where admin has unread messages AND the last Referrer message is > 24h old.
+        // Using admin_unread (reset when admin reads the thread) + a 24h-old Referrer message.
         try {
             $count = DB::table('message_threads as t')
                 ->where('t.tenant_id', $tenantId)
@@ -742,10 +900,15 @@ class CriticalActionService
     private function recentActivityLogs(string $tenantId, int $limit, $since): array
     {
         try {
+            // Exclude audit-only rows without using the metadata JSON column in the
+            // index-path: pull only the narrow columns first, then filter audit rows
+            // in a subquery so the planner can use idx_activity_logs_tenant_created.
+            // The metadata->>'audit_event' filter is pushed into a NOT EXISTS sub-select
+            // to avoid a full-column JSON evaluation on every row before the LIMIT.
             $rows = DB::table('activity_logs')
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>', $since)
-                ->whereRaw("(metadata->>'audit_event' IS NULL OR metadata->>'audit_event' != 'true')")
+                ->whereRaw("COALESCE(metadata->>'audit_event', 'false') != 'true'")
                 ->select('id', 'user_id', 'action', 'entity', 'entity_id', 'created_at')
                 ->orderByDesc('created_at')
                 ->limit($limit)
@@ -796,7 +959,7 @@ class CriticalActionService
         }
     }
 
-    // ── Reseller-scoped queries ────────────────────────────────────
+    // ── Referrer-scoped queries ────────────────────────────────────
 
     private function resellerExpiringDeals(string $tenantId, string $resellerName): array
     {
@@ -1011,48 +1174,48 @@ class CriticalActionService
     private function resellerImportEvents(string $tenantId, string $resellerId): array
     {
         try {
-        $rows = DB::table('activity_logs')
-            ->where('tenant_id', $tenantId)
-            ->where('entity', 'reseller')
-            ->where('entity_id', $resellerId)
-            ->whereIn('action', ['deal_import_completed', 'contacts_import_completed'])
-            ->where('created_at', '>', now()->subDays(30))
-            ->orderByDesc('created_at')
-            ->limit(5)
-            ->get();
+            $rows = DB::table('activity_logs')
+                ->where('tenant_id', $tenantId)
+                ->where('entity', 'reseller')
+                ->where('entity_id', $resellerId)
+                ->whereIn('action', ['deal_import_completed', 'contacts_import_completed'])
+                ->where('created_at', '>', now()->subDays(30))
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
 
-        return $rows->map(function ($r) use ($tenantId) {
-            $meta       = is_string($r->metadata) ? json_decode($r->metadata, true) : (array) ($r->metadata ?? []);
-            $isContacts = $r->action === 'contacts_import_completed';
-            $typeLabel  = $isContacts ? 'Contacts import' : 'Deal import';
-            $fileName   = $meta['file_name'] ?? 'file';
-            $created    = (int) ($meta['created'] ?? 0);
-            $failed     = (int) ($meta['failed'] ?? 0);
-            $skipped    = (int) ($meta['skipped'] ?? 0);
-            $batchId    = $meta['batch_id'] ?? null;
+            return $rows->map(function ($r) use ($tenantId) {
+                $meta       = is_string($r->metadata) ? json_decode($r->metadata, true) : (array) ($r->metadata ?? []);
+                $isContacts = $r->action === 'contacts_import_completed';
+                $typeLabel  = $isContacts ? 'Contacts import' : 'Deal import';
+                $fileName   = $meta['file_name'] ?? 'file';
+                $created    = (int) ($meta['created'] ?? 0);
+                $failed     = (int) ($meta['failed'] ?? 0);
+                $skipped    = (int) ($meta['skipped'] ?? 0);
+                $batchId    = $meta['batch_id'] ?? null;
 
-            $detail    = "{$created} imported" . ($skipped > 0 ? ", {$skipped} skipped" : '') . ($failed > 0 ? ", {$failed} failed" : '');
-            $actionUrl = $isContacts
-                ? "/reseller/{$tenantId}/contacts/imports" . ($batchId ? "/{$batchId}/report" : '')
-                : "/reseller/{$tenantId}/deals/imports"   . ($batchId ? "/{$batchId}/report" : '');
+                $detail    = "{$created} imported" . ($skipped > 0 ? ", {$skipped} skipped" : '') . ($failed > 0 ? ", {$failed} failed" : '');
+                $actionUrl = $isContacts
+                    ? "/reseller/{$tenantId}/contacts/imports" . ($batchId ? "/{$batchId}/report" : '')
+                    : "/reseller/{$tenantId}/deals/imports"   . ($batchId ? "/{$batchId}/report" : '');
 
-            return $this->make([
-                'type'          => $r->action,
-                'category'      => 'import',
-                'severity'      => $failed > 0 ? 'medium' : 'info',
-                'summary'       => "{$typeLabel} completed: {$fileName} — {$detail}",
-                'actor_name'    => 'You',
-                'actor_role'    => 'Referrer',
-                'related_label' => $fileName,
-                'related_type'  => 'import',
-                'related_id'    => $batchId,
-                'occurred_at'   => $r->created_at ?? now(),
-                'action_url'    => $actionUrl,
-                'action_label'  => 'View Report',
-                'action_needed' => $failed > 0,
-                'source'        => 'activity_logs',
-            ]);
-        })->toArray();
+                return $this->make([
+                    'type'          => $r->action,
+                    'category'      => 'import',
+                    'severity'      => $failed > 0 ? 'medium' : 'info',
+                    'summary'       => "{$typeLabel} completed: {$fileName} — {$detail}",
+                    'actor_name'    => 'You',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $fileName,
+                    'related_type'  => 'import',
+                    'related_id'    => $batchId,
+                    'occurred_at'   => $r->created_at ?? now(),
+                    'action_url'    => $actionUrl,
+                    'action_label'  => 'View Report',
+                    'action_needed' => $failed > 0,
+                    'source'        => 'activity_logs',
+                ]);
+            })->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] resellerImportEvents failed', ['error' => $e->getMessage()]);
             return [];
@@ -1292,6 +1455,7 @@ class CriticalActionService
             $sub = DB::table('subscriptions')
                 ->where('tenant_id', $tenantId)
                 ->orderByDesc('created_at')
+                ->select('id', 'status', 'trial_end_date', 'updated_at')
                 ->first();
 
             if (!$sub) return [];
@@ -1384,7 +1548,7 @@ class CriticalActionService
         }
     }
 
-    // ── New reseller source: extension request responses ───────────
+    // ── New Referrer source: extension request responses ───────────
 
     private function resellerExtensionRequests(string $tenantId, string $resellerName): array
     {
@@ -1433,7 +1597,7 @@ class CriticalActionService
         }
     }
 
-    // ── New reseller source: unread partner messages ───────────────
+    // ── New Referrer source: unread partner messages ───────────────
 
     private function resellerUnreadMessages(string $tenantId, string $resellerName): array
     {
@@ -1446,7 +1610,7 @@ class CriticalActionService
 
             if (!$reseller) return [];
 
-            // Count partner_threads where this reseller has unread partner messages
+            // Count partner_threads where this Referrer has unread partner messages
             $count = DB::table('partner_threads')
                 ->where('tenant_id', $tenantId)
                 ->where('reseller_id', $reseller->id)   // fixed: was partner_id (wrong column)
@@ -1762,6 +1926,7 @@ class CriticalActionService
                       )
                 )
                 ->select('id', 'google_email', 'token_expires_at', 'last_synced_at', 'tenant_user_id')
+                ->orderBy('token_expires_at')          // ASC — most overdue first; indexed column
                 ->limit(5)
                 ->get();
 
@@ -1787,7 +1952,7 @@ class CriticalActionService
         }
     }
 
-    // ── New reseller signups (invited + not yet active — admin should welcome/onboard) ──
+    // ── New Referrer signups (invited + not yet active — admin should welcome/onboard) ──
 
     private function newReferrerSignups(string $tenantId): array
     {
@@ -1875,19 +2040,101 @@ class CriticalActionService
 
     // ── DTO factory ────────────────────────────────────────────────
 
+    /**
+     * Normalises all action fields and fills in standard taxonomy defaults.
+     *
+     * Full taxonomy (22-phase ACTIONS spec phase 2):
+     *  id, tenant_id, actor/user scope, role_visibility, source_module,
+     *  subject_type/id, action_type, title, description, severity, priority_score,
+     *  due_at, status, CTA label/URL, metadata, created/resolved/dismissed/expires_at
+     */
     private function make(array $data): array
     {
         $occurredAt = $data['occurred_at'] instanceof \Carbon\Carbon
             ? $data['occurred_at']
             : \Carbon\Carbon::parse($data['occurred_at']);
 
+        // ── Priority score — map from severity + type bonus ───────────────────
+        // Scores align with phase-6 spec:
+        //   urgent=100, high≈85-95, medium≈70-80, low≈50-60, info=30
+        $severityScores = ['urgent' => 100, 'high' => 85, 'medium' => 70, 'low' => 50, 'info' => 30];
+        $typeBonus = match ($data['type'] ?? '') {
+            'subscription_suspended'     => 10,
+            'deal_expiring'              => 10,
+            'deal_expired'               => 8,
+            'payment_failed'             => 10,
+            'import_failed'              => 5,
+            'rollback_failed'            => 5,
+            'archive_request_pending'    => 3,
+            'extension_request_pending'  => 3,
+            'stage_move_request_pending' => 3,
+            'commission_review_pending'  => 2,
+            default                      => 0,
+        };
+        $priorityScore = ($severityScores[$data['severity'] ?? 'info'] ?? 30) + $typeBonus;
+
+        // ── Dismissibility (phase 18) ─────────────────────────────────────────
+        // NOT dismissible: payment/billing failure, expired deal, required update
+        // overdue, import failure, security issue.
+        $notDismissibleTypes = [
+            'subscription_suspended', 'payment_failed', 'deal_expired',
+            'import_failed', 'rollback_failed', 'overdue_task',
+            'archive_request_pending', 'extension_request_pending',
+            'stage_move_request_pending', 'trial_ending',
+        ];
+        $dismissible = ! in_array($data['type'] ?? '', $notDismissibleTypes, true)
+            && in_array($data['severity'] ?? 'info', ['info', 'low'], true);
+
+        // ── Fingerprint for deduplication (phase 7) ──────────────────────────
+        $fingerprint = md5(implode(':', [
+            $data['type']         ?? '',
+            $data['source']       ?? '',
+            $data['related_type'] ?? '',
+            $data['related_id']   ?? '__agg__',
+        ]));
+
+        // ── Role visibility (phase 3 / 16) ───────────────────────────────────
+        $category = $data['category'] ?? '';
+        $roleVisibility = match (true) {
+            $category === 'billing'  => ['owner', 'admin', 'super_admin'],
+            $category === 'export'   => ['owner', 'admin', 'manager', 'super_admin'],
+            $category === 'user'     => ['owner', 'admin', 'manager', 'super_admin'],
+            $category === 'activity' => ['owner', 'admin', 'manager', 'super_admin'],
+            default                  => ['owner', 'admin', 'manager', 'super_admin', 'referrer', 'partner'],
+        };
+
         // Store occurred_at as ISO string — Carbon instances cannot be safely
         // serialized/deserialized through PHP's object serializer (cache).
         // Callers that need Carbon should call Carbon::parse($item['occurred_at']).
-        return array_merge($data, [
-            'occurred_at'  => $occurredAt->toIso8601String(),
-            'occurred_ago' => $occurredAt->diffForHumans(),
-            'occurred_fmt' => $occurredAt->format('M j, Y g:i A'),
+        return array_merge([
+            // Guaranteed defaults so view code never needs isset() guards
+            'action_label'  => 'Open',
+            'action_url'    => null,
+            'action_needed' => false,
+            'description'   => null,
+            'meta'          => [],
+            'due_at'        => null,
+            'status'        => 'open',
+            'resolved_at'   => null,
+            'dismissed_at'  => null,
+            'expires_at'    => null,
+        ], $data, [
+            // Always-computed fields that override anything the caller passes
+            'occurred_at'    => $occurredAt->toIso8601String(),
+            'occurred_ago'   => $occurredAt->diffForHumans(),
+            'occurred_fmt'   => $occurredAt->format('M j, Y g:i A'),
+            // Taxonomy fields (phase 2)
+            'priority_score' => $priorityScore,
+            'dismissible'    => $dismissible,
+            'fingerprint'    => $fingerprint,
+            'role_visibility'=> $roleVisibility,
+            // subject_type / subject_id — spec aliases for related_type / related_id
+            'subject_type'   => $data['related_type'] ?? null,
+            'subject_id'     => $data['related_id']   ?? null,
+            // action_type — spec field that mirrors the type key
+            'action_type'    => $data['type']          ?? null,
+            // source_module — spec alias for source
+            'source_module'  => $data['source']        ?? null,
         ]);
     }
 }

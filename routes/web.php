@@ -293,6 +293,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/calendar/events', [\App\Http\Controllers\Web\TenantCalendarController::class, 'events'])->name('calendar.events');
     Route::get('/critical-actions',           [\App\Http\Controllers\Web\CriticalActionsController::class, 'index'])->name('critical-actions');
     Route::post('/critical-actions/mark-all-read', [\App\Http\Controllers\Web\CriticalActionsController::class, 'markAllRead'])->name('critical-actions.mark-all-read');
+    Route::get('/critical-actions/badge',     [\App\Http\Controllers\Web\CriticalActionsController::class, 'badge'])->name('critical-actions.badge');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');

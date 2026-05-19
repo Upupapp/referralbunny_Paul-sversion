@@ -65,10 +65,10 @@ class CriticalActionsController extends Controller
             'can_see_users'    => $canSeeUsers,
             'can_see_exports'  => $canSeeExports,
             'since'            => $request->filled('since')
-                ? now()->parse($request->input('since'))->startOfDay()
+                ? Carbon::parse($request->input('since'))->startOfDay()
                 : null,
             'until'            => $request->filled('until')
-                ? now()->parse($request->input('until'))->endOfDay()
+                ? Carbon::parse($request->input('until'))->endOfDay()
                 : null,
         ];
 
@@ -81,11 +81,13 @@ class CriticalActionsController extends Controller
         $lastSeenAt   = $userId ? Cache::get($seenCacheKey) : null;
 
         // Record that the user has now seen all current items.
-        // Also bust the badge cache so the counter resets in the nav.
+        // Bust both legacy and new fast-badge cache keys so the nav counter resets.
         if ($userId) {
             Cache::put($seenCacheKey, now()->toIso8601String(), now()->addDays(30));
-            // Bust badge and suppress for 5 min — opening the page = "seen all"
+            // Forget both key formats and suppress for 5 min — opening the page = "seen all"
             Cache::forget("ca_badge_{$tenantId}_{$userId}");
+            Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
             Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
         }
 
@@ -124,15 +126,125 @@ class CriticalActionsController extends Controller
 
     public function markAllRead(string $tenantId, Request $request): \Illuminate\Http\JsonResponse
     {
-        $userId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+        $isSuperAdmin = Auth::guard('web')->check();
+        $actingUser   = Auth::guard('tenant')->user();
+
+        // Tenant isolation: verify the caller belongs to this tenant (prevents IDOR).
+        // Super-admins are exempt — they have cross-tenant access.
+        if (! $isSuperAdmin && $actingUser) {
+            $hasMembership = TenantMembership::where('tenant_user_id', $actingUser->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->exists();
+
+            if (! $hasMembership) {
+                return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
+            }
+        } elseif (! $isSuperAdmin) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $userId = $actingUser?->id ?? Auth::guard('web')->id();
 
         if ($userId) {
             Cache::put("ca_last_seen_{$tenantId}_{$userId}", now()->toIso8601String(), now()->addDays(30));
+            // Bust both legacy and new fast-badge keys
             Cache::forget("ca_badge_{$tenantId}_{$userId}");
+            Cache::forget("ca_badge_fast:{$tenantId}:{$userId}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
             // Suppress badge for 5 minutes so it doesn't instantly reappear
             Cache::put("ca_badge_suppressed:{$tenantId}:{$userId}", 1, 300);
         }
 
         return response()->json(['success' => true, 'message' => 'All critical actions marked as seen.']);
+    }
+
+    /**
+     * Lightweight JSON endpoint for the nav badge counter.
+     * Returns { count: N } — used by client-side polling so the badge
+     * refreshes without a full page reload.
+     *
+     * Tenant isolation: tenantId comes from the authenticated route param, never
+     * from the request body. Role-scoping mirrors _nav.blade.php exactly.
+     */
+    public function badge(string $tenantId, Request $request): \Illuminate\Http\JsonResponse
+    {
+        // Only admin/manager roles may see the badge.
+        $actingUser = Auth::guard('tenant')->user();
+        $isSuperAdmin = Auth::guard('web')->check();
+        $userId = $actingUser?->id ?? ($isSuperAdmin ? Auth::guard('web')->id() : null);
+
+        if (! $isSuperAdmin && ! $actingUser) {
+            return response()->json(['count' => 0]);
+        }
+
+        // Resolve role — must be admin-level to get a non-zero badge.
+        $navRole = 'viewer';
+        if ($isSuperAdmin) {
+            $navRole = 'super_admin';
+        } elseif ($actingUser) {
+            $membership = \App\Models\TenantMembership::where('tenant_user_id', $actingUser->id)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+
+            if (! $membership) {
+                // User has no membership in this tenant — return 0 (cross-tenant isolation)
+                return response()->json(['count' => 0]);
+            }
+
+            $navRole = $membership->role ?? 'viewer';
+        }
+
+        $isAdminMgr = in_array($navRole, ['owner', 'admin', 'manager', 'super_admin']);
+        if (! $isAdminMgr) {
+            return response()->json(['count' => 0]);
+        }
+
+        // Derive permission flags (mirrors _nav.blade.php logic exactly)
+        $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
+        $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
+
+        if ($navRole === 'manager' && $userId && isset($membership)) {
+            $_permSvc       = app(\App\Services\PermissionService::class);
+            $_canSeeExports = $_permSvc->can($membership, 'approve_export_requests');
+            $_canSeeUsers   = $_permSvc->can($membership, 'invite_tenant_staff');
+        }
+
+        try {
+            // Cache key matches _nav.blade.php so both share the same warm cache.
+            $_caBadgeKey    = "ca_badge_{$tenantId}_{$userId}";
+            $_suppressedKey = "ca_badge_suppressed:{$tenantId}:{$userId}";
+            $_suppressed    = Cache::has($_suppressedKey);
+
+            if ($_suppressed) {
+                // Even when suppressed, surface urgent items.
+                // badgeCount() returns has_urgent — no separate urgentBadgeCount() needed.
+                $_urgentKey = "ca_badge_urgent:{$tenantId}:{$userId}";
+                $badge = Cache::remember(
+                    $_urgentKey, 120,
+                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                );
+                $count     = ($badge['has_urgent'] ?? false) ? (int)($badge['count'] ?? 0) : 0;
+                $hasUrgent = (bool)($badge['has_urgent'] ?? false);
+            } else {
+                // Cache the full badge array for 60 s — gives both count + has_urgent in one lookup.
+                $badge = Cache::remember(
+                    $_caBadgeKey, 60,
+                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                );
+                $count     = (int)($badge['count']      ?? 0);
+                $hasUrgent = (bool)($badge['has_urgent'] ?? false);
+            }
+
+            return response()->json(['count' => $count, 'has_urgent' => $hasUrgent]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CriticalActionsController] badge() failed', [
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json(['count' => null, 'has_urgent' => false, 'error' => true], 200);
+        }
     }
 }

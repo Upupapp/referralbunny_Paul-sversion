@@ -355,6 +355,20 @@ class ContactsImportController extends Controller
             ]);
             // Reset batch to previewed so the user can retry
             try { $batch->refresh()->update(['status' => 'previewed']); } catch (\Throwable) {}
+            // Notify admins — fire AFTER catch (no open transaction)
+            try {
+                \App\Events\ImportFailed::dispatch(
+                    batchId:    $batchId,
+                    tenantId:   $tenantId,
+                    fileName:   $batch->file_name ?? 'contacts.csv',
+                    importType: 'contacts',
+                    status:     'failed',
+                    failedRows: 0,
+                    totalRows:  $batch->total_rows ?? 0,
+                    actorId:    $this->authId(),
+                    actorRole:  $role,
+                );
+            } catch (\Throwable) {}
             return redirect()
                 ->route($previewRoute, [$tenantId, $batchId])
                 ->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
@@ -381,6 +395,26 @@ class ContactsImportController extends Controller
             ]);
         } catch (\Throwable) {
             // Never block the import redirect for a logging failure
+        }
+
+        // ── Fire ImportFailed event for completed_with_warnings ────────
+        if (($result['failed'] ?? 0) > 0) {
+            try {
+                $freshBatch = $batch->fresh();
+                if ($freshBatch && $freshBatch->status === 'completed_with_warnings') {
+                    \App\Events\ImportFailed::dispatch(
+                        batchId:    $batchId,
+                        tenantId:   $tenantId,
+                        fileName:   $batch->file_name ?? 'contacts.csv',
+                        importType: 'contacts',
+                        status:     'completed_with_warnings',
+                        failedRows: $result['failed'],
+                        totalRows:  $batch->total_rows ?? ($result['created'] + $result['updated'] + $result['skipped'] + $result['failed']),
+                        actorId:    $this->authId(),
+                        actorRole:  $role,
+                    );
+                }
+            } catch (\Throwable) {}
         }
 
         $reportRoute = $role === 'reseller'

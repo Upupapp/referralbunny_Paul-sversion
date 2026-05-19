@@ -5,11 +5,24 @@ namespace App\Listeners;
 use App\Events\DealExpired;
 use App\Mail\ResellerDealExpired;
 use App\Services\NotificationDispatchService;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-class HandleDealExpired
+/**
+ * Queued so expiry notifications don't block the expiry job.
+ * Rule: Admin + Manager receive high-severity in-app notification (already in place).
+ * Digest rule: multiple deals expiring in quick succession do NOT each send an email.
+ * The daily email digest job (SendResellerDailySummariesJob) handles bulk expiry emails.
+ * Cache bust: clears admin CA badges so the nav badge updates within 60s.
+ */
+class HandleDealExpired implements ShouldQueue
 {
+    public int $tries = 3;
+    public int $backoff = 10;
+
     public function handle(DealExpired $event): void
     {
         $dispatcher = app(NotificationDispatchService::class);
@@ -94,5 +107,31 @@ class HandleDealExpired
                 dedupeSuffix: "{$event->leadId}:expired:partner",
             );
         }
+
+        // ── Cache bust: refresh admin CA badges within 60s ────────────────────
+        // The in-app notification to admins already fires above. This ensures the
+        // nav badge counter also clears so it recalculates on the next page load.
+        try {
+            $adminIds = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $event->tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->pluck('u.id');
+
+            foreach ($adminIds as $uid) {
+                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
+                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
+            }
+        } catch (\Throwable) {}
+    }
+
+    public function failed(DealExpired $event, \Throwable $exception): void
+    {
+        Log::error('[HandleDealExpired] Failed after all retries', [
+            'tenant_id' => $event->tenantId,
+            'lead_id'   => $event->leadId,
+            'error'     => $exception->getMessage(),
+        ]);
     }
 }

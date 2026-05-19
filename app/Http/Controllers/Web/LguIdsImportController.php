@@ -312,6 +312,25 @@ class LguIdsImportController extends Controller
             } catch (\Throwable) {}
         }
 
+        // ── Fire ImportFailed event for completed_with_warnings ────────
+        // The 'failed' hard-failure is handled by try/catch around executeImport above (if any).
+        $freshBatch = $batch->fresh();
+        if (($result['failed'] ?? 0) > 0 && $freshBatch && $freshBatch->status === 'completed_with_warnings') {
+            try {
+                \App\Events\ImportFailed::dispatch(
+                    batchId:    $batchId,
+                    tenantId:   $tenantId,
+                    fileName:   $batch->file_name ?? 'import.lgu-ids.csv',
+                    importType: 'lgu_ids_deals',
+                    status:     'completed_with_warnings',
+                    failedRows: $result['failed'],
+                    totalRows:  $batch->total_rows ?? ($result['created'] + $result['updated'] + $result['skipped'] + $result['failed']),
+                    actorId:    $this->authId(),
+                    actorRole:  $this->authRole(),
+                );
+            } catch (\Throwable) {}
+        }
+
         return redirect()
             ->route('tenant.imports.lgu-ids.show', [$tenantId, $batchId])
             ->with('success', "Import complete — Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}, Failed: {$result['failed']}.");

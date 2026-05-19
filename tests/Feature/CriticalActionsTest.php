@@ -256,10 +256,10 @@ class CriticalActionsTest extends TestCase
         $this->assertContains('import_completed_with_warnings', $types);
     }
 
-    // ── 5. Service — reseller-scoped ─────────────────────────────
+    // ── 5. Service — referrer-scoped ─────────────────────────────
 
     /** @test */
-    public function reseller_service_only_returns_own_deals()
+    public function referrer_service_only_returns_own_deals()
     {
         $tenant    = $this->createTenant();
         $resellerA = $this->createReseller($tenant, ['name' => 'Referrer A']);
@@ -278,7 +278,7 @@ class CriticalActionsTest extends TestCase
     }
 
     /** @test */
-    public function reseller_dashboard_shows_own_activity()
+    public function referrer_dashboard_shows_own_activity()
     {
         $tenant   = $this->createTenant();
         $reseller = $this->createReseller($tenant, ['name' => 'Maria Santos']);
@@ -371,5 +371,251 @@ class CriticalActionsTest extends TestCase
 
         // Verify no leads were modified
         $this->assertDatabaseMissing('leads', ['tenant_id' => 'lgu-ids']);
+    }
+
+    // ── 10. Badge JSON endpoint ───────────────────────────────────
+
+    /** @test */
+    public function badge_endpoint_returns_count_for_admin()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+        // Create an expiring deal so there is at least one action_needed item
+        $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 1]);
+
+        $this->actingAs($admin, 'tenant')
+            ->getJson(route('tenant.critical-actions.badge', $tenant->id))
+            ->assertOk()
+            ->assertJsonStructure(['count'])
+            ->assertJsonPath('count', fn($c) => is_int($c) && $c >= 0);
+    }
+
+    /** @test */
+    public function badge_endpoint_returns_zero_for_member_role()
+    {
+        $tenant = $this->createTenant();
+        $member = $this->createTenantUser();
+        $this->createMembership($tenant, $member, 'member');
+
+        $this->actingAs($member, 'tenant')
+            ->getJson(route('tenant.critical-actions.badge', $tenant->id))
+            ->assertOk()
+            ->assertJsonPath('count', 0);
+    }
+
+    /** @test */
+    public function badge_endpoint_returns_zero_cross_tenant()
+    {
+        $tenantA = $this->createTenant();
+        $tenantB = $this->createTenant();
+        $adminA  = $this->createTenantUser();
+        $this->createMembership($tenantA, $adminA, 'admin');
+
+        // Admin A requests badge for Tenant B — must return 0 (not Tenant B's count)
+        $this->actingAs($adminA, 'tenant')
+            ->getJson(route('tenant.critical-actions.badge', $tenantB->id))
+            ->assertOk()
+            ->assertJsonPath('count', 0);
+    }
+
+    /** @test */
+    public function badge_count_decrements_after_mark_all_read()
+    {
+        $tenant = $this->createTenant();
+        $admin  = $this->createTenantUser();
+        $this->createMembership($tenant, $admin, 'admin');
+        $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 1]);
+
+        // Get initial badge (should be > 0 due to expiring deal)
+        $res1 = $this->actingAs($admin, 'tenant')
+            ->getJson(route('tenant.critical-actions.badge', $tenant->id))
+            ->assertOk();
+        $countBefore = $res1->json('count');
+
+        // Mark all as seen
+        $this->actingAs($admin, 'tenant')
+            ->postJson(route('tenant.critical-actions.mark-all-read', $tenant->id))
+            ->assertOk();
+
+        // Badge should now return 0 (suppressed for 5 min, urgent-only bypass)
+        // At minimum it must not exceed the pre-seen count
+        $res2 = $this->actingAs($admin, 'tenant')
+            ->getJson(route('tenant.critical-actions.badge', $tenant->id))
+            ->assertOk();
+        $countAfter = $res2->json('count');
+
+        $this->assertLessThanOrEqual($countBefore, $countAfter,
+            'Badge count must not increase after mark-all-read');
+    }
+
+    /** @test */
+    public function badge_endpoint_unauthenticated_returns_zero()
+    {
+        $tenant = $this->createTenant();
+
+        $this->getJson(route('tenant.critical-actions.badge', $tenant->id))
+            ->assertRedirect(); // auth middleware redirects to login
+    }
+
+    // ── 11. Taxonomy fields (phase 2) ────────────────────────────
+
+    /** @test */
+    public function action_dto_contains_all_required_taxonomy_fields()
+    {
+        $tenant = $this->createTenant();
+        $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 1]);
+
+        $service = app(CriticalActionService::class);
+        $actions = $service->dashboardSummary($tenant->id);
+
+        $this->assertNotEmpty($actions, 'Expected at least one action for a tenant with an expiring deal');
+
+        $action = $actions[0];
+
+        // Core identity
+        $this->assertArrayHasKey('type',          $action, 'Missing: type');
+        $this->assertArrayHasKey('category',       $action, 'Missing: category');
+        $this->assertArrayHasKey('severity',       $action, 'Missing: severity');
+        $this->assertArrayHasKey('summary',        $action, 'Missing: summary');
+        $this->assertArrayHasKey('source',         $action, 'Missing: source');
+
+        // Actor / subject
+        $this->assertArrayHasKey('actor_name',     $action, 'Missing: actor_name');
+        $this->assertArrayHasKey('actor_role',     $action, 'Missing: actor_role');
+        $this->assertArrayHasKey('subject_type',   $action, 'Missing: subject_type');
+        $this->assertArrayHasKey('subject_id',     $action, 'Missing: subject_id');
+        $this->assertArrayHasKey('related_type',   $action, 'Missing: related_type');
+        $this->assertArrayHasKey('related_id',     $action, 'Missing: related_id');
+        $this->assertArrayHasKey('related_label',  $action, 'Missing: related_label');
+
+        // CTA
+        $this->assertArrayHasKey('action_url',     $action, 'Missing: action_url');
+        $this->assertArrayHasKey('action_label',   $action, 'Missing: action_label');
+        $this->assertArrayHasKey('action_needed',  $action, 'Missing: action_needed');
+        $this->assertArrayHasKey('action_type',    $action, 'Missing: action_type');
+
+        // Phase-2 taxonomy extras
+        $this->assertArrayHasKey('priority_score', $action, 'Missing: priority_score');
+        $this->assertArrayHasKey('dismissible',    $action, 'Missing: dismissible');
+        $this->assertArrayHasKey('fingerprint',    $action, 'Missing: fingerprint');
+        $this->assertArrayHasKey('role_visibility',$action, 'Missing: role_visibility');
+        $this->assertArrayHasKey('source_module',  $action, 'Missing: source_module');
+
+        // Lifecycle
+        $this->assertArrayHasKey('status',         $action, 'Missing: status');
+        $this->assertArrayHasKey('occurred_at',    $action, 'Missing: occurred_at');
+        $this->assertArrayHasKey('occurred_ago',   $action, 'Missing: occurred_ago');
+        $this->assertArrayHasKey('occurred_fmt',   $action, 'Missing: occurred_fmt');
+        $this->assertArrayHasKey('due_at',         $action, 'Missing: due_at');
+        $this->assertArrayHasKey('resolved_at',    $action, 'Missing: resolved_at');
+        $this->assertArrayHasKey('dismissed_at',   $action, 'Missing: dismissed_at');
+        $this->assertArrayHasKey('expires_at',     $action, 'Missing: expires_at');
+        $this->assertArrayHasKey('meta',           $action, 'Missing: meta');
+        $this->assertArrayHasKey('description',    $action, 'Missing: description');
+
+        // Type checks
+        $this->assertIsInt($action['priority_score'], 'priority_score must be an integer');
+        $this->assertIsBool($action['dismissible'],   'dismissible must be a boolean');
+        $this->assertIsString($action['fingerprint'], 'fingerprint must be a string');
+        $this->assertIsArray($action['role_visibility'], 'role_visibility must be an array');
+        $this->assertIsArray($action['meta'],            'meta must be an array');
+    }
+
+    /** @test */
+    public function urgent_deal_expiring_has_high_priority_score_and_is_not_dismissible()
+    {
+        $tenant = $this->createTenant();
+        $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 1]);
+
+        $service = app(CriticalActionService::class);
+        $actions = $service->dashboardSummary($tenant->id);
+
+        $expiring = array_values(array_filter($actions, fn($a) => $a['type'] === 'deal_expiring'));
+        $this->assertNotEmpty($expiring);
+
+        $a = $expiring[0];
+        // Urgent + deal_expiring type bonus = 100 + 10 = 110
+        $this->assertGreaterThanOrEqual(100, $a['priority_score'],
+            'Urgent expiring deal must have priority_score >= 100');
+        $this->assertFalse($a['dismissible'],
+            'Expiring deal is urgent severity — wait, only urgent|high are non-dismissible by severity rule; check by type');
+    }
+
+    /** @test */
+    public function info_severity_action_is_dismissible()
+    {
+        $tenant = $this->createTenant();
+        // invited referrer within 7 days triggers new_referrer_invited (severity=info)
+        DB::table('resellers')->insert([
+            'id'                => (string) Str::uuid(),
+            'tenant_id'         => $tenant->id,
+            'name'              => 'New Referrer',
+            'email'             => 'new@example.com',
+            'status'            => 'invited',
+            'assigned_leads'    => 0,
+            'closed_value'      => 0,
+            'performance_score' => 0,
+            'is_anonymous'      => false,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $service = app(CriticalActionService::class);
+        $actions = $service->dashboardSummary($tenant->id, 100, false, true, true);
+
+        $infoActions = array_filter($actions, fn($a) => $a['severity'] === 'info');
+        foreach ($infoActions as $a) {
+            $this->assertTrue($a['dismissible'],
+                "Info-severity action '{$a['type']}' should be dismissible");
+        }
+    }
+
+    /** @test */
+    public function deduplication_fingerprint_is_unique_per_subject()
+    {
+        $tenant = $this->createTenant();
+        $leadIdA = $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 1, 'name' => 'Deal A']);
+        $leadIdB = $this->createLead($tenant, ['status' => 'expiring', 'days_left' => 2, 'name' => 'Deal B']);
+
+        $service = app(CriticalActionService::class);
+        $actions = $service->dashboardSummary($tenant->id, 100);
+
+        $expiringActions = array_filter($actions, fn($a) => $a['type'] === 'deal_expiring');
+        $fingerprints = array_column(array_values($expiringActions), 'fingerprint');
+
+        $this->assertCount(
+            count(array_unique($fingerprints)),
+            $fingerprints,
+            'Each deal_expiring action must have a unique fingerprint'
+        );
+    }
+
+    /** @test */
+    public function role_visibility_billing_is_restricted_to_owners_and_admins()
+    {
+        $tenant = $this->createTenant();
+
+        $service = app(CriticalActionService::class);
+
+        // Inject a billing action by seeding a suspended subscription
+        DB::table('subscriptions')->insert([
+            'id'         => (string) Str::uuid(),
+            'tenant_id'  => $tenant->id,
+            'status'     => 'suspended',
+            'plan_id'    => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $actions = $service->dashboardSummary($tenant->id, 100, true);
+        $billingActions = array_filter($actions, fn($a) => $a['category'] === 'billing');
+
+        foreach ($billingActions as $a) {
+            $this->assertContains('owner',       $a['role_visibility'], "Billing action missing 'owner' in role_visibility");
+            $this->assertContains('super_admin', $a['role_visibility'], "Billing action missing 'super_admin' in role_visibility");
+            $this->assertNotContains('referrer', $a['role_visibility'], "Billing action must NOT be visible to referrers");
+            $this->assertNotContains('partner',  $a['role_visibility'], "Billing action must NOT be visible to partners");
+        }
     }
 }

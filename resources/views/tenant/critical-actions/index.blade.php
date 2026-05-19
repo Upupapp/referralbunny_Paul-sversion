@@ -12,14 +12,15 @@
         'info'   => ['bg' => 'bg-gray-100',   'text' => 'text-gray-600',   'dot' => 'bg-gray-400',   'label' => 'Info'],
     ];
     $categoryIcons = [
-        'deal'      => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',
-        'import'    => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
-        'task'      => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
-        'messaging' => 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
-        'user'      => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-        'export'    => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
-        'billing'   => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
-        'activity'  => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+        'deal'       => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2',
+        'import'     => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
+        'task'       => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+        'messaging'  => 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+        'user'       => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+        'export'     => 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
+        'billing'    => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+        'commission' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        'activity'   => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
     ];
 @endphp
 <div class="space-y-5">
@@ -51,7 +52,11 @@
                             fetch('{{ route('tenant.critical-actions.mark-all-read', $tenant->id) }}', {
                                 method:'POST', credentials:'same-origin',
                                 headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
-                            }).then(()=>{ done=true; loading=false; }).catch(()=>{ loading=false; })"
+                            }).then(()=>{
+                                done=true; loading=false;
+                                // Notify the nav badge poller so it resets without waiting for next poll
+                                window.dispatchEvent(new CustomEvent('critical-badge:cleared'));
+                            }).catch(()=>{ loading=false; })"
                         class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-700 transition-colors disabled:opacity-60"
                         :disabled="loading || done">
                     <svg x-show="!done && !loading" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,9 +143,17 @@
         {{-- Empty state --}}
         @if(count($result['items']) === 0)
             <div class="flex flex-col items-center justify-center py-16 text-center px-4">
-                <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-14 h-14 object-contain mb-3 opacity-50">
-                <p class="text-sm font-semibold text-gray-500">Nothing critical right now</p>
-                <p class="text-xs text-gray-400 mt-1">R Bunny says your workspace is calm. Check back later.</p>
+                <img src="/images/mascots/r-bunny-sleeping.webp" alt="R Bunny relaxing" class="w-20 h-20 object-contain mb-4">
+                @if(array_filter([$filters['search'], $filters['severity'], $filters['category'], $filters['since'], $filters['until'] ?? null]))
+                    <p class="text-sm font-semibold text-gray-600">No results match your filters</p>
+                    <p class="text-xs text-gray-400 mt-1">Try adjusting your search or clearing the active filters.</p>
+                @elseif(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
+                    <p class="text-sm font-semibold text-gray-600">All clear. No tenant-wide critical actions.</p>
+                    <p class="text-xs text-gray-400 mt-1">R Bunny says your workspace is calm. Check back anytime.</p>
+                @else
+                    <p class="text-sm font-semibold text-gray-600">You're all caught up.</p>
+                    <p class="text-xs text-gray-400 mt-1">Nothing requires your attention right now. Nice work!</p>
+                @endif
             </div>
 
         @else

@@ -115,18 +115,18 @@ try {
 // Note: $criticalBadge is added to workspaceBadge after it's computed below
 $workspaceBadge = $taskBadge + $msgBadge;
 
-// Critical actions badge — count all action_needed=true items.
-// Cached per USER (not per tenant) so one admin visiting doesn't reset another's badge.
-// TTL: 60 seconds — urgent actions appear within 1 minute.
+// Critical actions badge — uses lightweight badgeCount() (~10 targeted COUNT queries)
+// instead of loading all action objects. Cached per USER (not per tenant) so one admin's
+// page visit does not reset another admin's badge. TTL: 60 s.
+// badgeCount() returns ['count' => N, 'has_urgent' => bool] so the suppressed-badge path
+// can surface urgent items without calling a separate method.
 $criticalBadge = 0;
 if ($isAdminMgr) {
     try {
         $_caUserId   = auth('tenant')->id() ?? auth('web')->id();
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
-        // Badge suppressed if user clicked "Mark all as seen" (lasts 5 min)
         // Derive permission flags matching CriticalActionsController gates exactly.
-        // Owners/admins/super_admins see everything. Managers are checked per-permission
-        // so the badge count matches what they can actually see on the actions page.
+        // Owners/admins/super_admins see everything. Managers are checked per-permission.
         $_canSeeBilling = in_array($navRole, ['owner', 'super_admin']);
         $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
         $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
@@ -143,27 +143,32 @@ if ($isAdminMgr) {
             }
         }
 
-        // Bypass suppressor for urgent-severity actions so critical alerts always show
+        // Bypass suppressor for urgent-severity actions so critical alerts always show.
+        // badgeCount() returns has_urgent so we don't need a separate urgentBadgeCount() call.
         $_suppressedKey = "ca_badge_suppressed:{$tenantId}:{$_caUserId}";
-        $_suppressed = \Illuminate\Support\Facades\Cache::has($_suppressedKey);
+        $_suppressed    = \Illuminate\Support\Facades\Cache::has($_suppressedKey);
         if ($_suppressed) {
-            // Still surface urgent-severity items even when the badge is suppressed
-            $urgentActions = app(\App\Services\CriticalActionService::class)
-                ->dashboardSummary($tenantId, 100, $_canSeeBilling, $_canSeeExports, $_canSeeUsers);
-            $criticalBadge = count(array_filter($urgentActions, fn($a) => ($a['severity'] ?? '') === 'urgent'));
-        } else {
-            $criticalBadge = (int) \Illuminate\Support\Facades\Cache::remember(
-                $_caBadgeKey, 60,
-                function () use ($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers) {
-                    $actions = app(\App\Services\CriticalActionService::class)
-                        ->dashboardSummary($tenantId, 100, $_canSeeBilling, $_canSeeExports, $_canSeeUsers);
-                    return count(array_filter($actions, fn($a) => !empty($a['action_needed'])));
-                }
+            // Re-use the badge cache (TTL 120 s for suppressed path) to avoid uncached DB round-trip.
+            $_badge        = \Illuminate\Support\Facades\Cache::remember(
+                "ca_badge_urgent:{$tenantId}:{$_caUserId}", 120,
+                fn() => app(\App\Services\CriticalActionService::class)
+                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
             );
+            // Show full count when urgents exist; otherwise show 0 (everything else is "seen").
+            $criticalBadge = ($_badge['has_urgent'] ?? false) ? (int)($_badge['count'] ?? 0) : 0;
+        } else {
+            // Cache the full badge array for 60 s — a single cache lookup gives both count + has_urgent.
+            $_badge        = \Illuminate\Support\Facades\Cache::remember(
+                $_caBadgeKey, 60,
+                fn() => app(\App\Services\CriticalActionService::class)
+                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+            );
+            $criticalBadge = (int)($_badge['count'] ?? 0);
         }
-        // Clear THIS USER's badge when they visit the critical actions page
+        // Clear THIS USER's badge when they visit the critical actions page.
         if (request()->routeIs('tenant.critical-actions')) {
             \Illuminate\Support\Facades\Cache::forget($_caBadgeKey);
+            \Illuminate\Support\Facades\Cache::forget("ca_badge_urgent:{$tenantId}:{$_caUserId}");
             $criticalBadge = 0;
         }
     } catch (\Throwable) {}
@@ -288,7 +293,17 @@ $workspaceBadge += $criticalBadge;
     </div>
 
     {{-- ── Workspace ───────────────────────────────────────────────────────── --}}
-    <div>
+    {{-- x-data tracks the live workspace total so the group button badge updates
+         when the 60s critical-badge poller fires without a full page reload. --}}
+    <div x-data="{
+            wsTotal: {{ (int) $workspaceBadge }},
+            init() {
+                window.addEventListener('critical-badge:updated', (e) => {
+                    const newCritical = typeof e.detail?.count === 'number' ? e.detail.count : {{ (int) $criticalBadge }};
+                    this.wsTotal = Math.max(0, {{ (int) ($taskBadge + $msgBadge) }} + newCritical);
+                });
+            }
+         }">
         <button @click="toggle('workspace')"
                 :aria-expanded="open.workspace.toString()"
                 aria-controls="nav-workspace"
@@ -298,11 +313,13 @@ $workspaceBadge += $criticalBadge;
                       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
             </svg>
             <span class="flex-1 text-left">Workspace</span>
+            {{-- Live total: hidden at 0, capped at 9+ (consistent with notification bell). --}}
+            <span x-show="wsTotal > 0" x-cloak
+                  class="nav-badge nav-badge-orange mr-1"
+                  :aria-label="wsTotal + ' item' + (wsTotal === 1 ? '' : 's') + ' need attention'"
+                  x-text="wsTotal > 99 ? '99+' : wsTotal"></span>
             @if($workspaceBadge > 0)
-                <span class="nav-badge nav-badge-orange mr-1"
-                      aria-label="{{ $workspaceBadge }} item{{ $workspaceBadge === 1 ? '' : 's' }} need attention">
-                    {{ $workspaceBadge > 99 ? '99+' : $workspaceBadge }}
-                </span>
+                <noscript><span class="nav-badge nav-badge-orange mr-1">{{ $workspaceBadge > 99 ? '99+' : $workspaceBadge }}</span></noscript>
             @endif
             <svg class="nav-chevron" :class="open.workspace ? 'rotate-90' : ''"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,14 +388,43 @@ $workspaceBadge += $criticalBadge;
             </a>
 
             @if($isAdminMgr)
+            {{-- Critical Actions nav item with live-polling badge.
+                 x-data initialises from the server-rendered $criticalBadge so there is
+                 no flash-of-zero on load. A 60s polling interval keeps it fresh without
+                 hammering the server. On error the badge shows "!" to signal staleness. --}}
             <a href="{{ route('tenant.critical-actions', $tenantId) }}"
                aria-current="{{ request()->routeIs('tenant.critical-actions') ? 'page' : 'false' }}"
                @click="window.dispatchEvent(new CustomEvent('sidebar-close'))"
-               class="nav-child {{ request()->routeIs('tenant.critical-actions') ? 'nav-child-active' : '' }}">
+               class="nav-child {{ request()->routeIs('tenant.critical-actions') ? 'nav-child-active' : '' }}"
+               x-data="criticalBadgePoller(
+                   '{{ route('tenant.critical-actions.badge', $tenantId) }}',
+                   {{ (int) $criticalBadge }},
+                   {{ request()->routeIs('tenant.critical-actions') ? 'true' : 'false' }}
+               )"
+               x-init="init()">
                 <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
                 <span class="flex-1">Critical Actions</span>
+
+                {{-- Loading skeleton (shown only on very first fetch if server rendered 0) --}}
+                <span x-show="loading && count === 0" x-cloak
+                      class="inline-block w-5 h-4 rounded-full bg-white/20 animate-pulse"
+                      aria-hidden="true"></span>
+
+                {{-- Error fallback: "!" badge when fetch fails --}}
+                <span x-show="fetchError && count === 0" x-cloak
+                      class="nav-badge nav-badge-orange"
+                      aria-label="Critical actions count unavailable"
+                      title="Could not load count — click to view">!</span>
+
+                {{-- Normal count badge --}}
+                <span x-show="count > 0" x-cloak
+                      class="nav-badge nav-badge-orange"
+                      :aria-label="count + ' critical item' + (count === 1 ? '' : 's') + ' need attention'"
+                      x-text="count > 99 ? '99+' : count"></span>
+
+                {{-- SSR fallback (no-JS / first render) — hidden once Alpine takes over --}}
                 @if($criticalBadge > 0)
                     <span class="nav-badge nav-badge-orange"
                           aria-label="{{ $criticalBadge }} critical item{{ $criticalBadge === 1 ? '' : 's' }} need attention">
@@ -536,3 +582,82 @@ $workspaceBadge += $criticalBadge;
     @endif
 
 </div>
+
+{{-- ── Critical Actions Badge Poller ─────────────────────────────────────────
+     Polls /tenant/{id}/critical-actions/badge every 60 s (only when tab is
+     visible). Exposes count, loading, and fetchError to the nav item above.
+     On success fires 'critical-badge:updated' so the Workspace group button
+     can update its own aggregate badge without a full page reload.
+     ─────────────────────────────────────────────────────────────────────── --}}
+<script>
+function criticalBadgePoller(badgeUrl, initialCount, onActionsPage) {
+    return {
+        count:      initialCount,
+        hasUrgent:  false,
+        loading:    false,
+        fetchError: false,
+        _timer:     null,
+        _visHandler: null,
+
+        async fetchCount() {
+            // If the user is on the critical-actions page the server already cleared the
+            // badge. Skip the fetch to avoid showing a stale cached count.
+            if (onActionsPage) { this.count = 0; this.hasUrgent = false; return; }
+
+            this.loading = true;
+            try {
+                const res  = await fetch(badgeUrl, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) { this.fetchError = true; return; }
+                const data = await res.json();
+                if (data.error) {
+                    this.fetchError = true;
+                } else {
+                    this.count      = typeof data.count === 'number' ? data.count : 0;
+                    this.hasUrgent  = !!data.has_urgent;
+                    this.fetchError = false;
+                    // Broadcast so the Workspace group button can update its aggregate
+                    window.dispatchEvent(new CustomEvent('critical-badge:updated', {
+                        detail: { count: this.count, hasUrgent: this.hasUrgent }
+                    }));
+                }
+            } catch (e) {
+                this.fetchError = true;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        init() {
+            // On first load the SSR value is authoritative — no extra fetch needed.
+            // Poll every 60 s; only when tab is visible to avoid background flooding.
+            // Polling is skipped entirely when already on the critical-actions page.
+            if (!onActionsPage) {
+                this._timer = setInterval(() => {
+                    if (!document.hidden) this.fetchCount();
+                }, 60_000);
+
+                // Re-fetch when the user switches back to this tab.
+                // Store the handler so Alpine can remove it on destroy() to prevent leaks.
+                this._visHandler = () => { if (!document.hidden) this.fetchCount(); };
+                document.addEventListener('visibilitychange', this._visHandler);
+            }
+
+            // Re-fetch when "Mark all as seen" clears the server cache
+            window.addEventListener('critical-badge:cleared', () => {
+                this.count      = 0;
+                this.hasUrgent  = false;
+                this.fetchError = false;
+            });
+        },
+
+        destroy() {
+            // Clean up timers and listeners to prevent memory leaks on SPA navigation.
+            if (this._timer)      { clearInterval(this._timer); this._timer = null; }
+            if (this._visHandler) { document.removeEventListener('visibilitychange', this._visHandler); this._visHandler = null; }
+        },
+    };
+}
+</script>
