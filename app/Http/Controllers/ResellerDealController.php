@@ -1187,11 +1187,12 @@ class ResellerDealController extends Controller
 
         $lead = Lead::find($approval->deal_id);
 
+        // Resolve reviewer identity OUTSIDE the transaction — mirrors rejectRequest pattern
+        $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
+        $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
+
         DB::beginTransaction();
         try {
-            $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
-            $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
-
             $approval->update([
                 'status'        => 'approved',
                 'reviewer_note' => $data['reviewer_note'] ?? null,
