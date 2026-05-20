@@ -288,10 +288,10 @@
 
                             {{-- Stage card — clickable for future/next stages --}}
                             <div class="relative flex flex-col items-center justify-between gap-2 py-4 px-2 rounded-2xl flex-1 min-w-0 transition-all duration-200"
-                                 :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
+                                 :style="stageCardStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage && lead?.status !== 'archived' ? ';cursor:pointer' : ';cursor:default')"
                                  :aria-current="s.key === lead?.stage ? 'step' : null"
-                                 :title="!isStageDone(s.key) && s.key !== lead?.stage ? 'Click to advance to ' + s.label : null"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) rbOpenMoveStage()">
+                                 :title="!isStageDone(s.key) && s.key !== lead?.stage && lead?.status !== 'archived' ? 'Click to advance to ' + s.label : null"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage && lead?.status !== 'archived') rbOpenMoveStage()">
 
                                 {{-- Status label (top) --}}
                                 <div style="height:14px;display:flex;align-items:center;justify-content:center">
@@ -351,8 +351,8 @@
                         {{-- Timeline: dot + connector line --}}
                         <div style="width:34px;flex-shrink:0;display:flex;flex-direction:column;align-items:center">
                             <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"
-                                 :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage ? ';cursor:pointer' : ';cursor:default')"
-                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage) rbOpenMoveStage()">
+                                 :style="stageMobileCircleStyle(s.key) + (!isStageDone(s.key) && s.key !== lead?.stage && lead?.status !== 'archived' ? ';cursor:pointer' : ';cursor:default')"
+                                 @click="if (!isStageDone(s.key) && s.key !== lead?.stage && lead?.status !== 'archived') rbOpenMoveStage()">
                                 <template x-if="isStageDone(s.key)">
                                     <svg style="width:15px;height:15px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -2087,6 +2087,8 @@ function rbGetLead() {
 }
 
 function rbOpenMoveStage() {
+    var lead = rbGetLead();
+    if (lead && lead.status === 'archived') return;
     var m = document.getElementById('rb-move-stage-modal');
     if (!m) return;
     rbSelectedStage = null;
@@ -2870,6 +2872,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         },
 
         startEditFinance() {
+            if (this.lead?.status === 'archived') return;
             const bc = Number(this.lead?.base_cost    || 0);
             const aa = Number(this.lead?.added_amount || 0);
             const dv = (bc + aa) || Number(this.lead?.deal_value || 0);
