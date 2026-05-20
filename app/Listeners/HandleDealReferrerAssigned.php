@@ -154,6 +154,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
                             tenantName:      $tenantName,
                             dealName:        $event->leadName,
                             reassignedByName: $event->assignedByName ?? 'Your workspace admin',
+                            tenantId:        $event->tenantId,
                             newResellerName:  $event->resellerName,
                         ),
                         recipientEmail: $oldReseller->email,

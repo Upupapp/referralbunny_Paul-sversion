@@ -1435,13 +1435,17 @@ class LeadController extends Controller
             'splits.*.activity_status' => 'nullable|string',
         ]);
 
-        // Resolve canonical names from DB so portal queries match regardless of input casing
+        // Batch-resolve canonical reseller names in one query (avoids N+1)
         $tenantIdForSplits = $lead->tenant_id;
-        $canonicalSplits = array_map(function (array $split) use ($tenantIdForSplits) {
-            $canonical = Reseller::where('tenant_id', $tenantIdForSplits)
-                ->whereRaw('LOWER(name) = ?', [strtolower(trim($split['reseller_name']))])
-                ->value('name');
-            $split['reseller_name'] = $canonical ?? $split['reseller_name'];
+        $lowerNames = array_unique(array_map(fn($s) => strtolower(trim($s['reseller_name'])), $data['splits']));
+        $canonicalMap = Reseller::where('tenant_id', $tenantIdForSplits)
+            ->whereIn(DB::raw('LOWER(name)'), $lowerNames)
+            ->pluck('name', DB::raw('LOWER(name)'))
+            ->toArray();
+
+        $canonicalSplits = array_map(function (array $split) use ($canonicalMap) {
+            $key = strtolower(trim($split['reseller_name']));
+            $split['reseller_name'] = $canonicalMap[$key] ?? $split['reseller_name'];
             return $split;
         }, $data['splits']);
 
@@ -1458,6 +1462,18 @@ class LeadController extends Controller
             'type'    => 'commission',
             'date'    => now()->toDateString(),
         ]);
+
+        // Bust critical-actions cache for all affected referrers
+        foreach ($canonicalSplits as $split) {
+            $rid = Reseller::where('tenant_id', $lead->tenant_id)
+                ->where('name', $split['reseller_name'])
+                ->value('id');
+            if ($rid) {
+                Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($split['reseller_name'] . ':' . $rid));
+                Cache::forget("referrer_perf:{$lead->tenant_id}:{$rid}");
+                Cache::forget("reseller_leadids:{$lead->tenant_id}:{$rid}");
+            }
+        }
 
         return response()->json($lead->fresh(['commissionSplits']));
     }

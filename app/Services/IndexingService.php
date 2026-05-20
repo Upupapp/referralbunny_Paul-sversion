@@ -12,6 +12,8 @@ use App\Models\Subscription;
 use App\Models\Notification;
 use App\Models\Lead;
 use App\Models\Reseller;
+use App\Models\Partner;
+use App\Models\Contact;
 use App\Models\ReindexJob;
 use Illuminate\Support\Facades\DB;
 
@@ -34,10 +36,18 @@ class IndexingService
     public function reindexAll(): array
     {
         $results = [];
-        $types = ['tenant', 'invoice', 'payment', 'promo_code', 'promotion', 'approval_request', 'subscription', 'lead', 'reseller', 'notification'];
+        $types = [
+            'tenant', 'lead', 'reseller', 'partner', 'admin', 'contact', 'organization',
+            'invoice', 'payment', 'promo_code', 'promotion', 'approval_request', 'subscription', 'notification',
+        ];
 
         foreach ($types as $type) {
-            $results[$type] = $this->reindexType($type);
+            try {
+                $results[$type] = $this->reindexType($type);
+            } catch (\Throwable $e) {
+                $results[$type] = 0;
+                \Illuminate\Support\Facades\Log::warning("[IndexingService] reindexAll skipped {$type}: " . $e->getMessage());
+            }
         }
 
         return $results;
@@ -45,7 +55,16 @@ class IndexingService
 
     public function reindexType(string $entityType): int
     {
-        $job = ReindexJob::create(['entity_type' => $entityType, 'status' => 'running', 'last_run' => now()]);
+        // Create/update job tracking row safely
+        $job = null;
+        try {
+            $job = ReindexJob::updateOrCreate(
+                ['entity_type' => $entityType],
+                ['status' => 'running', 'last_run' => now(), 'error' => null]
+            );
+        } catch (\Throwable) {
+            // reindex_jobs table may not exist yet — proceed without tracking
+        }
 
         try {
             DB::table('search_index')->where('entity_type', $entityType)->delete();
@@ -60,14 +79,18 @@ class IndexingService
                 'subscription'     => $this->indexSubscriptions(),
                 'lead'             => $this->indexLeads(),
                 'reseller'         => $this->indexResellers(),
+                'partner'          => $this->indexPartners(),
+                'admin'            => $this->indexAdmins(),
+                'contact'          => $this->indexContacts(),
+                'organization'     => $this->indexOrganizations(),
                 'notification'     => $this->indexNotifications(),
                 default            => 0,
             };
 
-            $job->update(['status' => 'completed', 'records_indexed' => $count]);
+            $job?->update(['status' => 'completed', 'records_indexed' => $count]);
             return $count;
         } catch (\Throwable $e) {
-            $job->update(['status' => 'failed', 'error' => $e->getMessage()]);
+            $job?->update(['status' => 'failed', 'error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -264,7 +287,7 @@ class IndexingService
             'keywords'          => $l->reseller_name ?? '',
             'tags'              => '{' . $l->status . ',' . $l->stage . ',lead}',
             'status'            => $l->status,
-            'url'               => '/tenant/' . $l->tenant_id . '/leads/' . $l->id,
+            'url'               => '/tenant/' . $l->tenant_id . '/deals/' . $l->id,
             'tenant_id'         => $l->tenant_id,
             'relationships_json'=> json_encode(['tenant_id' => $l->tenant_id, 'reseller' => $l->reseller_name]),
             'searchable_text'   => implode(' ', array_filter([$l->name, $l->reseller_name, $l->stage, $l->status, $l->tenant?->name])),
@@ -288,7 +311,7 @@ class IndexingService
             'keywords'          => $r->email,
             'tags'              => '{' . $r->status . ',reseller}',
             'status'            => $r->status,
-            'url'               => '/tenant/' . $r->tenant_id . '/resellers',
+            'url'               => '/tenant/' . $r->tenant_id . '/referrers/' . $r->id,
             'tenant_id'         => $r->tenant_id,
             'relationships_json'=> json_encode(['tenant_id' => $r->tenant_id]),
             'searchable_text'   => implode(' ', array_filter([$r->name, $r->email, $r->territory, $r->status, $r->tenant?->name])),
@@ -300,6 +323,115 @@ class IndexingService
         if (empty($rows)) return 0;
         DB::table('search_index')->insert($rows);
         return count($rows);
+    }
+
+    private function indexPartners(): int
+    {
+        $rows = Partner::with('tenant')->get()->map(fn($p) => [
+            'entity_type'       => 'partner',
+            'entity_id'         => (string) $p->id,
+            'title'             => $p->display_name,
+            'description'       => ($p->tenant?->name ?? '—') . ' · ' . $p->status,
+            'keywords'          => $p->email,
+            'tags'              => '{' . $p->status . ',partner}',
+            'status'            => $p->status,
+            'url'               => '/tenant/' . $p->tenant_id . '/partners',
+            'tenant_id'         => $p->tenant_id,
+            'relationships_json'=> json_encode(['tenant_id' => $p->tenant_id]),
+            'searchable_text'   => implode(' ', array_filter([$p->display_name, $p->email, $p->status, $p->tenant?->name])),
+            'last_activity_at'  => $p->updated_at,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ])->toArray();
+
+        if (empty($rows)) return 0;
+        DB::table('search_index')->insert($rows);
+        return count($rows);
+    }
+
+    private function indexAdmins(): int
+    {
+        $rows = DB::table('tenant_memberships as tm')
+            ->join('users as u', 'u.id', '=', 'tm.user_id')
+            ->join('tenants as t', 't.id', '=', 'tm.tenant_id')
+            ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+            ->whereNull('u.deleted_at')
+            ->select('u.id', 'tm.tenant_id', 'u.name', 'u.email', 'tm.role', 't.name as tenant_name', 'u.updated_at')
+            ->get()
+            ->map(fn($r) => [
+                'entity_type'       => 'admin',
+                'entity_id'         => $r->id . ':' . $r->tenant_id,
+                'title'             => $r->name,
+                'description'       => $r->tenant_name . ' · ' . ucfirst($r->role),
+                'keywords'          => $r->email,
+                'tags'              => '{admin,' . $r->role . '}',
+                'status'            => 'active',
+                'url'               => '/tenant/' . $r->tenant_id . '/settings/team',
+                'tenant_id'         => $r->tenant_id,
+                'relationships_json'=> json_encode(['tenant_id' => $r->tenant_id, 'role' => $r->role]),
+                'searchable_text'   => implode(' ', array_filter([$r->name, $r->email, $r->role, $r->tenant_name])),
+                'last_activity_at'  => $r->updated_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])
+            ->toArray();
+
+        if (empty($rows)) return 0;
+        DB::table('search_index')->insert($rows);
+        return count($rows);
+    }
+
+    private function indexContacts(): int
+    {
+        $rows = Contact::with('tenant')->get()->map(fn($c) => [
+            'entity_type'       => 'contact',
+            'entity_id'         => (string) $c->id,
+            'title'             => trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')),
+            'description'       => ($c->tenant?->name ?? '—') . ' · ' . ($c->job_title ?? '') . ($c->company_or_organization ? ' · ' . $c->company_or_organization : ''),
+            'keywords'          => implode(' ', array_filter([$c->email, $c->phone])),
+            'tags'              => '{contact}',
+            'status'            => $c->status ?? 'active',
+            'url'               => '/tenant/' . $c->tenant_id . '/contacts/' . $c->id,
+            'tenant_id'         => $c->tenant_id,
+            'relationships_json'=> json_encode(['tenant_id' => $c->tenant_id, 'organization_id' => $c->organization_id]),
+            'searchable_text'   => implode(' ', array_filter([$c->first_name, $c->last_name, $c->email, $c->job_title, $c->company_or_organization, $c->department, $c->tenant?->name])),
+            'last_activity_at'  => $c->updated_at,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ])->toArray();
+
+        if (empty($rows)) return 0;
+        DB::table('search_index')->insert($rows);
+        return count($rows);
+    }
+
+    private function indexOrganizations(): int
+    {
+        try {
+            $org = app(\App\Models\Organization::class);
+            $rows = \App\Models\Organization::with('tenant')->get()->map(fn($o) => [
+                'entity_type'       => 'organization',
+                'entity_id'         => (string) $o->id,
+                'title'             => $o->name,
+                'description'       => ($o->tenant?->name ?? '—') . ($o->industry ? ' · ' . $o->industry : ''),
+                'keywords'          => implode(' ', array_filter([$o->website, $o->email])),
+                'tags'              => '{organization}',
+                'status'            => $o->status ?? 'active',
+                'url'               => '/tenant/' . $o->tenant_id . '/contacts?org=' . $o->id,
+                'tenant_id'         => $o->tenant_id,
+                'relationships_json'=> json_encode(['tenant_id' => $o->tenant_id]),
+                'searchable_text'   => implode(' ', array_filter([$o->name, $o->industry, $o->website, $o->email, $o->tenant?->name])),
+                'last_activity_at'  => $o->updated_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])->toArray();
+
+            if (empty($rows)) return 0;
+            DB::table('search_index')->insert($rows);
+            return count($rows);
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     private function indexNotifications(): int

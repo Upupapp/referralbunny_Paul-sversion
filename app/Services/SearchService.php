@@ -19,25 +19,42 @@ class SearchService
         'promotion'        => ['label' => 'Promotion',        'icon' => 'sparkles'],
         'approval_request' => ['label' => 'Approval',         'icon' => 'check-circle'],
         'subscription'     => ['label' => 'Subscription',     'icon' => 'refresh'],
-        'lead'             => ['label' => 'Lead',             'icon' => 'user'],
+        'lead'             => ['label' => 'Deal',             'icon' => 'briefcase'],
         'reseller'         => ['label' => 'Referrer',         'icon' => 'users'],
+        'partner'          => ['label' => 'Partner',          'icon' => 'link'],
+        'admin'            => ['label' => 'Team Member',      'icon' => 'shield'],
+        'contact'          => ['label' => 'Contact',          'icon' => 'user'],
+        'organization'     => ['label' => 'Organization',     'icon' => 'office-building'],
         'notification'     => ['label' => 'Notification',     'icon' => 'bell'],
     ];
 
     // Scoped search keywords → entity type + status filter
     private const SCOPE_MAP = [
-        'tenant'     => ['type' => 'tenant',           'status' => null],
-        'invoice'    => ['type' => 'invoice',          'status' => null],
-        'unpaid'     => ['type' => 'invoice',          'status' => 'open'],
-        'overdue'    => ['type' => 'invoice',          'status' => 'past_due'],
-        'payment'    => ['type' => 'payment',          'status' => null],
-        'failed'     => ['type' => 'payment',          'status' => 'failed'],
-        'promo'      => ['type' => 'promo_code',       'status' => null],
-        'promotion'  => ['type' => 'promotion',        'status' => null],
-        'approval'   => ['type' => 'approval_request', 'status' => null],
-        'pending'    => ['type' => 'approval_request', 'status' => 'pending'],
-        'lead'       => ['type' => 'lead',             'status' => null],
-        'reseller'   => ['type' => 'reseller',         'status' => null],
+        'tenant'       => ['type' => 'tenant',           'status' => null],
+        'invoice'      => ['type' => 'invoice',          'status' => null],
+        'unpaid'       => ['type' => 'invoice',          'status' => 'open'],
+        'overdue'      => ['type' => 'invoice',          'status' => 'past_due'],
+        'payment'      => ['type' => 'payment',          'status' => null],
+        'failed'       => ['type' => 'payment',          'status' => 'failed'],
+        'promo'        => ['type' => 'promo_code',       'status' => null],
+        'promotion'    => ['type' => 'promotion',        'status' => null],
+        'approval'     => ['type' => 'approval_request', 'status' => null],
+        'pending'      => ['type' => 'approval_request', 'status' => 'pending'],
+        'lead'         => ['type' => 'lead',             'status' => null],
+        'deal'         => ['type' => 'lead',             'status' => null],
+        'deals'        => ['type' => 'lead',             'status' => null],
+        'reseller'     => ['type' => 'reseller',         'status' => null],
+        'referrer'     => ['type' => 'reseller',         'status' => null],
+        'referrers'    => ['type' => 'reseller',         'status' => null],
+        'partner'      => ['type' => 'partner',          'status' => null],
+        'partners'     => ['type' => 'partner',          'status' => null],
+        'admin'        => ['type' => 'admin',            'status' => null],
+        'manager'      => ['type' => 'admin',            'status' => null],
+        'team'         => ['type' => 'admin',            'status' => null],
+        'contact'      => ['type' => 'contact',          'status' => null],
+        'contacts'     => ['type' => 'contact',          'status' => null],
+        'organization' => ['type' => 'organization',     'status' => null],
+        'org'          => ['type' => 'organization',     'status' => null],
     ];
 
     // ── Main Search ───────────────────────────────────────────
@@ -91,14 +108,18 @@ class SearchService
             ->orderByRaw("CASE entity_type
                 WHEN 'tenant'           THEN 1
                 WHEN 'approval_request' THEN 2
-                WHEN 'invoice'          THEN 3
-                WHEN 'payment'          THEN 4
-                WHEN 'promo_code'       THEN 5
-                WHEN 'promotion'        THEN 6
-                WHEN 'subscription'     THEN 7
-                WHEN 'lead'             THEN 8
-                WHEN 'reseller'         THEN 9
-                ELSE 10 END")
+                WHEN 'lead'             THEN 3
+                WHEN 'reseller'         THEN 4
+                WHEN 'partner'          THEN 5
+                WHEN 'admin'            THEN 6
+                WHEN 'contact'          THEN 7
+                WHEN 'organization'     THEN 8
+                WHEN 'invoice'          THEN 9
+                WHEN 'payment'          THEN 10
+                WHEN 'promo_code'       THEN 11
+                WHEN 'promotion'        THEN 12
+                WHEN 'subscription'     THEN 13
+                ELSE 14 END")
             ->orderByDesc('last_activity_at')
             ->limit($limit)
             ->offset($offset)
@@ -320,12 +341,14 @@ class SearchService
         $terms = array_filter(explode(' ', strtolower(trim($query))));
         if (empty($terms)) return [];
 
-        // Add synonym expansions
-        $synonyms = Synonym::whereIn('term', $terms)->orWhereIn('synonym', $terms)->get();
-        foreach ($synonyms as $syn) {
-            if (in_array($syn->term, $terms)) $terms[] = $syn->synonym;
-            if (in_array($syn->synonym, $terms)) $terms[] = $syn->term;
-        }
+        // Synonym expansion — gracefully skipped if table doesn't exist yet
+        try {
+            $synonyms = Synonym::whereIn('term', $terms)->orWhereIn('synonym', $terms)->get();
+            foreach ($synonyms as $syn) {
+                if (in_array($syn->term, $terms)) $terms[] = $syn->synonym;
+                if (in_array($syn->synonym, $terms)) $terms[] = $syn->term;
+            }
+        } catch (\Throwable) {}
 
         return array_unique(array_values($terms));
     }

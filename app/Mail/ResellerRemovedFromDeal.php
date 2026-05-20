@@ -19,6 +19,7 @@ class ResellerRemovedFromDeal extends Mailable
         public string  $tenantName,
         public string  $dealName,
         public string  $reassignedByName,
+        public string  $tenantId,
         public ?string $newResellerName = null,
     ) {}
 

@@ -18,7 +18,7 @@
 </p>
 
 <div class="cta-wrap">
-    <a href="{{ url('/') }}" class="cta cta-blue">View My Deals →</a>
+    <a href="{{ url('/reseller/' . $tenantId . '/deals') }}" class="cta cta-blue">View My Deals →</a>
 </div>
 
 <hr class="divider">
