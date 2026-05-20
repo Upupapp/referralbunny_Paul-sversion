@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-@php $dealIsArchived = ($ssrLead['status'] ?? '') === 'archived'; @endphp
+@php $dealIsArchived = (($ssrLead ?? [])['status'] ?? '') === 'archived'; @endphp
     <a href="{{ route('tenant.tasks', [$tenant->id]) }}?create=1&source_type=deal&source_id={{ $dealId }}"
        class="btn-secondary text-sm" style="text-decoration:none;display:flex;align-items:center;gap:6px">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -266,11 +266,11 @@
                     <p class="text-xs text-gray-400 mt-0.5">Track this deal from introduction to payment.</p>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                    {{-- Move Stage button — always rendered; disabled only when paid or no lead --}}
+                    {{-- Move Stage button — disabled for archived deals, paid stage, or no lead --}}
                     <button onclick="rbOpenMoveStage()"
-                            :disabled="lead?.stage === 'paid' || !lead"
+                            :disabled="lead?.stage === 'paid' || !lead || lead?.status === 'archived'"
                             style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:12px;font-weight:600;color:white;cursor:pointer;border:none;transition:opacity .15s,transform .1s;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3)"
-                            :style="lead?.stage === 'paid' || !lead ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
+                            :style="lead?.stage === 'paid' || !lead || lead?.status === 'archived' ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
                             aria-label="Move this deal to the next stage">
                         <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -495,7 +495,7 @@
                         </div>
                     </div>
                 </div>
-                <button x-show="!editFinance" @click="startEditFinance()"
+                <button x-show="!editFinance && lead?.status !== 'archived'" @click="startEditFinance()"
                         class="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     Edit

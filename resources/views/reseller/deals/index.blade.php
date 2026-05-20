@@ -531,7 +531,9 @@ function resellerDeals(tenantId, resellerName) {
             const fp   = this.filterPartner.toLowerCase();
             const pool = this.filterArchived ? this.archivedLeads : this.leads;
             this.filtered = pool.filter(d => {
-                const matchQ  = !q  || (d.name||'').toLowerCase().includes(q);
+                const matchQ  = !q || (d.name||'').toLowerCase().includes(q)
+                                   || (d.data?.province||'').toLowerCase().includes(q)
+                                   || (d.data?.municipality||'').toLowerCase().includes(q);
                 const matchSt = this.filterArchived || !this.filterStatus || d.status === this.filterStatus;
                 const matchSg = this.filterArchived || !this.filterStage  || d.stage  === this.filterStage;
                 const matchPa = !fp || (d.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
