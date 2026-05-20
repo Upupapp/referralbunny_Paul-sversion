@@ -1256,19 +1256,18 @@ function tenantDashboard(tenantId, currentResellerName) {
                 .filter(l => l.reseller_name === r.name && !['cancelled','archived'].includes(l.status))
                 .reduce((sum, l) => sum + (parseFloat(l.deal_value) || 0), 0);
         },
-        formatPipeline(v) {
-            if (!v) return '₱0';
-            if (v >= 1000000) return '₱' + (v / 1000000).toFixed(1) + 'M';
-            if (v >= 1000) return '₱' + Math.round(v / 1000) + 'K';
-            return '₱' + v.toLocaleString();
-        },
+        formatPipeline(v) { return v ? this._fmtPeso(v) : '₱0'; },
         // ── Computed ──────────────────────────────────────────
+        _fmtPeso(t) {
+            if (t >= 1000000000) return '₱' + (Math.floor(t / 1000000000 * 1000) / 1000).toFixed(3) + 'B';
+            if (t >= 1000000)    return '₱' + (t / 1000000).toFixed(1) + 'M';
+            if (t >= 1000)       return '₱' + Math.round(t / 1000) + 'K';
+            return t > 0 ? '₱' + Math.round(t).toLocaleString() : '₱0';
+        },
         pipelineValue() {
             // Prefer server-side total (avoids the 200-lead client cap)
             const t = Number(this.stats?.pipeline_value) || this.leads.reduce((s,l)=>s+(Number(l.deal_value)||0), 0);
-            if (t>=1000000) return '₱'+(t/1000000).toFixed(1)+'M';
-            if (t>=1000)    return '₱'+Math.round(t/1000)+'K';
-            return t>0 ? '₱'+t.toLocaleString() : '₱0';
+            return this._fmtPeso(t);
         },
         conversionRate() {
             if (!this.leads.length) return 0;
@@ -1285,12 +1284,7 @@ function tenantDashboard(tenantId, currentResellerName) {
                 return s;
             }, 0);
         },
-        baseCostTotal() {
-            const t = this.baseCostRaw();
-            if (t >= 1000000) return '₱' + (t / 1000000).toFixed(1) + 'M';
-            if (t >= 1000)    return '₱' + Math.round(t / 1000) + 'K';
-            return t > 0 ? '₱' + Math.round(t).toLocaleString() : '₱0';
-        },
+        baseCostTotal() { return this._fmtPeso(this.baseCostRaw()); },
         // Added amount per lead: use stored added_amount; fall back to deal_value for legacy zero-aa leads
         _addedAmount(l) {
             const aa = Number(l.added_amount) || 0;
@@ -1302,26 +1296,17 @@ function tenantDashboard(tenantId, currentResellerName) {
         commissionPoolRaw() {
             return this.leads.reduce((s, l) => s + this._addedAmount(l) * 0.70, 0);
         },
-        companyShareTotal() {
-            const t = this.companyShareRaw();
-            if (t >= 1000000) return '₱' + (t / 1000000).toFixed(1) + 'M';
-            if (t >= 1000)    return '₱' + Math.round(t / 1000) + 'K';
-            return t > 0 ? '₱' + Math.round(t).toLocaleString() : '₱0';
-        },
-        commissionPoolTotal() {
-            const t = this.commissionPoolRaw();
-            if (t >= 1000000) return '₱' + (t / 1000000).toFixed(1) + 'M';
-            if (t >= 1000)    return '₱' + Math.round(t / 1000) + 'K';
-            return t > 0 ? '₱' + Math.round(t).toLocaleString() : '₱0';
-        },
+        companyShareTotal()   { return this._fmtPeso(this.companyShareRaw()); },
+        commissionPoolTotal() { return this._fmtPeso(this.commissionPoolRaw()); },
         newThisWeek() {
             const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
             return this.leads.filter(l=>l.created_at&&new Date(l.created_at)>=cutoff).length;
         },
         fmtVal(v) {
             const n = Math.round(Number(v)||0);
-            if (n>=1000000) return (n/1000000).toFixed(1)+'M';
-            if (n>=1000)    return Math.round(n/1000)+'K';
+            if (n>=1000000000) return (Math.floor(n/1000000000*1000)/1000).toFixed(3)+'B';
+            if (n>=1000000)    return (n/1000000).toFixed(1)+'M';
+            if (n>=1000)       return Math.round(n/1000)+'K';
             return n.toLocaleString('en');
         },
         commissionStat(status) {
