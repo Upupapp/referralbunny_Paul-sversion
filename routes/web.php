@@ -374,7 +374,18 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
             'showLocation' => $fields->contains('key', 'province') && $fields->contains('key', 'municipality'),
         ]);
     })->name('leads');
-    Route::get('/leads/{leadId}', fn($tenantId, $leadId) => view('tenant.leads.show', ['tenantId' => $tenantId, 'leadId' => $leadId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('leads.show');
+    Route::get('/leads/{leadId}', function ($tenantId, $leadId) {
+        $tenant    = \App\Models\Tenant::findOrFail($tenantId);
+        $referrers = \Illuminate\Support\Facades\DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['active', 'nda_signed', 'invited'])
+            ->select('id', 'name', 'email', 'status')
+            ->orderBy('name')
+            ->get()
+            ->toArray();
+        return view('tenant.leads.show', compact('tenantId', 'leadId', 'tenant', 'referrers'));
+    })->name('leads.show');
     Route::get('/resellers',      fn($tenantId) => view('tenant.resellers.index', ['tenantId' => $tenantId, 'tenant' => \App\Models\Tenant::findOrFail($tenantId)]))->name('resellers');
     Route::get('/notifications',  [NotificationsController::class, 'index'])->name('notifications');
 

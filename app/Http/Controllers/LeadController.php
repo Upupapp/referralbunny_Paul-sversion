@@ -1435,9 +1435,19 @@ class LeadController extends Controller
             'splits.*.activity_status' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($lead, $data) {
+        // Resolve canonical names from DB so portal queries match regardless of input casing
+        $tenantIdForSplits = $lead->tenant_id;
+        $canonicalSplits = array_map(function (array $split) use ($tenantIdForSplits) {
+            $canonical = Reseller::where('tenant_id', $tenantIdForSplits)
+                ->whereRaw('LOWER(name) = ?', [strtolower(trim($split['reseller_name']))])
+                ->value('name');
+            $split['reseller_name'] = $canonical ?? $split['reseller_name'];
+            return $split;
+        }, $data['splits']);
+
+        DB::transaction(function () use ($lead, $canonicalSplits) {
             CommissionSplit::where('lead_id', $lead->id)->delete();
-            foreach ($data['splits'] as $split) {
+            foreach ($canonicalSplits as $split) {
                 CommissionSplit::create(['lead_id' => $lead->id, ...$split]);
             }
         });

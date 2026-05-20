@@ -5,6 +5,7 @@
 @endsection
 
 @section('content')
+<script>var leadsViewReferrers = @json($referrers ?? []);</script>
 <div class="space-y-5" x-data="leadDetail('{{ $leadId }}', '{{ $tenant->id }}')" x-init="init()">
 
     <a href="{{ route('tenant.leads', $tenant->id) }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
@@ -48,7 +49,7 @@
                 <div class="flex flex-wrap gap-2 mt-4">
                     <button @click="moveStage()" x-show="stageIndex < stages.length - 1" :disabled="moving"
                             class="btn-primary text-sm" x-text="moving ? 'Moving...' : 'Move to Next Stage'"></button>
-                    <button @click="showReassign = true" class="btn-secondary text-sm">Reassign</button>
+                    <button @click="openReassign()" class="btn-secondary text-sm">Reassign</button>
                 </div>
             </div>
 
@@ -125,18 +126,49 @@
         </div>
     </div>
 
-    {{-- Reassign Modal --}}
+    {{-- Reassign Modal (searchable picker) --}}
     <div x-show="showReassign" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-[#1E1B4B]">Reassign Lead</h3>
-                <button @click="showReassign = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <h3 class="font-semibold text-[#1E1B4B]">Reassign Deal</h3>
+                <button @click="showReassign = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="form-label">New Referrer Name</label><input type="text" x-model="reassignName" class="form-input" placeholder="Referrer name"></div>
-                <div class="flex justify-end gap-3">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800">
+                    Reassigning resets the stage to Introduction and restarts the deal timer.
+                </div>
+                {{-- Search --}}
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+                    <input type="text" x-model="reassignSearch" placeholder="Search referrers…"
+                           class="form-input pl-9 w-full" autocomplete="off">
+                </div>
+                {{-- List --}}
+                <div class="max-h-52 overflow-y-auto space-y-1 rounded-xl border border-gray-100">
+                    <template x-for="r in filteredReferrers()" :key="r.id ?? r.name">
+                        <button type="button"
+                                @click="reassignSelectedName = r.name"
+                                :class="reassignSelectedName === r.name
+                                    ? 'bg-purple-50 border border-purple-300 text-[#1E1B4B]'
+                                    : 'hover:bg-gray-50 text-gray-700 border border-transparent'"
+                                class="w-full text-left px-4 py-2.5 rounded-lg text-sm flex items-center justify-between transition-colors">
+                            <span x-text="r.name"></span>
+                            <span x-show="r.status === 'invited'" class="text-xs text-amber-600 font-medium">Invite pending</span>
+                            <svg x-show="reassignSelectedName === r.name" class="w-4 h-4 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </button>
+                    </template>
+                    <template x-if="filteredReferrers().length === 0">
+                        <p class="text-center text-sm text-gray-400 py-4">No referrers found</p>
+                    </template>
+                </div>
+                {{-- Footer --}}
+                <div class="flex justify-end gap-3 pt-1">
                     <button @click="showReassign = false" class="btn-secondary">Cancel</button>
-                    <button @click="reassign()" :disabled="saving" class="btn-primary" x-text="saving ? 'Reassigning...' : 'Reassign'"></button>
+                    <button @click="reassign()" :disabled="saving || !reassignSelectedName"
+                            class="btn-primary"
+                            x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
                 </div>
             </div>
         </div>
@@ -148,7 +180,7 @@ function leadDetail(leadId, tenantId) {
     return {
         lead: null, saving: false, moving: false,
         showNote: false, showReassign: false,
-        noteText: '', reassignName: '',
+        noteText: '', reassignSelectedName: '', reassignSearch: '',
         stages: [
             { key:'introduction', label:'Intro' },
             { key:'presentation', label:'Presentation' },
@@ -159,6 +191,22 @@ function leadDetail(leadId, tenantId) {
 
         get stageIndex() {
             return this.stages.findIndex(s => s.key === this.lead?.stage) ?? 0;
+        },
+
+        openReassign() {
+            this.reassignSearch = '';
+            this.reassignSelectedName = '';
+            this.showReassign = true;
+        },
+
+        filteredReferrers() {
+            var all     = window.leadsViewReferrers || [];
+            var current = (this.lead && this.lead.reseller_name) ? this.lead.reseller_name.trim().toLowerCase() : '';
+            var q       = this.reassignSearch.trim().toLowerCase();
+            return all.filter(function(r) {
+                if (r.name.trim().toLowerCase() === current) return false;
+                return !q || r.name.toLowerCase().includes(q);
+            });
         },
 
         async init() {
@@ -203,7 +251,7 @@ function leadDetail(leadId, tenantId) {
         },
 
         async reassign() {
-            if (!this.reassignName) return;
+            if (!this.reassignSelectedName) return;
             this.saving = true;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
@@ -216,14 +264,15 @@ function leadDetail(leadId, tenantId) {
                         'X-CSRF-TOKEN': csrf,
                         'X-Requested-With': 'XMLHttpRequest',
                     },
-                    body: JSON.stringify({ reseller_name: this.reassignName }),
+                    body: JSON.stringify({ reseller_name: this.reassignSelectedName }),
                 });
                 const data = await res.json();
                 if (data.id) {
                     this.lead = data;
                     this.showReassign = false;
-                    this.reassignName = '';
-                    this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned.' });
+                    this.reassignSelectedName = '';
+                    this.reassignSearch = '';
+                    this.$dispatch('show-toast', { type: 'success', message: 'Deal reassigned successfully.' });
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: data.message || data.error || 'Failed to reassign.' });
                 }
@@ -235,4 +284,3 @@ function leadDetail(leadId, tenantId) {
 }
 </script>
 @endsection
-

@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\DealReferrerAssigned;
 use App\Mail\ResellerDealAssigned;
+use App\Mail\ResellerRemovedFromDeal;
 use App\Models\Reseller;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
@@ -144,6 +145,25 @@ class HandleDealReferrerAssigned implements ShouldQueue
                     actionLabel:  'View My Deals',
                     dedupeSuffix: $event->leadId . ':removed:' . (string) $oldReseller->id,
                 );
+
+                if ($oldReseller->email) {
+                    EmailLogger::send(
+                        mailable: new ResellerRemovedFromDeal(
+                            resellerName:    $oldReseller->name,
+                            resellerEmail:   $oldReseller->email,
+                            tenantName:      $tenantName,
+                            dealName:        $event->leadName,
+                            reassignedByName: $event->assignedByName ?? 'Your workspace admin',
+                            newResellerName:  $event->resellerName,
+                        ),
+                        recipientEmail: $oldReseller->email,
+                        recipientType:  'reseller',
+                        emailKey:       'deal_removed.' . $event->leadId . '.' . (string) $oldReseller->id,
+                        subject:        "You've been removed from a deal: {$event->leadName}",
+                        tenantId:       $event->tenantId,
+                        dailyDedup:     true,
+                    );
+                }
             }
         }
     }
