@@ -307,6 +307,7 @@ class CriticalActionService
         $cacheKey = "ca_reseller:{$tenantId}:" . md5($resellerName . ':' . ($resellerId ?? ''));
         return Cache::remember($cacheKey, 60, function () use ($tenantId, $resellerName, $resellerId, $limit) {
             $sources = [
+                fn() => $this->resellerNewlyAssignedDeals($tenantId, $resellerName),
                 fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
                 fn() => $this->resellerStalledDeals($tenantId, $resellerName),
                 fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
@@ -991,6 +992,46 @@ class CriticalActionService
     }
 
     // ── Referrer-scoped queries ────────────────────────────────────
+
+    private function resellerNewlyAssignedDeals(string $tenantId, string $resellerName): array
+    {
+        $lower = strtolower($resellerName);
+
+        // Deals where this referrer was assigned within the last 48 hours via a lead_history
+        // assignment entry. Surfaces as action_needed=true so it appears in the Actions Needed widget.
+        $rows = DB::table('leads as l')
+            ->join('lead_history as h', fn($j) => $j
+                ->on('h.lead_id', '=', 'l.id')
+                ->where('h.type', 'assignment')
+                ->where('h.created_at', '>', now()->subHours(48))
+            )
+            ->where('l.tenant_id', $tenantId)
+            ->whereNull('l.deleted_at')
+            ->where('l.status', '!=', 'archived')
+            ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
+            ->select('l.id', 'l.name', 'l.stage', 'h.created_at as assigned_at')
+            ->orderByDesc('h.created_at')
+            ->limit(5)
+            ->get();
+
+        return $rows->map(fn($r) => $this->make([
+            'type'          => 'deal_assignment',
+            'category'      => 'deal',
+            'severity'      => 'high',
+            'summary'       => 'New deal assigned to you: ' . $r->name,
+            'actor_name'    => 'Admin',
+            'actor_role'    => 'Admin',
+            'related_label' => $r->name,
+            'related_type'  => 'deal',
+            'related_id'    => $r->id,
+            'occurred_at'   => $r->assigned_at ?? now(),
+            'action_url'    => "/reseller/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'View Deal',
+            'action_needed' => true,
+            'source'        => 'lead_history',
+            'description'   => 'You were assigned to this deal. Review the details and take your first action.',
+        ]))->toArray();
+    }
 
     private function resellerExpiringDeals(string $tenantId, string $resellerName): array
     {

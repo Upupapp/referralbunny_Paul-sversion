@@ -29,7 +29,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
 
         if (!$resellerId || !$email) {
             $reseller = Reseller::where('tenant_id', $event->tenantId)
-                ->where('name', $event->resellerName)
+                ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
             $email      = $email      ?? $reseller?->email;
@@ -44,18 +44,18 @@ class HandleDealReferrerAssigned implements ShouldQueue
 
         // ── 1. In-app notification → assigned Referrer (active only) ──
         if ($resellerId && !$isPending) {
-            $titleParts = $event->assignmentType === 'reassignment'
-                ? ['You were assigned to a deal', 'You have been assigned to "' . $event->leadName . '". Check your deal details and next steps.']
-                : ['You were assigned to a deal', 'You have been assigned to "' . $event->leadName . '". Review the details and take your first action.'];
+            [$notifTitle, $notifBody] = $event->assignmentType === 'reassignment'
+                ? ['You\'ve been reassigned to a deal', 'You have been reassigned to "' . $event->leadName . '". Check your deal details and pick up where it left off.']
+                : ['New deal assigned to you', 'You have been assigned to "' . $event->leadName . '". Review the details and take your first action.'];
 
             $dispatcher->dispatchToReseller(
                 resellerId:   $resellerId,
                 tenantId:     $event->tenantId,
                 category:     'deal_pipeline',
                 priority:     'high',
-                title:        $titleParts[0],
-                body:         $titleParts[1],
-                actionUrl:    url("/reseller/{$event->tenantId}/deals"),
+                title:        $notifTitle,
+                body:         $notifBody,
+                actionUrl:    url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
                 actionLabel:  'View Deal',
                 dedupeSuffix: $dedupBase,
             );
@@ -74,7 +74,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
                     stage:          $event->stage,
                     dealValue:      $event->dealValue,
                     assignedByName: $assignedByName,
-                    dealUrl:        url("/reseller/{$event->tenantId}/deals"),
+                    dealUrl:        url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
                     isReassignment: $event->assignmentType === 'reassignment',
                 ),
                 recipientEmail: $email,
@@ -128,7 +128,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
         // ── 5. Reassignment: notify old referrer their access changed ─
         if ($event->assignmentType === 'reassignment' && $event->oldResellerName) {
             $oldReseller = Reseller::where('tenant_id', $event->tenantId)
-                ->where('name', $event->oldResellerName)
+                ->whereRaw('LOWER(name) = ?', [strtolower($event->oldResellerName)])
                 ->where('status', '!=', 'invited')
                 ->first();
 

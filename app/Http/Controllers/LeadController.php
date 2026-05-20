@@ -294,16 +294,20 @@ class LeadController extends Controller
             'data'              => $leadData,
         ]);
 
-        // Bust the reseller activity log + performance caches so new deal appears immediately
+        // Bust the reseller activity log + performance caches so new deal appears immediately.
+        // Use canonical DB name (not raw input) so the key matches CriticalActionService's cache key.
         if (!empty($data['reseller_name'])) {
-            $rid = Reseller::where('tenant_id', $tenantId)
+            $storeReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
-                ->value('id');
+                ->select('id', 'name')
+                ->first();
+            $rid = $storeReseller?->id;
+            $canonicalStoreName = $storeReseller?->name ?? $data['reseller_name'];
             if ($rid) {
                 Cache::forget("reseller_leadids:{$tenantId}:{$rid}");
                 Cache::forget("referrer_perf:{$tenantId}:{$rid}");
             }
-            Cache::forget("ca_reseller:{$tenantId}:" . md5($data['reseller_name'] . ':' . ($rid ?? '')));
+            Cache::forget("ca_reseller:{$tenantId}:" . md5($canonicalStoreName . ':' . ($rid ?? '')));
         }
 
         if ($amountWasDefaulted) {
@@ -1322,6 +1326,10 @@ class LeadController extends Controller
         $canonicalName   = $newReseller->name;
         $oldReferrerName = $lead->reseller_name ?? '';
 
+        if (strtolower($canonicalName) === strtolower($oldReferrerName)) {
+            return response()->json(['error' => 'This referrer is already assigned to this deal.'], 422);
+        }
+
         // Compute new values before transaction so we capture pre-update model state
         $updatePayload = [
             'reseller_name'     => $canonicalName,
@@ -1355,6 +1363,7 @@ class LeadController extends Controller
 
         // Bust activity log + performance caches for both old and new resellers
         foreach (array_filter([$oldReferrerName, $canonicalName]) as $rName) {
+            $rName = trim($rName);
             $rid = strtolower($rName) === strtolower($canonicalName)
                 ? $newReseller->id
                 : Reseller::where('tenant_id', $lead->tenant_id)
@@ -1366,8 +1375,6 @@ class LeadController extends Controller
             }
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
-
-        // (split operations now handled in the transaction above)
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,
