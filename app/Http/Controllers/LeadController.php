@@ -1308,21 +1308,23 @@ class LeadController extends Controller
             'reset_stage'   => 'boolean',
         ]);
 
-        // Validate the referrer exists and is active/invited in this tenant
-        $referrerExists = \App\Models\Reseller::where('tenant_id', $lead->tenant_id)
+        // Fetch the canonical reseller record — use their DB name to ensure portal
+        // queries match exactly, regardless of how the admin typed the name.
+        $newReseller = \App\Models\Reseller::where('tenant_id', $lead->tenant_id)
             ->whereRaw('LOWER(name) = ?', [strtolower(trim($data['reseller_name']))])
             ->whereIn('status', ['active', 'nda_signed', 'invited'])
-            ->exists();
+            ->first();
 
-        if (!$referrerExists) {
+        if (!$newReseller) {
             return response()->json(['error' => 'No active referrer found with that name in this workspace.'], 422);
         }
 
+        $canonicalName   = $newReseller->name;
         $oldReferrerName = $lead->reseller_name ?? '';
 
         // Compute new values before transaction so we capture pre-update model state
         $updatePayload = [
-            'reseller_name'     => $data['reseller_name'],
+            'reseller_name'     => $canonicalName,
             'stage'             => ($data['reset_stage'] ?? true) ? 'introduction' : $lead->stage,
             'days_left'         => ($data['reset_stage'] ?? true)
                 ? ($this->resolveStageLimit($lead->tenant_id, 'introduction') ?? ($lead->tenant_id === 'lgu-ids' ? 14 : 21))
@@ -1337,27 +1339,24 @@ class LeadController extends Controller
         // assertBelongsToCurrentTenant() guard above (line ~1168), which is the single
         // point of enforcement. Do NOT remove that guard without adding tenant_id to
         // commission_splits first.
-        DB::transaction(function () use ($lead, $data, $updatePayload) {
+        DB::transaction(function () use ($lead, $canonicalName, $updatePayload) {
             $lead->update($updatePayload);
             CommissionSplit::where('lead_id', $lead->id)->delete();
             CommissionSplit::create([
                 'lead_id'         => $lead->id,
-                'reseller_name'   => $data['reseller_name'],
+                'reseller_name'   => $canonicalName,
                 'percentage'      => 100,
                 'role'            => 'primary',
                 'activity_status' => 'active',
             ]);
         });
 
-        // Fetch new reseller once — reused for cache bust + event dispatch below
-        $newReseller = Reseller::where('tenant_id', $lead->tenant_id)
-            ->whereRaw('LOWER(name) = ?', [strtolower($data['reseller_name'])])
-            ->first();
+        // $newReseller already fetched above for validation — reused here
 
         // Bust activity log + performance caches for both old and new resellers
-        foreach (array_filter([$oldReferrerName, $data['reseller_name']]) as $rName) {
-            $rid = strtolower($rName) === strtolower($data['reseller_name'])
-                ? $newReseller?->id
+        foreach (array_filter([$oldReferrerName, $canonicalName]) as $rName) {
+            $rid = strtolower($rName) === strtolower($canonicalName)
+                ? $newReseller->id
                 : Reseller::where('tenant_id', $lead->tenant_id)
                     ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
                     ->value('id');
@@ -1373,25 +1372,23 @@ class LeadController extends Controller
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,
             'Referrer reassigned: ' . ($oldReferrerName ?: 'None')
-                . ' \u{2192} ' . $data['reseller_name'],
+                . ' \u{2192} ' . $canonicalName,
             'assignment',
             [
                 'category'   => 'assignment',
                 'actor_name' => $actorNameRa,
                 'actor_role' => $actorRoleRa,
-                'reseller'   => $data['reseller_name'],
+                'reseller'   => $canonicalName,
                 'old_values' => ['referrer_name' => $oldReferrerName],
-                'new_values' => ['referrer_name' => $data['reseller_name']],
+                'new_values' => ['referrer_name' => $canonicalName],
             ]
         );
 
-        // $newReseller already fetched above for cache bust — reused here
-
-        $assignmentType = ($oldReferrerName && $oldReferrerName !== $data['reseller_name'])
+        $assignmentType = ($oldReferrerName && $oldReferrerName !== $canonicalName)
             ? 'reassignment'
             : 'new_assignment';
 
-        if ($newReseller?->status === 'invited') {
+        if ($newReseller->status === 'invited') {
             $assignmentType = 'pending_referrer_assignment';
         }
 
@@ -1399,7 +1396,7 @@ class LeadController extends Controller
             leadId:          $lead->id,
             leadName:        $lead->name,
             tenantId:        $lead->tenant_id,
-            resellerName:    $data['reseller_name'],
+            resellerName:    $canonicalName,
             stage:           $lead->stage,
             dealValue:       (float) ($lead->deal_value ?? 0),
             assignmentType:  $assignmentType,
