@@ -38,13 +38,24 @@ document.addEventListener('alpine:init', () => {
      @open-add-deal.window="showAdd = true"
      class="space-y-5">
 
+    {{-- Data error banner --}}
+    <div x-show="dataError" x-cloak
+         class="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>Dashboard data could not be fully loaded. Some KPIs may show incomplete totals.</span>
+        <button @click="dataError = false" class="ml-auto text-red-400 hover:text-red-600 shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
 
         @php
         $kpis = [
-            ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>', 'bg' => '#EDE9FE', 'color' => '#7B61FF', 'label' => 'Total Referrals', 'val' => 'leads.length', 'sub' => 'newThisWeek() + \' new this week\'', 'up' => 'newThisWeek()>0', 'line' => '#7B61FF', 'pct' => 'Math.min((leads.length/50)*100,100)'],
+            ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>', 'bg' => '#EDE9FE', 'color' => '#7B61FF', 'label' => 'Total Referrals', 'val' => '(stats.total_leads || stats.leads_total || leads.length)', 'sub' => 'newThisWeek() + \' new this week\'', 'up' => 'newThisWeek()>0', 'line' => '#7B61FF', 'pct' => 'Math.min(((stats.total_leads || stats.leads_total || leads.length)/50)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>', 'bg' => '#D1FAE5', 'color' => '#10B981', 'label' => 'Pipeline Value', 'val' => 'pipelineValue()', 'sub' => '\'Total deal value\'', 'up' => 'true', 'line' => '#10B981', 'pct' => 'Math.min((leads.reduce((s,l)=>s+(+l.deal_value||0),0)/10000000)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>', 'bg' => '#DBEAFE', 'color' => '#3B82F6', 'label' => 'Base Cost', 'val' => 'baseCostTotal()', 'sub' => '\'Total base cost (all deals)\'', 'up' => 'true', 'line' => '#3B82F6', 'pct' => 'Math.min((baseCostRaw()/50000000)*100,100)'],
             ['icon' => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>', 'bg' => '#FEF3C7', 'color' => '#D97706', 'label' => 'Company Share', 'val' => 'companyShareTotal()', 'sub' => '\'30% of added amount\'', 'up' => 'true', 'line' => '#D97706', 'pct' => 'Math.min((companyShareRaw()/5000000)*100,100)'],
@@ -1167,6 +1178,7 @@ function tenantDashboard(tenantId, currentResellerName) {
     return {
         leads: [], resellers: [], stats: {}, metric: {},
         maxLeadCount: 1, subscription: null,
+        dataLoaded: false, dataError: false,
         showAdd: false, saving: false, dealSearch: '', addError: '',
         pipelinePeriod: 'All Time', trendPeriod: 'Monthly', referrerPeriod: 'This Month',
 
@@ -1208,8 +1220,10 @@ function tenantDashboard(tenantId, currentResellerName) {
                 if (lRes.ok) {
                     const lData = await lRes.json();
                     this.leads = Array.isArray(lData) ? lData : (lData.data || []);
+                } else {
+                    this.dataError = true;
                 }
-            } catch(e) {}
+            } catch(e) { this.dataError = true; }
 
             try {
                 if (rRes.ok) {
@@ -1233,6 +1247,7 @@ function tenantDashboard(tenantId, currentResellerName) {
             } catch(e) {}
 
             this.maxLeadCount = Math.max(...this.stageSummary().map(s=>s.count), 1);
+            this.dataLoaded = true;
         },
 
         // ── Top Referrers: pipeline per reseller + sorted ─────
@@ -1249,7 +1264,8 @@ function tenantDashboard(tenantId, currentResellerName) {
         },
         // ── Computed ──────────────────────────────────────────
         pipelineValue() {
-            const t = this.leads.reduce((s,l)=>s+(Number(l.deal_value)||0), 0);
+            // Prefer server-side total (avoids the 200-lead client cap)
+            const t = Number(this.stats?.pipeline_value) || this.leads.reduce((s,l)=>s+(Number(l.deal_value)||0), 0);
             if (t>=1000000) return '₱'+(t/1000000).toFixed(1)+'M';
             if (t>=1000)    return '₱'+Math.round(t/1000)+'K';
             return t>0 ? '₱'+t.toLocaleString() : '₱0';

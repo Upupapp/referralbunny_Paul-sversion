@@ -344,6 +344,10 @@ class CriticalActionService
      */
     public function forPartner(string $partnerId, string $tenantId, int $limit = 6): array
     {
+        $cacheKey = "ca_partner:{$tenantId}:{$partnerId}";
+        $cached   = Cache::get($cacheKey);
+        if ($cached !== null) return array_slice($cached, 0, $limit);
+
         $actions  = [];
         $dealIds  = []; // initialized here so commission block can safely reference it
 
@@ -475,6 +479,7 @@ class CriticalActionService
             ?: strtotime($b['occurred_at']) <=> strtotime($a['occurred_at'])
         );
 
+        Cache::put($cacheKey, $actions, 60);
         return array_slice($actions, 0, $limit);
     }
 

@@ -174,7 +174,17 @@
                 </div>
             </div>
             <p class="text-2xl font-bold mb-1" style="color:#1E1B4B">{{ $stats['total'] }}</p>
-            <p class="text-xs text-gray-400 mb-3">{{ $stats['active'] }} active · {{ $stats['expiring'] }} expiring</p>
+            <p class="text-xs text-gray-400 mb-3">
+                {{ max(0, $stats['active'] - $stats['expiring']) }} active ·
+                @if($stats['expiring'] > 0)
+                    <a href="{{ route('reseller.deals', $tenant->id) }}?status=expiring"
+                       class="font-semibold text-amber-500 hover:text-amber-600 transition-colors">
+                        {{ $stats['expiring'] }} expiring
+                    </a>
+                @else
+                    0 expiring
+                @endif
+            </p>
             <a href="{{ route('reseller.deals', $tenant->id) }}"
                class="inline-flex items-center gap-1 text-[10px] font-semibold" style="color:#0D9488">
                 View Deals →

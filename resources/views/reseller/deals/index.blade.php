@@ -136,14 +136,27 @@
                 <tbody>
                     <template x-if="filtered.length === 0 && !loading">
                         <tr><td colspan="8" class="py-14 text-center">
-                            <img :src="filterArchived ? '/images/mascots/r-bunny-sleeping.webp' : '/images/mascots/r-bunny-sleeping.webp'" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
+                            <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-12 h-12 object-contain mx-auto mb-3 opacity-50">
                             <template x-if="filterArchived">
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">No archived deals</p>
                                     <p class="text-xs text-gray-400 mt-1">Archived deals will appear here once approved by an admin.</p>
                                 </div>
                             </template>
-                            <template x-if="!filterArchived">
+                            <template x-if="!filterArchived && (filterStatus || filterStage || filterPartner || search)">
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">No deals match this filter</p>
+                                    <p class="text-xs text-gray-400 mt-1">
+                                        <template x-if="filterStatus === 'expiring'"><span>No deals are currently expiring.</span></template>
+                                        <template x-if="filterStatus === 'expired'"><span>No expired deals found.</span></template>
+                                        <template x-if="filterStatus && filterStatus !== 'expiring' && filterStatus !== 'expired'"><span>No deals with this status.</span></template>
+                                        <template x-if="!filterStatus"><span>Try adjusting or clearing your filters.</span></template>
+                                    </p>
+                                    <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; applyFilters()"
+                                            class="rs-btn-secondary mt-3 text-xs">Clear Filters</button>
+                                </div>
+                            </template>
+                            <template x-if="!filterArchived && !filterStatus && !filterStage && !filterPartner && !search">
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                                     <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
@@ -465,6 +478,12 @@ function resellerDeals(tenantId, resellerName) {
         stageColor(s) { return this.stageColors[s] || '#9CA3AF'; },
 
         async init() {
+            // Re-apply filters whenever filter state changes (handles both manual and programmatic changes)
+            this.$watch('filterStatus',  () => this.applyFilters());
+            this.$watch('filterStage',   () => this.applyFilters());
+            this.$watch('filterPartner', () => this.applyFilters());
+            this.$watch('search',        () => this.applyFilters());
+
             const urlParams = new URLSearchParams(window.location.search);
             const preStatus = urlParams.get('status');
             if (['expiring','expired','active'].includes(preStatus)) this.filterStatus = preStatus;

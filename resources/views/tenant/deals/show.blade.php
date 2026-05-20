@@ -1210,8 +1210,8 @@
                     <div style="background:white;border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)" @click.stop>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3f4f6;position:sticky;top:0;background:white;z-index:1">
                             <div>
-                                <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Partner Split</p>
-                                <p style="font-size:11px;color:#9ca3af;margin-top:2px">Partner receives a share of the referrer's commission pool.</p>
+                                <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Partner</p>
+                                <p style="font-size:11px;color:#9ca3af;margin-top:2px">Email is optional — add without one to record for your files.</p>
                             </div>
                             <button @click="showAdd = false; clearContact(); formError = ''" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
                                 <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1345,14 +1345,26 @@
                             Exceeds the referrer commission pool. Max allowed: <span x-text="form.split_share_type === 'percentage' ? maxPct() + '%' : '₱' + commPool.toLocaleString('en-PH')"></span>
                         </p>
                     </div>
+                    {{-- Record-only hints --}}
+                    <div x-show="!form.split_share_value && form.partner_name.trim()"
+                         style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px">
+                        <svg style="width:14px;height:14px;color:#D97706;flex-shrink:0;margin-top:1px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p style="font-size:11px;color:#92400E">Split value is 0 — partner will be <strong>recorded only</strong> with no commission allocation.</p>
+                    </div>
+                    <div x-show="commPool === 0 && form.split_share_value > 0"
+                         style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px">
+                        <p style="font-size:11px;color:#92400E">No commission pool on this deal yet. Set deal financials first, or set split to 0 to record this partner only.</p>
+                    </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div style="display:flex;gap:8px">
                         <button @click="showAdd = false; clearContact(); formError = ''"
                                 style="flex:1;padding:9px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving || isOverCap() || isDuplicate() || remainingPool() <= 0"
+                        <button @click="addSplit()" :disabled="saving || isDuplicate() || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))"
                                 style="flex:1;padding:9px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s"
-                                :style="(saving || isOverCap() || isDuplicate() || remainingPool() <= 0) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
-                                x-text="saving ? 'Saving...' : 'Add Split'"></button>
+                                :style="(saving || isDuplicate() || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
+                                x-text="saving ? 'Saving…' : (form.split_share_value > 0 ? 'Add Split' : 'Add (Record Only)')"></button>
                     </div>
 
                         </div>{{-- /modal body --}}
@@ -3326,16 +3338,16 @@ function partnerSplitSection(dealId, tenantId) {
         async addSplit() {
             this.formError = '';
             if (!this.form.partner_name.trim()) { this.formError = 'Partner name is required.'; return; }
-            if (this.form.split_share_value <= 0) { this.formError = 'Split share must be greater than 0.'; return; }
             if (this.isDuplicate()) {
                 this.formError = 'This partner already has a split on this deal. Remove their existing entry first if you want to change it.';
                 return;
             }
-            if (this.remainingPool() <= 0) {
+            // Pool checks only apply when a non-zero split is being allocated
+            if (this.form.split_share_value > 0 && this.remainingPool() <= 0) {
                 this.formError = 'The referrer commission pool is fully allocated. Remove an existing split to free up space.';
                 return;
             }
-            if (this.isOverCap()) {
+            if (this.form.split_share_value > 0 && this.isOverCap()) {
                 const rem = Math.round(this.remainingPool());
                 const limit = this.form.split_share_type === 'percentage'
                     ? this.maxPct() + '% (= ₱' + Math.round(this.dealValue * this.maxPct() / 100).toLocaleString('en-PH') + ')'
