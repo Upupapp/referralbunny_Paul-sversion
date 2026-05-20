@@ -52,8 +52,8 @@
      x-init="init()"
      @open-move-stage-deal.window="showMoveStage = true"
      @open-delete-deal.window="showDeleteConfirm = true"
-     @open-update-amount-deal.window="startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) })"
-     @open-add-co-ref.window="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
+     @open-update-amount-deal.window="if (lead?.status !== 'archived') { startEditFinance(); $nextTick(() => { document.getElementById('rb-finance-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }) }"
+     @open-add-co-ref.window="if (lead?.status !== 'archived') { showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = '' }"
      @coref-pick.window="coRefEmail = $event.detail.email">
 
     <a href="{{ route('tenant.deals', $tenant->id) }}"
@@ -590,7 +590,7 @@
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                         <div style="display:flex;align-items:center;gap:8px">
                             <p style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase">Referrer Commission Distribution</p>
-                            <template x-if="lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid'">
+                            <template x-if="lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid' && lead?.status !== 'archived'">
                                 <button @click="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
                                         style="padding:2px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
                                     + Co-Referrer
@@ -1087,18 +1087,20 @@
 
             {{-- Commission Split Share --}}
             <div class="card space-y-3"
-                 x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}')"
+                 x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}', {{ $dealIsArchived ? 'true' : 'false' }})"
                  x-init="load()"
                  @finance-updated.window="load()">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Commission Split Share</h3>
                     <div class="flex items-center gap-2">
-                        <button @click="window.dispatchEvent(new CustomEvent('open-add-co-ref'))"
+                        <button x-show="!isArchived"
+                                @click="window.dispatchEvent(new CustomEvent('open-add-co-ref'))"
                                 class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             + Co-Referrer
                         </button>
-                        <button @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                        <button x-show="!isArchived"
+                                @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             Add Partner
                         </button>
@@ -2251,6 +2253,8 @@ document.addEventListener('keydown', function(e) {
 var rbSelectedReseller = null;
 
 function rbOpenReassign() {
+    var lead = rbGetLead();
+    if (lead && lead.status === 'archived') return;
     var m   = document.getElementById('rb-reassign-modal');
     var s   = document.getElementById('rb-reassign-search');
     var btn = document.getElementById('rb-reassign-btn');
@@ -3224,9 +3228,10 @@ function dealDetail(leadId, tenantId, ssrLead) {
 }
 
 // -- Partner Split Section ------------------------------------------------------
-function partnerSplitSection(dealId, tenantId) {
+function partnerSplitSection(dealId, tenantId, isArchived) {
     return {
         splits: [], coRefs: [], loading: true, showAdd: false, saving: false, formError: '',
+        isArchived: !!isArchived,
         totalPct: 0,
         dealValue: 0,
         commPool: 0,
