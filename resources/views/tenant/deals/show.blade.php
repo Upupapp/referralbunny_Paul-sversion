@@ -3,11 +3,13 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
+@php $dealIsArchived = ($ssrLead['status'] ?? '') === 'archived'; @endphp
     <a href="{{ route('tenant.tasks', [$tenant->id]) }}?create=1&source_type=deal&source_id={{ $dealId }}"
        class="btn-secondary text-sm" style="text-decoration:none;display:flex;align-items:center;gap:6px">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Task</span>
     </a>
+    @if(!$dealIsArchived)
     {{-- Update Amount: opens the finance edit section directly --}}
     <button onclick="window.dispatchEvent(new CustomEvent('open-update-amount-deal'))"
             class="btn-secondary text-sm">
@@ -24,6 +26,13 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
+    @else
+    {{-- Archived notice in topbar --}}
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4"/></svg>
+        Archived — read only
+    </span>
+    @endif
     <button onclick="window.dispatchEvent(new CustomEvent('open-delete-deal'))"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -52,6 +61,15 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         Back to Deals
     </a>
+
+    @if($dealIsArchived)
+    <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600">
+        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4"/>
+        </svg>
+        <span>This deal has been <strong>archived</strong>. It is read-only — stage, amount, and assignment cannot be changed. To make edits, restore it from the Archives tab on the Deals page.</span>
+    </div>
+    @endif
 
     {{-- Loading state --}}
     <div x-show="loading" class="card flex items-center justify-center py-16 gap-3 text-gray-400">

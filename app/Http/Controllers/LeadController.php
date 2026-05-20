@@ -48,6 +48,7 @@ class LeadController extends Controller
             'id', 'tenant_id', 'name', 'stage', 'status', 'days_left',
             'reseller_name', 'organization_id',
             'commission_status', 'base_cost', 'added_amount', 'deal_value',
+            'data',
             'created_at', 'updated_at', 'deleted_at', 'deleted_by',
         ];
         if (Cache::remember('schema.leads_has_reseller_id', 86400, fn() =>

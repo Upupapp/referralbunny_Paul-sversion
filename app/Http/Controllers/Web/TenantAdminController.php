@@ -340,13 +340,14 @@ class TenantAdminController extends Controller
         $performance = $perfService->forReseller($tenantId, $reseller->name);
         $completeness = $perfService->completenessStatus($reseller);
 
-        // Recent deals (latest 10) — includes co-referrer deals via commission_splits
+        // Recent deals (latest 10, non-archived) — includes co-referrer deals via commission_splits
         $recentDeals = collect();
         try {
             $lower = strtolower($reseller->name);
             $recentDeals = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
+                ->where('status', '!=', 'archived')
                 ->where(fn($q) => $q
                     ->whereRaw('LOWER(reseller_name) = ?', [$lower])
                     ->orWhereExists(fn($sub) => $sub
