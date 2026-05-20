@@ -3244,24 +3244,30 @@ function partnerSplitSection(dealId, tenantId) {
             return v > this.remainingPool();
         },
 
-        // Auto-clamp value to max allowed
+        // Auto-clamp value to max allowed (skip when no pool set — record-only path)
         enforceMax() {
             const v = Number(this.form.split_share_value) || 0;
             if (this.form.split_share_type === 'percentage') {
                 const maxP = this.maxPct();
                 if (v > maxP) this.form.split_share_value = maxP;
-            } else {
+            } else if (this.commPool > 0) {
                 const rem = this.remainingPool();
                 if (rem >= 0 && v > rem) this.form.split_share_value = Math.round(rem);
             }
         },
 
-        // True if the selected partner email already has a split on this deal
+        // True if this partner is already on the deal (email match, or name match when no email)
         isDuplicate() {
-            // Only check email duplicates when an email is actually provided
             const email = (this.form.partner_email || '').toLowerCase().trim();
-            if (!email) return false;
-            return this.splits.some(function(s) { return (s.partner_email || '').toLowerCase() === email; });
+            const name  = (this.form.partner_name  || '').toLowerCase().trim();
+            if (email) {
+                return this.splits.some(s => (s.partner_email || '').toLowerCase() === email);
+            }
+            // No email — guard against same-name duplicate (no-email entries only)
+            if (name) {
+                return this.splits.some(s => !(s.partner_email || '').trim() && (s.partner_name || '').toLowerCase() === name);
+            }
+            return false;
         },
         form: { partner_name: '', partner_email: '', split_share_value: 0, split_share_type: 'percentage' },
         // Contact combobox

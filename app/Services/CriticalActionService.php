@@ -414,7 +414,7 @@ class CriticalActionService
                         $actions[] = $this->make([
                             'type'          => 'deal_expiring',
                             'category'      => 'deal',
-                            'severity'      => ($deal->days_left ?? 21) <= 2 ? 'urgent' : 'high',
+                            'severity'      => ($deal->days_left ?? 0) <= 2 ? 'urgent' : 'high',
                             'summary'       => "Your deal is expiring soon: {$deal->name}",
                             'actor_name'    => 'System',
                             'actor_role'    => 'System',
@@ -569,7 +569,7 @@ class CriticalActionService
         return $rows->map(fn($r) => $this->make([
             'type'          => 'deal_expiring',
             'category'      => 'deal',
-            'severity'      => ($r->days_left ?? 21) <= 2 ? 'urgent' : 'high',
+            'severity'      => ($r->days_left ?? 0) <= 2 ? 'urgent' : 'high',
             'summary'       => "Deal expiring soon: {$r->name}",
             'actor_name'    => $r->reseller_name ?? 'Unassigned',
             'actor_role'    => 'Referrer',
@@ -1019,7 +1019,7 @@ class CriticalActionService
         return $rows->map(fn($r) => $this->make([
             'type'          => 'deal_expiring',
             'category'      => 'deal',
-            'severity'      => ($r->days_left ?? 21) <= 2 ? 'urgent' : 'high',
+            'severity'      => ($r->days_left ?? 0) <= 2 ? 'urgent' : 'high',
             'summary'       => "Your deal is expiring soon: {$r->name}",
             'actor_name'    => 'System',
             'actor_role'    => 'System',

@@ -96,8 +96,7 @@ class ResellerPortalController extends Controller
                             )
                         );
                 })
-                ->distinct()
-                ->count('deal_partner_splits.id');
+                ->count();
         } catch (\Throwable) {}
 
         // ── Unread messages count ──────────────────────────────────────────
