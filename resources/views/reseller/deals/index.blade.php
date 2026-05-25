@@ -169,8 +169,11 @@
                                     <p class="text-xs text-gray-400 mt-1">
                                         <template x-if="filterStatus === 'expiring' && !filterNoNotes"><span>No deals are currently expiring.</span></template>
                                         <template x-if="filterStatus === 'expiring' && filterNoNotes"><span>No expiring deals without notes found.</span></template>
-                                        <template x-if="filterStatus === 'expired'"><span>No expired deals found.</span></template>
-                                        <template x-if="filterStatus && filterStatus !== 'expiring' && filterStatus !== 'expired'"><span>No deals with this status.</span></template>
+                                        <template x-if="filterStatus === 'expired' && !filterNoNotes"><span>No expired deals found.</span></template>
+                                        <template x-if="filterStatus === 'expired' && filterNoNotes"><span>No expired deals without notes found.</span></template>
+                                        <template x-if="filterStatus === 'active' && filterNoNotes"><span>All your active deals already have notes.</span></template>
+                                        <template x-if="filterStatus && filterStatus !== 'expiring' && filterStatus !== 'expired' && filterStatus !== 'active' && !filterNoNotes"><span>No deals with this status.</span></template>
+                                        <template x-if="filterStatus && filterStatus !== 'expiring' && filterStatus !== 'expired' && filterStatus !== 'active' && filterNoNotes"><span>No deals with this status and no notes.</span></template>
                                         <template x-if="!filterStatus && filterNoNotes && (filterStage || filterPartner || search)"><span>No matching deals without notes.</span></template>
                                         <template x-if="!filterStatus && !filterNoNotes"><span>Try adjusting or clearing your filters.</span></template>
                                     </p>
@@ -280,26 +283,28 @@
     {{-- ── Sub-tabs: My Imported Deals + Bulk Extension Request ──── --}}
     <div x-data="{ openImports: false }" class="card p-0 overflow-hidden">
         <button @click="openImports = !openImports"
-                class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors"
-                :aria-expanded="openImports.toString()">
+                aria-controls="subtab-imports"
+                :aria-expanded="openImports.toString()"
+                class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
             <div class="flex items-center gap-2.5">
-                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-indigo-500 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                 </svg>
                 <span class="text-sm font-semibold" style="color:#1E1B4B">My Imported Deals</span>
             </div>
-            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0" aria-hidden="true"
                  :class="openImports ? 'rotate-180' : ''"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
         </button>
-        <div x-show="openImports" x-collapse class="border-t border-gray-100">
+        <div id="subtab-imports" role="region" aria-label="My Imported Deals"
+             x-show="openImports" class="border-t border-gray-100">
             <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p class="text-sm text-gray-500">View and manage all deals you have imported into the system.</p>
                 <a href="{{ route('reseller.deals.imports', $tenant->id) }}"
                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors shrink-0">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
                     View Imported Deals
@@ -310,26 +315,28 @@
 
     <div x-data="{ openExtension: false }" class="card p-0 overflow-hidden">
         <button @click="openExtension = !openExtension"
-                class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors"
-                :aria-expanded="openExtension.toString()">
+                aria-controls="subtab-extension"
+                :aria-expanded="openExtension.toString()"
+                class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
             <div class="flex items-center gap-2.5">
-                <svg class="w-4 h-4 text-violet-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-violet-500 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span class="text-sm font-semibold" style="color:#1E1B4B">Bulk Extension Request</span>
             </div>
-            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0"
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0" aria-hidden="true"
                  :class="openExtension ? 'rotate-180' : ''"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
         </button>
-        <div x-show="openExtension" x-collapse class="border-t border-gray-100">
+        <div id="subtab-extension" role="region" aria-label="Bulk Extension Request"
+             x-show="openExtension" class="border-t border-gray-100">
             <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p class="text-sm text-gray-500">Request a time extension for one or more of your active deals in a single submission.</p>
                 <a href="{{ route('reseller.extension-requests.create', $tenant->id) }}"
                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors shrink-0">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3.5 h-3.5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     Request Extension

@@ -125,6 +125,8 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/imports/{batchId}/bulk-approve',           [\App\Http\Controllers\Web\TenantDealImportController::class, 'bulkApprove'])->name('deals.imports.bulk-approve');
         Route::post('/deals/imports/{batchId}/execute',                [\App\Http\Controllers\Web\TenantDealImportController::class, 'execute'])->name('deals.imports.execute');
         Route::get('/deals/imports/{batchId}/report',                  [\App\Http\Controllers\Web\TenantDealImportController::class, 'show'])->name('deals.imports.show');
+        // ── Bulk Extension Requests (Referrer) — must be before /deals/{dealId} to avoid route conflict
+        Route::get('/deals/extension-requests/create',             [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerCreate'])->name('extension-requests.create');
         Route::get('/deals/{dealId}',                              [\App\Http\Controllers\ResellerDealController::class, 'show'])->name('deals.show');
         Route::post('/deals/{dealId}/notes',                       [\App\Http\Controllers\ResellerDealController::class, 'addNote'])->name('deals.notes');
         Route::patch('/deals/{dealId}/amount',                     [\App\Http\Controllers\ResellerDealController::class, 'updateAmount'])->name('deals.amount');
@@ -132,16 +134,12 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/{dealId}/stage-approval',              [\App\Http\Controllers\ResellerDealController::class, 'requestStageApproval'])->name('deals.stage-approval');
         Route::post('/deals/{dealId}/archive-request',             [\App\Http\Controllers\ResellerDealController::class, 'requestArchive'])->name('deals.archive-request');
         Route::post('/deals/{dealId}/extension-request',          [\App\Http\Controllers\ResellerDealController::class, 'requestExtension'])->name('deals.extension-request');
-        // ── Bulk Extension Requests (Referrer) ──────────────────────────────
-        Route::get('/deals/extension-requests/create',             [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerCreate'])->name('extension-requests.create');
         Route::get('/extension-requests',                          [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerIndex'])->name('extension-requests.index');
         Route::get('/extension-requests/{batchId}',                [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerShow'])->name('extension-requests.show');
         Route::post('/deals/{dealId}/partners',                    [\App\Http\Controllers\ResellerDealController::class, 'addPartnerSplit'])->name('deals.partners');
         Route::post('/deals/{dealId}/referrers',                   [\App\Http\Controllers\ResellerDealController::class, 'addReferrer'])->name('deals.referrers');
         Route::patch('/deals/{dealId}/splits/{splitId}',            [\App\Http\Controllers\ResellerDealController::class, 'updateCoReferrerSplit'])->name('deals.splits.update');
         Route::delete('/deals/{dealId}/splits/{splitId}',           [\App\Http\Controllers\ResellerDealController::class, 'removeCoReferrer'])->name('deals.splits.remove');
-        Route::post('/approvals/{approvalId}/approve',             [\App\Http\Controllers\ResellerDealController::class, 'approveRequest'])->name('approvals.approve');
-        Route::post('/approvals/{approvalId}/reject',              [\App\Http\Controllers\ResellerDealController::class, 'rejectRequest'])->name('approvals.reject');
         Route::get('/commission', [ResellerPortalController::class, 'commission'])->name('commission');
         Route::get('/profile',           [ResellerProfileController::class, 'show'])->name('profile');
         Route::post('/profile',          [ResellerProfileController::class, 'update'])->name('profile.update');

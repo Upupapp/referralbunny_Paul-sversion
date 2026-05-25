@@ -337,7 +337,7 @@ class TenantAdminController extends Controller
             ->firstOrFail();
 
         $perfService = app(ReferrerPerformanceService::class);
-        $performance = $perfService->forReseller($tenantId, $reseller->name);
+        $performance = $perfService->forReseller($tenantId, $reseller->name, $reseller->id);
         $completeness = $perfService->completenessStatus($reseller);
 
         // Recent deals (latest 10, non-archived) — includes co-referrer deals via commission_splits

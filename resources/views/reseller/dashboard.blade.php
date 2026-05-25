@@ -220,7 +220,7 @@
                 </div>
             </div>
             <p class="text-2xl font-bold mb-1 truncate" style="color:#1E1B4B">₱{{ number_format($stats['pipeline'] ?? 0) }}</p>
-            <p class="text-xs text-gray-400 mb-3">Total value of assigned deals</p>
+            <p class="text-xs text-gray-400 mb-3">Total value of active deals</p>
             <a href="{{ route('reseller.deals', $tenant->id) }}"
                class="inline-flex items-center gap-1 text-[10px] font-semibold" style="color:#0D9488">
                 Review Pipeline →

@@ -107,7 +107,7 @@ class ReferrerPerformanceService
             'expiring_deals'       => (int)   ($agg?->expiring   ?? 0),
             'closed_won_deals'     => $paid,
             'total_deal_value'     => $tv,
-            'average_deal_value'   => $total > 0 ? round($tv / $total, 2) : 0.0,
+            'average_deal_value'   => (int)($agg?->active ?? 0) > 0 ? round($tv / (int)($agg?->active ?? 0), 2) : 0.0,
             'conversion_rate'      => $total > 0 ? round($paid / $total * 100, 1) : null,
             'pending_commission'   => (float) ($agg?->pending_comm ?? 0),
             'locked_commission'    => (float) ($agg?->locked_comm  ?? 0),
