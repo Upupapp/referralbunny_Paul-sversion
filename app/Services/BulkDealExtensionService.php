@@ -319,7 +319,12 @@ class BulkDealExtensionService
             }
         }
 
-        $this->notifyResellerBatchPartialResult($tenantId, $batch->fresh(), $results);
+        $freshBatch = $batch->fresh();
+        // Only send partial-result notification if the batch is not yet fully resolved.
+        // When fully resolved, notifyResellerBatchComplete already fired from recalculateBatchStatus.
+        if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
+            $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
+        }
         $this->criticalActions->invalidateCache($tenantId);
 
         return $results;
@@ -352,7 +357,10 @@ class BulkDealExtensionService
             }
         }
 
-        $this->notifyResellerBatchPartialResult($tenantId, $batch->fresh(), $results);
+        $freshBatch = $batch->fresh();
+        if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
+            $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
+        }
         $this->criticalActions->invalidateCache($tenantId);
 
         return $results;

@@ -99,12 +99,11 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('leads/{lead}/extension-requests',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'forDeal']);
     Route::post('leads/{lead}/extension-requests',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'store']);
     Route::get('extension-requests',                         [\App\Http\Controllers\DealAssignmentExtensionController::class, 'index']);
-    Route::get('extension-requests/{id}',                    [\App\Http\Controllers\DealAssignmentExtensionController::class, 'show']);
     Route::post('extension-requests/{id}/approve',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'approve']);
     Route::post('extension-requests/{id}/reject',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'reject']);
     Route::post('extension-requests/{id}/clarify',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'clarify']);
 
-    // Bulk Extension Requests (new)
+    // Bulk Extension Requests — specific routes MUST come before extension-requests/{id} wildcard
     Route::get('extension-requests/eligible-deals',                                  [\App\Http\Controllers\BulkDealExtensionController::class, 'eligibleDeals']);
     Route::post('extension-requests/bulk',                                            [\App\Http\Controllers\BulkDealExtensionController::class, 'storeBulk']);
     Route::get('extension-requests/batches',                                          [\App\Http\Controllers\BulkDealExtensionController::class, 'indexBatches']);
@@ -118,6 +117,9 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('bulk-extension-requests/{requestId}/approve',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'approveItem']);
     Route::post('bulk-extension-requests/{requestId}/decline',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'declineItem']);
     Route::post('bulk-extension-requests/{requestId}/skip',                          [\App\Http\Controllers\BulkDealExtensionController::class, 'skipItem']);
+
+    // Single-deal extension wildcard — kept AFTER all specific bulk routes above
+    Route::get('extension-requests/{id}',                    [\App\Http\Controllers\DealAssignmentExtensionController::class, 'show']);
 
     // Resellers
     Route::get('resellers',                    [ResellerController::class, 'index']);

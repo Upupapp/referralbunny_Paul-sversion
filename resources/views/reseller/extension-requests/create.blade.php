@@ -329,17 +329,7 @@
     </div>
 </div>
 
-{{-- ── Selected bar (sticky bottom when items selected) ──────── --}}
-<div x-data="{ get visible() { return document.querySelector('[x-data]') && window.selectedBar } }"
-     x-show="$store.extWizard && $store.extWizard.step === 1 && $store.extWizard.selected > 0"
-     class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between z-30 shadow-lg"
-     style="display:none" {{-- Alpine takes over --}}>
-    <span class="text-sm font-medium text-gray-700">
-        <span x-text="$store.extWizard?.selected ?? 0"></span> deal(s) selected
-    </span>
-    <button class="px-4 py-2 rounded-xl text-sm font-semibold text-white" style="background:#7B61FF"
-            @click="$dispatch('ext-continue')">Continue</button>
-</div>
+{{-- Sticky bottom bar removed — selection count shown inline in the deal list footer --}}
 
 @push('scripts')
 <script>
@@ -422,10 +412,12 @@ function bulkExtensionWizard() {
 
                 const res = await fetch(`/api/extension-requests/bulk`, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify(payload),
                 });
