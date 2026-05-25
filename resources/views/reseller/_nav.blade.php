@@ -69,7 +69,8 @@
 
     $_dealsActive   = request()->routeIs('reseller.deals')
                    || request()->routeIs('reseller.deals.show')
-                   || request()->routeIs('reseller.deals.imports*');
+                   || request()->routeIs('reseller.deals.imports*')
+                   || request()->routeIs('reseller.extension-requests*');
 
     $_contactsActive = request()->routeIs('reseller.contacts')
                     || request()->routeIs('reseller.contacts.imports*');
@@ -85,25 +86,73 @@
     Dashboard
 </a>
 
-{{-- ── My Deals + Import Deals ─────────────────────────────── --}}
-<a href="{{ route('reseller.deals', $tid) }}"
-   class="rs-sidebar-link {{ $_dealsActive ? 'active' : '' }}"
-   @if($_dealsActive) aria-current="page" @endif>
-    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-    </svg>
-    My Deals
-</a>
+{{-- ── My Deals (expandable) ───────────────────────────────── --}}
+<div x-data="{
+        open: false,
+        init() {
+            const saved = localStorage.getItem('rs_nav_deals');
+            // Default to open so sub-tabs are always visible
+            this.open = saved !== null ? (saved === 'true') : true;
+            this.$watch('open', v => localStorage.setItem('rs_nav_deals', String(v)));
+        }
+     }">
 
-<div class="ml-3 pl-3 border-l border-white/10 space-y-0.5">
-    <a href="{{ route('reseller.deals.imports', $tid) }}"
-       class="rs-sidebar-child {{ request()->routeIs('reseller.deals.imports*') ? 'active' : '' }}"
-       @if(request()->routeIs('reseller.deals.imports*')) aria-current="page" @endif>
-        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+    <button type="button"
+            @click="open = !open"
+            :aria-expanded="String(open)"
+            aria-controls="rs-deals-panel"
+            class="rs-sidebar-link w-full text-left {{ $_dealsActive ? 'rs-group-active' : '' }}">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
         </svg>
-        My Imported Deals
-    </a>
+        <span class="flex-1">My Deals</span>
+        <svg class="w-3 h-3 shrink-0 transition-transform duration-200 ml-auto opacity-50"
+             :class="open ? 'rotate-180' : ''"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+        </svg>
+    </button>
+
+    <div id="rs-deals-panel"
+         role="group"
+         x-show="open"
+         x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 -translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0"
+         class="mt-0.5 ml-3 pl-3 border-l border-white/10 space-y-0.5">
+
+        <a href="{{ route('reseller.deals', $tid) }}"
+           class="rs-sidebar-child {{ (request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show')) ? 'active' : '' }}"
+           @if(request()->routeIs('reseller.deals') || request()->routeIs('reseller.deals.show')) aria-current="page" @endif>
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+            My Deals
+        </a>
+
+        <a href="{{ route('reseller.deals.imports', $tid) }}"
+           class="rs-sidebar-child {{ request()->routeIs('reseller.deals.imports*') ? 'active' : '' }}"
+           @if(request()->routeIs('reseller.deals.imports*')) aria-current="page" @endif>
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            My Imported Deals
+        </a>
+
+        <a href="{{ route('reseller.extension-requests.create', $tid) }}"
+           class="rs-sidebar-child {{ request()->routeIs('reseller.extension-requests*') ? 'active' : '' }}"
+           @if(request()->routeIs('reseller.extension-requests*')) aria-current="page" @endif>
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Bulk Extension Request
+        </a>
+
+    </div>
 </div>
 
 {{-- ── My Commission ───────────────────────────────────────── --}}
