@@ -88,7 +88,7 @@
 
 {{-- ── My Deals (expandable) ───────────────────────────────── --}}
 <div x-data="{
-        open: true, // overridden by init() from localStorage; true = default open
+        open: true, // init() reads localStorage first; true = default for first-time visitors
         init() {
             const saved = localStorage.getItem('rs_nav_deals');
             this.open = saved !== null ? (saved === 'true') : true;
@@ -166,7 +166,7 @@
 
 {{-- ── My Network (expandable, defaults open so My Contacts is always reachable) --}}
 <div x-data="{
-        open: true, // overridden by init() from localStorage; true = default open
+        open: true, // init() reads localStorage first; true = default for first-time visitors
         init() {
             const saved = localStorage.getItem('rs_nav_network');
             this.open = saved !== null ? (saved === 'true') : true;

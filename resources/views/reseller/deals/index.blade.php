@@ -160,7 +160,7 @@
                                     <p class="text-gray-400 text-sm font-medium">All caught up!</p>
                                     <p class="text-xs text-gray-400 mt-1">All your active deals already have at least one note.</p>
                                     <button @click="filterNoNotes=false; applyFilters()"
-                                            class="rs-btn-secondary mt-3 text-xs">Show All Deals</button>
+                                            class="rs-btn-secondary mt-3 !text-xs">Show All Deals</button>
                                 </div>
                             </template>
                             <template x-if="!filterArchived && (filterNoNotes || filterStatus || filterStage || filterPartner || search) && !(filterNoNotes && !filterStatus && !filterStage && !filterPartner && !search)">
@@ -178,7 +178,7 @@
                                         <template x-if="!filterStatus && !filterNoNotes"><span>Try adjusting or clearing your filters.</span></template>
                                     </p>
                                     <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
-                                            class="rs-btn-secondary mt-3 text-xs">Clear Filters</button>
+                                            class="rs-btn-secondary mt-3 !text-xs">Clear Filters</button>
                                 </div>
                             </template>
                             <template x-if="!filterArchived && !filterNoNotes && !filterStatus && !filterStage && !filterPartner && !search">
