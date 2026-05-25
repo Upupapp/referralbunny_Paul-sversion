@@ -186,7 +186,6 @@ class LguIdsReferrerDealNoteReminderService
 
     public function createInAppNotification(Tenant $tenant, Reseller $referrer, $deals, string $weekKey): ?string
     {
-        $count   = $deals->count();
         $payload = $this->buildNotificationPayload($tenant, $referrer, $deals, $weekKey);
 
         try {
