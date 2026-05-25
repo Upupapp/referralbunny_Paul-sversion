@@ -103,7 +103,7 @@ class LguIdsDealNoteTaskService
             'source_type'       => self::SOURCE_TYPE,
             'source_id'         => $lead->id,
             'due_at'            => $dueAt,
-            'visibility'        => 'private',
+            'visibility'        => 'assigned_only',
             'metadata'          => [
                 'deal_id'      => $lead->id,
                 'deal_name'    => $lead->name,
