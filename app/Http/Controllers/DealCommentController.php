@@ -213,6 +213,35 @@ class DealCommentController extends Controller
             } catch (\Throwable) {}
         }
 
+        // LGU IDS: auto-complete open note tasks when a shared top-level note is added
+        if ($tenantId === 'lgu-ids' && $visibility === 'shared' && empty($data['parent_comment_id'])) {
+            try {
+                \App\Models\Task::where('tenant_id', $tenantId)
+                    ->where('source_type', \App\Services\LguIds\LguIdsDealNoteTaskService::SOURCE_TYPE)
+                    ->where('taskable_type', 'lead')
+                    ->where('taskable_id', $dealId)
+                    ->whereIn('status', ['open', 'in_progress', 'waiting'])
+                    ->whereNull('deleted_at')
+                    ->each(function ($task) use ($tenantId, $actorId, $role) {
+                        $task->update([
+                            'status'            => 'completed',
+                            'completed_at'      => now(),
+                            'completed_by_type' => $role,
+                            'completed_by_id'   => $actorId,
+                        ]);
+                        \App\Models\TaskActivity::create([
+                            'tenant_id'   => $tenantId,
+                            'task_id'     => $task->id,
+                            'actor_type'  => $role,
+                            'actor_id'    => $actorId,
+                            'actor_name'  => 'Admin',
+                            'action_type' => 'task_completed',
+                            'new_values'  => ['status' => 'completed', 'trigger' => 'admin_comment_added'],
+                        ]);
+                    });
+            } catch (\Throwable) {}
+        }
+
         // Reload with relations — wrapped so a missing table never 500s the response
         try {
             $comment->load(['attachments', 'mentions']);

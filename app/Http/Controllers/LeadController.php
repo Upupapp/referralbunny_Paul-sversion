@@ -406,6 +406,14 @@ class LeadController extends Controller
             ]);
         }
 
+        // LGU IDS: auto-create referrer note task if deal starts in a target stage
+        if ($lead->tenant_id === 'lgu-ids') {
+            try {
+                app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                    ->createForDeal($lead, 'deal_created');
+            } catch (\Throwable) {}
+        }
+
         // Handle Referrer assignment/invitation with full deduplication
         $resellerCreated = false;
         $inviteSent      = false;
@@ -1307,6 +1315,14 @@ class LeadController extends Controller
             }
         } catch (\Throwable) {}
 
+        // LGU IDS: create note task if deal directly moved to a target stage
+        if ($lead->tenant_id === 'lgu-ids') {
+            try {
+                app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                    ->createForDeal($lead->fresh(), 'direct_stage_move');
+            } catch (\Throwable) {}
+        }
+
         return response()->json(
             $lead->fresh(['commissionSplits'])
                  ->load(['history' => fn($q) => $q->orderByDesc('created_at')->limit(50)])
@@ -1332,6 +1348,41 @@ class LeadController extends Controller
                 'actor_name' => $data['author'] ?? null,
             ]);
         } catch (\Throwable) {}
+
+        // LGU IDS: complete open note tasks when admin adds a LeadNote
+        if ($lead->tenant_id === 'lgu-ids') {
+            try {
+                $adminActor = new class($data['author'] ?? 'Admin') {
+                    public string $id   = 'system';
+                    public string $name;
+                    public function __construct(string $name) { $this->name = $name; }
+                };
+                // Use raw Task update since $adminActor is not a Reseller — log as system
+                \App\Models\Task::where('tenant_id', $lead->tenant_id)
+                    ->where('source_type', \App\Services\LguIds\LguIdsDealNoteTaskService::SOURCE_TYPE)
+                    ->where('taskable_type', 'lead')
+                    ->where('taskable_id', $lead->id)
+                    ->whereIn('status', ['open', 'in_progress', 'waiting'])
+                    ->whereNull('deleted_at')
+                    ->each(function ($task) use ($lead, $adminActor) {
+                        $task->update([
+                            'status'            => 'completed',
+                            'completed_at'      => now(),
+                            'completed_by_type' => 'system',
+                            'completed_by_id'   => 'system',
+                        ]);
+                        \App\Models\TaskActivity::create([
+                            'tenant_id'   => $lead->tenant_id,
+                            'task_id'     => $task->id,
+                            'actor_type'  => 'system',
+                            'actor_id'    => 'system',
+                            'actor_name'  => $adminActor->name,
+                            'action_type' => 'task_completed',
+                            'new_values'  => ['status' => 'completed', 'trigger' => 'admin_note_added'],
+                        ]);
+                    });
+            } catch (\Throwable) {}
+        }
 
         return response()->json($note, 201);
     }
@@ -1450,6 +1501,14 @@ class LeadController extends Controller
             assignedByName:  $actorNameRa,
             assignedByRole:  $actorRoleRa,
         );
+
+        // LGU IDS: create note task for new referrer if deal is in a target stage
+        if ($lead->tenant_id === 'lgu-ids') {
+            try {
+                app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                    ->createForDeal($lead->fresh(), 'referrer_reassigned');
+            } catch (\Throwable) {}
+        }
 
         return response()->json(
             $lead->fresh(['commissionSplits'])

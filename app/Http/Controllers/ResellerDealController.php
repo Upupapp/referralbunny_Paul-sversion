@@ -335,6 +335,14 @@ class ResellerDealController extends Controller
             ]);
         } catch (\Throwable) {}
 
+        // LGU IDS: auto-complete open note tasks for this deal
+        if ($lead->tenant_id === 'lgu-ids') {
+            try {
+                app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                    ->autocompleteForDeal($tenantId, $dealId, $reseller);
+            } catch (\Throwable) {}
+        }
+
         try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
@@ -1250,6 +1258,14 @@ class ResellerDealController extends Controller
             DB::rollBack();
             Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
+        }
+
+        // LGU IDS: create note task if deal moved to a target stage with no notes
+        if ($approval->type === 'deal_stage_move' && $lead && $lead->tenant_id === 'lgu-ids') {
+            try {
+                app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                    ->createForDeal($lead->fresh(), 'stage_move_approved');
+            } catch (\Throwable) {}
         }
 
         // Notify after commit — never inside transaction

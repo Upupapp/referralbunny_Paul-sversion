@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\CreateLguIdsDealNoteTasks;
 use App\Console\Commands\SendLguIdsReferrerNoteReminders;
 use App\Jobs\Emails\SendLguIdsPendingTasksDigestJob;
 use App\Jobs\Emails\SendLguIdsTaskDueReminderJob;
@@ -17,6 +18,14 @@ Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('As
 Schedule::command(SendLguIdsReferrerNoteReminders::class)
     ->weeklyOn(3, '10:00')
     ->timezone('Australia/Perth')
+    ->withoutOverlapping();
+
+// ── LGU IDS deal note task sync (nightly safety net) ─────────
+// Catches any deals that missed the event-driven hooks (e.g. bulk DB updates, imports).
+// --no-email skips duplicate emails since event-time hooks already sent them.
+Schedule::command(CreateLguIdsDealNoteTasks::class, ['--no-email'])
+    ->dailyAt('02:00')
+    ->timezone('Asia/Manila')
     ->withoutOverlapping();
 
 // ── LGU IDS task reminders (starts Mon May 18, 2026) ─────────

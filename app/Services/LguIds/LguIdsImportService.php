@@ -852,6 +852,12 @@ class LguIdsImportService
                         } catch (\Throwable) {}
                     }
 
+                    // Secondary: auto-create note task if deal starts in a target stage (non-critical)
+                    try {
+                        app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
+                            ->createForDeal($newLead, 'import');
+                    } catch (\Throwable) {}
+
                     // Secondary: snapshot (non-critical)
                     try {
                         $this->snapshots->recordCreated(
