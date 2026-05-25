@@ -15,18 +15,25 @@
 <div class="space-y-5" x-data="resellersPage('{{ $tenant->id }}')" x-init="init()" @open-add-reseller.window="showAdd = true">
 
     {{-- Search + filter --}}
-    <div class="card">
-        <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div class="search-group flex-1">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input type="text" x-model="search" @input.debounce="filter()" placeholder="Search referrers…">
-            </div>
-            <select x-model="filterStatus" @change="filter()" class="form-input sm:w-40">
-                <option value="">All Status</option>
-                <option value="invited">Invited</option>
-                <option value="active">Active</option>
-                <option value="nda_signed">NDA Signed</option>
-            </select>
+    <div class="card space-y-3">
+        <div class="search-group">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" x-model="search" @input.debounce="filter()" placeholder="Search referrers…" class="w-full bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400">
+            <button x-show="search" @click="search=''; filter()" class="text-gray-400 hover:text-gray-600 shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="filter-bar">
+            <button @click="filterStatus=''; filter()" :class="filterStatus === '' ? 'filter-pill active' : 'filter-pill'">All</button>
+            <button @click="filterStatus='invited'; filter()" :class="filterStatus === 'invited' ? 'filter-pill active' : 'filter-pill'">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Invited
+            </button>
+            <button @click="filterStatus='active'; filter()" :class="filterStatus === 'active' ? 'filter-pill active' : 'filter-pill'">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+            </button>
+            <button @click="filterStatus='nda_signed'; filter()" :class="filterStatus === 'nda_signed' ? 'filter-pill active' : 'filter-pill'">
+                <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span> NDA Signed
+            </button>
         </div>
     </div>
 

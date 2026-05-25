@@ -333,7 +333,7 @@
         </div>
 
         {{-- Recipients (editable) ──────────────────────────────────────────────── --}}
-        <div class="card" x-data="{ selectedRecipients: {{ json_encode($form->recipientOptions->pluck('recipient_id')->filter()->values()) }} }">
+        <div class="card" x-data="{ selectedRecipients: {{ Js::from($form->recipientOptions->pluck('recipient_id')->filter()->values()) }} }">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
                 <div style="width:30px;height:30px;border-radius:8px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
                     <svg style="width:14px;height:14px;color:#15803d" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>

@@ -33,7 +33,7 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 @section('content')
-<div x-data="tenantDashboard('{{ $tenant->id }}', {{ json_encode($currentResellerName) }})"
+<div x-data="tenantDashboard('{{ $tenant->id }}', {{ Js::from($currentResellerName) }})"
      x-init="init()"
      @open-add-deal.window="showAdd = true"
      class="space-y-5">
