@@ -271,7 +271,7 @@ window.__bulkExtBatch = {
                               class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-red-400 resize-none"></textarea>
                     <div class="flex gap-2">
                         <button @click="submitDecline()"
-                                :disabled="busy || note.trim().length < 3"
+                                :disabled="busy || note.trim().length < 5"
                                 class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg x-show="!busy" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -349,7 +349,7 @@ window.__bulkExtBatch = {
 
             <div class="flex gap-2 pt-1">
                 <button @click="submitBulkAction()"
-                        :disabled="bulkModal.busy || (bulkModal.action === 'approve_all' && (bulkModal.approvedDays < 1 || bulkModal.approvedDays > 90)) || (bulkModal.action === 'decline_all' && bulkModal.note.trim().length < 3)"
+                        :disabled="bulkModal.busy || (bulkModal.action === 'approve_all' && (bulkModal.approvedDays < 1 || bulkModal.approvedDays > 90)) || (bulkModal.action === 'decline_all' && bulkModal.note.trim().length < 5)"
                         class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         :class="bulkModal.action === 'approve_all' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : (bulkModal.action === 'decline_all' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-700 text-white hover:bg-gray-800')">
                     <svg x-show="bulkModal.busy" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -428,8 +428,8 @@ function bulkExtReview() {
                 skip_all:    { reviewer_note: m.note || null },
             };
 
-            if (m.action === 'decline_all' && m.note.trim().length < 3) {
-                m.error = 'A reason of at least 3 characters is required.';
+            if (m.action === 'decline_all' && m.note.trim().length < 5) {
+                m.error = 'A reason of at least 5 characters is required.';
                 return;
             }
             if (m.action === 'approve_all' && (m.approvedDays < 1 || m.approvedDays > 90)) {
