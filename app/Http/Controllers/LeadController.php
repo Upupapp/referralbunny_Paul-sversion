@@ -1352,19 +1352,14 @@ class LeadController extends Controller
         // LGU IDS: complete open note tasks when admin adds a LeadNote
         if ($lead->tenant_id === 'lgu-ids') {
             try {
-                $adminActor = new class($data['author'] ?? 'Admin') {
-                    public string $id   = 'system';
-                    public string $name;
-                    public function __construct(string $name) { $this->name = $name; }
-                };
-                // Use raw Task update since $adminActor is not a Reseller — log as system
+                $actorName = $data['author'] ?? 'Admin';
                 \App\Models\Task::where('tenant_id', $lead->tenant_id)
                     ->where('source_type', \App\Services\LguIds\LguIdsDealNoteTaskService::SOURCE_TYPE)
                     ->where('taskable_type', 'lead')
                     ->where('taskable_id', $lead->id)
                     ->whereIn('status', ['open', 'in_progress', 'waiting'])
                     ->whereNull('deleted_at')
-                    ->each(function ($task) use ($lead, $adminActor) {
+                    ->each(function ($task) use ($lead, $actorName) {
                         $task->update([
                             'status'            => 'completed',
                             'completed_at'      => now(),
@@ -1376,7 +1371,7 @@ class LeadController extends Controller
                             'task_id'     => $task->id,
                             'actor_type'  => 'system',
                             'actor_id'    => 'system',
-                            'actor_name'  => $adminActor->name,
+                            'actor_name'  => $actorName,
                             'action_type' => 'task_completed',
                             'new_values'  => ['status' => 'completed', 'trigger' => 'admin_note_added'],
                         ]);

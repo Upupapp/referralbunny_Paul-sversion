@@ -222,7 +222,7 @@ class DealCommentController extends Controller
                     ->where('taskable_id', $dealId)
                     ->whereIn('status', ['open', 'in_progress', 'waiting'])
                     ->whereNull('deleted_at')
-                    ->each(function ($task) use ($tenantId, $actorId, $role) {
+                    ->each(function ($task) use ($tenantId, $actorId, $role, $actor) {
                         $task->update([
                             'status'            => 'completed',
                             'completed_at'      => now(),

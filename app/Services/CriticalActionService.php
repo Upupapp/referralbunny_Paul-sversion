@@ -2370,7 +2370,7 @@ class CriticalActionService
                 ->whereNotExists(fn($dc) => $dc
                     ->select(DB::raw(1))
                     ->from('deal_comments')
-                    ->whereColumn('deal_comments.lead_id', 'leads.id')
+                    ->whereColumn('deal_comments.deal_id', 'leads.id')
                     ->where('deal_comments.visibility', 'shared')
                     ->whereNull('deal_comments.deleted_at')
                     ->whereNull('deal_comments.parent_comment_id')
