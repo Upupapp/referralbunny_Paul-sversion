@@ -27,7 +27,7 @@
             color:rgba(255,255,255,.95);
         }
         .rs-sidebar-link:focus-visible {
-            outline:2px solid #14B8A6;
+            outline:2px solid #5EEAD4;
             outline-offset:2px;
         }
         .rs-sidebar-link.active {
@@ -54,7 +54,7 @@
             color:rgba(255,255,255,.88);
         }
         .rs-sidebar-child:focus-visible {
-            outline:2px solid #14B8A6;
+            outline:2px solid #5EEAD4;
             outline-offset:2px;
         }
         .rs-sidebar-child.active {

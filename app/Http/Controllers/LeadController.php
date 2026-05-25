@@ -127,7 +127,7 @@ class LeadController extends Controller
 
                 $withLegacyNotes = DB::table('lead_notes')
                     ->whereIn('lead_id', $pageIds)
-                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+                    // lead_notes has no tenant_id column; whereIn($pageIds) already scopes to tenant's leads
                     ->distinct()
                     ->pluck('lead_id')
                     ->flip();
