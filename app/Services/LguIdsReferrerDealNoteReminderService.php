@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Mail\LguIdsReferrerDealNoteReminderMail;
 use App\Models\EmailLog;
-use App\Models\Notification;
 use App\Models\Reseller;
 use App\Models\Tenant;
 use Carbon\Carbon;
@@ -191,17 +190,19 @@ class LguIdsReferrerDealNoteReminderService
         $payload = $this->buildNotificationPayload($tenant, $referrer, $deals, $weekKey);
 
         try {
-            $notification = $this->notifications->dispatchToReseller(
-                reseller:        $referrer,
-                tenantId:        $tenant->id,
-                category:        'deal_pipeline',
-                type:            'lgu_ids_note_reminder',
-                priority:        'medium',
-                title:           $payload['title'],
-                message:         $payload['message'],
-                actionUrl:       $payload['action_url'],
-                dedupeSuffix:    "lgu_ids_note_reminder:{$weekKey}",
-                metadata:        $payload['metadata'],
+            $dedupKey     = "deal_pipeline:{$referrer->id}:lgu_ids_note_reminder:{$weekKey}";
+            $notification = $this->notifications->dispatch(
+                category:         'deal_pipeline',
+                priority:         'medium',
+                title:            $payload['title'],
+                body:             $payload['message'],
+                notifiableType:   'reseller',
+                notifiableId:     $referrer->id,
+                tenantId:         $tenant->id,
+                actionUrl:        $payload['action_url'],
+                actionLabel:      'View Deals',
+                deduplicationKey: $dedupKey,
+                metadata:         $payload['metadata'],
             );
 
             return $notification?->id;
