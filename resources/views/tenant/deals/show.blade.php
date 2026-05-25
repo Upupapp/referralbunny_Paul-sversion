@@ -1244,7 +1244,8 @@
                         <div class="relative">
                             <input type="text"
                                    x-model="contactQuery"
-                                   @input.debounce.300ms="contactOpen = true; searchContacts(); form.partner_name = contactQuery.trim()"
+                                   @input="form.partner_name = contactQuery.trim()"
+                                   @input.debounce.300ms="contactOpen = true; searchContacts()"
                                    @blur="if (!contactSelected && contactQuery.trim()) form.partner_name = contactQuery.trim()"
                                    @keydown.escape="contactOpen = false"
                                    @keydown.arrow-down.prevent="contactFocusIdx = Math.min(contactFocusIdx + 1, contactOptions.length - 1)"
@@ -1381,9 +1382,9 @@
                     <div style="display:flex;gap:8px">
                         <button @click="showAdd = false; clearContact(); formError = ''"
                                 style="flex:1;padding:9px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving || isDuplicate() || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))"
+                        <button @click="addSplit()" :disabled="saving || isDuplicate() || (!form.partner_name.trim() && !contactSelected) || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))"
                                 style="flex:1;padding:9px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s"
-                                :style="(saving || isDuplicate() || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
+                                :style="(saving || isDuplicate() || (!form.partner_name.trim() && !contactSelected) || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
                                 x-text="saving ? 'Saving…' : (form.split_share_value > 0 ? 'Add Split' : 'Add (Record Only)')"></button>
                     </div>
 

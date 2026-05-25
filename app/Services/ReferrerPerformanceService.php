@@ -59,7 +59,7 @@ class ReferrerPerformanceService
                     SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                                                   AS active,
                     SUM(CASE WHEN status = 'expiring'             THEN 1 ELSE 0 END)                                                   AS expiring,
                     SUM(CASE WHEN stage  = 'paid'                 THEN 1 ELSE 0 END)                                                   AS paid,
-                    COALESCE(SUM(deal_value), 0)                                                                                       AS total_value,
+                    COALESCE(SUM(CASE WHEN status IN ('active','expiring') THEN deal_value ELSE 0 END), 0)                             AS total_value,
                     COALESCE(SUM(CASE WHEN commission_status='pending' THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS pending_comm,
                     COALESCE(SUM(CASE WHEN commission_status='locked'  THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS locked_comm,
                     COALESCE(SUM(CASE WHEN commission_status='paid'    THEN added_amount * {$pr} * percentage/100.0 ELSE 0 END), 0)   AS paid_comm,
