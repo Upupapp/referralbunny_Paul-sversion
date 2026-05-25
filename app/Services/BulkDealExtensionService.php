@@ -411,6 +411,13 @@ class BulkDealExtensionService
     ): array {
         $this->loadBatch($batchId, $tenantId);
 
+        // Scope to IDs that actually belong to this batch to prevent cross-batch manipulation
+        $requestIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $requestIds)
+            ->pluck('id')
+            ->all();
+
         $results = ['approved' => [], 'failed' => []];
 
         foreach ($requestIds as $requestId) {
@@ -439,6 +446,12 @@ class BulkDealExtensionService
     ): array {
         $this->loadBatch($batchId, $tenantId);
 
+        $requestIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $requestIds)
+            ->pluck('id')
+            ->all();
+
         $results = ['declined' => [], 'failed' => []];
 
         foreach ($requestIds as $requestId) {
@@ -466,6 +479,12 @@ class BulkDealExtensionService
         ?string $reviewerNote = null
     ): array {
         $this->loadBatch($batchId, $tenantId);
+
+        $requestIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $requestIds)
+            ->pluck('id')
+            ->all();
 
         $results = ['skipped' => [], 'failed' => []];
 
