@@ -1540,11 +1540,14 @@ class CriticalActionService
                 ->limit(10)
                 ->get();
 
-            return $rows->map(fn($r) => $this->make([
+            return $rows->map(function ($r) use ($tenantId) {
+                $actionable = (int)$r->pending_count + (int)$r->skipped_count;
+                $dealWord   = $actionable === 1 ? 'deal' : 'deals';
+                return $this->make([
                 'type'          => 'bulk_extension_request_pending',
                 'category'      => 'deal',
                 'severity'      => 'high',
-                'summary'       => "Bulk extension request pending: {$r->total_items} deal" . ($r->total_items > 1 ? 's' : '') . " from " . ($r->reseller_name ?? 'Referrer'),
+                'summary'       => "Extension request: {$actionable} {$dealWord} need review — from " . ($r->reseller_name ?? 'Referrer'),
                 'actor_name'    => $r->reseller_name ?? 'Referrer',
                 'actor_role'    => 'Referrer',
                 'related_label' => $r->batch_reference ?? 'Batch',
@@ -1562,7 +1565,8 @@ class CriticalActionService
                     'skipped_count' => $r->skipped_count,
                     'status'        => $r->status,
                 ],
-            ]))->toArray();
+            ]);
+            })->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] pendingBulkExtensionBatches failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
             return [];

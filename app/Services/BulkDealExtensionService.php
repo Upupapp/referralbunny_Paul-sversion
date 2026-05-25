@@ -510,7 +510,13 @@ class BulkDealExtensionService
             default                                                         => 'pending',
         };
 
-        $resolvedAt = ($actionableRemaining === 0) ? now() : null;
+        $justResolved = ($actionableRemaining === 0);
+        $resolvedAt   = $justResolved ? now() : null;
+
+        // Only fire completion notification if the batch was previously unresolved
+        $wasUnresolved = DealExtensionRequestBatch::where('id', $batchId)
+            ->whereNull('resolved_at')
+            ->exists();
 
         DealExtensionRequestBatch::where('id', $batchId)->update([
             'total_items'       => $total,
@@ -523,6 +529,14 @@ class BulkDealExtensionService
             'last_decision_at'  => now(),
             'updated_at'        => now(),
         ]);
+
+        // Notify referrer once when batch becomes fully resolved (per-item review path)
+        if ($justResolved && $wasUnresolved) {
+            $batch = DealExtensionRequestBatch::where('id', $batchId)->first();
+            if ($batch?->requested_by_reseller_id) {
+                $this->notifyResellerBatchComplete($tenantId, $batch, $approved, $declined);
+            }
+        }
     }
 
     // ── Queries ───────────────────────────────────────────────────
@@ -633,6 +647,29 @@ class BulkDealExtensionService
                 actionLabel:  'View My Request',
                 dedupeSuffix: "bulk_ext_result:{$batch->id}:{$approvedCount}:{$declinedCount}",
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount],
+            );
+        } catch (\Throwable) {}
+    }
+
+    private function notifyResellerBatchComplete(string $tenantId, DealExtensionRequestBatch $batch, int $approved, int $declined): void
+    {
+        try {
+            $parts = [];
+            if ($approved > 0) $parts[] = "{$approved} approved";
+            if ($declined > 0) $parts[] = "{$declined} declined";
+            $summary = implode(', ', $parts) ?: 'all reviewed';
+
+            $this->notifications->dispatchToReseller(
+                resellerId:   $batch->requested_by_reseller_id,
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        "Your extension request has been fully reviewed",
+                body:         "Your bulk extension request ({$batch->batch_reference}) has been reviewed: {$summary}.",
+                actionUrl:    url("/reseller/{$tenantId}/extension-requests/{$batch->id}"),
+                actionLabel:  'View Results',
+                dedupeSuffix: "bulk_ext_complete:{$batch->id}",
+                metadata:     ['batch_id' => $batch->id, 'approved' => $approved, 'declined' => $declined],
             );
         } catch (\Throwable) {}
     }

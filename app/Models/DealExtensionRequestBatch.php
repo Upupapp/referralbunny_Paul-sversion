@@ -141,7 +141,8 @@ class DealExtensionRequestBatch extends Model
 
     public function getIsResolvedAttribute(): bool
     {
-        return in_array($this->status, ['approved', 'declined', 'cancelled']);
+        return ($this->pending_count + $this->skipped_count) === 0
+            || in_array($this->status, ['approved', 'declined', 'partially_approved', 'cancelled']);
     }
 
     public function getHasPendingItemsAttribute(): bool

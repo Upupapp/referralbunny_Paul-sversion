@@ -136,7 +136,7 @@ class DealExtensionEligibilityService
             ->whereIn('status', ['active', 'expiring', 'expired'])
             ->whereNotIn('commission_status', ['locked', 'paid'])
             ->whereNotNull('days_left')
-            ->select('id', 'name', 'stage', 'status', 'days_left', 'reseller_name', 'commission_status', 'updated_at')
+            ->select('id', 'tenant_id', 'name', 'stage', 'status', 'days_left', 'reseller_name', 'commission_status', 'updated_at')
             ->orderBy('days_left')
             ->get();
 
