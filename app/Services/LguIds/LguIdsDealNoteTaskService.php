@@ -87,7 +87,7 @@ class LguIdsDealNoteTaskService
 
         $task = Task::create([
             'tenant_id'         => $tenant->id,
-            'title'             => "Add a note to "{$lead->name}"",
+            'title'             => 'Add a note to "' . $lead->name . '"',
             'description'       => $description,
             'status'            => 'open',
             'priority'          => $priority,
@@ -298,8 +298,8 @@ class LguIdsDealNoteTaskService
                 tenantId:    $tenant->id,
                 category:    'deal_pipeline',
                 priority:    $lead->stage === 'presentation' ? 'medium' : 'high',
-                title:       "Add a note to "{$lead->name}"",
-                body:        "Your deal "{$lead->name}" has reached {$stageLabel} but has no notes yet. Add a note to keep your team informed and close faster.",
+                title:       'Add a note to "' . $lead->name . '"',
+                body:        'Your deal "' . $lead->name . '" has reached ' . $stageLabel . ' but has no notes yet. Add a note to keep your team informed and close faster.',
                 actionUrl:   url("/reseller/{$tenant->id}/deals/{$lead->id}") . '#rb-notes',
                 actionLabel: 'Add Note',
                 dedupeSuffix: $dedupSuffix,
@@ -335,7 +335,7 @@ class LguIdsDealNoteTaskService
                 'recipient_type'  => 'reseller',
                 'recipient_id'    => $referrer->id,
                 'tenant_id'       => $tenant->id,
-                'subject'         => "Action needed: Add a note to "{$lead->name}"",
+                'subject'         => 'Action needed: Add a note to "' . $lead->name . '"',
                 'status'          => 'queued',
                 'metadata'        => [
                     'type'       => 'lgu_ids_deal_note_task',

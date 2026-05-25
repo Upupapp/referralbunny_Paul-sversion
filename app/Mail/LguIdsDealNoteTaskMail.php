@@ -23,7 +23,7 @@ class LguIdsDealNoteTaskMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "📝 Action needed: Add a note to "{$this->dealName}"",
+            subject: '📝 Action needed: Add a note to "' . $this->dealName . '"',
         );
     }
 
