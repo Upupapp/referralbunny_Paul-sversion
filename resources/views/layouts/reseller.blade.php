@@ -67,7 +67,8 @@
         .rs-btn-primary:hover { background:#0F766E; }
         .rs-btn-secondary { background:transparent;color:#0F766E;border:1.5px solid #0F766E;border-radius:.75rem;padding:.5rem 1rem;font-size:.875rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:background .15s;font-family:'Inter',sans-serif; }
         .rs-btn-secondary:hover { background:#F0FDFA; }
-        .rs-btn-secondary:focus-visible { outline:2px solid #14B8A6;outline-offset:2px; }
+        .rs-btn-secondary:focus-visible { outline:2px solid #0D9488;outline-offset:2px; }
+        .rs-btn-secondary.rs-btn-sm { font-size:.75rem; }
         .rs-page-bg { background:#F0FDFA; }
         /* Anonymous-mode onboarding animations */
         @keyframes rb-eye-pulse {

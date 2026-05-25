@@ -120,12 +120,14 @@ class LeadController extends Controller
                     ->where('visibility', 'shared')
                     ->whereNull('deleted_at')
                     ->whereNull('parent_comment_id')
+                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                     ->distinct()
                     ->pluck('lead_id')
                     ->flip();
 
                 $withLegacyNotes = DB::table('lead_notes')
                     ->whereIn('lead_id', $pageIds)
+                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                     ->distinct()
                     ->pluck('lead_id')
                     ->flip();
