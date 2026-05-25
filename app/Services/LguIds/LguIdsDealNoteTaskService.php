@@ -214,7 +214,7 @@ class LguIdsDealNoteTaskService
     public function dealHasNoNotes(string $dealId): bool
     {
         $hasComment = DB::table('deal_comments')
-            ->where('lead_id', $dealId)
+            ->where('deal_id', $dealId)
             ->where('visibility', 'shared')
             ->whereNull('deleted_at')
             ->whereNull('parent_comment_id')
