@@ -68,12 +68,23 @@ class CriticalActionService
                 ->count();
         } catch (\Throwable) {}
 
-        // 3. Pending / clarification / skipped extension requests (standalone + batch items)
+        // 3a. Standalone pending/clarification/skipped extension requests (not batch items)
         try {
             $count += DB::table('deal_assignment_extension_requests')
                 ->where('tenant_id', $tenantId)
+                ->whereNull('batch_id')
                 ->whereIn('status', ['pending_review', 'clarification_requested', 'skipped'])
                 ->count();
+        } catch (\Throwable) {}
+
+        // 3b. Pending bulk extension request batches (counted as 1 per batch, not per item)
+        try {
+            if (self::tableExists('deal_extension_request_batches')) {
+                $count += DB::table('deal_extension_request_batches')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('status', ['pending', 'partially_approved', 'partially_declined'])
+                    ->count();
+            }
         } catch (\Throwable) {}
 
         // 4. Import batches needing action — idx_import_batches_tenant_status_created
@@ -321,6 +332,11 @@ class CriticalActionService
             if ($resellerId) {
                 $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
                 $sources[] = fn() => $this->resellerOverdueTasks($tenantId, $resellerId);
+            }
+
+            // LGU IDS only — deals with no notes yet (additive, never runs for other tenants)
+            if ($this->isLguIdsTenant($tenantId)) {
+                $sources[] = fn() => $this->resellerDealsWithNoNotes($tenantId, $resellerName);
             }
 
             $items = [];
@@ -2313,5 +2329,94 @@ class CriticalActionService
             // source_module — spec alias for source
             'source_module'  => $data['source']        ?? null,
         ]);
+    }
+
+    // ── LGU IDS — tenant slug check (cached per process) ──────────
+
+    private static array $lguIdsTenantCache = [];
+
+    private function isLguIdsTenant(string $tenantId): bool
+    {
+        if (! isset(self::$lguIdsTenantCache[$tenantId])) {
+            self::$lguIdsTenantCache[$tenantId] = DB::table('tenants')
+                ->where('id', $tenantId)
+                ->where('slug', 'lgu-ids')
+                ->exists();
+        }
+        return self::$lguIdsTenantCache[$tenantId];
+    }
+
+    // ── LGU IDS — Referrer deals with no notes ────────────────────
+
+    private function resellerDealsWithNoNotes(string $tenantId, string $resellerName): array
+    {
+        try {
+            $lower = strtolower($resellerName);
+
+            $rows = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereIn('status', ['active', 'expiring'])
+                ->where('stage', '!=', 'paid')
+                ->where(fn($q) => $q
+                    ->whereRaw('LOWER(reseller_name) = ?', [$lower])
+                    ->orWhereExists(fn($cs) => $cs
+                        ->select(DB::raw(1))
+                        ->from('commission_splits')
+                        ->whereColumn('commission_splits.lead_id', 'leads.id')
+                        ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                    )
+                )
+                ->whereNotExists(fn($dc) => $dc
+                    ->select(DB::raw(1))
+                    ->from('deal_comments')
+                    ->whereColumn('deal_comments.lead_id', 'leads.id')
+                    ->where('deal_comments.visibility', 'shared')
+                    ->whereNull('deal_comments.deleted_at')
+                    ->whereNull('deal_comments.parent_comment_id')
+                )
+                ->whereNotExists(fn($ln) => $ln
+                    ->select(DB::raw(1))
+                    ->from('lead_notes')
+                    ->whereColumn('lead_notes.lead_id', 'leads.id')
+                )
+                ->select('id', 'name', 'stage', 'status', 'days_left', 'updated_at')
+                ->orderByRaw("CASE WHEN status = 'expiring' THEN 0 ELSE 1 END")
+                ->orderBy('days_left')
+                ->limit(5)
+                ->get();
+
+            if ($rows->isEmpty()) {
+                return [];
+            }
+
+            $count = $rows->count();
+            $names = $rows->take(2)->pluck('name')->join(' and ');
+            $suffix = $count > 2 ? " (+{$count - 2} more)" : '';
+
+            return [$this->make([
+                'type'          => 'lgu_ids_deals_no_notes',
+                'category'      => 'deal_pipeline',
+                'severity'      => 'medium',
+                'summary'       => $count === 1
+                    ? "No notes yet on: {$rows->first()->name}"
+                    : "{$count} active deals have no notes yet: {$names}{$suffix}",
+                'actor_name'    => 'System',
+                'actor_role'    => 'System',
+                'related_label' => $count === 1 ? $rows->first()->name : "{$count} deals",
+                'related_type'  => 'deal',
+                'related_id'    => $rows->first()->id,
+                'occurred_at'   => now(),
+                'action_url'    => "/reseller/{$tenantId}/deals?filter=no_notes",
+                'action_label'  => 'Add Notes',
+                'action_needed' => true,
+                'source'        => 'leads',
+                'description'   => 'Adding notes to your deals increases visibility and speeds up approvals.',
+                'meta'          => ['deal_count' => $count, 'deal_ids' => $rows->pluck('id')->all()],
+            ])];
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerDealsWithNoNotes failed', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 }

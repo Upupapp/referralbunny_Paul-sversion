@@ -77,8 +77,19 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
             </template>
-            <template x-if="filterStatus || filterStage || filterPartner || search">
-                <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; applyFilters()"
+            {{-- No Notes Yet — LGU IDS referrers see this pill when ?filter=no_notes or toggled --}}
+            <template x-if="hasNoNotesDeals && !filterArchived">
+                <button @click="filterNoNotes = !filterNoNotes; applyFilters()"
+                        :class="filterNoNotes ? 'filter-pill active !border-violet-400 !text-violet-700' : 'filter-pill'"
+                        :aria-pressed="filterNoNotes.toString()">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    No notes yet
+                </button>
+            </template>
+            <template x-if="filterStatus || filterStage || filterPartner || search || filterNoNotes">
+                <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
                         class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     Clear
@@ -143,7 +154,15 @@
                                     <p class="text-xs text-gray-400 mt-1">Archived deals will appear here once approved by an admin.</p>
                                 </div>
                             </template>
-                            <template x-if="!filterArchived && (filterStatus || filterStage || filterPartner || search)">
+                            <template x-if="!filterArchived && filterNoNotes">
+                                <div>
+                                    <p class="text-gray-400 text-sm font-medium">All caught up!</p>
+                                    <p class="text-xs text-gray-400 mt-1">All your active deals already have at least one note.</p>
+                                    <button @click="filterNoNotes=false; applyFilters()"
+                                            class="rs-btn-secondary mt-3 text-xs">Show All Deals</button>
+                                </div>
+                            </template>
+                            <template x-if="!filterArchived && !filterNoNotes && (filterStatus || filterStage || filterPartner || search)">
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">No deals match this filter</p>
                                     <p class="text-xs text-gray-400 mt-1">
@@ -156,7 +175,7 @@
                                             class="rs-btn-secondary mt-3 text-xs">Clear Filters</button>
                                 </div>
                             </template>
-                            <template x-if="!filterArchived && !filterStatus && !filterStage && !filterPartner && !search">
+                            <template x-if="!filterArchived && !filterNoNotes && !filterStatus && !filterStage && !filterPartner && !search">
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                                     <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
@@ -465,6 +484,7 @@ function resellerDeals(tenantId, resellerName) {
         leads: [], filtered: [], loading: true,
         search: '', filterStatus: '', filterStage: '', filterPartner: '',
         filterArchived: false, archivedLeads: [], archivedLoaded: false,
+        filterNoNotes: false,
         showClaim: false, claimStep: 1, dealMode: 'standard',
         claimProvince: '', availableOrgs: [], loadingOrgs: false,
         selectedOrg: null, saving: false, claimError: '',
@@ -487,6 +507,7 @@ function resellerDeals(tenantId, resellerName) {
             const urlParams = new URLSearchParams(window.location.search);
             const preStatus = urlParams.get('status');
             if (['expiring','expired','active'].includes(preStatus)) this.filterStatus = preStatus;
+            if (urlParams.get('filter') === 'no_notes') this.filterNoNotes = true;
             try {
                 const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1`, {
                     credentials: 'same-origin',
@@ -526,6 +547,10 @@ function resellerDeals(tenantId, resellerName) {
             return [...names].sort();
         },
 
+        get hasNoNotesDeals() {
+            return this.leads.some(d => d.has_notes === false);
+        },
+
         applyFilters() {
             const q    = this.search.toLowerCase();
             const fp   = this.filterPartner.toLowerCase();
@@ -537,13 +562,14 @@ function resellerDeals(tenantId, resellerName) {
                 const matchSt = this.filterArchived || !this.filterStatus || d.status === this.filterStatus;
                 const matchSg = this.filterArchived || !this.filterStage  || d.stage  === this.filterStage;
                 const matchPa = !fp || (d.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
-                return matchQ && matchSt && matchSg && matchPa;
+                const matchNn = !this.filterNoNotes || d.has_notes === false;
+                return matchQ && matchSt && matchSg && matchPa && matchNn;
             });
         },
 
         async toggleArchived() {
             this.filterArchived = !this.filterArchived;
-            this.filterStatus = ''; this.filterStage = ''; this.filterPartner = '';
+            this.filterStatus = ''; this.filterStage = ''; this.filterPartner = ''; this.filterNoNotes = false;
             if (this.filterArchived && !this.archivedLoaded) {
                 this.loading = true;
                 try {

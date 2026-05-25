@@ -744,7 +744,7 @@ window.__rsDeal = {
     </div>
 
     {{-- Notes ────────────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+    <div id="rb-notes" class="bg-white rounded-2xl shadow-sm border border-gray-100 scroll-mt-4">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Notes</h2>
             @if(!$isArchived)
@@ -752,8 +752,25 @@ window.__rsDeal = {
             @endif
         </div>
         @if(count($notes) === 0)
-        <div class="px-5 py-8 text-center">
-            <p class="text-xs text-gray-400">No notes yet. Add your first note above.</p>
+        <div class="px-5 py-10 text-center">
+            <svg class="w-8 h-8 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <p class="text-sm font-medium text-gray-400">No notes yet</p>
+            <p class="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+                Add a quick update — last contact, decision-maker response, or next steps.
+                Deals with notes get approved faster.
+            </p>
+            @if(!$isArchived)
+            <button @click="showAddNote = true"
+                    class="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-colors"
+                    style="background:#0D9488">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Your First Note
+            </button>
+            @endif
         </div>
         @else
         <div class="divide-y divide-gray-50">
@@ -1019,15 +1036,15 @@ window.__rsDeal = {
                 </div>
                 <div>
                     <label class="form-label">Reason for archiving <span class="text-red-400">*</span></label>
-                    <select x-model="archiveReason" class="form-input w-full">
-                        <option value="">Select a reason…</option>
-                        <option>LGU no longer interested</option>
-                        <option>Duplicate deal</option>
-                        <option>Wrong LGU / contact</option>
-                        <option>Deal inactive for too long</option>
-                        <option>Replaced by another deal</option>
-                        <option>Other</option>
-                    </select>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        @foreach(['LGU no longer interested','Duplicate deal','Wrong LGU / contact','Deal inactive for too long','Replaced by another deal','Other'] as $opt)
+                        <button type="button"
+                                @click="archiveReason = '{{ $opt }}'"
+                                :class="archiveReason === '{{ $opt }}' ? 'filter-pill active' : 'filter-pill'">
+                            {{ $opt }}
+                        </button>
+                        @endforeach
+                    </div>
                 </div>
                 {{-- NOTIFY — allow free-text detail when "Other" or always --}}
                 <div>

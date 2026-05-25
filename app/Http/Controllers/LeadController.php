@@ -110,6 +110,41 @@ class LeadController extends Controller
             // Table absent — last_activity_at stays null on each lead
         }
 
+        // Enrich with has_notes — batch query so the main load is not affected.
+        // has_notes=true when any shared deal_comment (not deleted, no parent) OR any lead_note exists.
+        try {
+            $pageIds = $leads->pluck('id')->all();
+            if (!empty($pageIds)) {
+                $withComments = DB::table('deal_comments')
+                    ->whereIn('lead_id', $pageIds)
+                    ->where('visibility', 'shared')
+                    ->whereNull('deleted_at')
+                    ->whereNull('parent_comment_id')
+                    ->distinct()
+                    ->pluck('lead_id')
+                    ->flip();
+
+                $withLegacyNotes = DB::table('lead_notes')
+                    ->whereIn('lead_id', $pageIds)
+                    ->distinct()
+                    ->pluck('lead_id')
+                    ->flip();
+
+                $leads = $leads->map(function ($lead) use ($withComments, $withLegacyNotes) {
+                    $id = is_array($lead) ? ($lead['id'] ?? null) : $lead->id;
+                    $hasNotes = isset($withComments[$id]) || isset($withLegacyNotes[$id]);
+                    if (is_array($lead)) {
+                        $lead['has_notes'] = $hasNotes;
+                    } else {
+                        $lead->has_notes = $hasNotes;
+                    }
+                    return $lead;
+                });
+            }
+        } catch (\Throwable) {
+            // Table absent or query failed — has_notes stays absent on each lead
+        }
+
         if ($includePartners) {
             try {
                 $calc = app(\App\Services\CommissionCalculationService::class);

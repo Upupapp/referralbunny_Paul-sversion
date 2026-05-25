@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\SendLguIdsReferrerNoteReminders;
 use App\Jobs\Emails\SendLguIdsPendingTasksDigestJob;
 use App\Jobs\Emails\SendLguIdsTaskDueReminderJob;
 use App\Jobs\Emails\SendResellerDailySummariesJob;
@@ -11,6 +12,12 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::job(new SendSuperAdminDailySummaryJob)->dailyAt('08:00')->timezone('Asia/Manila');
 Schedule::job(new SendTenantAdminDailyBriefingJob)->dailyAt('08:00')->timezone('Asia/Manila');
 Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('Asia/Manila');
+
+// ── LGU IDS weekly referrer note reminder (every Wednesday 10:00 AM Perth) ───
+Schedule::command(SendLguIdsReferrerNoteReminders::class)
+    ->weeklyOn(3, '10:00')
+    ->timezone('Australia/Perth')
+    ->withoutOverlapping();
 
 // ── LGU IDS task reminders (starts Mon May 18, 2026) ─────────
 // Daily digest: all pending tasks emailed to lgu-ids admin/manager/owner
