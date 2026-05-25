@@ -132,6 +132,10 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/{dealId}/stage-approval',              [\App\Http\Controllers\ResellerDealController::class, 'requestStageApproval'])->name('deals.stage-approval');
         Route::post('/deals/{dealId}/archive-request',             [\App\Http\Controllers\ResellerDealController::class, 'requestArchive'])->name('deals.archive-request');
         Route::post('/deals/{dealId}/extension-request',          [\App\Http\Controllers\ResellerDealController::class, 'requestExtension'])->name('deals.extension-request');
+        // ── Bulk Extension Requests (Referrer) ──────────────────────────────
+        Route::get('/deals/extension-requests/create',             [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerCreate'])->name('extension-requests.create');
+        Route::get('/extension-requests',                          [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerIndex'])->name('extension-requests.index');
+        Route::get('/extension-requests/{batchId}',                [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerShow'])->name('extension-requests.show');
         Route::post('/deals/{dealId}/partners',                    [\App\Http\Controllers\ResellerDealController::class, 'addPartnerSplit'])->name('deals.partners');
         Route::post('/deals/{dealId}/referrers',                   [\App\Http\Controllers\ResellerDealController::class, 'addReferrer'])->name('deals.referrers');
         Route::patch('/deals/{dealId}/splits/{splitId}',            [\App\Http\Controllers\ResellerDealController::class, 'updateCoReferrerSplit'])->name('deals.splits.update');
@@ -295,6 +299,9 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::post('/critical-actions/mark-all-read', [\App\Http\Controllers\Web\CriticalActionsController::class, 'markAllRead'])->name('critical-actions.mark-all-read');
     Route::post('/critical-actions/dismiss',        [\App\Http\Controllers\Web\CriticalActionsController::class, 'dismiss'])->name('critical-actions.dismiss');
     Route::get('/critical-actions/badge',          [\App\Http\Controllers\Web\CriticalActionsController::class, 'badge'])->name('critical-actions.badge');
+    // ── Bulk Extension Request Review (Admin/Manager) ────────────────────
+    Route::get('/extension-requests',              [\App\Http\Controllers\BulkDealExtensionWebController::class, 'adminIndex'])->name('extension-requests.index');
+    Route::get('/extension-requests/{batchId}',    [\App\Http\Controllers\BulkDealExtensionWebController::class, 'adminShow'])->name('extension-requests.show');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');

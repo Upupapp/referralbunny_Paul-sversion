@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\DealExtensionRequestBatch;
 
 class DealAssignmentExtensionRequest extends Model
 {
@@ -24,11 +25,12 @@ class DealAssignmentExtensionRequest extends Model
 
     protected $fillable = [
         'tenant_id', 'deal_id',
+        'batch_id',
         'requested_by_user_id', 'requested_by_role',
         'current_stage', 'current_expiry_at', 'current_days_left',
         'requested_days', 'requested_new_expiry_at',
         'approved_days', 'approved_new_expiry_at',
-        'reason', 'admin_note', 'status',
+        'reason', 'per_deal_note', 'admin_note', 'status',
         'reviewed_by_user_id', 'reviewed_at', 'metadata',
     ];
 
@@ -48,6 +50,16 @@ class DealAssignmentExtensionRequest extends Model
         return $this->belongsTo(Lead::class, 'deal_id');
     }
 
+    public function batch(): BelongsTo
+    {
+        return $this->belongsTo(DealExtensionRequestBatch::class, 'batch_id');
+    }
+
+    public function scopeStandalone($query)
+    {
+        return $query->whereNull('batch_id');
+    }
+
     public function scopePending($query)
     {
         return $query->where('status', 'pending_review');
@@ -62,7 +74,27 @@ class DealAssignmentExtensionRequest extends Model
             'clarification_requested' => 'Clarification Requested',
             'cancelled'               => 'Cancelled',
             'expired'                 => 'Expired',
+            'skipped'                 => 'Skipped for Now',
             default                   => ucfirst($this->status),
         };
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            'pending_review'          => 'yellow',
+            'approved'                => 'green',
+            'rejected'                => 'red',
+            'clarification_requested' => 'blue',
+            'skipped'                 => 'gray',
+            'cancelled'               => 'gray',
+            'expired'                 => 'gray',
+            default                   => 'gray',
+        };
+    }
+
+    public function getIsPendingAttribute(): bool
+    {
+        return in_array($this->status, ['pending_review', 'clarification_requested', 'skipped']);
     }
 }

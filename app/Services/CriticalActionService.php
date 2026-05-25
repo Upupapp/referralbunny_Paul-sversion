@@ -68,11 +68,11 @@ class CriticalActionService
                 ->count();
         } catch (\Throwable) {}
 
-        // 3. Pending / clarification extension requests — idx_daer_tenant_pending_statuses
+        // 3. Pending / clarification / skipped extension requests (standalone + batch items)
         try {
             $count += DB::table('deal_assignment_extension_requests')
                 ->where('tenant_id', $tenantId)
-                ->whereIn('status', ['pending_review', 'clarification_requested'])
+                ->whereIn('status', ['pending_review', 'clarification_requested', 'skipped'])
                 ->count();
         } catch (\Throwable) {}
 
@@ -311,6 +311,7 @@ class CriticalActionService
                 fn() => $this->resellerExpiringDeals($tenantId, $resellerName),
                 fn() => $this->resellerStalledDeals($tenantId, $resellerName),
                 fn() => $this->resellerExtensionRequests($tenantId, $resellerName),
+                fn() => $this->resellerBulkExtensionBatches($tenantId, $resellerName),
                 fn() => $this->resellerUnreadMessages($tenantId, $resellerName),
                 fn() => $this->resellerLeadHistory($tenantId, $resellerName),
                 fn() => $this->resellerCommissionUpdates($tenantId, $resellerName),
@@ -501,6 +502,7 @@ class CriticalActionService
             fn() => $this->pendingArchiveRequests($tenantId),
             fn() => $this->pendingStageMoveRequests($tenantId),
             fn() => $this->pendingExtensionRequests($tenantId),
+            fn() => $this->pendingBulkExtensionBatches($tenantId),
             fn() => $this->failedRollbacks($tenantId),
             fn() => $this->recentLeadHistory($tenantId, $limitPer, $since),
             fn() => $this->importEvents($tenantId, $limitPer),
@@ -1441,6 +1443,7 @@ class CriticalActionService
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
+                ->whereNull('r.batch_id')  // Batch items are shown via pendingBulkExtensionBatches()
                 ->whereIn('r.status', ['pending_review', 'clarification_requested'])
                 ->select(
                     'r.id', 'r.status', 'r.requested_days', 'r.reason',
@@ -1515,6 +1518,104 @@ class CriticalActionService
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] failedRollbacks failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // ── Bulk extension request batches (admin view) ────────────────
+
+    private function pendingBulkExtensionBatches(string $tenantId): array
+    {
+        try {
+            $rows = DB::table('deal_extension_request_batches as b')
+                ->leftJoin('resellers as r', 'r.id', '=', 'b.requested_by_reseller_id')
+                ->where('b.tenant_id', $tenantId)
+                ->whereIn('b.status', ['pending', 'partially_approved', 'partially_declined'])
+                ->select(
+                    'b.id', 'b.batch_reference', 'b.status', 'b.total_items',
+                    'b.pending_count', 'b.skipped_count', 'b.created_at',
+                    'r.name as reseller_name'
+                )
+                ->orderBy('b.created_at')
+                ->limit(10)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'bulk_extension_request_pending',
+                'category'      => 'deal',
+                'severity'      => 'high',
+                'summary'       => "Bulk extension request pending: {$r->total_items} deal" . ($r->total_items > 1 ? 's' : '') . " from " . ($r->reseller_name ?? 'Referrer'),
+                'actor_name'    => $r->reseller_name ?? 'Referrer',
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->batch_reference ?? 'Batch',
+                'related_type'  => 'extension_batch',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/tenant/{$tenantId}/extension-requests/{$r->id}",
+                'action_label'  => 'Review Requests',
+                'action_needed' => true,
+                'source'        => 'deal_extension_request_batches',
+                'meta'          => [
+                    'batch_id'      => $r->id,
+                    'total_items'   => $r->total_items,
+                    'pending_count' => $r->pending_count,
+                    'skipped_count' => $r->skipped_count,
+                    'status'        => $r->status,
+                ],
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] pendingBulkExtensionBatches failed', ['tenant_id' => $tenantId, 'error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // ── Referrer bulk extension requests ───────────────────────────
+
+    private function resellerBulkExtensionBatches(string $tenantId, string $resellerName): array
+    {
+        try {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
+                ->value('id');
+
+            if (!$reseller) return [];
+
+            $rows = DB::table('deal_extension_request_batches')
+                ->where('tenant_id', $tenantId)
+                ->where('requested_by_reseller_id', $reseller)
+                ->whereIn('status', ['pending', 'partially_approved', 'partially_declined'])
+                ->select('id', 'batch_reference', 'status', 'total_items', 'pending_count', 'approved_count', 'declined_count', 'created_at')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'my_bulk_extension_request',
+                'category'      => 'deal',
+                'severity'      => 'medium',
+                'summary'       => "Bulk extension request pending review: {$r->total_items} deal" . ($r->total_items > 1 ? 's' : ''),
+                'actor_name'    => 'You',
+                'actor_role'    => 'Referrer',
+                'related_label' => $r->batch_reference ?? 'Bulk Request',
+                'related_type'  => 'extension_batch',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->created_at ?? now(),
+                'action_url'    => "/reseller/{$tenantId}/extension-requests/{$r->id}",
+                'action_label'  => 'View Request',
+                'action_needed' => false,
+                'source'        => 'deal_extension_request_batches',
+                'meta'          => [
+                    'batch_id'      => $r->id,
+                    'total_items'   => $r->total_items,
+                    'pending_count' => $r->pending_count,
+                    'approved_count'=> $r->approved_count,
+                    'declined_count'=> $r->declined_count,
+                    'status'        => $r->status,
+                ],
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerBulkExtensionBatches failed', ['error' => $e->getMessage()]);
             return [];
         }
     }

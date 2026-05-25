@@ -95,7 +95,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::put('leads/{lead}/partner-splits/{splitId}',      [\App\Http\Controllers\DealPartnerSplitController::class, 'update']);
     Route::delete('leads/{lead}/partner-splits/{splitId}',   [\App\Http\Controllers\DealPartnerSplitController::class, 'destroy']);
 
-    // Extension Requests
+    // Extension Requests (single-deal — existing, preserved)
     Route::get('leads/{lead}/extension-requests',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'forDeal']);
     Route::post('leads/{lead}/extension-requests',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'store']);
     Route::get('extension-requests',                         [\App\Http\Controllers\DealAssignmentExtensionController::class, 'index']);
@@ -103,6 +103,21 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('extension-requests/{id}/approve',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'approve']);
     Route::post('extension-requests/{id}/reject',            [\App\Http\Controllers\DealAssignmentExtensionController::class, 'reject']);
     Route::post('extension-requests/{id}/clarify',           [\App\Http\Controllers\DealAssignmentExtensionController::class, 'clarify']);
+
+    // Bulk Extension Requests (new)
+    Route::get('extension-requests/eligible-deals',                                  [\App\Http\Controllers\BulkDealExtensionController::class, 'eligibleDeals']);
+    Route::post('extension-requests/bulk',                                            [\App\Http\Controllers\BulkDealExtensionController::class, 'storeBulk']);
+    Route::get('extension-requests/batches',                                          [\App\Http\Controllers\BulkDealExtensionController::class, 'indexBatches']);
+    Route::get('extension-requests/batches/{batchId}',                               [\App\Http\Controllers\BulkDealExtensionController::class, 'showBatch']);
+    Route::post('extension-requests/batches/{batchId}/approve-all',                  [\App\Http\Controllers\BulkDealExtensionController::class, 'approveAll']);
+    Route::post('extension-requests/batches/{batchId}/decline-all',                  [\App\Http\Controllers\BulkDealExtensionController::class, 'declineAll']);
+    Route::post('extension-requests/batches/{batchId}/skip-all',                     [\App\Http\Controllers\BulkDealExtensionController::class, 'skipAll']);
+    Route::post('extension-requests/batches/{batchId}/approve-selected',             [\App\Http\Controllers\BulkDealExtensionController::class, 'approveSelected']);
+    Route::post('extension-requests/batches/{batchId}/decline-selected',             [\App\Http\Controllers\BulkDealExtensionController::class, 'declineSelected']);
+    Route::post('extension-requests/batches/{batchId}/skip-selected',                [\App\Http\Controllers\BulkDealExtensionController::class, 'skipSelected']);
+    Route::post('bulk-extension-requests/{requestId}/approve',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'approveItem']);
+    Route::post('bulk-extension-requests/{requestId}/decline',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'declineItem']);
+    Route::post('bulk-extension-requests/{requestId}/skip',                          [\App\Http\Controllers\BulkDealExtensionController::class, 'skipItem']);
 
     // Resellers
     Route::get('resellers',                    [ResellerController::class, 'index']);

@@ -233,7 +233,7 @@ class ResellerDealController extends Controller
         $myCommission = 0.0;
         $myPct        = 100.0;
         try {
-            $mySplitRecord = $splits->firstWhere('reseller_name', $reseller->name);
+            $mySplitRecord = $splits->first(fn($s) => strtolower((string) $s->reseller_name) === strtolower((string) $reseller->name));
             if ($mySplitRecord) {
                 $myPct = (float) ($mySplitRecord->percentage ?? 100.0);
             } else {
