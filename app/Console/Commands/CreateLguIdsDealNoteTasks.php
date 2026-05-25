@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Lead;
 use App\Services\LguIds\LguIdsDealNoteTaskService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Backfill note-reminder tasks for existing LGU IDS deals that are in a

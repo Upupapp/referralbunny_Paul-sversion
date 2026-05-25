@@ -369,7 +369,11 @@ class LguIdsDealNoteTaskService
 
     public function getLguIdsTenant(): ?Tenant
     {
-        return Tenant::where('slug', 'lgu-ids')->first();
+        static $tenant = false;
+        if ($tenant === false) {
+            $tenant = Tenant::where('slug', 'lgu-ids')->first();
+        }
+        return $tenant;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

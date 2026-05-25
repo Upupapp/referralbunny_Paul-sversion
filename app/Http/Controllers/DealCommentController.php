@@ -234,7 +234,7 @@ class DealCommentController extends Controller
                             'task_id'     => $task->id,
                             'actor_type'  => $role,
                             'actor_id'    => $actorId,
-                            'actor_name'  => 'Admin',
+                            'actor_name'  => $actor?->full_name ?? $actor?->name ?? 'Admin',
                             'action_type' => 'task_completed',
                             'new_values'  => ['status' => 'completed', 'trigger' => 'admin_comment_added'],
                         ]);
