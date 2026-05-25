@@ -56,7 +56,7 @@ class ReferrerPerformanceService
                 ->fromRaw("({$inner}) AS deduped", [$lower, $tenantId, $lower])
                 ->selectRaw("
                     COUNT(*)                                                                                                            AS total,
-                    SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                                                   AS active,
+                    SUM(CASE WHEN status IN ('active','expiring') THEN 1 ELSE 0 END)                                                   AS active,  -- includes both 'active' and 'expiring'
                     SUM(CASE WHEN status = 'expiring'             THEN 1 ELSE 0 END)                                                   AS expiring,
                     SUM(CASE WHEN stage  = 'paid'                 THEN 1 ELSE 0 END)                                                   AS paid,
                     COALESCE(SUM(CASE WHEN status IN ('active','expiring') THEN deal_value ELSE 0 END), 0)                             AS total_value,

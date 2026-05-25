@@ -88,10 +88,9 @@
 
 {{-- ── My Deals (expandable) ───────────────────────────────── --}}
 <div x-data="{
-        open: false,
+        open: true, // overridden by init() from localStorage; true = default open
         init() {
             const saved = localStorage.getItem('rs_nav_deals');
-            // Default to open so sub-tabs are always visible
             this.open = saved !== null ? (saved === 'true') : true;
             this.$watch('open', v => localStorage.setItem('rs_nav_deals', String(v)));
         }
@@ -167,10 +166,9 @@
 
 {{-- ── My Network (expandable, defaults open so My Contacts is always reachable) --}}
 <div x-data="{
-        open: false,
+        open: true, // overridden by init() from localStorage; true = default open
         init() {
             const saved = localStorage.getItem('rs_nav_network');
-            // Default to open so My Contacts and My Partners are always visible
             this.open = saved !== null ? (saved === 'true') : true;
             this.$watch('open', v => localStorage.setItem('rs_nav_network', String(v)));
         }
