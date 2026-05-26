@@ -179,13 +179,21 @@ class BulkDealExtensionService
         int     $approvedDays,
         ?string $reviewerNote = null
     ): DealAssignmentExtensionRequest {
-        return DB::transaction(function () use ($requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote) {
+        if ($approvedDays < 1 || $approvedDays > 90) {
+            throw new \InvalidArgumentException('Approved days must be between 1 and 90.');
+        }
+
+        // Variables populated inside the closure so side effects can use them after commit.
+        $deal               = null;
+        $newDaysLeft        = 0;
+        $completeNotifyData = null;
+
+        $request = DB::transaction(function () use (
+            $requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote,
+            &$deal, &$newDaysLeft, &$completeNotifyData
+        ) {
             $request = $this->loadForReview($requestId, $tenantId);
             $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->lockForUpdate()->firstOrFail();
-
-            if ($approvedDays < 1 || $approvedDays > 90) {
-                throw new \InvalidArgumentException('Approved days must be between 1 and 90.');
-            }
 
             $newDaysLeft      = max(0, ($deal->days_left ?? 0)) + $approvedDays;
             $approvedExpiryAt = now()->addDays($newDaysLeft);
@@ -206,32 +214,45 @@ class BulkDealExtensionService
             ]);
 
             if ($request->batch_id) {
-                $this->recalculateBatchStatus($request->batch_id, $tenantId);
+                $completeNotifyData = $this->recalculateBatchStatus($request->batch_id, $tenantId);
             }
-
-            $this->notifyResellerOfDecision($tenantId, $deal, $request, 'approved');
-
-            $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_approved', $reviewerUserId, [
-                'approved_days'   => $approvedDays,
-                'new_days_left'   => $newDaysLeft,
-                'reviewer_note'   => $reviewerNote,
-                'batch_id'        => $request->batch_id,
-            ]);
-
-            DealExtensionApproved::dispatch(
-                leadId:       $deal->id,
-                leadName:     $deal->name,
-                tenantId:     $tenantId,
-                resellerName: $deal->reseller_name ?? '',
-                approvedDays: $approvedDays,
-                newDaysLeft:  $newDaysLeft,
-                adminNote:    $reviewerNote,
-            );
-
-            $this->criticalActions->invalidateCache($tenantId);
 
             return $request->fresh();
         });
+
+        // All side effects run after the transaction commits.
+        // Notifications and audit calls contain DB inserts wrapped in try/catch. If any of
+        // those inserts fail, PHP swallows the exception but PostgreSQL marks the transaction
+        // as aborted (SQLSTATE[25P02]). Any subsequent unguarded DB statement — including the
+        // DealExtensionApproved::dispatch() jobs insert — then surfaces the 25P02 error.
+        // Running everything here keeps the transaction clean and prevents silent rollbacks.
+        if ($completeNotifyData) {
+            $this->notifyResellerBatchComplete(
+                $tenantId,
+                $completeNotifyData['batch'],
+                $completeNotifyData['approved'],
+                $completeNotifyData['declined'],
+            );
+        }
+        $this->notifyResellerOfDecision($tenantId, $deal, $request, 'approved');
+        $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_approved', $reviewerUserId, [
+            'approved_days' => $approvedDays,
+            'new_days_left' => $newDaysLeft,
+            'reviewer_note' => $reviewerNote,
+            'batch_id'      => $request->batch_id,
+        ]);
+        DealExtensionApproved::dispatch(
+            leadId:       $deal->id,
+            leadName:     $deal->name,
+            tenantId:     $tenantId,
+            resellerName: $deal->reseller_name ?? '',
+            approvedDays: $approvedDays,
+            newDaysLeft:  $newDaysLeft,
+            adminNote:    $reviewerNote,
+        );
+        $this->criticalActions->invalidateCache($tenantId);
+
+        return $request;
     }
 
     /**
@@ -247,7 +268,13 @@ class BulkDealExtensionService
             throw new \InvalidArgumentException('A reason is required when declining an extension request.');
         }
 
-        return DB::transaction(function () use ($requestId, $tenantId, $reviewerUserId, $reviewerNote) {
+        $deal               = null;
+        $completeNotifyData = null;
+
+        $request = DB::transaction(function () use (
+            $requestId, $tenantId, $reviewerUserId, $reviewerNote,
+            &$deal, &$completeNotifyData
+        ) {
             $request = $this->loadForReview($requestId, $tenantId);
             $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->firstOrFail();
 
@@ -259,20 +286,29 @@ class BulkDealExtensionService
             ]);
 
             if ($request->batch_id) {
-                $this->recalculateBatchStatus($request->batch_id, $tenantId);
+                $completeNotifyData = $this->recalculateBatchStatus($request->batch_id, $tenantId);
             }
-
-            $this->notifyResellerOfDecision($tenantId, $deal, $request, 'rejected');
-
-            $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_rejected', $reviewerUserId, [
-                'reviewer_note' => $reviewerNote,
-                'batch_id'      => $request->batch_id,
-            ]);
-
-            $this->criticalActions->invalidateCache($tenantId);
 
             return $request->fresh();
         });
+
+        // Side effects after transaction commits — same 25P02 guard as approveItem.
+        if ($completeNotifyData) {
+            $this->notifyResellerBatchComplete(
+                $tenantId,
+                $completeNotifyData['batch'],
+                $completeNotifyData['approved'],
+                $completeNotifyData['declined'],
+            );
+        }
+        $this->notifyResellerOfDecision($tenantId, $deal, $request, 'rejected');
+        $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_rejected', $reviewerUserId, [
+            'reviewer_note' => $reviewerNote,
+            'batch_id'      => $request->batch_id,
+        ]);
+        $this->criticalActions->invalidateCache($tenantId);
+
+        return $request;
     }
 
     /**
@@ -284,7 +320,12 @@ class BulkDealExtensionService
         string  $reviewerUserId,
         ?string $reviewerNote = null
     ): DealAssignmentExtensionRequest {
-        return DB::transaction(function () use ($requestId, $tenantId, $reviewerUserId, $reviewerNote) {
+        $completeNotifyData = null;
+
+        $request = DB::transaction(function () use (
+            $requestId, $tenantId, $reviewerUserId, $reviewerNote,
+            &$completeNotifyData
+        ) {
             $request = $this->loadForReview($requestId, $tenantId);
 
             $request->update([
@@ -295,19 +336,29 @@ class BulkDealExtensionService
             ]);
 
             if ($request->batch_id) {
-                $this->recalculateBatchStatus($request->batch_id, $tenantId);
+                $completeNotifyData = $this->recalculateBatchStatus($request->batch_id, $tenantId);
             }
-
-            // Do NOT notify the referrer as approved or declined when skipped
-            $this->auditDeal($tenantId, $request->deal_id, $request->id, 'deal_extension_skipped', $reviewerUserId, [
-                'reviewer_note' => $reviewerNote,
-                'batch_id'      => $request->batch_id,
-            ]);
-
-            $this->criticalActions->invalidateCache($tenantId);
 
             return $request->fresh();
         });
+
+        // Side effects after transaction commits — same 25P02 guard as approveItem.
+        if ($completeNotifyData) {
+            $this->notifyResellerBatchComplete(
+                $tenantId,
+                $completeNotifyData['batch'],
+                $completeNotifyData['approved'],
+                $completeNotifyData['declined'],
+            );
+        }
+        // Do NOT notify the referrer as approved or declined when skipped
+        $this->auditDeal($tenantId, $request->deal_id, $request->id, 'deal_extension_skipped', $reviewerUserId, [
+            'reviewer_note' => $reviewerNote,
+            'batch_id'      => $request->batch_id,
+        ]);
+        $this->criticalActions->invalidateCache($tenantId);
+
+        return $request;
     }
 
     // ── Batch-level decisions ──────────────────────────────────────
@@ -618,7 +669,16 @@ class BulkDealExtensionService
 
     // ── Batch status recalculation ────────────────────────────────
 
-    public function recalculateBatchStatus(string $batchId, string $tenantId): void
+    /**
+     * Recalculate and persist batch status counts.
+     *
+     * Returns ['batch' => ..., 'approved' => int, 'declined' => int] when the batch
+     * just became fully resolved and the referrer should be notified — otherwise null.
+     * Callers MUST fire notifyResellerBatchComplete() with the returned data AFTER their
+     * enclosing DB::transaction() commits. Calling notifications inside a transaction risks
+     * silent PostgreSQL aborts (SQLSTATE[25P02]) on subsequent unguarded statements.
+     */
+    public function recalculateBatchStatus(string $batchId, string $tenantId): ?array
     {
         $counts = DB::table('deal_assignment_extension_requests')
             ->where('batch_id', $batchId)
@@ -632,7 +692,7 @@ class BulkDealExtensionService
             ")
             ->first();
 
-        if (!$counts) return;
+        if (!$counts) return null;
 
         $pending  = (int) $counts->pending;
         $approved = (int) $counts->approved;
@@ -654,7 +714,6 @@ class BulkDealExtensionService
         $justResolved = ($actionableRemaining === 0);
         $resolvedAt   = $justResolved ? now() : null;
 
-        // Only fire completion notification if the batch was previously unresolved
         $wasUnresolved = DealExtensionRequestBatch::where('id', $batchId)
             ->whereNull('resolved_at')
             ->exists();
@@ -671,17 +730,17 @@ class BulkDealExtensionService
             'updated_at'        => now(),
         ]);
 
-        // Bust the metrics cache so the admin index shows fresh counts
         \Illuminate\Support\Facades\Cache::forget("bulk_ext_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
 
-        // Notify referrer once when batch becomes fully resolved (per-item review path)
         if ($justResolved && $wasUnresolved) {
             $batch = DealExtensionRequestBatch::where('id', $batchId)->first();
             if ($batch?->requested_by_reseller_id) {
-                $this->notifyResellerBatchComplete($tenantId, $batch, $approved, $declined);
+                return ['batch' => $batch, 'approved' => $approved, 'declined' => $declined];
             }
         }
+
+        return null;
     }
 
     // ── Queries ───────────────────────────────────────────────────
