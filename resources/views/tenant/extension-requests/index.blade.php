@@ -13,7 +13,7 @@
         'cancelled'           => ['bg' => 'bg-gray-100',    'text' => 'text-gray-500',    'dot' => 'bg-gray-400',    'label' => 'Cancelled'],
     ];
 @endphp
-<div class="space-y-5" x-data="{ search: '', statusFilter: '{{ $statusFilter ?? '' }}' }">
+<div class="space-y-5" x-data="{ search: '', statusFilter: {{ Js::from($statusFilter ?? '') }} }">
 
     {{-- Page header --}}
     <div class="card">
@@ -96,10 +96,10 @@
         @endphp
         <a href="{{ route('tenant.extension-requests.show', ['tenantId' => $tenantId, 'batchId' => $batch->id]) }}"
            class="card block hover:border-violet-200 hover:shadow-sm transition-all group"
-           x-show="!search
-               || '{{ strtolower($batch->batch_reference) }}'.includes(search.toLowerCase())
-               || '{{ addslashes(strtolower($batch->shared_reason)) }}'.includes(search.toLowerCase())
-               || '{{ addslashes(strtolower($referrerName)) }}'.includes(search.toLowerCase())">
+           data-ref="{{ strtolower($batch->batch_reference) }}"
+           data-reason="{{ strtolower($batch->shared_reason) }}"
+           data-referrer="{{ strtolower($referrerName) }}"
+           x-show="!search || $el.dataset.ref.includes(search.toLowerCase()) || $el.dataset.reason.includes(search.toLowerCase()) || $el.dataset.referrer.includes(search.toLowerCase())">
 
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                 {{-- Icon --}}

@@ -7,6 +7,13 @@
     $tenantId      = $tenantId ?? request()->route('tenantId');
     $eligibleCount = $eligible->count();
     $totalCount    = $eligibilityRows->count();
+    $dealsData     = $eligibilityRows->map(fn($r) => [
+        'id'        => $r['deal_id'],
+        'name'      => $r['deal']->name,
+        'days_left' => $r['deal']->days_left,
+        'eligible'  => $r['eligible'],
+        'reason'    => $r['reason'],
+    ])->values()->all();
 @endphp
 
 <div
@@ -99,7 +106,8 @@
                     $expiring  = $daysLeft <= 7;
                 @endphp
                 <div class="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors"
-                     x-show="matchesSearch('{{ addslashes($deal->name) }}')"
+                     data-name="{{ strtolower($deal->name) }}"
+                     x-show="!search.trim() || $el.dataset.name.includes(search.trim().toLowerCase())"
                      :class="{{ $eligible ? 'true' : 'false' }} ? '' : 'opacity-60'">
                     {{-- Checkbox --}}
                     <div class="pt-0.5">
@@ -334,13 +342,7 @@
 @push('scripts')
 <script>
 function bulkExtensionWizard() {
-    const deals = @json($eligibilityRows->map(fn($r) => [
-        'id'         => $r['deal_id'],
-        'name'       => $r['deal']->name,
-        'days_left'  => $r['deal']->days_left,
-        'eligible'   => $r['eligible'],
-        'reason'     => $r['reason'],
-    ])->values());
+    const deals = @json($dealsData);
 
     return {
         step: 1,
@@ -410,7 +412,7 @@ function bulkExtensionWizard() {
                     per_deal_notes: this.perDealNotes,
                 };
 
-                const res = await fetch(`/api/extension-requests/bulk`, {
+                const res = await fetch(`/reseller/${tenantId}/deals/extension-requests`, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {

@@ -127,6 +127,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::get('/deals/imports/{batchId}/report',                  [\App\Http\Controllers\Web\TenantDealImportController::class, 'show'])->name('deals.imports.show');
         // ── Bulk Extension Requests (Referrer) — must be before /deals/{dealId} to avoid route conflict
         Route::get('/deals/extension-requests/create',             [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerCreate'])->name('extension-requests.create');
+        Route::post('/deals/extension-requests',                   [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerStore'])->name('extension-requests.store');
         Route::get('/deals/{dealId}',                              [\App\Http\Controllers\ResellerDealController::class, 'show'])->name('deals.show');
         Route::post('/deals/{dealId}/notes',                       [\App\Http\Controllers\ResellerDealController::class, 'addNote'])->name('deals.notes');
         Route::patch('/deals/{dealId}/amount',                     [\App\Http\Controllers\ResellerDealController::class, 'updateAmount'])->name('deals.amount');

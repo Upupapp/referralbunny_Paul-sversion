@@ -2392,7 +2392,7 @@ class CriticalActionService
 
             $count = $rows->count();
             $names = $rows->take(2)->pluck('name')->join(' and ');
-            $suffix = $count > 2 ? " (+{$count - 2} more)" : '';
+            $suffix = $count > 2 ? " (+" . ($count - 2) . " more)" : '';
 
             return [$this->make([
                 'type'          => 'lgu_ids_deals_no_notes',

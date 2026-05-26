@@ -86,7 +86,9 @@
         @endphp
         <a href="{{ route('reseller.extension-requests.show', ['tenantId' => $tenantId, 'batchId' => $batch->id]) }}"
            class="card block hover:border-violet-200 hover:shadow-sm transition-all group"
-           x-show="!filter || '{{ strtolower($batch->batch_reference) }}'.includes(filter.toLowerCase()) || '{{ addslashes(strtolower($batch->shared_reason)) }}'.includes(filter.toLowerCase())">
+           data-ref="{{ strtolower($batch->batch_reference) }}"
+           data-reason="{{ strtolower($batch->shared_reason) }}"
+           x-show="!filter || $el.dataset.ref.includes(filter.toLowerCase()) || $el.dataset.reason.includes(filter.toLowerCase())">
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
 
                 {{-- Icon --}}
@@ -155,10 +157,6 @@
         </a>
         @endforeach
 
-        {{-- No match state --}}
-        <div x-show="filter && {{ json_encode($batches->count()) }} > 0 && document.querySelectorAll('[x-show]')" class="card py-8 text-center hidden">
-            <p class="text-gray-400 text-sm">No batches match your search.</p>
-        </div>
     </div>
     @endif
 

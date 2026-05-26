@@ -32,6 +32,7 @@ if (request()->routeIs([
     'tenant.referrers', 'tenant.referrers.*',
     'tenant.records', 'tenant.records.*',
     'tenant.leads', 'tenant.leads.*',
+    'tenant.extension-requests', 'tenant.extension-requests.*',
 ])) {
     $activeGroup = 'pipeline';
 } elseif (request()->routeIs([
@@ -257,6 +258,18 @@ $workspaceBadge += $criticalBadge;
                 </svg>
                 Deals
             </a>
+
+            @if($isAdminMgr)
+            <a href="{{ route('tenant.extension-requests.index', $tenantId) }}"
+               aria-current="{{ request()->routeIs('tenant.extension-requests*') ? 'page' : 'false' }}"
+               @click="window.dispatchEvent(new CustomEvent('sidebar-close'))"
+               class="nav-child {{ request()->routeIs('tenant.extension-requests*') ? 'nav-child-active' : '' }}">
+                <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Extension Requests
+            </a>
+            @endif
 
             <a href="{{ route('tenant.organizations', $tenantId) }}"
                aria-current="{{ request()->routeIs('tenant.organizations*') ? 'page' : 'false' }}"

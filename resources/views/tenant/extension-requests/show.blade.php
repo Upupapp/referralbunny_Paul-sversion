@@ -513,7 +513,7 @@ function itemAction(requestId, initialStatus, requestedDays) {
             }
             this.busy = true; this.error = '';
             try {
-                await this.apiPost(`${cfg.baseApi}/bulk-extension-requests/${this.requestId}/approve`, {
+                await this.apiPost(`${cfg.baseApi}/extension-requests/${this.requestId}/approve`, {
                     approved_days: this.approvedDays,
                     reviewer_note: this.note || null,
                 });
@@ -532,7 +532,7 @@ function itemAction(requestId, initialStatus, requestedDays) {
             if (!this.note.trim()) { this.error = 'A reason is required.'; return; }
             this.busy = true; this.error = '';
             try {
-                await this.apiPost(`${cfg.baseApi}/bulk-extension-requests/${this.requestId}/decline`, {
+                await this.apiPost(`${cfg.baseApi}/extension-requests/${this.requestId}/decline`, {
                     reviewer_note: this.note,
                 });
                 this.status = 'rejected';
@@ -549,7 +549,7 @@ function itemAction(requestId, initialStatus, requestedDays) {
         async submitSkip() {
             this.busy = true; this.error = '';
             try {
-                await this.apiPost(`${cfg.baseApi}/bulk-extension-requests/${this.requestId}/skip`, {});
+                await this.apiPost(`${cfg.baseApi}/extension-requests/${this.requestId}/skip`, {});
                 this.status = 'skipped';
                 this.action = null;
             } catch (e) {
