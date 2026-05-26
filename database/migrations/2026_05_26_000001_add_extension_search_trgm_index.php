@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    // CONCURRENTLY cannot run inside a transaction block
+    public bool $withinTransaction = false;
+
     public function up(): void
     {
         DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm');
