@@ -2273,6 +2273,7 @@ class CriticalActionService
             'subscription_suspended', 'payment_failed', 'deal_expired',
             'import_failed', 'rollback_failed', 'overdue_task',
             'archive_request_pending', 'extension_request_pending',
+            'bulk_extension_request_pending',
             'stage_move_request_pending', 'trial_ending',
         ];
         $dismissible = ! in_array($data['type'] ?? '', $notDismissibleTypes, true)

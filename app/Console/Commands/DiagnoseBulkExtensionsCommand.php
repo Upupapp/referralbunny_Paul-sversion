@@ -11,7 +11,8 @@ class DiagnoseBulkExtensionsCommand extends Command
                             {tenant : Tenant ID to diagnose}
                             {--pending : Show only pending batches and their age}
                             {--conflicts : Show only status-conflict items}
-                            {--repair-safe : Auto-fix conflicts (skips pending items on resolved batches; never touches approved/rejected)}';
+                            {--repair-safe : Auto-fix conflicts (skips pending items on resolved batches; never touches approved/rejected)}
+                            {--force : Skip confirmation prompt (for non-interactive/automated use with --repair-safe)}';
 
     protected $description = 'Diagnose bulk deal extension request batches for a tenant';
 
@@ -223,7 +224,7 @@ class DiagnoseBulkExtensionsCommand extends Command
         }
 
         $count = $conflictedIds->count();
-        if (!$this->confirm(" Mark {$count} conflicted item(s) as 'skipped'? (safe — never touches approved/rejected items)")) {
+        if (!$this->option('force') && !$this->confirm(" Mark {$count} conflicted item(s) as 'skipped'? (safe — never touches approved/rejected items)")) {
             $this->line(' Repair skipped.');
             $this->newLine();
             return;

@@ -147,8 +147,10 @@ class BulkDealExtensionService
             // Notify admins/managers
             $this->notifyAdminsBulkRequest($tenantId, $reseller, $batch);
 
-            // Bust critical actions cache
+            // Bust caches — new pending batch changes metrics + nav badge
             $this->criticalActions->invalidateCache($tenantId);
+            \Illuminate\Support\Facades\Cache::forget("bulk_ext_metrics:{$tenantId}");
+            \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
 
             return [
                 'batch'      => $batch->fresh(),
@@ -669,6 +671,10 @@ class BulkDealExtensionService
             'updated_at'        => now(),
         ]);
 
+        // Bust the metrics cache so the admin index shows fresh counts
+        \Illuminate\Support\Facades\Cache::forget("bulk_ext_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
+
         // Notify referrer once when batch becomes fully resolved (per-item review path)
         if ($justResolved && $wasUnresolved) {
             $batch = DealExtensionRequestBatch::where('id', $batchId)->first();
@@ -735,37 +741,43 @@ class BulkDealExtensionService
 
     public function getMetricsForTenant(string $tenantId): array
     {
-        $batchCounts = DB::table('deal_extension_request_batches')
-            ->selectRaw("
-                COUNT(*) FILTER (WHERE status = 'pending')             AS pending_batches,
-                COUNT(*) FILTER (WHERE status = 'partially_approved')  AS partially_approved_batches,
-                COUNT(*) FILTER (WHERE status = 'approved')            AS approved_batches,
-                COUNT(*) FILTER (WHERE status = 'declined')            AS declined_batches,
-                COUNT(*) FILTER (WHERE status = 'partially_declined')  AS partially_declined_batches
-            ")
-            ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
-            ->first();
+        return \Illuminate\Support\Facades\Cache::remember(
+            "bulk_ext_metrics:{$tenantId}",
+            60,
+            function () use ($tenantId) {
+                $batchCounts = DB::table('deal_extension_request_batches')
+                    ->selectRaw("
+                        COUNT(*) FILTER (WHERE status = 'pending')             AS pending_batches,
+                        COUNT(*) FILTER (WHERE status = 'partially_approved')  AS partially_approved_batches,
+                        COUNT(*) FILTER (WHERE status = 'approved')            AS approved_batches,
+                        COUNT(*) FILTER (WHERE status = 'declined')            AS declined_batches,
+                        COUNT(*) FILTER (WHERE status = 'partially_declined')  AS partially_declined_batches
+                    ")
+                    ->where('tenant_id', $tenantId)
+                    ->whereNull('deleted_at')
+                    ->first();
 
-        $dealCounts = DB::table('deal_assignment_extension_requests')
-            ->selectRaw("
-                COUNT(*) FILTER (WHERE status = 'pending_review') AS pending_deals,
-                COUNT(*) FILTER (WHERE status = 'approved')       AS approved_deals,
-                COUNT(*) FILTER (WHERE status = 'rejected')       AS declined_deals
-            ")
-            ->where('tenant_id', $tenantId)
-            ->first();
+                $dealCounts = DB::table('deal_assignment_extension_requests')
+                    ->selectRaw("
+                        COUNT(*) FILTER (WHERE status = 'pending_review') AS pending_deals,
+                        COUNT(*) FILTER (WHERE status = 'approved')       AS approved_deals,
+                        COUNT(*) FILTER (WHERE status = 'rejected')       AS declined_deals
+                    ")
+                    ->where('tenant_id', $tenantId)
+                    ->first();
 
-        return [
-            'pending_batches'            => (int) ($batchCounts->pending_batches ?? 0),
-            'partially_approved_batches' => (int) ($batchCounts->partially_approved_batches ?? 0),
-            'approved_batches'           => (int) ($batchCounts->approved_batches ?? 0),
-            'declined_batches'           => (int) ($batchCounts->declined_batches ?? 0),
-            'partially_declined_batches' => (int) ($batchCounts->partially_declined_batches ?? 0),
-            'total_pending_deals'        => (int) ($dealCounts->pending_deals ?? 0),
-            'total_approved_deals'       => (int) ($dealCounts->approved_deals ?? 0),
-            'total_declined_deals'       => (int) ($dealCounts->declined_deals ?? 0),
-        ];
+                return [
+                    'pending_batches'            => (int) ($batchCounts->pending_batches ?? 0),
+                    'partially_approved_batches' => (int) ($batchCounts->partially_approved_batches ?? 0),
+                    'approved_batches'           => (int) ($batchCounts->approved_batches ?? 0),
+                    'declined_batches'           => (int) ($batchCounts->declined_batches ?? 0),
+                    'partially_declined_batches' => (int) ($batchCounts->partially_declined_batches ?? 0),
+                    'total_pending_deals'        => (int) ($dealCounts->pending_deals ?? 0),
+                    'total_approved_deals'       => (int) ($dealCounts->approved_deals ?? 0),
+                    'total_declined_deals'       => (int) ($dealCounts->declined_deals ?? 0),
+                ];
+            }
+        );
     }
 
     public function getPendingBatchCount(string $tenantId): int

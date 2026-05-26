@@ -296,7 +296,7 @@
 
     {{-- Result count --}}
     <p class="text-center text-xs text-gray-400">
-        Showing {{ $batches->firstItem() }}–{{ $batches->lastItem() }} of {{ $batches->total() }}
+        Showing {{ $batches->firstItem() ?? 0 }}–{{ $batches->lastItem() ?? 0 }} of {{ $batches->total() }}
         {{ $tab === 'all' ? 'total' : ($tabs[$tab]['label'] ?? '') }} batch{{ $batches->total() !== 1 ? 'es' : '' }}
         @if($search) matching "{{ $search }}" @endif
     </p>
