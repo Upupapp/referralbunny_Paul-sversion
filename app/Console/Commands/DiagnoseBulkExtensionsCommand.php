@@ -67,7 +67,6 @@ class DiagnoseBulkExtensionsCommand extends Command
                 COUNT(*) FILTER (WHERE status = 'cancelled')          AS cancelled
             ")
             ->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')
             ->first();
 
         $itemRow = DB::table('deal_assignment_extension_requests')
@@ -108,7 +107,6 @@ class DiagnoseBulkExtensionsCommand extends Command
         $batches = DB::table('deal_extension_request_batches')
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
-            ->whereNull('deleted_at')
             ->orderBy('created_at')
             ->get(['id', 'batch_reference', 'total_items', 'requested_extension_days', 'requested_by_reseller_id', 'created_at']);
 
@@ -190,7 +188,6 @@ class DiagnoseBulkExtensionsCommand extends Command
                 'counts.batch_id'
             )
             ->where('b.tenant_id', $tenantId)
-            ->whereNull('b.deleted_at')
             ->whereRaw('b.total_items != COALESCE(counts.actual_count, 0)')
             ->select('b.id', 'b.batch_reference', 'b.status', 'b.total_items', DB::raw('COALESCE(counts.actual_count, 0) AS actual'))
             ->get();

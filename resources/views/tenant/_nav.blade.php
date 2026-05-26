@@ -122,7 +122,6 @@ if ($isAdminMgr) {
             fn() => \Illuminate\Support\Facades\DB::table('deal_extension_request_batches')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'pending')
-                ->whereNull('deleted_at')
                 ->count()
         );
         if (request()->routeIs('tenant.extension-requests*')) {

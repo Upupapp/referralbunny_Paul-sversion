@@ -754,7 +754,6 @@ class BulkDealExtensionService
                         COUNT(*) FILTER (WHERE status = 'partially_declined')  AS partially_declined_batches
                     ")
                     ->where('tenant_id', $tenantId)
-                    ->whereNull('deleted_at')
                     ->first();
 
                 $dealCounts = DB::table('deal_assignment_extension_requests')
@@ -785,7 +784,6 @@ class BulkDealExtensionService
         return (int) DB::table('deal_extension_request_batches')
             ->where('tenant_id', $tenantId)
             ->where('status', 'pending')
-            ->whereNull('deleted_at')
             ->count();
     }
 
