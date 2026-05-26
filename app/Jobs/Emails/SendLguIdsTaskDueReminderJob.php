@@ -72,7 +72,6 @@ class SendLguIdsTaskDueReminderJob implements ShouldQueue
             ->where('tm.tenant_id', self::TENANT_ID)
             ->whereIn('tm.role', ['owner', 'admin', 'manager'])
             ->where('tm.status', 'active')
-            ->whereNull('tm.deleted_at')
             ->select('u.email', 'u.first_name', 'u.last_name')
             ->get();
 
