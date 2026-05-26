@@ -118,12 +118,17 @@ class DiagnoseBulkExtensionsCommand extends Command
             return;
         }
 
+        // Pre-fetch all pending-item counts in one query to avoid N+1
+        $pendingCounts = DB::table('deal_assignment_extension_requests')
+            ->selectRaw('batch_id, COUNT(*) as cnt')
+            ->whereIn('batch_id', $batches->pluck('id')->toArray())
+            ->where('status', 'pending_review')
+            ->groupBy('batch_id')
+            ->pluck('cnt', 'batch_id');
+
         $rows = [];
         foreach ($batches as $batch) {
-            $pendingItems = DB::table('deal_assignment_extension_requests')
-                ->where('batch_id', $batch->id)
-                ->where('status', 'pending_review')
-                ->count();
+            $pendingItems = (int) ($pendingCounts[$batch->id] ?? 0);
 
             $createdAt = \Carbon\Carbon::parse($batch->created_at);
             $ageDays   = $createdAt->diffInDays(now());

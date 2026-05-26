@@ -897,7 +897,7 @@ class BulkDealExtensionService
                 body:         "Your bulk extension request was reviewed: {$summary}.",
                 actionUrl:    url("/reseller/{$tenantId}/extension-requests/{$batch->id}"),
                 actionLabel:  'View My Request',
-                dedupeSuffix: "bulk_ext_result:{$batch->id}:{$approvedCount}:{$declinedCount}",
+                dedupeSuffix: "bulk_ext_result_partial:{$batch->id}",
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount],
             );
         } catch (\Throwable) {}
