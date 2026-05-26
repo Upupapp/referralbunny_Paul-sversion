@@ -77,9 +77,17 @@ class BulkDealExtensionService
             throw new \InvalidArgumentException('None of the selected deals are eligible for an extension request.');
         }
 
-        return DB::transaction(function () use (
+        // Audit items collected inside the transaction but written outside.
+        // auditDeal calls ActivityLog::create() with user_id=bigint; a reseller
+        // id is a UUID which causes a type error caught by auditDeal's catch block.
+        // PHP swallows the exception but PostgreSQL marks the whole transaction as
+        // aborted (SQLSTATE[25P02]), killing every subsequent statement in the batch.
+        // Running audits after commit keeps the core transaction clean.
+        $auditItems = [];
+
+        $result = DB::transaction(function () use (
             $reseller, $tenantId, $requestedDays, $sharedReason,
-            $perDealNotes, $eligible, $ineligible
+            $perDealNotes, $eligible, $ineligible, &$auditItems
         ) {
             // Create the batch
             $batch = DealExtensionRequestBatch::create([
@@ -123,13 +131,14 @@ class BulkDealExtensionService
                     'status'                  => 'pending_review',
                 ]);
 
-                $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_requested', $reseller->id, [
-                    'batch_id'         => $batch->id,
-                    'batch_reference'  => $batch->batch_reference,
-                    'requested_days'   => $requestedDays,
-                    'current_days_left'=> $currentDaysLeft,
-                    'bulk'             => true,
-                ]);
+                // Queue audit instead of calling inside the transaction
+                $auditItems[] = [$tenantId, $deal->id, $request->id, 'deal_extension_requested', $reseller->id, [
+                    'batch_id'          => $batch->id,
+                    'batch_reference'   => $batch->batch_reference,
+                    'requested_days'    => $requestedDays,
+                    'current_days_left' => $currentDaysLeft,
+                    'bulk'              => true,
+                ]];
             }
 
             // Notify admins/managers
@@ -144,6 +153,13 @@ class BulkDealExtensionService
                 'ineligible' => $ineligible->values(),
             ];
         });
+
+        // Write audit entries after the transaction commits (safe from type errors)
+        foreach ($auditItems as $item) {
+            $this->auditDeal(...$item);
+        }
+
+        return $result;
     }
 
     // ── Per-item decisions ─────────────────────────────────────────
@@ -737,16 +753,19 @@ class BulkDealExtensionService
     private function auditDeal(string $tenantId, string $dealId, string $requestId, string $event, string $actorId, array $extra = []): void
     {
         try {
+            // activity_logs.user_id is bigint (FK to users); reseller IDs are UUIDs.
+            // Store UUID actor IDs in metadata only to avoid a type error on insert.
             ActivityLog::create([
                 'id'        => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
-                'user_id'   => $actorId,
+                'user_id'   => is_numeric($actorId) ? (int) $actorId : null,
                 'action'    => $event,
                 'entity'    => 'extension_request',
                 'entity_id' => $requestId,
                 'metadata'  => json_encode(array_merge([
                     'deal_id'              => $dealId,
                     'extension_request_id' => $requestId,
+                    'actor_id'             => $actorId,
                     'timestamp'            => now()->toIso8601String(),
                 ], $extra)),
             ]);

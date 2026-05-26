@@ -132,10 +132,6 @@ class BulkDealExtensionWebController extends Controller
             ], 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
-        } catch (\Throwable $e) {
-            $msg = get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine();
-            file_put_contents('/tmp/rb_bulk_debug.log', date('c') . ' ' . $msg . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
-            return response()->json(['error' => '[debug] ' . $msg], 500);
         }
     }
 
