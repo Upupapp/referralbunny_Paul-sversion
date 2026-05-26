@@ -383,6 +383,94 @@ class BulkDealExtensionController extends Controller
         return response()->json($this->batchActionResponse('skipped', $results));
     }
 
+    /**
+     * POST /api/extension-requests/batches/{batchId}/reject-selected-approve-rest
+     * Decline the selected items, approve all remaining pending items.
+     */
+    public function rejectSelectedApproveRest(Request $request, string $batchId): JsonResponse
+    {
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId || !$this->isAdminOrManager()) {
+            return response()->json(['error' => 'Not authorized.'], 403);
+        }
+
+        $data = $request->validate([
+            'request_ids'     => 'required|array|min:1',
+            'request_ids.*'   => 'required|string',
+            'approved_days'   => 'required|integer|min:1|max:90',
+            'rejection_reason'=> 'required|string|min:5|max:2000',
+            'approval_note'   => 'nullable|string|max:2000',
+        ]);
+
+        [$actorId] = $this->resolveActor();
+        $results = $this->bulk->rejectSelectedApproveRest(
+            batchId:          $batchId,
+            tenantId:         $tenantId,
+            reviewerUserId:   $actorId,
+            rejectRequestIds: $data['request_ids'],
+            approvedDays:     (int) $data['approved_days'],
+            rejectionReason:  $data['rejection_reason'],
+            approvalNote:     $data['approval_note'] ?? null,
+        );
+
+        $approved = count($results['approved'] ?? []);
+        $declined = count($results['declined'] ?? []);
+        $failed   = count($results['failed'] ?? []);
+
+        return response()->json([
+            'success'       => ($approved + $declined) > 0,
+            'message'       => "{$approved} approved, {$declined} rejected" . ($failed > 0 ? ", {$failed} failed." : '.'),
+            'approved'      => $approved,
+            'declined'      => $declined,
+            'failed'        => $failed,
+            'failed_detail' => $results['failed'] ?? [],
+        ]);
+    }
+
+    /**
+     * POST /api/extension-requests/batches/{batchId}/approve-selected-reject-rest
+     * Approve the selected items, decline all remaining pending items.
+     */
+    public function approveSelectedRejectRest(Request $request, string $batchId): JsonResponse
+    {
+        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        if (!$tenantId || !$this->isAdminOrManager()) {
+            return response()->json(['error' => 'Not authorized.'], 403);
+        }
+
+        $data = $request->validate([
+            'request_ids'     => 'required|array|min:1',
+            'request_ids.*'   => 'required|string',
+            'approved_days'   => 'required|integer|min:1|max:90',
+            'rejection_reason'=> 'required|string|min:5|max:2000',
+            'approval_note'   => 'nullable|string|max:2000',
+        ]);
+
+        [$actorId] = $this->resolveActor();
+        $results = $this->bulk->approveSelectedRejectRest(
+            batchId:           $batchId,
+            tenantId:          $tenantId,
+            reviewerUserId:    $actorId,
+            approveRequestIds: $data['request_ids'],
+            approvedDays:      (int) $data['approved_days'],
+            rejectionReason:   $data['rejection_reason'],
+            approvalNote:      $data['approval_note'] ?? null,
+        );
+
+        $approved = count($results['approved'] ?? []);
+        $declined = count($results['declined'] ?? []);
+        $failed   = count($results['failed'] ?? []);
+
+        return response()->json([
+            'success'       => ($approved + $declined) > 0,
+            'message'       => "{$approved} approved, {$declined} rejected" . ($failed > 0 ? ", {$failed} failed." : '.'),
+            'approved'      => $approved,
+            'declined'      => $declined,
+            'failed'        => $failed,
+            'failed_detail' => $results['failed'] ?? [],
+        ]);
+    }
+
     // ── Private helpers ───────────────────────────────────────────
 
     private function formatBatch(DealExtensionRequestBatch $batch, string $tenantId): array

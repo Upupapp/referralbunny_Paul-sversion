@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Events\DealExtensionApproved;
+use App\Mail\BulkExtensionAdminNotifyMail;
+use App\Mail\BulkExtensionDecisionMail;
 use App\Models\ActivityLog;
 use App\Models\DealAssignmentExtensionRequest;
 use App\Models\DealExtensionRequestBatch;
 use App\Models\Lead;
 use App\Models\Reseller;
+use App\Services\EmailLogger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -518,6 +521,99 @@ class BulkDealExtensionService
         return $results;
     }
 
+    /**
+     * Reject the selected items and approve all remaining eligible items in the batch.
+     * Atomic: both decline and approve loops run, failures are captured per-item.
+     */
+    public function rejectSelectedApproveRest(
+        string  $batchId,
+        string  $tenantId,
+        string  $reviewerUserId,
+        array   $rejectRequestIds,
+        int     $approvedDays,
+        string  $rejectionReason,
+        ?string $approvalNote = null
+    ): array {
+        $this->loadBatch($batchId, $tenantId);
+
+        $allPendingIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
+            ->whereIn('status', ['pending_review', 'skipped'])
+            ->pluck('id')
+            ->all();
+
+        $rejectIds  = array_values(array_intersect($rejectRequestIds, $allPendingIds));
+        $approveIds = array_values(array_diff($allPendingIds, $rejectIds));
+
+        $results = ['approved' => [], 'declined' => [], 'failed' => []];
+
+        foreach ($rejectIds as $id) {
+            try {
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason);
+            } catch (\Throwable $e) {
+                $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        foreach ($approveIds as $id) {
+            try {
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote);
+            } catch (\Throwable $e) {
+                $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        $this->criticalActions->invalidateCache($tenantId);
+
+        return $results;
+    }
+
+    /**
+     * Approve the selected items and reject all remaining eligible items in the batch.
+     */
+    public function approveSelectedRejectRest(
+        string  $batchId,
+        string  $tenantId,
+        string  $reviewerUserId,
+        array   $approveRequestIds,
+        int     $approvedDays,
+        string  $rejectionReason,
+        ?string $approvalNote = null
+    ): array {
+        $this->loadBatch($batchId, $tenantId);
+
+        $allPendingIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
+            ->whereIn('status', ['pending_review', 'skipped'])
+            ->pluck('id')
+            ->all();
+
+        $approveIds = array_values(array_intersect($approveRequestIds, $allPendingIds));
+        $rejectIds  = array_values(array_diff($allPendingIds, $approveIds));
+
+        $results = ['approved' => [], 'declined' => [], 'failed' => []];
+
+        foreach ($approveIds as $id) {
+            try {
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote);
+            } catch (\Throwable $e) {
+                $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        foreach ($rejectIds as $id) {
+            try {
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason);
+            } catch (\Throwable $e) {
+                $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        $this->criticalActions->invalidateCache($tenantId);
+
+        return $results;
+    }
+
     // ── Batch status recalculation ────────────────────────────────
 
     public function recalculateBatchStatus(string $batchId, string $tenantId): void
@@ -613,23 +709,124 @@ class BulkDealExtensionService
             ->first();
     }
 
+    public function getBatchesPaginated(
+        string  $tenantId,
+        ?string $status = null,
+        ?string $search = null,
+        int     $perPage = 20,
+    ): \Illuminate\Contracts\Pagination\LengthAwarePaginator {
+        $q = DealExtensionRequestBatch::where('tenant_id', $tenantId)
+            ->with('requestedByReseller:id,name,tenant_id')
+            ->orderByDesc('created_at');
+
+        if ($status) {
+            $q->where('status', $status);
+        }
+
+        if ($search) {
+            $q->where(function ($sub) use ($search) {
+                $sub->where('batch_reference', 'ilike', '%' . $search . '%')
+                    ->orWhere('shared_reason', 'ilike', '%' . $search . '%');
+            });
+        }
+
+        return $q->paginate($perPage);
+    }
+
+    public function getMetricsForTenant(string $tenantId): array
+    {
+        $batchCounts = DB::table('deal_extension_request_batches')
+            ->selectRaw("
+                COUNT(*) FILTER (WHERE status = 'pending')             AS pending_batches,
+                COUNT(*) FILTER (WHERE status = 'partially_approved')  AS partially_approved_batches,
+                COUNT(*) FILTER (WHERE status = 'approved')            AS approved_batches,
+                COUNT(*) FILTER (WHERE status = 'declined')            AS declined_batches,
+                COUNT(*) FILTER (WHERE status = 'partially_declined')  AS partially_declined_batches
+            ")
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        $dealCounts = DB::table('deal_assignment_extension_requests')
+            ->selectRaw("
+                COUNT(*) FILTER (WHERE status = 'pending_review') AS pending_deals,
+                COUNT(*) FILTER (WHERE status = 'approved')       AS approved_deals,
+                COUNT(*) FILTER (WHERE status = 'rejected')       AS declined_deals
+            ")
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        return [
+            'pending_batches'            => (int) ($batchCounts->pending_batches ?? 0),
+            'partially_approved_batches' => (int) ($batchCounts->partially_approved_batches ?? 0),
+            'approved_batches'           => (int) ($batchCounts->approved_batches ?? 0),
+            'declined_batches'           => (int) ($batchCounts->declined_batches ?? 0),
+            'partially_declined_batches' => (int) ($batchCounts->partially_declined_batches ?? 0),
+            'total_pending_deals'        => (int) ($dealCounts->pending_deals ?? 0),
+            'total_approved_deals'       => (int) ($dealCounts->approved_deals ?? 0),
+            'total_declined_deals'       => (int) ($dealCounts->declined_deals ?? 0),
+        ];
+    }
+
+    public function getPendingBatchCount(string $tenantId): int
+    {
+        return (int) DB::table('deal_extension_request_batches')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'pending')
+            ->whereNull('deleted_at')
+            ->count();
+    }
+
     // ── Notifications ──────────────────────────────────────────────
 
     private function notifyAdminsBulkRequest(string $tenantId, Reseller $reseller, DealExtensionRequestBatch $batch): void
     {
         try {
             $count = $batch->total_items;
+            $reviewUrl = url("/tenant/{$tenantId}/extension-requests/{$batch->id}");
+
             $this->notifications->dispatchToTenantAdmins(
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'high',
                 title:        "Bulk extension request submitted",
                 body:         "{$reseller->name} requested extensions for {$count} deal" . ($count > 1 ? 's' : '') . ". Reason: " . \Illuminate\Support\Str::limit($batch->shared_reason, 80),
-                actionUrl:    url("/tenant/{$tenantId}/extension-requests/{$batch->id}"),
+                actionUrl:    $reviewUrl,
                 actionLabel:  'Review Extension Request',
                 dedupeSuffix: "bulk_ext_req:{$batch->id}",
                 metadata:     ['batch_id' => $batch->id, 'reseller_id' => $reseller->id, 'deal_count' => $count],
             );
+
+            // Email each admin/manager once per batch submission
+            $tenant = DB::table('tenants')->where('id', $tenantId)->first();
+            $admins = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $tenantId)
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->where('tm.status', 'active')
+                ->select('u.email', 'u.first_name', 'u.last_name')
+                ->get();
+
+            foreach ($admins as $admin) {
+                $emailKey = "bulk_ext.admin_notify.{$batch->id}.{$admin->email}";
+                EmailLogger::send(
+                    mailable: new BulkExtensionAdminNotifyMail(
+                        adminName:      trim("{$admin->first_name} {$admin->last_name}"),
+                        tenantName:     $tenant?->name ?? $tenantId,
+                        referrerName:   $reseller->name,
+                        dealCount:      $count,
+                        requestedDays:  $batch->requested_extension_days,
+                        reasonPreview:  \Illuminate\Support\Str::limit($batch->shared_reason, 120),
+                        batchReference: $batch->batch_reference,
+                        reviewUrl:      $reviewUrl,
+                    ),
+                    recipientEmail: $admin->email,
+                    recipientType:  'tenant_admin',
+                    emailKey:       $emailKey,
+                    subject:        "Bulk extension request needs review: {$count} deal" . ($count !== 1 ? 's' : '') . " — " . ($tenant?->name ?? $tenantId),
+                    tenantId:       $tenantId,
+                );
+            }
         } catch (\Throwable) {}
     }
 
@@ -700,7 +897,8 @@ class BulkDealExtensionService
             $parts = [];
             if ($approved > 0) $parts[] = "{$approved} approved";
             if ($declined > 0) $parts[] = "{$declined} declined";
-            $summary = implode(', ', $parts) ?: 'all reviewed';
+            $summary    = implode(', ', $parts) ?: 'all reviewed';
+            $requestUrl = url("/reseller/{$tenantId}/extension-requests/{$batch->id}");
 
             $this->notifications->dispatchToReseller(
                 resellerId:   $batch->requested_by_reseller_id,
@@ -709,11 +907,61 @@ class BulkDealExtensionService
                 priority:     'normal',
                 title:        "Your extension request has been fully reviewed",
                 body:         "Your bulk extension request ({$batch->batch_reference}) has been reviewed: {$summary}.",
-                actionUrl:    url("/reseller/{$tenantId}/extension-requests/{$batch->id}"),
+                actionUrl:    $requestUrl,
                 actionLabel:  'View Results',
                 dedupeSuffix: "bulk_ext_complete:{$batch->id}",
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approved, 'declined' => $declined],
             );
+
+            // Send decision email to the referrer (one email per batch, not per deal)
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $batch->requested_by_reseller_id)
+                ->first();
+
+            if ($reseller && !empty($reseller->email)) {
+                $tenant = DB::table('tenants')->where('id', $tenantId)->first();
+
+                // Collect top-10 deal summaries for the email body
+                $items = DB::table('deal_assignment_extension_requests as r')
+                    ->leftJoin('leads as l', 'r.deal_id', '=', 'l.id')
+                    ->where('r.batch_id', $batch->id)
+                    ->where('r.tenant_id', $tenantId)
+                    ->select('l.name as deal_name', 'r.status', 'r.approved_days')
+                    ->orderByRaw("CASE r.status WHEN 'approved' THEN 0 WHEN 'rejected' THEN 1 ELSE 2 END")
+                    ->limit(10)
+                    ->get();
+
+                $dealSummaries = $items->map(fn($i) => [
+                    'name'          => $i->deal_name ?? 'Unknown Deal',
+                    'status'        => $i->status,
+                    'approved_days' => $i->approved_days,
+                ])->toArray();
+
+                $emailKey = "bulk_ext.decision.{$batch->id}.{$reseller->email}";
+                EmailLogger::send(
+                    mailable: new BulkExtensionDecisionMail(
+                        referrerName:   $reseller->name,
+                        tenantName:     $tenant?->name ?? $tenantId,
+                        batchReference: $batch->batch_reference,
+                        approvedCount:  $approved,
+                        declinedCount:  $declined,
+                        skippedCount:   (int) $batch->skipped_count,
+                        totalCount:     (int) $batch->total_items,
+                        overallStatus:  $batch->status,
+                        adminNote:      null,
+                        requestUrl:     $requestUrl,
+                        dealSummaries:  $dealSummaries,
+                    ),
+                    recipientEmail: $reseller->email,
+                    recipientType:  'referrer',
+                    emailKey:       $emailKey,
+                    subject:        $approved > 0 && $declined === 0
+                        ? "Your bulk extension request was approved — {$batch->batch_reference}"
+                        : "Bulk extension request reviewed — {$approved} approved, {$declined} rejected",
+                    tenantId:       $tenantId,
+                );
+            }
         } catch (\Throwable) {}
     }
 

@@ -114,6 +114,8 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('extension-requests/batches/{batchId}/approve-selected',             [\App\Http\Controllers\BulkDealExtensionController::class, 'approveSelected']);
     Route::post('extension-requests/batches/{batchId}/decline-selected',             [\App\Http\Controllers\BulkDealExtensionController::class, 'declineSelected']);
     Route::post('extension-requests/batches/{batchId}/skip-selected',                [\App\Http\Controllers\BulkDealExtensionController::class, 'skipSelected']);
+    Route::post('extension-requests/batches/{batchId}/reject-selected-approve-rest', [\App\Http\Controllers\BulkDealExtensionController::class, 'rejectSelectedApproveRest']);
+    Route::post('extension-requests/batches/{batchId}/approve-selected-reject-rest', [\App\Http\Controllers\BulkDealExtensionController::class, 'approveSelectedRejectRest']);
     Route::post('bulk-extension-requests/{requestId}/approve',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'approveItem']);
     Route::post('bulk-extension-requests/{requestId}/decline',                       [\App\Http\Controllers\BulkDealExtensionController::class, 'declineItem']);
     Route::post('bulk-extension-requests/{requestId}/skip',                          [\App\Http\Controllers\BulkDealExtensionController::class, 'skipItem']);

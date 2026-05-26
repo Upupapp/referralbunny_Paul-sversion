@@ -146,10 +146,23 @@ class BulkDealExtensionWebController extends Controller
         $this->assertAdminContext($tenantId);
         $tenant = $this->resolveTenant($tenantId);
 
-        $statusFilter = $request->query('status');
-        $batches      = $this->bulk->getBatchesForTenant($tenantId, $statusFilter ?: null);
+        $tab    = $request->query('tab', 'pending');
+        $search = $request->query('search');
 
-        return view('tenant.extension-requests.index', compact('tenant', 'batches', 'tenantId', 'statusFilter'));
+        $statusFilter = match ($tab) {
+            'approved' => 'approved',
+            'declined' => 'declined',
+            'partial'  => 'partially_approved',
+            'all'      => null,
+            default    => 'pending',
+        };
+
+        $metrics = $this->bulk->getMetricsForTenant($tenantId);
+        $batches = $this->bulk->getBatchesPaginated($tenantId, $statusFilter, $search ?: null);
+
+        return view('tenant.extension-requests.index', compact(
+            'tenant', 'batches', 'tenantId', 'tab', 'metrics', 'search', 'statusFilter'
+        ));
     }
 
     /**

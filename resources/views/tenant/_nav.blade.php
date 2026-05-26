@@ -113,6 +113,25 @@ try {
     });
 } catch (\Throwable) {}
 
+// Extension requests badge — pending batches count, admin/manager only
+$extRequestBadge = 0;
+if ($isAdminMgr) {
+    try {
+        $extRequestBadge = (int) \Illuminate\Support\Facades\Cache::remember(
+            "nav_ext_req_badge:{$tenantId}", 60,
+            fn() => \Illuminate\Support\Facades\DB::table('deal_extension_request_batches')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'pending')
+                ->whereNull('deleted_at')
+                ->count()
+        );
+        if (request()->routeIs('tenant.extension-requests*')) {
+            \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
+            $extRequestBadge = 0;
+        }
+    } catch (\Throwable) {}
+}
+
 // Note: $criticalBadge is added to workspaceBadge after it's computed below
 $workspaceBadge = $taskBadge + $msgBadge;
 
@@ -267,7 +286,13 @@ $workspaceBadge += $criticalBadge;
                 <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                Extension Requests
+                <span class="flex-1">Extension Requests</span>
+                @if($extRequestBadge > 0)
+                <span class="nav-badge nav-badge-orange"
+                      aria-label="{{ $extRequestBadge }} pending extension request{{ $extRequestBadge === 1 ? '' : 's' }}">
+                    {{ $extRequestBadge > 99 ? '99+' : $extRequestBadge }}
+                </span>
+                @endif
             </a>
             @endif
 
