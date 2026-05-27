@@ -208,6 +208,7 @@ class DealNoteAttachmentController extends Controller
             $path        = "tenants/{$tenantId}/deals/{$dealId}/notes/{$commentId}/{$stored_name}";
 
             $stream = fopen($file->getRealPath(), 'r');
+            if (!is_resource($stream)) continue;
             try {
                 Storage::disk('local')->put($path, $stream);
             } catch (\Throwable $e) {

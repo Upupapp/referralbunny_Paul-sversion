@@ -55,7 +55,8 @@ class DealCommentController extends Controller
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->whereNull('parent_comment_id')
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')
+            ->orderByDesc('id'); // tiebreaker for timestamp collisions
 
         // Referrers and Partners cannot see internal_admin notes
         if (in_array($role, ['referrer', 'partner'])) {
@@ -64,20 +65,27 @@ class DealCommentController extends Controller
 
         // Cursor pagination — newest first; caller passes before_id to page backward
         if ($before) {
-            $pivot = DealComment::where('id', $before)->where('tenant_id', $tenantId)->value('created_at');
+            $pivot = DealComment::where('id', $before)->where('tenant_id', $tenantId)->first(['created_at', 'id']);
             if ($pivot) {
-                $query->where('created_at', '<', $pivot);
+                $query->where(function ($q) use ($pivot) {
+                    $q->where('created_at', '<', $pivot->created_at)
+                      ->orWhere(fn($q2) => $q2->where('created_at', $pivot->created_at)->where('id', '<', $pivot->id));
+                });
             }
         }
 
-        $comments = $query->limit($limit)->get();
+        // Fetch one extra to determine has_more without a separate COUNT query
+        $comments = $query->limit($limit + 1)->get();
+        $hasMore  = $comments->count() > $limit;
+        if ($hasMore) $comments->pop();
 
         // Batch-resolve author names — one query per role type instead of two per comment
         $nameCache = $this->batchResolveNames($comments);
 
-        return response()->json(
-            $comments->map(fn(DealComment $c) => $this->formatComment($c, $role, $dealId, $nameCache))
-        );
+        return response()->json([
+            'data'     => $comments->map(fn(DealComment $c) => $this->formatComment($c, $role, $dealId, $nameCache))->values(),
+            'has_more' => $hasMore,
+        ]);
     }
 
     // ── POST /api/deals/{dealId}/comments ─────────────────────────────────
@@ -490,14 +498,13 @@ class DealCommentController extends Controller
     {
         if (empty($mentions)) return;
 
-        // Resolve author display name for notification
+        // Resolve author display name for notification — one query per role type
         $authorName = match ($role) {
             'referrer' => DB::table('resellers')->where('id', $actorId)->value('name') ?? 'Referrer',
             'partner'  => 'Partner',
-            default    => trim(
-                (DB::table('tenant_users')->where('id', $actorId)->value('first_name') ?? '') . ' ' .
-                (DB::table('tenant_users')->where('id', $actorId)->value('last_name')  ?? '')
-            ) ?: 'Admin',
+            default    => trim(DB::table('tenant_users')->where('id', $actorId)
+                ->selectRaw("TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
+                ->value('full_name') ?? '') ?: 'Admin',
         };
 
         $svc    = app(NotificationDispatchService::class);

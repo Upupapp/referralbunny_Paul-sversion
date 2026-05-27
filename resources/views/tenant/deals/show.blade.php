@@ -1526,7 +1526,7 @@
             <div class="lg:col-span-2 space-y-4">
 
                 {{-- Notes (rich: @mentions, file attachments, visibility) --}}
-                <div x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}', '{{ $viewerUserId ?? '' }}', '{{ $viewerRole ?? 'tenant_admin' }}')"
+                <div x-data="dealComments(@json($dealId), @json($tenant->id), @json($viewerUserId ?? ''), @json($viewerRole ?? 'tenant_admin'))"
                      x-init="loadComments()"
                      class="card space-y-4">
 
@@ -1659,7 +1659,11 @@
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         Loading notes…
                     </div>
-                    <div x-show="!loadingComments && comments.length === 0" style="display:none" class="flex flex-col items-center text-center py-8 px-4">
+                    <div x-show="loadError" style="display:none" class="flex items-center gap-2 px-3 py-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Could not load notes. <button @click="loadComments()" class="underline font-medium">Try again</button></span>
+                    </div>
+                    <div x-show="!loadingComments && !loadError && comments.length === 0" style="display:none" class="flex flex-col items-center text-center py-8 px-4">
                         <img src="/images/mascots/r-bunny-rocket.webp" alt="" aria-hidden="true"
                              class="w-16 h-16 object-contain mb-3 opacity-80">
                         <p class="text-sm font-semibold text-[#1E1B4B] mb-1">No notes yet!</p>
@@ -1669,7 +1673,7 @@
                             + Write the first note →
                         </p>
                     </div>
-                    <div x-show="!loadingComments && comments.length" class="space-y-4">
+                    <div x-show="!loadingComments && !loadError && comments.length" class="space-y-4">
                         <template x-for="c in comments" :key="c.id">
                             <div class="flex gap-3 group/note">
                                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
@@ -1721,6 +1725,14 @@
                                 </div>
                             </div>
                         </template>
+                        {{-- Load older notes --}}
+                        <div x-show="hasMore" style="display:none" class="flex justify-center pt-2">
+                            <button @click="loadMore()" :disabled="loadingMore"
+                                    class="inline-flex items-center gap-1.5 text-xs text-[#7B61FF] hover:underline disabled:opacity-50">
+                                <svg x-show="loadingMore" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <span x-text="loadingMore ? 'Loading…' : 'Load older notes'"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2454,6 +2466,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
     return {
         // â"€â"€ State â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         comments: [], loadingComments: true, posting: false,
+        loadError: false, hasMore: false, loadingMore: false,
         newBody: '', newVisibility: 'shared', commentError: '',
         noteSaved: false,          // inline success banner
         editingId: null, editBody: '',
@@ -2498,6 +2511,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
         // â"€â"€ Load notes â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async loadComments() {
             this.loadingComments = true;
+            this.loadError = false;
             try {
                 const res = await fetch(`/api/deals/${dealId}/comments`, {
                     credentials: 'same-origin',
@@ -2505,9 +2519,34 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
                 });
                 if (!res.ok) throw new Error('load failed');
                 const data = await res.json();
-                this.comments = Array.isArray(data) ? data : [];
-            } catch(e) { this.comments = []; }
+                // Support both legacy array and current {data, has_more} envelope
+                this.comments = Array.isArray(data) ? data : (data?.data ?? []);
+                this.hasMore  = data?.has_more ?? false;
+            } catch(e) {
+                this.comments = [];
+                this.loadError = true;
+            }
             this.loadingComments = false;
+        },
+
+        async loadMore() {
+            if (this.loadingMore || !this.hasMore || !this.comments.length) return;
+            this.loadingMore = true;
+            try {
+                const beforeId = this.comments[this.comments.length - 1].id;
+                const res = await fetch(`/api/deals/${dealId}/comments?before_id=${beforeId}`, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const older = Array.isArray(data) ? data : (data?.data ?? []);
+                this.comments.push(...older);
+                this.hasMore = data?.has_more ?? false;
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Could not load older notes.' });
+            }
+            this.loadingMore = false;
         },
 
         // â"€â"€ Post note â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
