@@ -793,6 +793,28 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
+        // Notify primary referrer — same as reseller-initiated path.
+        // Look up implicit primary via lead->reseller_name; no CommissionSplit(role='primary') in production.
+        // Skip if the admin actor happens to be the primary referrer by name.
+        try {
+            $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
+                ->first();
+            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($actorName ?? '')) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $primaryReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Co-referrer added to your deal',
+                    body:         $actorName . ' added ' . ($displayName !== $email ? $displayName : $email) . ' (' . $percentage . '%) as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
+                );
+            }
+        } catch (\Throwable) {}
+
         return response()->json(['success' => true, 'display_name' => $displayName, 'percentage' => $percentage]);
     }
 

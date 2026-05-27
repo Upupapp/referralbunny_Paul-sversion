@@ -888,6 +888,7 @@ window.__rsDeal = {
 
     {{-- Add Note modal (with file attachments) --}}
     <div x-show="showAddNote" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
          @keydown.escape.window="showAddNote = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -939,7 +940,9 @@ window.__rsDeal = {
     </div>
 
     {{-- Update Amount modal --}}
-    <div x-show="showUpdateAmount" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div x-show="showUpdateAmount" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="showUpdateAmount = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h3 class="font-bold text-[#1E1B4B]">Update Deal Amount</h3>
@@ -970,7 +973,9 @@ window.__rsDeal = {
     </div>
 
     {{-- Move Stage modal --}}
-    <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div x-show="showMoveStage" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="showMoveStage = false; resetStageModal()">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div>
@@ -1053,7 +1058,9 @@ window.__rsDeal = {
     </div>
 
     {{-- Archive Request modal --}}
-    <div x-show="showArchive" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div x-show="showArchive" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="showArchive = false; archiveError = ''">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div>
@@ -1118,6 +1125,8 @@ window.__rsDeal = {
         $poolRemaining    = max(0.0, $commissionPool - $alreadyAllocated);
     @endphp
     <div x-show="showAddPartner" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="showAddPartner = false"
          x-data="{
              partnerName: '', partnerEmail: '', partnerSplit: '', partnerType: 'percentage',
              partnerSaving: false, partnerError: '',

@@ -240,7 +240,9 @@
     </div>
 
     {{-- Confirmation modal --}}
-    <div x-show="confirmModal.open" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div x-show="confirmModal.open" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="confirmModal.open = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
             <div class="p-6 space-y-4">
                 <div class="flex items-center gap-3">
@@ -266,7 +268,9 @@
     </div>
 
     {{-- Save search modal --}}
-    <div x-show="saveModal" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div x-show="saveModal" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="saveModal = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
             <div class="p-6 space-y-4">
                 <h3 class="font-semibold text-[#1E1B4B]">Save Search</h3>
@@ -275,6 +279,29 @@
                 <div class="flex justify-end gap-3">
                     <button @click="saveModal = false" class="btn-secondary">Cancel</button>
                     <button @click="doSaveSearch()" class="btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Bulk confirm modal --}}
+    <div x-show="bulkModal.open" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="bulkModal.open = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-[#1E1B4B]" x-text="bulkModal.label + ' ' + bulkModal.count + ' item' + (bulkModal.count !== 1 ? 's' : '') + '?'"></p>
+                        <p class="text-sm text-gray-500">This action will be applied to all selected items.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button @click="bulkModal.open = false" class="btn-secondary">Cancel</button>
+                    <button @click="executeBulk()" class="btn-primary" x-text="'Confirm ' + bulkModal.label"></button>
                 </div>
             </div>
         </div>
@@ -295,6 +322,7 @@ function searchPage() {
         confirmModal: { open: false, title: '', description: '', action: null, entity_type: '', entity_id: '', reason: '' },
         actionLoading: false,
         saveModal: false, saveName: '', savePin: false,
+        bulkModal: { open: false, action: '', label: '', count: 0 },
 
         async init() {
             try {
@@ -400,52 +428,75 @@ function searchPage() {
             if (i === -1) this.selected.push(id); else this.selected.splice(i, 1);
         },
 
-        async bulkApprove() {
-            if (!confirm(`Approve ${this.selected.length} items?`)) return;
-            for (const id of this.selected) {
-                await fetch('/api/search/actions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ action: 'approve', entity_type: 'approval_request', entity_id: id }),
-                });
-            }
-            this.selected = [];
-            await this.runSearch();
+        bulkApprove() {
+            this.bulkModal = { open: true, action: 'approve', label: 'Approve', count: this.selected.length };
         },
 
-        async bulkSuspend() {
-            if (!confirm(`Suspend ${this.selected.length} tenants? This action requires confirmation.`)) return;
-            for (const id of this.selected) {
-                await fetch('/api/search/actions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({ action: 'suspend_tenant', entity_type: 'tenant', entity_id: id }),
-                });
+        bulkSuspend() {
+            this.bulkModal = { open: true, action: 'suspend_tenant', label: 'Suspend', count: this.selected.length };
+        },
+
+        async executeBulk() {
+            const { action } = this.bulkModal;
+            const entityType = action === 'approve' ? 'approval_request' : 'tenant';
+            this.bulkModal.open = false;
+            const ids = [...this.selected];
+            let succeeded = 0, failed = 0;
+            for (const id of ids) {
+                try {
+                    const res = await fetch('/api/search/actions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        body: JSON.stringify({ action, entity_type: entityType, entity_id: id }),
+                    });
+                    res.ok ? succeeded++ : failed++;
+                } catch (e) { failed++; }
             }
             this.selected = [];
+            if (failed === 0) {
+                this.$dispatch('show-toast', { type: 'success', message: `${succeeded} item${succeeded !== 1 ? 's' : ''} processed successfully.` });
+            } else {
+                this.$dispatch('show-toast', { type: 'error', message: `${succeeded} succeeded, ${failed} failed. Please check the results.` });
+            }
             await this.runSearch();
         },
 
         async toggleFavorite(result) {
-            await fetch('/api/search/favorites', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                body: JSON.stringify({ entity_type: result.entity_type, entity_id: result.id, label: result.title, url: result.url }),
-            });
+            try {
+                const res = await fetch('/api/search/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ entity_type: result.entity_type, entity_id: result.id, label: result.title, url: result.url }),
+                });
+                if (!res.ok) throw new Error();
+                this.$dispatch('show-toast', { type: 'success', message: 'Added to favorites.' });
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Could not update favorites. Please try again.' });
+            }
         },
 
         saveCurrentSearch() { this.saveModal = true; this.saveName = ''; },
 
         async doSaveSearch() {
             if (!this.saveName) return;
-            await fetch('/api/search/saved', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                body: JSON.stringify({ name: this.saveName, query: this.query, filters: this.filters, is_pinned: this.savePin }),
-            });
-            this.saveModal = false;
-            const savedRes = await fetch('/api/search/saved');
-            this.savedSearches = await savedRes.json();
+            try {
+                const res = await fetch('/api/search/saved', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                    body: JSON.stringify({ name: this.saveName, query: this.query, filters: this.filters, is_pinned: this.savePin }),
+                });
+                if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    this.$dispatch('show-toast', { type: 'error', message: d.message || 'Could not save search. Please try again.' });
+                    return;
+                }
+                this.saveModal = false;
+                const savedRes = await fetch('/api/search/saved');
+                this.savedSearches = savedRes.ok ? await savedRes.json() : this.savedSearches;
+                this.$dispatch('show-toast', { type: 'success', message: 'Search saved.' });
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Could not save search.' });
+            }
         },
 
         navigateTo(url) { window.location.href = url; },
