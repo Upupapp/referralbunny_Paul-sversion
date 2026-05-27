@@ -1571,7 +1571,7 @@
                                 {{-- @Mention dropdown --}}
                                 <div x-show="mentionOpen" style="display:none"
                                      class="absolute left-0 top-full mt-1 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto">
-                                    <div x-show="mentionLoading" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
+                                    <div x-show="mentionLoading" style="display:none" class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray-400">
                                         <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                         Searching…
                                     </div>
@@ -1596,7 +1596,7 @@
                             </div>
 
                             {{-- Selected mention pills --}}
-                            <div x-show="mentions.length > 0" class="flex flex-wrap gap-1.5">
+                            <div x-show="mentions.length > 0" style="display:none" class="flex flex-wrap gap-1.5">
                                 <template x-for="(m, i) in mentions" :key="m.type + ':' + m.id">
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                                           :class="{'bg-purple-100 text-purple-700':m.type==='tenant_admin','bg-blue-100 text-blue-700':m.type==='referrer','bg-orange-100 text-orange-700':m.type==='partner','bg-gray-100 text-gray-600':m.type==='contact'}">
@@ -1607,7 +1607,7 @@
                             </div>
 
                             {{-- File previews --}}
-                            <div x-show="selectedFiles.length > 0" class="space-y-1">
+                            <div x-show="selectedFiles.length > 0" style="display:none" class="space-y-1">
                                 <template x-for="(f, i) in selectedFiles" :key="i">
                                     <div class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
                                         <svg class="w-3.5 h-3.5 shrink-0" :class="f.type.startsWith('image/') ? 'text-blue-400' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
@@ -1642,7 +1642,7 @@
                                            accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                                     Attach files
-                                    <span x-show="selectedFiles.length > 0" class="px-1.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700" x-text="selectedFiles.length"></span>
+                                    <span x-show="selectedFiles.length > 0" style="display:none" class="px-1.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700" x-text="selectedFiles.length"></span>
                                 </label>
                                 <button @click="postComment()"
                                         :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
@@ -1711,12 +1711,12 @@
                                             </div>
                                             <div x-show="canEditComment(c)" class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
                                                 <button @click="startEdit(c)" class="text-[11px] text-gray-400 hover:text-[#7B61FF]">Edit</button>
-                                                <button @click="deleteComment(c)" class="text-[11px] text-gray-400 hover:text-red-500">Delete</button>
+                                                <button @click="deleteComment(c)" :disabled="deletingId === c.id" class="text-[11px] text-gray-400 hover:text-red-500 disabled:opacity-40" x-text="deletingId === c.id ? 'Deleting…' : 'Delete'">Delete</button>
                                             </div>
                                             <div x-show="editingId === c.id" class="mt-2 space-y-2">
                                                 <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
                                                 <div class="flex gap-2">
-                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'"></button>
+                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'">Save</button>
                                                     <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
                                                 </div>
                                             </div>
@@ -1729,8 +1729,8 @@
                         <div x-show="hasMore" style="display:none" class="flex justify-center pt-2">
                             <button @click="loadMore()" :disabled="loadingMore"
                                     class="inline-flex items-center gap-1.5 text-xs text-[#7B61FF] hover:underline disabled:opacity-50">
-                                <svg x-show="loadingMore" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                <span x-text="loadingMore ? 'Loading…' : 'Load older notes'"></span>
+                                <svg x-show="loadingMore" style="display:none" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                <span x-text="loadingMore ? 'Loading…' : 'Load older notes'">Load older notes</span>
                             </button>
                         </div>
                     </div>
@@ -2470,6 +2470,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
         newBody: '', newVisibility: 'shared', commentError: '',
         noteSaved: false,          // inline success banner
         editingId: null, editBody: '',
+        deletingId: null,
         canPostInternal: true,     // tenant admin default; API enforces actual permission
 
         // Idempotency â€" generated once per component, rotated after each save
@@ -2652,7 +2653,9 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
 
         // â"€â"€ Delete â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async deleteComment(c) {
+            if (this.deletingId === c.id) return;
             if (!confirm('Delete this note?')) return;
+            this.deletingId = c.id;
             try {
                 const res = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
                     method: 'DELETE',
@@ -2670,6 +2673,8 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
                 }
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            } finally {
+                this.deletingId = null;
             }
         },
 

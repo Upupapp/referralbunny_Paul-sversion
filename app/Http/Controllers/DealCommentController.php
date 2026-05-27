@@ -358,10 +358,9 @@ class DealCommentController extends Controller
             try {
                 $authorName = match ($c->author_role) {
                     'referrer' => DB::table('resellers')->where('id', $c->author_user_id)->value('name') ?? 'Referrer',
-                    'partner'  => trim(
-                        (DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
-                        (DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
-                    ),
+                    'partner'  => trim(DB::table('partner_users')->where('id', $c->author_user_id)
+                        ->selectRaw("TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
+                        ->value('full_name') ?? '') ?: 'Partner',
                     default    => trim(
                                     (DB::table('tenant_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
                                     (DB::table('tenant_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
