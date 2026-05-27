@@ -335,9 +335,10 @@ class DealCommentController extends Controller
                     (DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
                     (DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
                 ),
-                default    => DB::table('tenant_users')->where('id', $c->author_user_id)->value('name')
-                           ?? DB::table('users')->where('id', $c->author_user_id)->value('name')
-                           ?? 'Admin',
+                default    => trim(
+                                (DB::table('tenant_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
+                                (DB::table('tenant_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
+                            ) ?: (DB::table('users')->where('id', $c->author_user_id)->value('name') ?? 'Admin'),
             };
         } catch (\Throwable) {}
 
@@ -424,7 +425,10 @@ class DealCommentController extends Controller
         $authorName = match ($role) {
             'referrer' => DB::table('resellers')->where('id', $actorId)->value('name') ?? 'Referrer',
             'partner'  => 'Partner',
-            default    => DB::table('tenant_users')->where('id', $actorId)->value('name') ?? 'Admin',
+            default    => trim(
+                (DB::table('tenant_users')->where('id', $actorId)->value('first_name') ?? '') . ' ' .
+                (DB::table('tenant_users')->where('id', $actorId)->value('last_name')  ?? '')
+            ) ?: 'Admin',
         };
 
         $svc    = app(NotificationDispatchService::class);
