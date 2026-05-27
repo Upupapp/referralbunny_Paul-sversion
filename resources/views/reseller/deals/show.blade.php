@@ -26,6 +26,13 @@
 
     $stageColors = ['introduction'=>'#9CA3AF','presentation'=>'#3B82F6','contract_sent'=>'#F59E0B','signed'=>'#8B5CF6','paid'=>'#10B981'];
     $stageColor  = $stageColors[$lead->stage] ?? '#9CA3AF';
+
+    // Hoist split variables — needed by action bar (lines ~341,415,495) before the Referrers card section.
+    $primarySplits       = collect($splits)->where('role', 'primary')->values();
+    $secondarySplits     = collect($splits)->where('role', 'secondary')->values();
+    $showImplicitPrimary = $primarySplits->isEmpty();
+    $canEditSplits       = $showImplicitPrimary
+        || $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
 @endphp
 
 <script>
@@ -603,7 +610,7 @@ window.__rsDeal = {
             @foreach($secondarySplits as $split)
             @php
                 $rAmt          = round($remainingPool * (float)($split->percentage ?? 0) / 100, 0);
-                $otherTotal    = $splits->reject(fn($s) => $s === $split)->sum('percentage');
+                $otherTotal    = $splits->where('role', 'secondary')->reject(fn($s) => $s === $split)->sum('percentage');
                 $maxForSplit   = max(0.0, round(100.0 - (float)$otherTotal, 2));
                 // Use url() not route() — avoids UrlGenerationException if split has no id
                 $splitUpdateUrl = $split->id
@@ -619,7 +626,12 @@ window.__rsDeal = {
                     </div>
                     <div class="min-w-0">
                         <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->reseller_name ?? '—' }}</p>
-                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Co-Referrer</span>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Co-Referrer</span>
+                            @if(strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? ''))
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">You</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
