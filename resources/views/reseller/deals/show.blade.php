@@ -1466,7 +1466,11 @@ function rsDealData() {
                 this.showAddNote = false;
                 this.noteBody = '';
                 this.noteFiles = [];
-                this.showToast(d.attachment_warning || 'Note added.');
+                if (d.attachment_warning) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'warning', message: d.attachment_warning } }));
+                } else {
+                    this.showToast('Note added.');
+                }
                 setTimeout(() => window.location.reload(), 800);
             } catch(e) {
                 this.noteError = 'Network error. Please try again.';

@@ -2555,14 +2555,13 @@ function dealComments(dealId, tenantId) {
                     // â‘£ Rotate idempotency key for next note
                     this.clientRequestId = crypto.randomUUID ? crypto.randomUUID()
                         : (Date.now().toString(36) + Math.random().toString(36));
-                    // ④ Show inline banner + toast; warn if some files were silently dropped
-                    if (data.attachment_warning) {
-                        this.$dispatch(‘show-toast’, { type: ‘warning’, message: data.attachment_warning });
-                    } else {
-                        this.noteSaved = true;
-                        setTimeout(() => { this.noteSaved = false; }, 4000);
-                        this.$dispatch(‘show-toast’, { type: ‘success’, message: ‘Note saved.’ });
-                    }
+                    // ④ Always show inline success banner; use warning toast if files were dropped
+                    this.noteSaved = true;
+                    setTimeout(() => { this.noteSaved = false; }, 4000);
+                    this.$dispatch(‘show-toast’, {
+                        type:    data.attachment_warning ? ‘warning’ : ‘success’,
+                        message: data.attachment_warning || ‘Note saved.’,
+                    });
                 } else {
                     this.commentError = data?.error || 'Unable to save note. Please try again.';
                 }

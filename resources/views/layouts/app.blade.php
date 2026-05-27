@@ -745,7 +745,7 @@ function globalSearch(searchBaseUrl, tenantId) {
                 this.$nextTick(() => this.$refs.searchInput?.focus());
             });
             try {
-                const res  = await fetch('/api/search/recent');
+                const res  = await fetch('/api/search/recent', { headers: hdrs() });
                 if (res.ok) this.recent = await res.json();
             } catch(e) {}
         },
@@ -766,7 +766,7 @@ function globalSearch(searchBaseUrl, tenantId) {
             try {
                 let url = '/api/search?q=' + encodeURIComponent(this.query) + '&limit=8';
                 if (tenantId) url += '&tenant_id=' + encodeURIComponent(tenantId);
-                const res  = await fetch(url);
+                const res  = await fetch(url, { headers: hdrs() });
                 if (!res.ok) { this.results = []; this.searchError = true; return; }
                 const data = await res.json();
                 this.results     = data.results  || [];
