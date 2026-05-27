@@ -1414,11 +1414,13 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
-        // Only the primary referrer on this deal may adjust co-referrer splits
-        $isPrimary = CommissionSplit::where('lead_id', $lead->id)
-            ->where('role', 'primary')
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
-            ->exists();
+        // Only the primary referrer on this deal may adjust co-referrer splits.
+        // Matches both the implicit primary (lead->reseller_name) and any explicit CommissionSplit(role='primary').
+        $isPrimary = strtolower($reseller->name ?? '') === strtolower($lead->reseller_name ?? '')
+            || CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'primary')
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->exists();
 
         if (!$isPrimary) {
             return response()->json(['error' => 'Only the primary Referrer on this deal can adjust co-referrer shares.'], 403);
@@ -1543,10 +1545,12 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
-        $isPrimary = CommissionSplit::where('lead_id', $lead->id)
-            ->where('role', 'primary')
-            ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
-            ->exists();
+        // Matches both the implicit primary (lead->reseller_name) and any explicit CommissionSplit(role='primary').
+        $isPrimary = strtolower($reseller->name ?? '') === strtolower($lead->reseller_name ?? '')
+            || CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'primary')
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->exists();
 
         if (!$isPrimary) {
             return response()->json(['error' => 'Only the primary Referrer on this deal can remove co-referrers.'], 403);
