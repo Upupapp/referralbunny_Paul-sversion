@@ -1526,7 +1526,7 @@
             <div class="lg:col-span-2 space-y-4">
 
                 {{-- Notes (rich: @mentions, file attachments, visibility) --}}
-                <div x-data="dealComments(@json($dealId), @json($tenant->id), @json($viewerUserId ?? ''), @json($viewerRole ?? 'tenant_admin'))"
+                <div x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}', '{{ $viewerUserId ?? '' }}', '{{ $viewerRole ?? 'tenant_admin' }}')"
                      x-init="loadComments()"
                      class="card space-y-4">
 
