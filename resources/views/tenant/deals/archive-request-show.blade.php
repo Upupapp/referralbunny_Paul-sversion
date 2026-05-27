@@ -20,6 +20,7 @@ $statusMap  = [
          clarifyMessage: '',
          clarifyDue: '',
          showClarify: false,
+         rejectNote: '',
      }">
 
     {{-- Breadcrumb --}}
@@ -204,7 +205,13 @@ $statusMap  = [
                 <form action="{{ route('tenant.approvals.reject', [$tenant->id, $archiveRequest->id]) }}" method="POST"
                       @submit="submitting = true">
                     @csrf
-                    <button type="submit" :disabled="submitting"
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Reason for rejection <span class="text-red-500">*</span></label>
+                        <textarea name="reviewer_note" x-model="rejectNote" rows="3" maxlength="1000" required
+                                  placeholder="Explain why this archive request is being rejected…"
+                                  class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+                    </div>
+                    <button type="submit" :disabled="submitting || !rejectNote.trim()"
                             class="w-full btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         <span x-show="!submitting">Reject Request</span>

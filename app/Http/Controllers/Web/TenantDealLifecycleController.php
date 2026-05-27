@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TenantDealLifecycleController extends Controller
 {
@@ -375,10 +376,12 @@ class TenantDealLifecycleController extends Controller
         try {
             app(DealActivityService::class)->record(
                 $lead,
-                'Deal deleted.' . ($data['reason'] ? ' Reason: ' . $data['reason'] : ''),
+                'Deal deleted.' . (($data['reason'] ?? null) ? ' Reason: ' . $data['reason'] : ''),
                 'deal_deleted'
             );
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::warning('softDeleteDeal: activity log failed', ['deal_id' => $lead->id, 'error' => $e->getMessage()]);
+        }
 
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");

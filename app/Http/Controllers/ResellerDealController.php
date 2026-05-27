@@ -1458,6 +1458,7 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
         }
 
+        \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
 

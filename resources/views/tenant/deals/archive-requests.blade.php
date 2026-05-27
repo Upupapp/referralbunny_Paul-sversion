@@ -18,9 +18,10 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
          clarifyModal: { open: false, requestId: '' },
          clarifyMessage: '',
          clarifyDue: '',
+         rejectNote: '',
          submitting: false,
          openApprove(id, name) { this.confirmModal = { open: true, type: 'approve', requestId: id, dealName: name }; },
-         openReject(id, name)  { this.confirmModal = { open: true, type: 'reject',  requestId: id, dealName: name }; },
+         openReject(id, name)  { this.confirmModal = { open: true, type: 'reject',  requestId: id, dealName: name }; this.rejectNote = ''; },
          openClarify(id) { this.clarifyModal = { open: true, requestId: id }; this.clarifyMessage = ''; this.clarifyDue = ''; },
      }">
 
@@ -201,6 +202,13 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                         <p class="text-sm text-gray-500" x-text="'Deal: ' + confirmModal.dealName"></p>
                     </div>
                 </div>
+                {{-- Rejection reason (only shown for reject type) --}}
+                <div x-show="confirmModal.type === 'reject'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Reason for rejection <span class="text-red-500">*</span></label>
+                    <textarea x-model="rejectNote" rows="3" maxlength="1000"
+                              placeholder="Explain why this archive request is being rejected…"
+                              class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+                </div>
                 <div class="flex justify-end gap-3">
                     <button @click="confirmModal.open = false" class="btn-secondary">Cancel</button>
                     <template x-if="confirmModal.type === 'approve'">
@@ -216,7 +224,8 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                     <template x-if="confirmModal.type === 'reject'">
                         <form :action="`{{ url('/tenant/' . $tenant->id . '/approvals/`) }}${confirmModal.requestId}/reject`" method="POST" @submit="submitting = true">
                             @csrf
-                            <button type="submit" :disabled="submitting"
+                            <input type="hidden" name="reviewer_note" :value="rejectNote">
+                            <button type="submit" :disabled="submitting || !rejectNote.trim()"
                                     class="btn-primary bg-red-600 hover:bg-red-700">
                                 <span x-show="!submitting">Confirm Reject</span>
                                 <span x-show="submitting">Rejecting…</span>
