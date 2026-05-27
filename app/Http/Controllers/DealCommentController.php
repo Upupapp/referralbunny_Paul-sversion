@@ -230,8 +230,7 @@ class DealCommentController extends Controller
         // Lead history — only top-level notes (not replies); internal notes labelled distinctly
         if (empty($data['parent_comment_id'])) {
             try {
-                $lead = Lead::find($dealId);
-                if ($lead) {
+                if ($deal) {
                     if ($visibility === 'internal_admin') {
                         $label = 'Internal note';
                     } elseif ($hasFiles && !$hasBody) {
@@ -240,7 +239,7 @@ class DealCommentController extends Controller
                         $label = 'Note';
                     }
                     app(\App\Services\DealActivityService::class)->noteAdded(
-                        $lead,
+                        $deal,
                         $comment->body ?? '',
                         ['label' => $label, 'metadata' => ['comment_id' => $comment->id, 'visibility' => $visibility]]
                     );
@@ -319,7 +318,7 @@ class DealCommentController extends Controller
 
         $comment->load(['attachments', 'mentions']);
 
-        return response()->json($this->formatComment($comment->fresh(), $role, $dealId));
+        return response()->json($this->formatComment($comment, $role, $dealId));
     }
 
     // ── DELETE /api/deals/{dealId}/comments/{commentId} ─────────────────────
@@ -361,10 +360,9 @@ class DealCommentController extends Controller
                     'partner'  => trim(DB::table('partner_users')->where('id', $c->author_user_id)
                         ->selectRaw("TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
                         ->value('full_name') ?? '') ?: 'Partner',
-                    default    => trim(
-                                    (DB::table('tenant_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
-                                    (DB::table('tenant_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
-                                ) ?: (DB::table('users')->where('id', $c->author_user_id)->value('name') ?? 'Admin'),
+                    default    => trim(DB::table('tenant_users')->where('id', $c->author_user_id)
+                                    ->selectRaw("TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
+                                    ->value('full_name') ?? '') ?: (DB::table('users')->where('id', $c->author_user_id)->value('name') ?? 'Admin'),
                 };
             } catch (\Throwable) {}
         }
