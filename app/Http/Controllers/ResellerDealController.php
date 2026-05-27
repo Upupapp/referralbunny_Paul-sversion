@@ -1652,12 +1652,15 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
-        // Notify primary referrer so they know their commission pool changed
+        // Notify primary referrer so they know their commission pool changed.
+        // Skip if the actor IS the primary referrer (they made the change; no need to notify themselves).
         try {
             $primaryReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
                 ->first();
-            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($removedName)) {
+            if ($primaryReseller
+                && strtolower($primaryReseller->name ?? '') !== strtolower($removedName)
+                && strtolower($primaryReseller->name ?? '') !== strtolower($actorName ?? '')) {
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   (string) $primaryReseller->id,
                     tenantId:     $tenantId,

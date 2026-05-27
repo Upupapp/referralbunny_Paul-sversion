@@ -491,8 +491,11 @@ window.__rsDeal = {
 
     {{-- Referrers & Partners ─────────────────────────────────── --}}
     @php
-        $canRemovePartner = !in_array($lead->commission_status ?? '', ['locked', 'paid']);
-        $hasAnyone        = $primarySplits->count() || $secondarySplits->count() || count($partnerSplits);
+        $canRemovePartner  = !in_array($lead->commission_status ?? '', ['locked', 'paid']);
+        // $showImplicitPrimary is true when no explicit primary split record exists — that row IS visible,
+        // so it must count toward $hasAnyone, the header badge, and the footer tally.
+        $implicitPrimaryCount = $showImplicitPrimary ? 1 : 0;
+        $hasAnyone            = $primarySplits->count() || $implicitPrimaryCount || $secondarySplits->count() || count($partnerSplits);
     @endphp
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {{-- Header --}}
@@ -500,7 +503,7 @@ window.__rsDeal = {
             <div class="flex items-center gap-2">
                 <h2 class="text-sm font-bold text-[#1E1B4B]">Referrers & Partners</h2>
                 <span class="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                    {{ $primarySplits->count() + $secondarySplits->count() + count($partnerSplits) }} listed
+                    {{ $primarySplits->count() + $implicitPrimaryCount + $secondarySplits->count() + count($partnerSplits) }} listed
                 </span>
             </div>
             @if(!$isArchived)
@@ -603,7 +606,7 @@ window.__rsDeal = {
 
         {{-- ── Co-Referrers ── --}}
         @if($secondarySplits->count())
-        @if($primarySplits->count())
+        @if($primarySplits->count() || $showImplicitPrimary)
         <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Co-Referrers</p>
         </div>
@@ -755,8 +758,9 @@ window.__rsDeal = {
         {{-- Summary footer --}}
         @if($hasAnyone)
         <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            @php $totalReferrers = $primarySplits->count() + $implicitPrimaryCount + $secondarySplits->count(); @endphp
             <p class="text-xs text-gray-400">
-                {{ $primarySplits->count() + $secondarySplits->count() }} Referrer{{ ($primarySplits->count() + $secondarySplits->count()) !== 1 ? 's' : '' }}
+                {{ $totalReferrers }} Referrer{{ $totalReferrers !== 1 ? 's' : '' }}
                 · {{ count($partnerSplits) }} Partner{{ count($partnerSplits) !== 1 ? 's' : '' }}
             </p>
             <p class="text-xs font-bold text-[#0D9488]">Pool: ₱{{ number_format($commissionPool, 0) }}</p>
