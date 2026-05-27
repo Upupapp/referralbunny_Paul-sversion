@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 /**
@@ -27,6 +28,7 @@ class DealApprovalRequest extends Model
         'assigned_to_type', 'assigned_to_id', 'status',
         'request_payload', 'missing_requirements', 'reason',
         'reviewer_type', 'reviewer_id', 'reviewer_note',
+        'clarification_message', 'clarification_due_at', 'visible_response',
         'approved_at', 'rejected_at', 'expires_at',
     ];
 
@@ -36,9 +38,16 @@ class DealApprovalRequest extends Model
         'approved_at'          => 'datetime',
         'rejected_at'          => 'datetime',
         'expires_at'           => 'datetime',
+        'clarification_due_at' => 'datetime',
     ];
 
-    public function isPending(): bool  { return $this->status === 'pending'; }
-    public function isApproved(): bool { return $this->status === 'approved'; }
-    public function isRejected(): bool { return $this->status === 'rejected'; }
+    public function isPending(): bool              { return $this->status === 'pending'; }
+    public function isApproved(): bool             { return $this->status === 'approved'; }
+    public function isRejected(): bool             { return $this->status === 'rejected'; }
+    public function isClarificationRequested(): bool { return $this->status === 'clarification_requested'; }
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class, 'deal_id');
+    }
 }

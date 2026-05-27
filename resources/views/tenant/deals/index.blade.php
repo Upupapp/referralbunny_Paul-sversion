@@ -75,25 +75,15 @@
         </div>
     </template>
 
-    {{-- Tab navigation: Active Deals / Deal Archive --}}
-    <div class="flex items-center gap-2">
-        <button @click="activeTab = 'deals'"
-                :class="activeTab === 'deals' ? 'bg-[#7B61FF] text-white shadow-sm' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'"
-                class="px-4 py-2 rounded-xl text-sm font-semibold transition-all">
-            Active Deals
-            <span class="ml-1 text-[11px] opacity-70" x-text="'(' + leads.length + ')'"></span>
-        </button>
-        <button @click="activeTab = 'archive'"
-                :class="activeTab === 'archive' ? 'bg-red-500 text-white shadow-sm' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'"
-                class="px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"/></svg>
-            Deal Archive
-            <span x-show="archivedLeads.length > 0"
-                  class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full"
-                  :class="activeTab === 'archive' ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'"
-                  x-text="archivedLeads.length"></span>
-        </button>
-    </div>
+    {{-- Subtab navigation --}}
+    @php
+    $subtabCounts = [
+        'expired'         => \App\Models\Lead::where('tenant_id', $tenant->id)->where('status','expired')->whereNull('deleted_at')->count(),
+        'pending_archive' => \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type','deal_archive')->where('status','pending')->count(),
+        'deleted_archived'=> \App\Models\Lead::withTrashed()->where('tenant_id', $tenant->id)->where(fn($q) => $q->where('status','archived')->orWhereNotNull('deleted_at'))->count(),
+    ];
+    @endphp
+    @include('tenant.deals._subtabs')
 
     {{-- Filter bar --}}
     <div class="card space-y-3" x-show="activeTab === 'deals'">

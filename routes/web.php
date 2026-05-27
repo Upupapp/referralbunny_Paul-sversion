@@ -302,6 +302,14 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/extension-requests',              [\App\Http\Controllers\BulkDealExtensionWebController::class, 'adminIndex'])->name('extension-requests.index');
     Route::get('/extension-requests/{batchId}',    [\App\Http\Controllers\BulkDealExtensionWebController::class, 'adminShow'])->name('extension-requests.show');
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
+    // ── Deal Lifecycle subtabs (must be before deals/{dealId} to avoid conflict) ──
+    Route::get('/deals/expired',                          [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'expired'])->name('deals.expired');
+    Route::get('/deals/archive-requests',                 [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'archiveRequests'])->name('deals.archive-requests');
+    Route::get('/deals/archive-requests/{requestId}',     [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'archiveRequestShow'])->name('deals.archive-requests.show');
+    Route::post('/deals/archive-requests/{requestId}/clarify', [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'clarifyArchiveRequest'])->name('deals.archive-requests.clarify');
+    Route::get('/deals/deleted-archived',                 [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'deletedArchived'])->name('deals.deleted-archived');
+    Route::post('/deals/{dealId}/restore',                [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'restoreDeal'])->name('deals.restore');
+    Route::delete('/deals/{dealId}/soft-delete',          [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'softDeleteDeal'])->name('deals.soft-delete');
     Route::get('/deals/{dealId}',                      [TenantAdminController::class, 'dealShow'])->name('deals.show');
     Route::patch('/deals/{dealId}/splits/{splitId}',   [\App\Http\Controllers\ResellerDealController::class, 'adminUpdateCoReferrerSplit'])->name('deals.splits.update');
     Route::delete('/deals/{dealId}/splits/{splitId}',  [\App\Http\Controllers\ResellerDealController::class, 'adminRemoveCoReferrer'])->name('deals.splits.remove');
