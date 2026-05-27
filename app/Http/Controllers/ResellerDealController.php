@@ -1284,7 +1284,7 @@ class ResellerDealController extends Controller
             ->where('status', 'pending')
             ->firstOrFail();
 
-        $lead = Lead::find($approval->deal_id);
+        $lead = Lead::where('id', $approval->deal_id)->where('tenant_id', $tenantId)->first();
 
         // Resolve reviewer identity OUTSIDE the transaction — mirrors rejectRequest pattern
         $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
@@ -1333,9 +1333,6 @@ class ResellerDealController extends Controller
                     'archive_reason' => $archiveReason,
                     'archived_at'    => now(),
                 ]);
-                \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
-                \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-                \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
 
                 app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
                     'category'   => 'archive',
@@ -1351,6 +1348,10 @@ class ResellerDealController extends Controller
             Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
         }
+
+        \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
         if ($approval->type === 'deal_stage_move' && $lead && $lead->tenant_id === 'lgu-ids') {
@@ -1422,7 +1423,7 @@ class ResellerDealController extends Controller
             ->where('status', 'pending')
             ->firstOrFail();
 
-        $lead = Lead::find($approval->deal_id);
+        $lead = Lead::where('id', $approval->deal_id)->where('tenant_id', $tenantId)->first();
 
         // SWEEP — capture reviewer identity
         $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();

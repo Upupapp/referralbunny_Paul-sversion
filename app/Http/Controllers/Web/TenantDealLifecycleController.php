@@ -182,6 +182,7 @@ class TenantDealLifecycleController extends Controller
             ->where('tenant_id', $tenantId)
             ->where('type', 'deal_archive')
             ->where('status', 'pending')
+            ->with('lead')
             ->firstOrFail();
 
         $archiveRequest->update([
