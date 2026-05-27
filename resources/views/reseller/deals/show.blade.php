@@ -31,7 +31,9 @@
     $primarySplits       = collect($splits)->where('role', 'primary')->values();
     $secondarySplits     = collect($splits)->where('role', 'secondary')->values();
     $showImplicitPrimary = $primarySplits->isEmpty();
-    $canEditSplits       = $showImplicitPrimary
+    $isImplicitPrimary   = $primarySplits->isEmpty()
+        && strtolower($reseller->name ?? '') === strtolower($lead->reseller_name ?? '');
+    $canEditSplits       = $isImplicitPrimary
         || $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
 @endphp
 
@@ -524,11 +526,11 @@ window.__rsDeal = {
 
         {{-- ── Primary Referrer(s) ── --}}
         @php
-            // If no explicit primary split record exists, show the current referrer
+            // If no explicit primary split record exists, show the primary referrer row
             // with their implicit share (100% minus all co-referrer percentages).
-            $coReferrerPctTotal  = $secondarySplits->sum('percentage');
-            $implicitPrimaryPct  = max(0.0, 100.0 - (float) $coReferrerPctTotal);
-            $showImplicitPrimary = $primarySplits->isEmpty();
+            $coReferrerPctTotal = $secondarySplits->sum('percentage');
+            $implicitPrimaryPct = max(0.0, 100.0 - (float) $coReferrerPctTotal);
+            // $showImplicitPrimary / $isImplicitPrimary / $canEditSplits already set in top @php block.
         @endphp
         @if($primarySplits->count() || $showImplicitPrimary)
         <div class="divide-y divide-gray-50">
@@ -570,13 +572,15 @@ window.__rsDeal = {
             <div class="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
-                        {{ strtoupper(substr($reseller->name ?? '?', 0, 2)) }}
+                        {{ strtoupper(substr($lead->reseller_name ?? '?', 0, 2)) }}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $reseller->name }}</p>
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $lead->reseller_name ?? '—' }}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Primary Referrer</span>
+                            @if($isImplicitPrimary)
                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">You</span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -596,10 +600,7 @@ window.__rsDeal = {
         {{-- ── Co-Referrers ── --}}
         @if($secondarySplits->count())
         @php
-            // Primary referrer can edit/remove co-referrer splits; others cannot.
-            // Also true when there's no explicit primary split record (implicit primary = current reseller).
-            $canEditSplits = $showImplicitPrimary
-                || $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
+            // $canEditSplits already set in top @php block (uses $isImplicitPrimary, not $showImplicitPrimary).
         @endphp
         @if($primarySplits->count())
         <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
