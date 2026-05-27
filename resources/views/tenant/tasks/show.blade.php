@@ -204,6 +204,29 @@ $actIcons = [
     {{-- ══ LEFT: MAIN CONTENT ════════════════════════════════════════════ --}}
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
 
+        {{-- ── Linked Deal ───────────────────────────────────────────────── --}}
+        @if($linkedDealUrl)
+        <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <div style="width:30px;height:30px;border-radius:8px;background:#ede9fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <svg style="width:14px;height:14px;color:#7B61FF" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div style="min-width:0">
+                        <p style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;margin:0 0 2px">Linked Deal</p>
+                        <p style="font-size:14px;font-weight:700;color:#1E1B4B;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $linkedDealName ?? 'View Deal' }}</p>
+                    </div>
+                </div>
+                <a href="{{ $linkedDealUrl }}"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;font-size:12px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(123,97,255,.22);flex-shrink:0"
+                   onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                    <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    View Deal
+                </a>
+            </div>
+        </div>
+        @endif
+
         {{-- ── Request Details (request-form tasks only) ────────────────── --}}
         @if($isRequestTask && ($source || $task->requestor_email || $task->requestor_name))
         <div class="card">
@@ -508,8 +531,20 @@ $actIcons = [
                 @endif
                 <div>
                     <p style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:0 0 2px">Source</p>
-                    <p style="font-size:12px;color:#374151;font-weight:500;margin:0">{{ $isRequestTask ? 'Request Form' : 'Manual Task' }}</p>
+                    <p style="font-size:12px;color:#374151;font-weight:500;margin:0">{{ $isRequestTask ? 'Request Form' : ($task->source_type === 'lgu_ids_deal_note_task' ? 'Deal Note Reminder' : 'Manual Task') }}</p>
                 </div>
+                @if($linkedDealUrl)
+                <div>
+                    <p style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">Linked Deal</p>
+                    <a href="{{ $linkedDealUrl }}"
+                       style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#7B61FF;font-weight:600;text-decoration:none;word-break:break-word"
+                       onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"
+                       aria-label="View deal {{ $linkedDealName }}">
+                        {{ $linkedDealName ?? 'View Deal' }}
+                        <svg style="width:10px;height:10px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -551,6 +586,15 @@ $actIcons = [
                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     View Request Form
+                </a>
+                @endif
+
+                @if($linkedDealUrl)
+                <a href="{{ $linkedDealUrl }}"
+                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#7B61FF;font-size:12px;font-weight:600;text-decoration:none"
+                   onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f5f3ff'">
+                    <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    View Deal
                 </a>
                 @endif
 
