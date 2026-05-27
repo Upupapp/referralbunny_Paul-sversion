@@ -1519,12 +1519,15 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
-        // Notify primary referrer — their effective commission changes when a co-referrer's share is updated
+        // Notify primary referrer — their effective commission changes when a co-referrer's share is updated.
+        // Skip if the actor IS the primary referrer (they made the change; no need to notify themselves).
         try {
             $primaryReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
                 ->first();
-            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($split->reseller_name ?? '')) {
+            if ($primaryReseller
+                && strtolower($primaryReseller->name ?? '') !== strtolower($split->reseller_name ?? '')
+                && strtolower($primaryReseller->name ?? '') !== strtolower($actorName ?? '')) {
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   (string) $primaryReseller->id,
                     tenantId:     $tenantId,
