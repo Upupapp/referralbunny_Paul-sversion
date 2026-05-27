@@ -194,7 +194,7 @@ class SearchController extends Controller
 
     // ── Action helpers ────────────────────────────────────────
 
-    private function suspendTenant(string $tenantId, string $reason, int $userId): array
+    private function suspendTenant(string $tenantId, string $reason, string|int $userId): array
     {
         $sub = Subscription::where('tenant_id', $tenantId)->where('status', 'active')->first();
         if (!$sub) return ['success' => false, 'message' => 'No active subscription found.'];
@@ -204,14 +204,14 @@ class SearchController extends Controller
         return ['success' => true, 'message' => 'Tenant suspended.'];
     }
 
-    private function activateTenant(string $tenantId, string $reason, int $userId): array
+    private function activateTenant(string $tenantId, string $reason, string|int $userId): array
     {
         Tenant::where('id', $tenantId)->update(['status' => 'active']);
         Subscription::where('tenant_id', $tenantId)->where('status', 'suspended')->update(['status' => 'active']);
         return ['success' => true, 'message' => 'Tenant activated.'];
     }
 
-    private function markInvoicePaid(string $invoiceId, int $userId): array
+    private function markInvoicePaid(string $invoiceId, string|int $userId): array
     {
         $invoice = Invoice::find($invoiceId);
         if (!$invoice) return ['success' => false, 'message' => 'Invoice not found.'];
@@ -219,7 +219,7 @@ class SearchController extends Controller
         return ['success' => true, 'message' => 'Invoice marked as paid.'];
     }
 
-    private function waiveInvoice(string $invoiceId, string $reason, int $userId): array
+    private function waiveInvoice(string $invoiceId, string $reason, string|int $userId): array
     {
         $invoice = Invoice::find($invoiceId);
         if (!$invoice) return ['success' => false, 'message' => 'Invoice not found.'];
@@ -227,13 +227,13 @@ class SearchController extends Controller
         return ['success' => true, 'message' => 'Invoice waived.'];
     }
 
-    private function disablePromo(string $promoId, int $userId): array
+    private function disablePromo(string $promoId, string|int $userId): array
     {
         PromoCode::where('id', $promoId)->update(['status' => 'inactive']);
         return ['success' => true, 'message' => 'Promo code disabled.'];
     }
 
-    private function approveRequest(string $approvalId, int $userId): array
+    private function approveRequest(string $approvalId, string|int $userId): array
     {
         $approval = ApprovalRequest::find($approvalId);
         if (!$approval || !$approval->isPending()) return ['success' => false, 'message' => 'Approval not found or not pending.'];
@@ -242,7 +242,7 @@ class SearchController extends Controller
         return ['success' => true, 'message' => 'Approved.'];
     }
 
-    private function rejectRequest(string $approvalId, string $reason, int $userId): array
+    private function rejectRequest(string $approvalId, string $reason, string|int $userId): array
     {
         $approval = ApprovalRequest::find($approvalId);
         if (!$approval || !$approval->isPending()) return ['success' => false, 'message' => 'Approval not found or not pending.'];
