@@ -1324,6 +1324,35 @@ window.__rsDeal = {
 
 </div>
 
+{{-- ── Remove Co-Referrer Confirmation Modal ───────────────────────────────── --}}
+<div id="rb-remove-coref-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(15,15,35,.55);z-index:9999;align-items:center;justify-content:center;padding:16px"
+     role="dialog" aria-modal="true">
+    <div style="background:white;border-radius:20px;max-width:400px;width:100%;padding:28px;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center">
+        <div style="width:48px;height:48px;border-radius:14px;background:#dbeafe;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+            <svg style="width:22px;height:22px;color:#2563eb" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#2563eb;margin:0 0 6px">Remove Co-Referrer</p>
+        <h3 id="rb-remove-coref-name" style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0 0 8px"></h3>
+        <p style="font-size:13px;color:#9ca3af;margin:0 0 22px;line-height:1.6">
+            This co-referrer will be removed from this deal. Their commission share will be released back to you.
+        </p>
+        <div style="display:flex;gap:10px">
+            <button id="rb-remove-coref-cancel"
+                    onclick="document.getElementById('rb-remove-coref-modal').style.display='none'"
+                    style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                Cancel
+            </button>
+            <button id="rb-remove-coref-confirm"
+                    style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
+                Yes, Remove
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- ── Remove Partner Confirmation Modal ──────────────────────────────────── --}}
 <div id="rb-remove-partner-modal"
      style="display:none;position:fixed;inset:0;background:rgba(15,15,35,.55);z-index:9999;align-items:center;justify-content:center;padding:16px"
@@ -1395,27 +1424,45 @@ function rsDealData() {
         finally { ctx.saving = false; }
     };
 
-    // Global helper for co-referrer removal (used from Remove button on each row)
-    window.__removeCoRef = async function(url, name, csrf) {
+    // Global helper for co-referrer removal — shows confirmation modal instead of confirm()
+    window.__removeCoRef = function(url, name, csrf) {
         if (!url) return;
-        if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
-        try {
-            const r = await fetch(url, {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            });
-            const d = await r.json().catch(() => ({}));
-            if (r.ok) {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: (name || 'Co-referrer') + ' removed.' } }));
-                setTimeout(() => window.location.reload(), 700);
-            } else {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: d.error || 'Could not remove co-referrer. Please try again.' } }));
+        _rbRemoveCoRefUrl  = url;
+        _rbRemoveCoRefCsrf = csrf;
+        document.getElementById('rb-remove-coref-name').textContent = name || 'this co-referrer';
+        document.getElementById('rb-remove-coref-modal').style.display = 'flex';
+
+        document.getElementById('rb-remove-coref-confirm').onclick = async function() {
+            this.textContent = 'Removing…';
+            this.disabled    = true;
+            try {
+                const r = await fetch(_rbRemoveCoRefUrl, {
+                    method:      'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-CSRF-TOKEN':     _rbRemoveCoRefCsrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept':           'application/json',
+                    },
+                });
+                const d = await r.json().catch(() => ({}));
+                document.getElementById('rb-remove-coref-modal').style.display = 'none';
+                if (r.ok) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: d.removed_name ? d.removed_name + ' removed as co-referrer.' : 'Co-referrer removed.' } }));
+                    setTimeout(() => window.location.reload(), 700);
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: d.error || 'Could not remove co-referrer. Please try again.' } }));
+                    this.textContent = 'Yes, Remove';
+                    this.disabled    = false;
+                }
+            } catch(e) {
+                document.getElementById('rb-remove-coref-modal').style.display = 'none';
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
             }
-        } catch(e) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
-        }
+        };
     };
+    let _rbRemoveCoRefUrl  = null;
+    let _rbRemoveCoRefCsrf = null;
 
     return {
         showAddNote:      false,
@@ -1707,9 +1754,11 @@ function rbRemovePartner(splitId, name) {
     };
 }
 
-// Close modal on Escape
+// Close modals on Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('rb-remove-partner-modal').style.display = 'none';
+    if (e.key !== 'Escape') return;
+    document.getElementById('rb-remove-partner-modal').style.display = 'none';
+    document.getElementById('rb-remove-coref-modal').style.display   = 'none';
 });
 </script>
 @endpush
