@@ -257,8 +257,14 @@ window.__rsDeal = {
                 $coRefCommission     = $coRefSplitsForPanel->sum(fn($s) => round($remainingPool * (float)($s->percentage ?? 0) / 100, 2));
                 $hasCoRefs           = $coRefSplitsForPanel->count() > 0;
 
+                // For the bar segments, exclude the viewer's own co-referrer share from the
+                // blue segment so it doesn't overlap with the teal "My Share" segment.
+                $coRefCommissionForBar = $coRefSplitsForPanel
+                    ->filter(fn($s) => strtolower($s->reseller_name ?? '') !== strtolower($reseller->name ?? ''))
+                    ->sum(fn($s) => round($remainingPool * (float)($s->percentage ?? 0) / 100, 2));
+
                 $poolPct    = $commissionPool > 0 ? min(100, round(($partnersCommission / $commissionPool) * 100)) : 0;
-                $coRefPct   = $commissionPool > 0 ? min(100 - $poolPct, round(($coRefCommission / $commissionPool) * 100)) : 0;
+                $coRefPct   = $commissionPool > 0 ? min(100 - $poolPct, round(($coRefCommissionForBar / $commissionPool) * 100)) : 0;
                 $myCommPct  = $commissionPool > 0 ? min(100 - $poolPct - $coRefPct, round(($myCommission / $commissionPool) * 100)) : 0;
             @endphp
             <div class="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden flex mb-3">
@@ -486,8 +492,6 @@ window.__rsDeal = {
     {{-- Referrers & Partners ─────────────────────────────────── --}}
     @php
         $canRemovePartner = !in_array($lead->commission_status ?? '', ['locked', 'paid']);
-        $primarySplits    = collect($splits)->where('role', 'primary')->values();
-        $secondarySplits  = collect($splits)->where('role', 'secondary')->values();
         $hasAnyone        = $primarySplits->count() || $secondarySplits->count() || count($partnerSplits);
     @endphp
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -599,9 +603,6 @@ window.__rsDeal = {
 
         {{-- ── Co-Referrers ── --}}
         @if($secondarySplits->count())
-        @php
-            // $canEditSplits already set in top @php block (uses $isImplicitPrimary, not $showImplicitPrimary).
-        @endphp
         @if($primarySplits->count())
         <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Co-Referrers</p>
@@ -1292,14 +1293,17 @@ window.__rsDeal = {
     </div>
 
     {{-- Add Co-Referrer modal --}}
-    <div x-show="showAddReferrer" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+    <div x-show="showAddReferrer" x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+         role="dialog" aria-modal="true"
+         @keydown.escape.window="showAddReferrer = false; refName=''; refSplit=''; refError=''">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div>
                     <h3 class="font-bold text-[#1E1B4B]">Add Co-Referrer</h3>
                     <p class="text-xs text-gray-400 mt-0.5">An invite or in-app notification will be sent.</p>
                 </div>
-                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" class="text-gray-400 hover:text-gray-600">
+                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" aria-label="Close" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1425,7 +1429,7 @@ function rsDealData() {
             const r = await fetch(url, {
                 method: 'PATCH',
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({ percentage: parseFloat(pctVal) }),
             });
             const d = await r.json().catch(() => ({}));

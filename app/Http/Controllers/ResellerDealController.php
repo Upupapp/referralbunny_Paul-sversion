@@ -1519,6 +1519,27 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Notify primary referrer — their effective commission changes when a co-referrer's share is updated
+        try {
+            $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
+                ->first();
+            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($split->reseller_name ?? '')) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $primaryReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Co-referrer share updated on your deal',
+                    body:         $actorName . ' updated ' . $split->reseller_name . '\'s commission share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $splitId . ':primary_share_updated:' . now()->format('YmdH'),
+                    metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'co_referrer' => $split->reseller_name],
+                );
+            }
+        } catch (\Throwable) {}
+
         // Activity log
         try {
             app(DealActivityService::class)->record($lead, 'Co-referrer share updated by ' . $actorRole, 'commission', [
