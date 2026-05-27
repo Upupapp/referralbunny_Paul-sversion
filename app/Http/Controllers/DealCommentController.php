@@ -47,6 +47,9 @@ class DealCommentController extends Controller
 
         [, $role] = $this->resolveActor();
 
+        $limit  = min((int) $request->get('limit', 50), 100);
+        $before = $request->get('before_id');
+
         $query = DealComment::with(['attachments', 'mentions'])
             ->where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
@@ -59,9 +62,22 @@ class DealCommentController extends Controller
             $query->where('visibility', 'shared');
         }
 
-        $comments = $query->get()->map(fn(DealComment $c) => $this->formatComment($c, $role, $dealId));
+        // Cursor pagination — newest first; caller passes before_id to page backward
+        if ($before) {
+            $pivot = DealComment::where('id', $before)->where('tenant_id', $tenantId)->value('created_at');
+            if ($pivot) {
+                $query->where('created_at', '<', $pivot);
+            }
+        }
 
-        return response()->json($comments);
+        $comments = $query->limit($limit)->get();
+
+        // Batch-resolve author names — one query per role type instead of two per comment
+        $nameCache = $this->batchResolveNames($comments);
+
+        return response()->json(
+            $comments->map(fn(DealComment $c) => $this->formatComment($c, $role, $dealId, $nameCache))
+        );
     }
 
     // ── POST /api/deals/{dealId}/comments ─────────────────────────────────
@@ -325,22 +341,26 @@ class DealCommentController extends Controller
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private function formatComment(DealComment $c, string $viewerRole, string $dealId): array
+    private function formatComment(DealComment $c, string $viewerRole, string $dealId, array $nameCache = []): array
     {
-        $authorName = 'User';
-        try {
-            $authorName = match ($c->author_role) {
-                'referrer' => DB::table('resellers')->where('id', $c->author_user_id)->value('name') ?? 'Referrer',
-                'partner'  => trim(
-                    (DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
-                    (DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
-                ),
-                default    => trim(
-                                (DB::table('tenant_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
-                                (DB::table('tenant_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
-                            ) ?: (DB::table('users')->where('id', $c->author_user_id)->value('name') ?? 'Admin'),
-            };
-        } catch (\Throwable) {}
+        if (array_key_exists($c->author_user_id, $nameCache)) {
+            $authorName = $nameCache[$c->author_user_id] ?: 'User';
+        } else {
+            $authorName = 'User';
+            try {
+                $authorName = match ($c->author_role) {
+                    'referrer' => DB::table('resellers')->where('id', $c->author_user_id)->value('name') ?? 'Referrer',
+                    'partner'  => trim(
+                        (DB::table('partner_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
+                        (DB::table('partner_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
+                    ),
+                    default    => trim(
+                                    (DB::table('tenant_users')->where('id', $c->author_user_id)->value('first_name') ?? '') . ' ' .
+                                    (DB::table('tenant_users')->where('id', $c->author_user_id)->value('last_name')  ?? '')
+                                ) ?: (DB::table('users')->where('id', $c->author_user_id)->value('name') ?? 'Admin'),
+                };
+            } catch (\Throwable) {}
+        }
 
         // Format attachments — safe when relation not loaded (missing table)
         $attachments = [];
@@ -385,6 +405,55 @@ class DealCommentController extends Controller
             'attachments'       => $c->isDeleted() ? [] : $attachments,
             'mentions'          => $mentions,
         ];
+    }
+
+    private function batchResolveNames(\Illuminate\Support\Collection $comments): array
+    {
+        $cache       = [];
+        $referrerIds = [];
+        $partnerIds  = [];
+        $defaultIds  = [];
+
+        foreach ($comments as $c) {
+            $id = $c->author_user_id;
+            if (!$id) continue;
+            match ($c->author_role) {
+                'referrer' => $referrerIds[] = $id,
+                'partner'  => $partnerIds[]  = $id,
+                default    => $defaultIds[]  = $id,
+            };
+        }
+
+        if ($referrerIds) {
+            DB::table('resellers')->whereIn('id', array_unique($referrerIds))
+                ->pluck('name', 'id')
+                ->each(fn($n, $id) => $cache[$id] = $n ?? 'Referrer');
+        }
+
+        if ($partnerIds) {
+            DB::table('partner_users')->whereIn('id', array_unique($partnerIds))
+                ->selectRaw("id, TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
+                ->pluck('full_name', 'id')
+                ->each(fn($n, $id) => $cache[$id] = trim($n) ?: 'Partner');
+        }
+
+        if ($defaultIds) {
+            $ids   = array_unique($defaultIds);
+            $tuMap = DB::table('tenant_users')->whereIn('id', $ids)
+                ->selectRaw("id, TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) as full_name")
+                ->pluck('full_name', 'id');
+
+            $missing = array_values(array_filter($ids, fn($id) => !trim($tuMap[$id] ?? '')));
+            $adminMap = $missing
+                ? DB::table('users')->whereIn('id', $missing)->pluck('name', 'id')
+                : collect();
+
+            foreach ($ids as $id) {
+                $cache[$id] = trim($tuMap[$id] ?? '') ?: ($adminMap[$id] ?? 'Admin');
+            }
+        }
+
+        return $cache;
     }
 
     private function validateMentionTarget(string $type, string $id, string $tenantId, string $dealId): bool

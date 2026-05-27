@@ -1526,7 +1526,7 @@
             <div class="lg:col-span-2 space-y-4">
 
                 {{-- Notes (rich: @mentions, file attachments, visibility) --}}
-                <div x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}')"
+                <div x-data="dealComments('{{ $dealId }}', '{{ $tenant->id }}', '{{ $viewerUserId ?? '' }}', '{{ $viewerRole ?? 'tenant_admin' }}')"
                      x-init="loadComments()"
                      class="card space-y-4">
 
@@ -1639,7 +1639,7 @@
                                 <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 text-xs text-gray-500 font-medium transition-colors"
                                        title="Attach PDFs, documents, spreadsheets, or images (max 10 MB, 5 files)">
                                     <input type="file" multiple class="sr-only" x-ref="fileInput" @change="handleFiles($event)"
-                                           accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                                           accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                                     Attach files
                                     <span x-show="selectedFiles.length > 0" class="px-1.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700" x-text="selectedFiles.length"></span>
@@ -1655,11 +1655,11 @@
                     </div>
 
                     {{-- Notes list --}}
-                    <div x-show="loadingComments" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
+                    <div x-show="loadingComments" style="display:none" class="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         Loading notes…
                     </div>
-                    <div x-show="!loadingComments && comments.length === 0" class="flex flex-col items-center text-center py-8 px-4">
+                    <div x-show="!loadingComments && comments.length === 0" style="display:none" class="flex flex-col items-center text-center py-8 px-4">
                         <img src="/images/mascots/r-bunny-rocket.webp" alt="" aria-hidden="true"
                              class="w-16 h-16 object-contain mb-3 opacity-80">
                         <p class="text-sm font-semibold text-[#1E1B4B] mb-1">No notes yet!</p>
@@ -1705,7 +1705,7 @@
                                                     </a>
                                                 </template>
                                             </div>
-                                            <div class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
+                                            <div x-show="canEditComment(c)" class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
                                                 <button @click="startEdit(c)" class="text-[11px] text-gray-400 hover:text-[#7B61FF]">Edit</button>
                                                 <button @click="deleteComment(c)" class="text-[11px] text-gray-400 hover:text-red-500">Delete</button>
                                             </div>
@@ -2450,7 +2450,7 @@ function dealActivityHistory(initialHistory) {
     };
 }
 
-function dealComments(dealId, tenantId) {
+function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
     return {
         // â"€â"€ State â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         comments: [], loadingComments: true, posting: false,
@@ -2478,6 +2478,11 @@ function dealComments(dealId, tenantId) {
         // â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         csrf() {
             return (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        },
+
+        canEditComment(c) {
+            if (['tenant_admin', 'super_admin'].includes(viewerRole)) return true;
+            return String(c.author_user_id) === String(viewerUserId);
         },
 
         // Escape HTML then make URLs clickable — safe because we escape first
@@ -2590,14 +2595,19 @@ function dealComments(dealId, tenantId) {
                     },
                     body: JSON.stringify({ body: this.editBody }),
                 });
-                const data = await res.json();
-                if (data?.id) {
+                let data = null;
+                try { data = await res.json(); } catch {}
+                if (res.ok && data?.id) {
                     const idx = this.comments.findIndex(x => x.id === c.id);
                     if (idx !== -1) this.comments.splice(idx, 1, data);
                     this.editingId = null;
                     this.$dispatch('show-toast', { type: 'success', message: 'Note updated.' });
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data?.error || 'Could not update note.' });
                 }
-            } catch(e) {}
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
             this.posting = false;
         },
 
@@ -2605,15 +2615,23 @@ function dealComments(dealId, tenantId) {
         async deleteComment(c) {
             if (!confirm('Delete this note?')) return;
             try {
-                await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
+                const res = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
                     method: 'DELETE',
                     credentials: 'same-origin',
                     headers: { 'X-CSRF-TOKEN': this.csrf(), 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                const idx = this.comments.findIndex(x => x.id === c.id);
-                if (idx !== -1) this.comments[idx].is_deleted = true;
-                this.$dispatch('show-toast', { type: 'success', message: 'Note deleted.' });
-            } catch(e) {}
+                if (res.ok) {
+                    const idx = this.comments.findIndex(x => x.id === c.id);
+                    if (idx !== -1) this.comments[idx].is_deleted = true;
+                    this.$dispatch('show-toast', { type: 'success', message: 'Note deleted.' });
+                } else {
+                    let msg = 'Could not delete note.';
+                    try { const d = await res.json(); msg = d?.error || msg; } catch {}
+                    this.$dispatch('show-toast', { type: 'error', message: msg });
+                }
+            } catch(e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
+            }
         },
 
         // â"€â"€ @Mention picker â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -2673,7 +2691,7 @@ function dealComments(dealId, tenantId) {
         handleFiles(e) {
             const files   = Array.from(e.target.files || []);
             const maxSize = 10 * 1024 * 1024;
-            const allowed = ['jpg','jpeg','png','webp','pdf','doc','docx','xls','xlsx','csv','txt'];
+            const allowed = ['jpg','jpeg','png','webp','gif','pdf','doc','docx','xls','xlsx','csv','txt'];
 
             for (const f of files) {
                 if (this.selectedFiles.length >= 5) {

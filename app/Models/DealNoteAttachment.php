@@ -37,6 +37,9 @@ class DealNoteAttachment extends Model
         if (in_array($mime, [
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/excel',
+            'application/x-excel',
+            'application/x-msexcel',
             'application/zip', // xlsx/docx are ZIP-based; OS may report this
             'text/csv',
         ])) return 'spreadsheet';

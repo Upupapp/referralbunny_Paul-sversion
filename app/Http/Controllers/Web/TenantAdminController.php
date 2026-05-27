@@ -271,8 +271,11 @@ class TenantAdminController extends Controller
                 ->toArray();
         } catch (\Throwable) {}
 
+        $viewerUserId = auth('web')->id() ?? auth('tenant')->id() ?? '';
+        $viewerRole   = auth('web')->check() ? 'super_admin' : 'tenant_admin';
+
         return view('tenant.deals.show', array_merge(
-            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals, 'referrers' => $referrers],
+            ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals, 'referrers' => $referrers, 'viewerUserId' => $viewerUserId, 'viewerRole' => $viewerRole],
             $this->configMeta($tenantId)
         ));
     }

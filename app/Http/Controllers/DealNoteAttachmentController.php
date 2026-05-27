@@ -8,7 +8,7 @@ use App\Models\Lead;
 use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -46,7 +46,7 @@ class DealNoteAttachmentController extends Controller
     // Web-accessible download for session-authenticated resellers and partners.
     // Opens inline in a new tab (Content-Disposition: inline).
 
-    public function downloadForWeb(Request $request, string $dealId, string $commentId, string $attachmentId): Response|JsonResponse
+    public function downloadForWeb(Request $request, string $dealId, string $commentId, string $attachmentId): StreamedResponse|JsonResponse
     {
         // Resolve tenant from session auth — TenantContext is not set on web routes
         $tenantId = $this->resolveTenantIdFromSession($request);
@@ -57,19 +57,19 @@ class DealNoteAttachmentController extends Controller
     // ── GET /api/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}
     // Authorized file download — tenant-scoped, role-enforced
 
-    public function download(Request $request, string $dealId, string $commentId, string $attachmentId): Response|JsonResponse
+    public function download(Request $request, string $dealId, string $commentId, string $attachmentId): StreamedResponse|JsonResponse
     {
         try {
             $tenantId = TenantContext::requireId();
         } catch (\Throwable) {
             abort(403, 'Tenant context required.');
         }
-        return $this->serveAttachment($tenantId, $dealId, $commentId, $attachmentId, 'attachment');
+        return $this->serveAttachment($tenantId, $dealId, $commentId, $attachmentId, 'inline');
     }
 
     // ── Shared file-serving logic ─────────────────────────────────────────────
 
-    private function serveAttachment(string $tenantId, string $dealId, string $commentId, string $attachmentId, string $disposition): Response|JsonResponse
+    private function serveAttachment(string $tenantId, string $dealId, string $commentId, string $attachmentId, string $disposition): StreamedResponse|JsonResponse
     {
         try {
             Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
@@ -108,20 +108,31 @@ class DealNoteAttachmentController extends Controller
             abort(404, 'File not found on storage.');
         }
 
+        $safe     = str_replace(['"', '\\'], '', $attachment->original_filename ?? 'download');
+        $mimeType = $attachment->mime_type ?: 'application/octet-stream';
+        $fileSize = $attachment->file_size;
+
         try {
-            $content = Storage::disk($disk)->get($path);
+            $stream = Storage::disk($disk)->readStream($path);
         } catch (\Throwable) {
             abort(500, 'Could not read file from storage.');
         }
 
-        $safe     = str_replace(['"', '\\'], '', $attachment->original_filename ?? 'download');
-        $mimeType = $attachment->mime_type ?: 'application/octet-stream';
-
-        return response($content, 200, [
-            'Content-Type'        => $mimeType,
-            'Content-Disposition' => "{$disposition}; filename=\"{$safe}\"",
-            'Content-Length'      => strlen($content),
-        ]);
+        return response()->stream(
+            function () use ($stream) {
+                if (is_resource($stream)) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }
+            },
+            200,
+            [
+                'Content-Type'        => $mimeType,
+                'Content-Disposition' => "{$disposition}; filename=\"{$safe}\"",
+                'Content-Length'      => $fileSize,
+                'Cache-Control'       => 'private, no-store',
+            ]
+        );
     }
 
     private function resolveTenantIdFromSession(Request $request): string
@@ -183,7 +194,8 @@ class DealNoteAttachmentController extends Controller
             if (!$file->isValid()) continue;
             if ($file->getSize() > self::MAX_SIZE_BYTES) continue;
 
-            $ext  = strtolower($file->getClientOriginalExtension());
+            // Strip non-alphanumeric chars from extension to prevent path traversal
+            $ext  = preg_replace('/[^a-z0-9]/', '', strtolower($file->getClientOriginalExtension()));
             $mime = $file->getMimeType() ?? 'application/octet-stream';
 
             // Extension is the primary security gate — extension must be explicitly allowed.
@@ -195,15 +207,18 @@ class DealNoteAttachmentController extends Controller
             $stored_name = Str::uuid() . '.' . $ext;
             $path        = "tenants/{$tenantId}/deals/{$dealId}/notes/{$commentId}/{$stored_name}";
 
+            $stream = fopen($file->getRealPath(), 'r');
             try {
-                Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+                Storage::disk('local')->put($path, $stream);
             } catch (\Throwable $e) {
+                if (is_resource($stream)) fclose($stream);
                 Log::warning('DealNoteAttachment disk write failed', [
                     'file'  => $file->getClientOriginalName(),
                     'error' => $e->getMessage(),
                 ]);
                 continue;
             }
+            if (is_resource($stream)) fclose($stream);
 
             try {
                 $attachment = DealNoteAttachment::create([
@@ -221,6 +236,8 @@ class DealNoteAttachmentController extends Controller
                 ]);
                 $stored[] = $attachment;
             } catch (\Throwable $e) {
+                // Orphan cleanup — remove file from disk since DB insert failed
+                try { Storage::disk('local')->delete($path); } catch (\Throwable) {}
                 Log::warning('DealNoteAttachment DB insert failed', [
                     'file'  => $file->getClientOriginalName(),
                     'error' => $e->getMessage(),
