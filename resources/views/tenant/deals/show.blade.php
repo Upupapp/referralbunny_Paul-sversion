@@ -2507,7 +2507,7 @@ function dealComments(dealId, tenantId) {
 
         // â"€â"€ Post note â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         async postComment() {
-            // â‘  Hard duplicate guard â€" must be the very first check
+            // â'  Hard duplicate guard â€" must be the very first check
             if (this.posting) return;
             if (!this.newBody.trim() && this.selectedFiles.length === 0) return;
 
@@ -2542,25 +2542,25 @@ function dealComments(dealId, tenantId) {
                 } else if (!res.ok) {
                     this.commentError = data?.error || 'Unable to save note. Please try again.';
                 } else if (data?.id) {
-                    // â‘¡ Prevent duplicate in list â€" only add if not already present
+                    // â'¡ Prevent duplicate in list â€" only add if not already present
                     if (!this.comments.find(c => c.id === data.id)) {
                         this.comments.unshift(data);
                     }
-                    // â‘¢ Clear form
+                    // â'¢ Clear form
                     this.newBody       = '';
                     this.mentions      = [];
                     this.selectedFiles = [];
                     this.mentionOpen   = false;
                     if (this.$refs.fileInput) this.$refs.fileInput.value = '';
-                    // â‘£ Rotate idempotency key for next note
+                    // â'£ Rotate idempotency key for next note
                     this.clientRequestId = crypto.randomUUID ? crypto.randomUUID()
                         : (Date.now().toString(36) + Math.random().toString(36));
                     // ④ Always show inline success banner; use warning toast if files were dropped
                     this.noteSaved = true;
                     setTimeout(() => { this.noteSaved = false; }, 4000);
-                    this.$dispatch(‘show-toast’, {
-                        type:    data.attachment_warning ? ‘warning’ : ‘success’,
-                        message: data.attachment_warning || ‘Note saved.’,
+                    this.$dispatch('show-toast', {
+                        type:    data.attachment_warning ? 'warning' : 'success',
+                        message: data.attachment_warning || 'Note saved.',
                     });
                 } else {
                     this.commentError = data?.error || 'Unable to save note. Please try again.';

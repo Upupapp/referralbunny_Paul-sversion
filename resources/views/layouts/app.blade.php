@@ -733,6 +733,7 @@ function notifPanel() {
 function globalSearch(searchBaseUrl, tenantId) {
     searchBaseUrl = searchBaseUrl || '/platform/search';
     tenantId      = tenantId      || '';
+    const hdrs    = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
     return {
         open: false, query: '', results: [], total: 0, loading: false,
         recent: [], command: null, activeIndex: -1, searchError: false,

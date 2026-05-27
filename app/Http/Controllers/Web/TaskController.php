@@ -998,11 +998,28 @@ class TaskController extends Controller
             $resolvedRequesterEmail = null;
         }
 
+        // Resolve linked deal for deal_note_reminder and any task with a lead taskable
+        $linkedDealId   = null;
+        $linkedDealName = null;
+        $linkedDealUrl  = null;
+        if ($task->taskable_type === 'lead' && $task->taskable_id) {
+            $linkedDealId   = $task->taskable_id;
+            $linkedDealName = $task->metadata['deal_name'] ?? null;
+            if (!$linkedDealName) {
+                $linkedDealName = DB::table('leads')
+                    ->where('id', $linkedDealId)
+                    ->where('tenant_id', $tenantId)
+                    ->value('name');
+            }
+            $linkedDealUrl = "/tenant/{$tenant->id}/deals/{$linkedDealId}";
+        }
+
         return view('tenant.tasks.show', compact(
             'tenant', 'task', 'source', 'canComplete', 'completionEmailEnabled',
             'actorId', 'actorName', 'actorType', 'assigneeName', 'assigneeRole',
             'canAssignToSelf', 'isCurrentAssignee', 'isAdmin',
-            'resolvedRequesterEmail', 'resolvedRequesterName'
+            'resolvedRequesterEmail', 'resolvedRequesterName',
+            'linkedDealId', 'linkedDealName', 'linkedDealUrl'
         ));
     }
 
