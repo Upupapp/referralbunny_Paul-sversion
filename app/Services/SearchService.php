@@ -192,7 +192,7 @@ class SearchService
 
     // ── Recent & Saved Searches ───────────────────────────────
 
-    public function logSearch(int $userId, string $query, int $resultCount): void
+    public function logSearch(string|int $userId, string $query, int $resultCount): void
     {
         try {
             RecentSearch::create([
@@ -215,7 +215,7 @@ class SearchService
         }
     }
 
-    public function getRecent(int $userId): array
+    public function getRecent(string|int $userId): array
     {
         try {
             return RecentSearch::where('user_id', $userId)
@@ -228,7 +228,7 @@ class SearchService
         }
     }
 
-    public function saveSearch(int $userId, string $name, string $query, array $filters, bool $pinned = false): SavedSearch
+    public function saveSearch(string|int $userId, string $name, string $query, array $filters, bool $pinned = false): SavedSearch
     {
         // May throw if saved_searches table does not exist on this deployment;
         // the controller wraps this in a try/catch and returns a 500 with context.
@@ -241,7 +241,7 @@ class SearchService
         ]);
     }
 
-    public function getSavedSearches(int $userId): array
+    public function getSavedSearches(string|int $userId): array
     {
         try {
             return SavedSearch::where('user_id', $userId)
@@ -257,7 +257,7 @@ class SearchService
 
     // ── Favorites ─────────────────────────────────────────────
 
-    public function addFavorite(int $userId, string $entityType, string $entityId, ?string $label, ?string $url): Favorite
+    public function addFavorite(string|int $userId, string $entityType, string $entityId, ?string $label, ?string $url): Favorite
     {
         return Favorite::firstOrCreate(
             ['user_id' => $userId, 'entity_type' => $entityType, 'entity_id' => $entityId],
@@ -265,12 +265,12 @@ class SearchService
         );
     }
 
-    public function removeFavorite(int $userId, string $entityType, string $entityId): void
+    public function removeFavorite(string|int $userId, string $entityType, string $entityId): void
     {
         Favorite::where('user_id', $userId)->where('entity_type', $entityType)->where('entity_id', $entityId)->delete();
     }
 
-    public function getFavorites(int $userId): array
+    public function getFavorites(string|int $userId): array
     {
         return Favorite::where('user_id', $userId)->orderByDesc('created_at')->get()->toArray();
     }

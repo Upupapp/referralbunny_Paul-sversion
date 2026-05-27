@@ -28,6 +28,8 @@ class DealNoteAttachmentController extends Controller
         'text/csv', 'text/plain',
         // Browsers/OS often report legacy Office files as generic binary
         'application/octet-stream',
+        // xlsx/docx are ZIP-based; some OS/browser MIME detectors report this
+        'application/zip',
     ];
 
     private const ALLOWED_EXT = [
@@ -198,21 +200,24 @@ class DealNoteAttachmentController extends Controller
                 continue;
             }
 
-            $attachment = DealNoteAttachment::create([
-                'tenant_id'        => $tenantId,
-                'deal_comment_id'  => $commentId,
-                'uploaded_by_id'   => $actorId,
-                'uploaded_by_role' => $actorRole,
-                'disk'             => 'local',
-                'path'             => $path,
-                'original_filename'=> $file->getClientOriginalName(),
-                'stored_filename'  => $stored_name,
-                'mime_type'        => $mime,
-                'file_size'        => $file->getSize(),
-                'file_type_group'  => DealNoteAttachment::typeGroup($mime),
-            ]);
-
-            $stored[] = $attachment;
+            try {
+                $attachment = DealNoteAttachment::create([
+                    'tenant_id'        => $tenantId,
+                    'deal_comment_id'  => $commentId,
+                    'uploaded_by_id'   => $actorId,
+                    'uploaded_by_role' => $actorRole,
+                    'disk'             => 'local',
+                    'path'             => $path,
+                    'original_filename'=> $file->getClientOriginalName(),
+                    'stored_filename'  => $stored_name,
+                    'mime_type'        => $mime,
+                    'file_size'        => $file->getSize(),
+                    'file_type_group'  => DealNoteAttachment::typeGroup($mime),
+                ]);
+                $stored[] = $attachment;
+            } catch (\Throwable) {
+                continue;
+            }
         }
 
         return $stored;

@@ -176,14 +176,16 @@ class DealCommentController extends Controller
 
         // ── Save attachments ───────────────────────────────────────────────
         if ($hasFiles) {
-            DealNoteAttachmentController::storeFiles(
-                $request->file('files'),
-                $tenantId,
-                $dealId,
-                $comment->id,
-                $actorId,
-                $role
-            );
+            try {
+                DealNoteAttachmentController::storeFiles(
+                    $request->file('files'),
+                    $tenantId,
+                    $dealId,
+                    $comment->id,
+                    $actorId,
+                    $role
+                );
+            } catch (\Throwable) {}
         }
 
         // ── Notify mentioned users ─────────────────────────────────────────

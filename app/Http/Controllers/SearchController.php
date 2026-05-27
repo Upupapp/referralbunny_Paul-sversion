@@ -44,7 +44,9 @@ class SearchController extends Controller
 
         // Log recent search (if authenticated)
         if ($user = $request->user()) {
-            $this->search->logSearch($user->id, $query, $result['total']);
+            try {
+                $this->search->logSearch($user->id, $query, $result['total']);
+            } catch (\Throwable) {}
         }
 
         return response()->json($result);
