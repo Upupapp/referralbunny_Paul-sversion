@@ -46,7 +46,7 @@
                         <span class="mx-1">·</span> Page {{ $result['page'] ?? 1 }} of {{ $result['total_pages'] ?? 1 }}
                     @endif
                 </div>
-                @if($result['total'] > 0)
+                @if(($result['total'] ?? 0) > 0)
                 <button x-data="{ done: false, loading: false }"
                         @click="if(done||loading) return; loading=true;
                             fetch('{{ route('tenant.critical-actions.mark-all-read', $tenant->id) }}', {
