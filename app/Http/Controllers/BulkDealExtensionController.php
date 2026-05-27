@@ -35,7 +35,8 @@ class BulkDealExtensionController extends Controller
      */
     public function eligibleDeals(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
+        if (!$tenantId) return response()->json(['error' => 'No tenant context.'], 403);
         $reseller = $this->resolveReseller($tenantId);
         if (!$reseller) return response()->json(['error' => 'Referrer not found.'], 403);
 
@@ -58,7 +59,8 @@ class BulkDealExtensionController extends Controller
      */
     public function storeBulk(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
+        if (!$tenantId) return response()->json(['error' => 'No tenant context.'], 403);
         $reseller = $this->resolveReseller($tenantId);
         if (!$reseller) return response()->json(['error' => 'Referrer not found.'], 403);
 
@@ -109,7 +111,7 @@ class BulkDealExtensionController extends Controller
      */
     public function showBatch(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId) return response()->json(['error' => 'No tenant context.'], 403);
 
         $batch = $this->bulk->getBatchWithItems($batchId, $tenantId);
@@ -134,29 +136,39 @@ class BulkDealExtensionController extends Controller
      */
     public function indexBatches(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
 
         $status  = $request->query('status');
-        $batches = $this->bulk->getBatchesForTenant($tenantId, $status ?: null);
+        $search  = $request->query('search');
+        $perPage = min((int) ($request->query('per_page', 20)), 100);
 
-        return response()->json($batches->map(fn($b) => [
-            'id'              => $b->id,
-            'batch_reference' => $b->batch_reference,
-            'status'          => $b->status,
-            'status_label'    => $b->status_label,
-            'total_items'     => $b->total_items,
-            'pending_count'   => $b->pending_count,
-            'approved_count'  => $b->approved_count,
-            'declined_count'  => $b->declined_count,
-            'skipped_count'   => $b->skipped_count,
-            'shared_reason'   => \Illuminate\Support\Str::limit($b->shared_reason, 120),
-            'requested_days'  => $b->requested_extension_days,
-            'submitted_at'    => $b->submitted_at,
-            'created_at'      => $b->created_at,
-        ])->values());
+        $paginated = $this->bulk->getBatchesPaginated($tenantId, $status ?: null, $search ?: null, $perPage);
+
+        return response()->json([
+            'data'          => collect($paginated->items())->map(fn($b) => [
+                'id'              => $b->id,
+                'batch_reference' => $b->batch_reference,
+                'status'          => $b->status,
+                'status_label'    => $b->status_label,
+                'total_items'     => $b->total_items,
+                'pending_count'   => $b->pending_count,
+                'approved_count'  => $b->approved_count,
+                'declined_count'  => $b->declined_count,
+                'skipped_count'   => $b->skipped_count,
+                'shared_reason'   => \Illuminate\Support\Str::limit($b->shared_reason, 120),
+                'requested_days'  => $b->requested_extension_days,
+                'submitted_at'    => $b->submitted_at,
+                'created_at'      => $b->created_at,
+            ])->values(),
+            'current_page'  => $paginated->currentPage(),
+            'last_page'     => $paginated->lastPage(),
+            'per_page'      => $paginated->perPage(),
+            'total'         => $paginated->total(),
+            'has_more'      => $paginated->hasMorePages(),
+        ]);
     }
 
     /**
@@ -165,7 +177,7 @@ class BulkDealExtensionController extends Controller
      */
     public function approveItem(Request $request, string $requestId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -201,7 +213,7 @@ class BulkDealExtensionController extends Controller
      */
     public function declineItem(Request $request, string $requestId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -231,7 +243,7 @@ class BulkDealExtensionController extends Controller
      */
     public function skipItem(Request $request, string $requestId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -260,7 +272,7 @@ class BulkDealExtensionController extends Controller
      */
     public function approveAll(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -281,7 +293,7 @@ class BulkDealExtensionController extends Controller
      */
     public function declineAll(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -301,7 +313,7 @@ class BulkDealExtensionController extends Controller
      */
     public function skipAll(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -321,7 +333,7 @@ class BulkDealExtensionController extends Controller
      */
     public function approveSelected(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -344,7 +356,7 @@ class BulkDealExtensionController extends Controller
      */
     public function declineSelected(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -366,7 +378,7 @@ class BulkDealExtensionController extends Controller
      */
     public function skipSelected(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -389,7 +401,7 @@ class BulkDealExtensionController extends Controller
      */
     public function rejectSelectedApproveRest(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -433,7 +445,7 @@ class BulkDealExtensionController extends Controller
      */
     public function approveSelectedRejectRest(Request $request, string $batchId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }

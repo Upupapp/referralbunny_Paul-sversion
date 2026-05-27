@@ -12,6 +12,7 @@ use App\Services\IndexingService;
 use App\Services\SearchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SearchController extends Controller
 {
@@ -140,9 +141,14 @@ class SearchController extends Controller
         return response()->json($this->search->getFavorites($request->user()->id));
     }
 
-    // POST /api/search/actions
+    // POST /api/search/actions — super-admin only
     public function executeAction(Request $request): JsonResponse
     {
+        // Platform-level destructive actions must only be accessible to super admins
+        if (!Auth::guard('web')->check()) {
+            return response()->json(['success' => false, 'message' => 'Not authorized.'], 403);
+        }
+
         $data = $request->validate([
             'action'      => 'required|string',
             'entity_type' => 'required|string',
@@ -177,9 +183,13 @@ class SearchController extends Controller
         return response()->json($result);
     }
 
-    // POST /api/search/reindex
+    // POST /api/search/reindex — super-admin only
     public function reindex(Request $request): JsonResponse
     {
+        if (!Auth::guard('web')->check()) {
+            return response()->json(['message' => 'Not authorized.'], 403);
+        }
+
         $type = $request->get('type'); // null = all
 
         if ($type) {

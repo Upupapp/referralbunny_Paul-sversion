@@ -321,10 +321,11 @@ class SearchService
             ];
         }
 
-        // Detect shorthand scopes e.g. "unpaid invoices", "failed payments"
+        // Detect shorthand scopes e.g. "unpaid invoices", "failed payments".
+        // Uses word-boundary matching to prevent "ideal" from triggering "deal" scope.
         foreach (self::SCOPE_MAP as $keyword => $map) {
-            if (stripos($query, $keyword) !== false) {
-                $rest = trim(str_ireplace($keyword, '', $query));
+            if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/i', $query)) {
+                $rest = trim(preg_replace('/\b' . preg_quote($keyword, '/') . '\b/i', '', $query));
                 return [
                     'entity_type' => $map['type'],
                     'status'      => $map['status'],
