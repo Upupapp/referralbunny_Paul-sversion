@@ -82,10 +82,12 @@ window.__rsDeal = {
                     <svg x-show="busy" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     <span x-text="busy ? 'Confirming…' : 'Confirm ₱4,000,000'"></span>
                 </button>
+                @if($canEditSplits)
                 <button @click="showUpdateAmount = true"
                         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-all">
                     Change Amount
                 </button>
+                @endif
                 <button @click="visible = false" class="text-xs text-amber-600 hover:text-amber-800 underline">
                     Remind me later
                 </button>
@@ -274,7 +276,15 @@ window.__rsDeal = {
             </div>
 
             {{-- Commission pool split --}}
-            <div class="{{ $hasCoRefs ? 'grid-cols-4' : 'grid-cols-3' }} grid gap-2">
+            @php
+                // For the Co-Referrers tile: exclude the viewer's own share so the tile and
+                // "My Share" tile never show the same money twice. $coRefCommissionForBar already
+                // has this exclusion applied (computed above with the same filter).
+                $otherCoRefCount = $coRefSplitsForPanel
+                    ->filter(fn($s) => strtolower($s->reseller_name ?? '') !== strtolower($reseller->name ?? ''))
+                    ->count();
+            @endphp
+            <div class="{{ $coRefCommissionForBar > 0 ? 'grid-cols-4' : 'grid-cols-3' }} grid gap-2">
                 <div class="bg-gray-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-gray-400 font-medium mb-0.5">Pool <span class="text-gray-300">(70%)</span></p>
                     <p id="rs-pool-display" class="text-sm font-bold text-[#1E1B4B] tabular-nums">₱{{ number_format($commissionPool, 0) }}</p>
@@ -287,12 +297,12 @@ window.__rsDeal = {
                         ₱{{ number_format($partnersCommission, 0) }}
                     </p>
                 </div>
-                @if($hasCoRefs)
+                @if($coRefCommissionForBar > 0)
                 <div class="bg-blue-50 rounded-xl px-3 py-2.5">
                     <p class="text-[10px] text-blue-400 font-medium mb-0.5">
-                        Co-Referrers <span class="font-normal">({{ $coRefSplitsForPanel->count() }})</span>
+                        Co-Referrers <span class="font-normal">({{ $otherCoRefCount }})</span>
                     </p>
-                    <p class="text-sm font-bold text-blue-600 tabular-nums">₱{{ number_format($coRefCommission, 0) }}</p>
+                    <p class="text-sm font-bold text-blue-600 tabular-nums">₱{{ number_format($coRefCommissionForBar, 0) }}</p>
                 </div>
                 @endif
                 <div class="bg-teal-50 rounded-xl px-3 py-2.5">
@@ -319,6 +329,7 @@ window.__rsDeal = {
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         Add Note
                     </button>
+                    @if($canEditSplits)
                     @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
                     <button @click="showUpdateAmount = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
@@ -331,6 +342,7 @@ window.__rsDeal = {
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                         Amount {{ ucfirst($lead->commission_status ?? '') }}
                     </span>
+                    @endif
                     @endif
                     @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
                     <button @click="showMoveStage = true"
@@ -405,7 +417,8 @@ window.__rsDeal = {
                     </span>
                     @endif
 
-                    {{-- Update Amount --}}
+                    {{-- Update Amount — primary referrer only --}}
+                    @if($canEditSplits)
                     @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
                     <button @click="showUpdateAmount = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
@@ -417,6 +430,7 @@ window.__rsDeal = {
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                         Locked
                     </span>
+                    @endif
                     @endif
 
                     {{-- Add Partner --}}

@@ -383,6 +383,17 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        // Only the primary referrer may change the deal amount — same guard as addReferrer().
+        $isPrimary = strtolower($reseller->name ?? '') === strtolower($lead->reseller_name ?? '')
+            || CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'primary')
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->exists();
+
+        if (!$isPrimary) {
+            return response()->json(['error' => 'Only the primary Referrer on this deal can update the deal amount.'], 403);
+        }
+
         // Block edits once commission is locked or paid — amounts are finalised
         if (in_array($lead->commission_status ?? '', ['locked', 'paid'])) {
             return response()->json(['error' => 'Deal amount cannot be changed after commission has been ' . $lead->commission_status . '. Contact your admin.'], 422);
@@ -968,6 +979,27 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Notify primary referrer when someone else adds a partner — partner share comes out of
+        // the pool before referrers are paid, so the primary's net commission decreases.
+        try {
+            $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
+                ->first();
+            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($reseller->name ?? '')) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $primaryReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Partner added to your deal',
+                    body:         $reseller->name . ' added ' . $data['partner_name'] . ' as a partner on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $lead->id . ':partner_added_primary:' . md5($data['partner_name'] . ($partnerEmail ?? '')),
+                );
+            }
+        } catch (\Throwable) {}
+
         $message = match(true) {
             $inviteSent        => 'Partner added! Invite email sent to ' . $partnerEmail . '.',
             $alreadyHasAccount => 'Partner added. They already have an active account.',
@@ -1165,28 +1197,25 @@ class ResellerDealController extends Controller
         } catch (\Throwable) {}
 
         // Also notify the primary referrer on this deal (if different from the actor)
-        // so they know their commission pool now has an additional split
+        // so they know their commission pool now has an additional split.
+        // Look up the implicit primary via lead->reseller_name — no explicit CommissionSplit(role='primary')
+        // record exists in production, so checking that table would always miss.
         try {
-            $primarySplit = CommissionSplit::where('lead_id', $lead->id)
-                ->where('role', 'primary')
+            $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
                 ->first();
-            if ($primarySplit && strtolower($primarySplit->reseller_name ?? '') !== strtolower($reseller->name ?? '')) {
-                $primaryReseller = Reseller::where('tenant_id', $tenantId)
-                    ->whereRaw('LOWER(name) = ?', [strtolower($primarySplit->reseller_name)])
-                    ->first();
-                if ($primaryReseller) {
-                    app(NotificationDispatchService::class)->dispatchToReseller(
-                        resellerId:   (string) $primaryReseller->id,
-                        tenantId:     $tenantId,
-                        category:     'deal_pipeline',
-                        priority:     'normal',
-                        title:        'Co-referrer added to your deal',
-                        body:         $reseller->name . ' added ' . ($displayName !== $email ? $displayName : $email) . ' (' . $percentage . '%) as a co-referrer on "' . $lead->name . '".',
-                        actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
-                        actionLabel:  'View Deal',
-                        dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
-                    );
-                }
+            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($reseller->name ?? '')) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $primaryReseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        'Co-referrer added to your deal',
+                    body:         $reseller->name . ' added ' . ($displayName !== $email ? $displayName : $email) . ' (' . $percentage . '%) as a co-referrer on "' . $lead->name . '".',
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
+                );
             }
         } catch (\Throwable) {}
 
