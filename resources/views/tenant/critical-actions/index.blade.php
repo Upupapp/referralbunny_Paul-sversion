@@ -41,9 +41,9 @@
             </div>
             <div class="flex items-center gap-3">
                 <div class="text-sm text-gray-400">
-                    <span class="font-semibold text-[#1E1B4B]">{{ $result['total'] }}</span> item{{ $result['total'] !== 1 ? 's' : '' }}
-                    @if($result['total'] > 0)
-                        <span class="mx-1">·</span> Page {{ $result['page'] }} of {{ $result['total_pages'] }}
+                    <span class="font-semibold text-[#1E1B4B]">{{ $result['total'] ?? 0 }}</span> item{{ ($result['total'] ?? 0) !== 1 ? 's' : '' }}
+                    @if(($result['total'] ?? 0) > 0)
+                        <span class="mx-1">·</span> Page {{ $result['page'] ?? 1 }} of {{ $result['total_pages'] ?? 1 }}
                     @endif
                 </div>
                 @if($result['total'] > 0)
@@ -378,18 +378,19 @@
     </div>
 
     {{-- Pagination --}}
-    @if($result['total_pages'] > 1)
+    @if(($result['total_pages'] ?? 1) > 1)
     <div class="flex items-center justify-between">
         <p class="text-xs text-gray-400">
-            Showing {{ (($result['page'] - 1) * $result['per_page']) + 1 }}–{{ min($result['page'] * $result['per_page'], $result['total']) }} of {{ $result['total'] }} items
+            @php $rPage = $result['page'] ?? 1; $rPer = $result['per_page'] ?? 25; $rTotal = $result['total'] ?? 0; @endphp
+            Showing {{ (($rPage - 1) * $rPer) + 1 }}–{{ min($rPage * $rPer, $rTotal) }} of {{ $rTotal }} items
         </p>
         <div class="flex items-center gap-1.5">
-            @if($result['page'] > 1)
-                <a href="{{ route('tenant.critical-actions', $tenant->id) }}?{{ http_build_query(array_merge(request()->query(), ['page' => $result['page'] - 1])) }}"
+            @if(($result['page'] ?? 1) > 1)
+                <a href="{{ route('tenant.critical-actions', $tenant->id) }}?{{ http_build_query(array_merge(request()->query(), ['page' => ($result['page'] ?? 1) - 1])) }}"
                    class="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">← Prev</a>
             @endif
-            @if($result['page'] < $result['total_pages'])
-                <a href="{{ route('tenant.critical-actions', $tenant->id) }}?{{ http_build_query(array_merge(request()->query(), ['page' => $result['page'] + 1])) }}"
+            @if(($result['page'] ?? 1) < ($result['total_pages'] ?? 1))
+                <a href="{{ route('tenant.critical-actions', $tenant->id) }}?{{ http_build_query(array_merge(request()->query(), ['page' => ($result['page'] ?? 1) + 1])) }}"
                    class="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">Next →</a>
             @endif
         </div>

@@ -78,7 +78,11 @@ class CriticalActionsController extends Controller
             'user_type'        => $userType,
         ];
 
-        $result = $this->service->masterList($tenantId, $filters, 25);
+        try {
+            $result = $this->service->masterList($tenantId, $filters, 25);
+        } catch (\Throwable) {
+            $result = ['items' => [], 'total' => 0, 'page' => 1, 'per_page' => 25, 'total_pages' => 1];
+        }
 
         // Track "last seen" so new items can be highlighted.
         // Read the previous timestamp BEFORE updating it.
