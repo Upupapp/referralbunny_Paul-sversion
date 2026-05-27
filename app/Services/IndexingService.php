@@ -189,98 +189,106 @@ class IndexingService
 
     private function indexPromoCodes(): int
     {
-        $rows = PromoCode::all()->map(fn($c) => [
-            'entity_type'       => 'promo_code',
-            'entity_id'         => $c->id,
-            'title'             => $c->code,
-            'description'       => $c->name . ' · ' . $c->discount_value . ($c->discount_type === 'percentage' ? '%' : ' PHP') . ' · ' . $c->status,
-            'keywords'          => $c->description ?? '',
-            'tags'              => '{' . $c->status . ',promo_code}',
-            'status'            => $c->status,
-            'url'               => '/platform/billing?tab=2',
-            'tenant_id'         => null,
-            'relationships_json'=> json_encode([]),
-            'searchable_text'   => implode(' ', array_filter([$c->code, $c->name, $c->status, $c->discount_type, (string) $c->discount_value])),
-            'last_activity_at'  => $c->updated_at,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ])->toArray();
-
-        if (empty($rows)) return 0;
-        DB::table('search_index')->insert($rows);
-        return count($rows);
+        $count = 0;
+        PromoCode::chunk(200, function ($codes) use (&$count) {
+            $rows = $codes->map(fn($c) => [
+                'entity_type'       => 'promo_code',
+                'entity_id'         => $c->id,
+                'title'             => $c->code,
+                'description'       => $c->name . ' · ' . $c->discount_value . ($c->discount_type === 'percentage' ? '%' : ' PHP') . ' · ' . $c->status,
+                'keywords'          => $c->description ?? '',
+                'tags'              => '{' . $c->status . ',promo_code}',
+                'status'            => $c->status,
+                'url'               => '/platform/billing?tab=2',
+                'tenant_id'         => null,
+                'relationships_json'=> json_encode([]),
+                'searchable_text'   => implode(' ', array_filter([$c->code, $c->name, $c->status, $c->discount_type, (string) $c->discount_value])),
+                'last_activity_at'  => $c->updated_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])->toArray();
+            DB::table('search_index')->insert($rows);
+            $count += count($rows);
+        });
+        return $count;
     }
 
     private function indexPromotions(): int
     {
-        $rows = Promotion::all()->map(fn($p) => [
-            'entity_type'       => 'promotion',
-            'entity_id'         => $p->id,
-            'title'             => $p->name,
-            'description'       => $p->promotion_type . ' · ' . $p->discount_value . ($p->discount_type === 'percentage' ? '%' : ' PHP') . ' · ' . $p->status,
-            'keywords'          => $p->description ?? '',
-            'tags'              => '{' . $p->status . ',promotion}',
-            'status'            => $p->status,
-            'url'               => '/platform/billing?tab=3',
-            'tenant_id'         => null,
-            'relationships_json'=> json_encode([]),
-            'searchable_text'   => implode(' ', array_filter([$p->name, $p->status, $p->promotion_type, $p->target_scope])),
-            'last_activity_at'  => $p->updated_at,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ])->toArray();
-
-        if (empty($rows)) return 0;
-        DB::table('search_index')->insert($rows);
-        return count($rows);
+        $count = 0;
+        Promotion::chunk(200, function ($promotions) use (&$count) {
+            $rows = $promotions->map(fn($p) => [
+                'entity_type'       => 'promotion',
+                'entity_id'         => $p->id,
+                'title'             => $p->name,
+                'description'       => $p->promotion_type . ' · ' . $p->discount_value . ($p->discount_type === 'percentage' ? '%' : ' PHP') . ' · ' . $p->status,
+                'keywords'          => $p->description ?? '',
+                'tags'              => '{' . $p->status . ',promotion}',
+                'status'            => $p->status,
+                'url'               => '/platform/billing?tab=3',
+                'tenant_id'         => null,
+                'relationships_json'=> json_encode([]),
+                'searchable_text'   => implode(' ', array_filter([$p->name, $p->status, $p->promotion_type, $p->target_scope])),
+                'last_activity_at'  => $p->updated_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])->toArray();
+            DB::table('search_index')->insert($rows);
+            $count += count($rows);
+        });
+        return $count;
     }
 
     private function indexApprovals(): int
     {
-        $rows = ApprovalRequest::all()->map(fn($a) => [
-            'entity_type'       => 'approval_request',
-            'entity_id'         => $a->id,
-            'title'             => ucwords(str_replace('_', ' ', $a->request_type)),
-            'description'       => $a->status . ' · ref: ' . ($a->reference_type ?? '—') . ' · ' . ($a->notes ?? 'No notes'),
-            'keywords'          => $a->reference_id ?? '',
-            'tags'              => '{' . $a->status . ',approval}',
-            'status'            => $a->status,
-            'url'               => '/platform/billing?tab=6',
-            'tenant_id'         => null,
-            'relationships_json'=> json_encode(['reference_id' => $a->reference_id, 'reference_type' => $a->reference_type]),
-            'searchable_text'   => implode(' ', array_filter([$a->request_type, $a->status, $a->reference_type, $a->notes])),
-            'last_activity_at'  => $a->approved_at ?? $a->created_at,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ])->toArray();
-
-        if (empty($rows)) return 0;
-        DB::table('search_index')->insert($rows);
-        return count($rows);
+        $count = 0;
+        ApprovalRequest::chunk(200, function ($approvals) use (&$count) {
+            $rows = $approvals->map(fn($a) => [
+                'entity_type'       => 'approval_request',
+                'entity_id'         => $a->id,
+                'title'             => ucwords(str_replace('_', ' ', $a->request_type)),
+                'description'       => $a->status . ' · ref: ' . ($a->reference_type ?? '—') . ' · ' . ($a->notes ?? 'No notes'),
+                'keywords'          => $a->reference_id ?? '',
+                'tags'              => '{' . $a->status . ',approval}',
+                'status'            => $a->status,
+                'url'               => '/platform/billing?tab=6',
+                'tenant_id'         => null,
+                'relationships_json'=> json_encode(['reference_id' => $a->reference_id, 'reference_type' => $a->reference_type]),
+                'searchable_text'   => implode(' ', array_filter([$a->request_type, $a->status, $a->reference_type, $a->notes])),
+                'last_activity_at'  => $a->approved_at ?? $a->created_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])->toArray();
+            DB::table('search_index')->insert($rows);
+            $count += count($rows);
+        });
+        return $count;
     }
 
     private function indexSubscriptions(): int
     {
-        $rows = \App\Models\Subscription::with(['tenant', 'plan'])->get()->map(fn($s) => [
-            'entity_type'       => 'subscription',
-            'entity_id'         => $s->id,
-            'title'             => ($s->tenant?->name ?? '—') . ' — ' . ($s->plan?->name ?? 'No plan'),
-            'description'       => $s->status . ' · ' . $s->billing_cycle . ' · ' . ($s->trial_end_date ? 'Trial until ' . $s->trial_end_date : ''),
-            'keywords'          => '',
-            'tags'              => '{' . $s->status . ',subscription}',
-            'status'            => $s->status,
-            'url'               => '/platform/billing?tab=0',
-            'tenant_id'         => $s->tenant_id,
-            'relationships_json'=> json_encode(['tenant_id' => $s->tenant_id, 'plan_id' => $s->plan_id]),
-            'searchable_text'   => implode(' ', array_filter([$s->tenant?->name, $s->plan?->name, $s->status, $s->billing_cycle])),
-            'last_activity_at'  => $s->updated_at,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ])->toArray();
-
-        if (empty($rows)) return 0;
-        DB::table('search_index')->insert($rows);
-        return count($rows);
+        $count = 0;
+        \App\Models\Subscription::with(['tenant', 'plan'])->chunk(200, function ($subs) use (&$count) {
+            $rows = $subs->map(fn($s) => [
+                'entity_type'       => 'subscription',
+                'entity_id'         => $s->id,
+                'title'             => ($s->tenant?->name ?? '—') . ' — ' . ($s->plan?->name ?? 'No plan'),
+                'description'       => $s->status . ' · ' . $s->billing_cycle . ' · ' . ($s->trial_end_date ? 'Trial until ' . $s->trial_end_date : ''),
+                'keywords'          => '',
+                'tags'              => '{' . $s->status . ',subscription}',
+                'status'            => $s->status,
+                'url'               => '/platform/billing?tab=0',
+                'tenant_id'         => $s->tenant_id,
+                'relationships_json'=> json_encode(['tenant_id' => $s->tenant_id, 'plan_id' => $s->plan_id]),
+                'searchable_text'   => implode(' ', array_filter([$s->tenant?->name, $s->plan?->name, $s->status, $s->billing_cycle])),
+                'last_activity_at'  => $s->updated_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ])->toArray();
+            DB::table('search_index')->insert($rows);
+            $count += count($rows);
+        });
+        return $count;
     }
 
     private function indexLeads(): int
@@ -422,27 +430,28 @@ class IndexingService
     private function indexOrganizations(): int
     {
         try {
-            $org = app(\App\Models\Organization::class);
-            $rows = \App\Models\Organization::with('tenant')->get()->map(fn($o) => [
-                'entity_type'       => 'organization',
-                'entity_id'         => (string) $o->id,
-                'title'             => $o->name,
-                'description'       => ($o->tenant?->name ?? '—') . ($o->industry ? ' · ' . $o->industry : ''),
-                'keywords'          => implode(' ', array_filter([$o->website, $o->email])),
-                'tags'              => '{organization}',
-                'status'            => $o->status ?? 'active',
-                'url'               => '/tenant/' . $o->tenant_id . '/contacts?org=' . $o->id,
-                'tenant_id'         => $o->tenant_id,
-                'relationships_json'=> json_encode(['tenant_id' => $o->tenant_id]),
-                'searchable_text'   => implode(' ', array_filter([$o->name, $o->industry, $o->website, $o->email, $o->tenant?->name])),
-                'last_activity_at'  => $o->updated_at,
-                'created_at'        => now(),
-                'updated_at'        => now(),
-            ])->toArray();
-
-            if (empty($rows)) return 0;
-            DB::table('search_index')->insert($rows);
-            return count($rows);
+            $count = 0;
+            \App\Models\Organization::with('tenant')->chunk(500, function ($orgs) use (&$count) {
+                $rows = $orgs->map(fn($o) => [
+                    'entity_type'       => 'organization',
+                    'entity_id'         => (string) $o->id,
+                    'title'             => $o->name,
+                    'description'       => ($o->tenant?->name ?? '—') . ($o->industry ? ' · ' . $o->industry : ''),
+                    'keywords'          => implode(' ', array_filter([$o->website, $o->email])),
+                    'tags'              => '{organization}',
+                    'status'            => $o->status ?? 'active',
+                    'url'               => '/tenant/' . $o->tenant_id . '/contacts?org=' . $o->id,
+                    'tenant_id'         => $o->tenant_id,
+                    'relationships_json'=> json_encode(['tenant_id' => $o->tenant_id]),
+                    'searchable_text'   => implode(' ', array_filter([$o->name, $o->industry, $o->website, $o->email, $o->tenant?->name])),
+                    'last_activity_at'  => $o->updated_at,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ])->toArray();
+                DB::table('search_index')->insert($rows);
+                $count += count($rows);
+            });
+            return $count;
         } catch (\Throwable) {
             return 0;
         }

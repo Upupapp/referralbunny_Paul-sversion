@@ -297,12 +297,17 @@ function searchPage() {
         saveModal: false, saveName: '', savePin: false,
 
         async init() {
-            const [recentRes, savedRes] = await Promise.all([
-                fetch('/api/search/recent'),
-                fetch('/api/search/saved'),
-            ]);
-            this.recentSearches = await recentRes.json();
-            this.savedSearches  = await savedRes.json();
+            try {
+                const [recentRes, savedRes] = await Promise.all([
+                    fetch('/api/search/recent'),
+                    fetch('/api/search/saved'),
+                ]);
+                this.recentSearches = recentRes.ok  ? await recentRes.json()  : [];
+                this.savedSearches  = savedRes.ok   ? await savedRes.json()   : [];
+            } catch (e) {
+                this.recentSearches = [];
+                this.savedSearches  = [];
+            }
             if (this.query) this.runSearch();
         },
 
@@ -378,9 +383,16 @@ function searchPage() {
 
         async triggerReindex() {
             this.reindexing = true;
-            await fetch('/api/search/reindex', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } });
-            this.reindexing = false;
-            await this.runSearch();
+            try {
+                const res  = await fetch('/api/search/reindex', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } });
+                const data = await res.json();
+                this.$dispatch('show-toast', { type: res.ok ? 'success' : 'error', message: data.message || (res.ok ? 'Reindex complete.' : 'Reindex failed.') });
+                if (res.ok) await this.runSearch();
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Reindex failed. Please try again.' });
+            } finally {
+                this.reindexing = false;
+            }
         },
 
         toggleSelect(id) {
