@@ -14,13 +14,10 @@
                        @keydown.enter="runSearch()" autofocus
                        placeholder="Search tenants, invoices, promos… or type a command">
             </div>
-            <button @click="saveCurrentSearch()" x-show="query && results.length" class="btn-secondary text-sm shrink-0">
+            <button @click="saveCurrentSearch()" x-show="query && results.length" style="display:none" class="btn-secondary text-sm shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                 Save Search
             </button>
-            <a href="/api/search/export?q={{ request('q') }}" class="btn-secondary text-sm shrink-0" x-show="results.length">
-                Export
-            </a>
         </div>
 
         {{-- Entity type pills --}}
@@ -150,10 +147,12 @@
             </div>
 
             {{-- No index warning --}}
-            <div x-show="!hasIndex && query" class="p-4 bg-orange-50 border border-orange-200 rounded-2xl text-orange-800 text-sm flex items-center gap-3">
+            <div x-show="!hasIndex && query" style="display:none" class="p-4 bg-orange-50 border border-orange-200 rounded-2xl text-orange-800 text-sm flex items-center gap-3">
                 <svg class="w-5 h-5 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 Search index is empty. Run <code class="bg-orange-100 px-1 rounded">php artisan search:reindex</code> to build the index, then search again.
+                @if(Auth::guard('web')->check())
                 <button @click="triggerReindex()" :disabled="reindexing" class="btn-primary text-xs ml-auto" x-text="reindexing ? 'Indexing...' : 'Reindex Now'"></button>
+                @endif
             </div>
 
             {{-- Loading --}}
@@ -310,19 +309,24 @@ function searchPage() {
         async runSearch() {
             if (!this.query.trim()) { this.results = []; this.total = 0; this.command = null; return; }
             this.loading = true;
-            const params = new URLSearchParams({ q: this.query, limit: this.limit, offset: this.offset });
-            if (this.filters.type)   params.set('type',   this.filters.type);
-            if (this.filters.status) params.set('status', this.filters.status);
-            if (this.filters.from)   params.set('from',   this.filters.from);
-            if (this.filters.to)     params.set('to',     this.filters.to);
-
-            const res  = await fetch('/api/search?' + params);
-            const data = await res.json();
-            this.results  = data.results  || [];
-            this.total    = data.total    || 0;
-            this.command  = data.command  || null;
-            this.hasIndex = data.has_index !== false;
-            this.loading  = false;
+            try {
+                const params = new URLSearchParams({ q: this.query, limit: this.limit, offset: this.offset });
+                if (this.filters.type)   params.set('type',   this.filters.type);
+                if (this.filters.status) params.set('status', this.filters.status);
+                if (this.filters.from)   params.set('from',   this.filters.from);
+                if (this.filters.to)     params.set('to',     this.filters.to);
+                const res  = await fetch('/api/search?' + params);
+                const data = await res.json();
+                this.results  = data.results  || [];
+                this.total    = data.total    || 0;
+                this.command  = data.command  || null;
+                this.hasIndex = data.has_index !== false;
+            } catch (e) {
+                this.results = [];
+                this.$dispatch('show-toast', { type: 'error', message: 'Search failed. Please try again.' });
+            } finally {
+                this.loading = false;
+            }
         },
 
         prevPage() { this.offset = Math.max(0, this.offset - this.limit); this.runSearch(); },
@@ -361,8 +365,14 @@ function searchPage() {
                 });
                 const data = await res.json();
                 this.confirmModal.open = false;
-                if (data.success) { await this.runSearch(); }
-                else alert('Error: ' + data.message);
+                if (data.success) {
+                    this.$dispatch('show-toast', { type: 'success', message: data.message || 'Action completed.' });
+                    await this.runSearch();
+                } else {
+                    this.$dispatch('show-toast', { type: 'error', message: data.message || 'Action failed.' });
+                }
+            } catch (e) {
+                this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.actionLoading = false; }
         },
 

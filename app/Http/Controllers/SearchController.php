@@ -56,8 +56,9 @@ class SearchController extends Controller
     // GET /api/search/suggest?q=...
     public function suggest(Request $request): JsonResponse
     {
-        $query = $request->get('q', '');
-        return response()->json($this->search->suggest($query));
+        $query    = $request->get('q', '');
+        $tenantId = \App\Services\TenantContext::id();
+        return response()->json($this->search->suggest($query, $tenantId));
     }
 
     // GET /api/search/recent

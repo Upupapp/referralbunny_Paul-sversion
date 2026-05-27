@@ -137,14 +137,22 @@ class SearchService
         ];
     }
 
-    public function suggest(string $query): array
+    public function suggest(string $query, ?string $tenantId = null): array
     {
         if (strlen($query) < 2) return [];
 
-        return DB::table('search_index')
+        $q = DB::table('search_index')
             ->where('is_deleted', false)
-            ->where('searchable_text', 'ILIKE', '%' . $query . '%')
-            ->select('entity_type', 'title', 'url', 'status')
+            ->where('searchable_text', 'ILIKE', '%' . $query . '%');
+
+        // Scope to tenant's own data plus platform-level records (tenant_id = null)
+        if ($tenantId) {
+            $q->where(function ($sub) use ($tenantId) {
+                $sub->where('tenant_id', $tenantId)->orWhereNull('tenant_id');
+            });
+        }
+
+        return $q->select('entity_type', 'title', 'url', 'status')
             ->orderByRaw("CASE entity_type WHEN 'tenant' THEN 1 WHEN 'invoice' THEN 2 ELSE 5 END")
             ->limit(8)
             ->get()
