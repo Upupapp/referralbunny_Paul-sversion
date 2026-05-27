@@ -885,6 +885,38 @@
                     </div>
                 </div>
 
+                {{-- Remove Co-Referrer confirmation modal --}}
+                <div x-show="removeCoRefId !== null" x-cloak
+                     style="position:fixed;inset:0;background:rgba(15,15,35,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+                     @keydown.escape.window="removeCoRefId = null; removeCoRefName = ''">
+                    <div style="background:white;border-radius:20px;max-width:400px;width:100%;padding:28px;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center" @click.stop>
+                        <div style="width:44px;height:44px;border-radius:12px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                            <svg style="width:20px;height:20px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <p style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#dc2626;margin:0 0 6px">Remove Co-Referrer</p>
+                        <h3 style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0 0 8px" x-text="removeCoRefName"></h3>
+                        <p style="font-size:13px;color:#9ca3af;margin:0 0 22px;line-height:1.6">
+                            This co-referrer will be removed from the deal. Their commission share will be released back to the primary referrer.
+                        </p>
+                        <div style="display:flex;gap:10px">
+                            <button @click="removeCoRefId = null; removeCoRefName = ''"
+                                    :disabled="removeCoRefing"
+                                    style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                Cancel
+                            </button>
+                            <button @click="confirmRemoveCoRef()"
+                                    :disabled="removeCoRefing"
+                                    style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
+                                    :style="removeCoRefing ? 'opacity:.6;cursor:not-allowed' : ''"
+                                    x-text="removeCoRefing ? 'Removing…' : 'Yes, Remove'">
+                                Yes, Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- No financial data notice --}}
                 @if(!$aa)
                 <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
@@ -1392,6 +1424,38 @@
                     </div>{{-- /modal card --}}
                     </div>{{-- /centering wrapper --}}
                 </div>{{-- /modal overlay --}}
+
+                {{-- Remove Co-Referrer confirmation modal --}}
+                <div x-show="removeCoRefId !== null" x-cloak
+                     style="position:fixed;inset:0;background:rgba(15,15,35,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+                     @keydown.escape.window="removeCoRefId = null; removeCoRefName = ''">
+                    <div style="background:white;border-radius:20px;max-width:400px;width:100%;padding:28px;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center" @click.stop>
+                        <div style="width:44px;height:44px;border-radius:12px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                            <svg style="width:20px;height:20px;color:#dc2626" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <p style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#dc2626;margin:0 0 6px">Remove Co-Referrer</p>
+                        <h3 style="font-size:16px;font-weight:700;color:#1E1B4B;margin:0 0 8px" x-text="removeCoRefName"></h3>
+                        <p style="font-size:13px;color:#9ca3af;margin:0 0 22px;line-height:1.6">
+                            This co-referrer will be removed from the deal. Their commission share will be released back to the primary referrer.
+                        </p>
+                        <div style="display:flex;gap:10px">
+                            <button @click="removeCoRefId = null; removeCoRefName = ''"
+                                    :disabled="removeCoRefing"
+                                    style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
+                                Cancel
+                            </button>
+                            <button @click="confirmRemoveCoRef()"
+                                    :disabled="removeCoRefing"
+                                    style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
+                                    :style="removeCoRefing ? 'opacity:.6;cursor:not-allowed' : ''"
+                                    x-text="removeCoRefing ? 'Removing…' : 'Yes, Remove'">
+                                Yes, Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Extend Assignment (admin/manager review view) --}}
@@ -2839,6 +2903,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
         financeForm: { deal_value: 0, base_cost: 0, added_amount: 0 },
         editSplitId: null, editPct: '', editSaving: false, editErr: '',
         showAddCoRef: false, coRefEmail: '', coRefPct: '0', coRefSaving: false, coRefErr: '',
+        removeCoRefId: null, removeCoRefName: '', removeCoRefing: false,
 
         // Contacts
         dealContacts: [], loadingContacts: true,
@@ -3123,9 +3188,18 @@ function dealDetail(leadId, tenantId, ssrLead) {
             finally { this.coRefSaving = false; }
         },
 
-        async adminRemoveCoRef(splitId, name) {
-            if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
-            const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+        adminRemoveCoRef(splitId, name) {
+            // Stage the removal — shows confirmation modal instead of native confirm()
+            this.removeCoRefId   = splitId;
+            this.removeCoRefName = name || 'this co-referrer';
+        },
+
+        async confirmRemoveCoRef() {
+            if (!this.removeCoRefId || this.removeCoRefing) return;
+            this.removeCoRefing = true;
+            const splitId = this.removeCoRefId;
+            const name    = this.removeCoRefName;
+            const csrf    = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
             try {
                 const r = await fetch(`/tenant/{{ $tenant->id }}/deals/${this.lead.id}/splits/${splitId}`, {
                     method: 'DELETE',
@@ -3137,16 +3211,15 @@ function dealDetail(leadId, tenantId, ssrLead) {
                     window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: d.error || 'Could not remove co-referrer.' } }));
                     return;
                 }
-                // Remove from local state
+                this.removeCoRefId = null; this.removeCoRefName = '';
                 if (this.lead && this.lead.commission_splits) {
                     this.lead.commission_splits = this.lead.commission_splits.filter(s => s.id !== splitId);
                 }
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: (name || 'Co-referrer') + ' removed.' } }));
-                // Reload partnerSplitSection to reflect change
                 window.dispatchEvent(new CustomEvent('finance-updated'));
             } catch(e) {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
-            }
+            } finally { this.removeCoRefing = false; }
         },
 
         async adminSaveSplit(split, url, csrf) {
@@ -3297,6 +3370,7 @@ function dealDetail(leadId, tenantId, ssrLead) {
 function partnerSplitSection(dealId, tenantId, isArchived) {
     return {
         splits: [], coRefs: [], loading: true, showAdd: false, saving: false, formError: '',
+        removeCoRefId: null, removeCoRefName: '', removeCoRefing: false,
         isArchived: !!isArchived,
         totalPct: 0,
         dealValue: 0,
@@ -3476,8 +3550,16 @@ function partnerSplitSection(dealId, tenantId, isArchived) {
             finally { this.saving = false; }
         },
 
-        async removeCoRef(splitId, name) {
-            if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
+        removeCoRef(splitId, name) {
+            this.removeCoRefId   = splitId;
+            this.removeCoRefName = name || 'this co-referrer';
+        },
+
+        async confirmRemoveCoRef() {
+            if (!this.removeCoRefId || this.removeCoRefing) return;
+            this.removeCoRefing = true;
+            const splitId = this.removeCoRefId;
+            const name    = this.removeCoRefName;
             try {
                 const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
                 const r = await fetch(`/tenant/${tenantId}/deals/${dealId}/splits/${splitId}`, {
@@ -3486,6 +3568,7 @@ function partnerSplitSection(dealId, tenantId, isArchived) {
                     headers:     { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 });
                 const d = await r.json().catch(() => ({}));
+                this.removeCoRefId = null; this.removeCoRefName = '';
                 if (r.ok) {
                     await this.load();
                     this.$dispatch('show-toast', { type: 'success', message: (name || 'Co-referrer') + ' removed.' });
@@ -3494,7 +3577,7 @@ function partnerSplitSection(dealId, tenantId, isArchived) {
                 }
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
-            }
+            } finally { this.removeCoRefing = false; }
         },
 
         async removeSplit(splitId, partnerName) {

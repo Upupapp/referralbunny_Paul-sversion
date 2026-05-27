@@ -338,11 +338,13 @@ window.__rsDeal = {
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                         Add Partner
                     </button>
+                    @if($canEditSplits)
                     <button @click="showAddReferrer = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Add Co-Referrer
                     </button>
+                    @endif
                     <button @click="showExtension = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -409,12 +411,14 @@ window.__rsDeal = {
                         Add Partner
                     </button>
 
-                    {{-- Add Co-Referrer --}}
+                    {{-- Add Co-Referrer — primary referrer only --}}
+                    @if($canEditSplits)
                     <button @click="showAddReferrer = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Add Co-Referrer
                     </button>
+                    @endif
 
                     {{-- Request Extension — spans full row on mobile --}}
                     <button @click="showExtension = true"
@@ -488,11 +492,13 @@ window.__rsDeal = {
             </div>
             @if(!$isArchived)
             <div class="flex items-center gap-2">
+                @if($canEditSplits)
                 <button @click="showAddReferrer = true"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                     Co-Referrer
                 </button>
+                @endif
                 <button @click="showAddPartner = true"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
@@ -583,9 +589,10 @@ window.__rsDeal = {
         {{-- ── Co-Referrers ── --}}
         @if($secondarySplits->count())
         @php
-            // Primary referrer can edit co-referrer splits; others cannot
-            $canEditSplits = $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
-            $otherSplitsTotal = $primarySplits->sum('percentage');  // used for max available calc
+            // Primary referrer can edit/remove co-referrer splits; others cannot.
+            // Also true when there's no explicit primary split record (implicit primary = current reseller).
+            $canEditSplits = $showImplicitPrimary
+                || $primarySplits->contains(fn($s) => strtolower($s->reseller_name ?? '') === strtolower($reseller->name ?? ''));
         @endphp
         @if($primarySplits->count())
         <div class="px-5 py-1.5 bg-gray-50/60 border-t border-gray-100">
@@ -605,8 +612,7 @@ window.__rsDeal = {
                 $splitCanEdit  = $canEditSplits && $splitUpdateUrl;
             @endphp
             <div class="px-5 py-3.5 flex items-center justify-between gap-4"
-                 x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }"
-                 x-cloak>
+                 x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-blue-700" style="background:#dbeafe">
                         {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
@@ -631,6 +637,10 @@ window.__rsDeal = {
                     <button @click="editing = true"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
+                    </button>
+                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', '{{ addslashes($split->reseller_name ?? '') }}', '{{ csrf_token() }}')"
+                            class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                        Remove
                     </button>
                     @endif
                 </div>
@@ -1289,9 +1299,9 @@ window.__rsDeal = {
                     <input x-model="refName" type="email" class="form-input w-full text-sm" placeholder="referrer@example.com" autocomplete="email">
                 </div>
                 @php
-                    // Compute available % for co-referrers: 100 minus all existing splits
-                    $existingSplitTotal = collect($splits)->sum(fn($s) => (float) ($s->percentage ?? 0));
-                    $maxCoRefPct        = max(0.0, round(100.0 - $existingSplitTotal, 2));
+                    // Cap is on secondary splits only — consistent with addReferrer() backend validation
+                    $existingSecondaryTotal = collect($splits)->where('role', 'secondary')->sum(fn($s) => (float) ($s->percentage ?? 0));
+                    $maxCoRefPct            = max(0.0, round(100.0 - $existingSecondaryTotal, 2));
                 @endphp
                 <div>
                     <label class="form-label">Commission Share (%) <span class="text-red-400">*</span></label>
@@ -1376,14 +1386,35 @@ function rsDealData() {
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: JSON.stringify({ percentage: parseFloat(pctVal) }),
             });
-            const d = await r.json();
+            const d = await r.json().catch(() => ({}));
             if (!r.ok) { ctx.err = d.error || 'Could not update share.'; return; }
             ctx.editing = false;
             ctx.pct = String(d.new_percentage);
-            // Brief toast
             window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Co-referrer share updated.' } }));
         } catch(e) { ctx.err = 'Network error. Please try again.'; }
         finally { ctx.saving = false; }
+    };
+
+    // Global helper for co-referrer removal (used from Remove button on each row)
+    window.__removeCoRef = async function(url, name, csrf) {
+        if (!url) return;
+        if (!confirm('Remove ' + (name || 'this co-referrer') + ' as a co-referrer? Their commission share will be released.')) return;
+        try {
+            const r = await fetch(url, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: (name || 'Co-referrer') + ' removed.' } }));
+                setTimeout(() => window.location.reload(), 700);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: d.error || 'Could not remove co-referrer. Please try again.' } }));
+            }
+        } catch(e) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: 'Network error. Please try again.' } }));
+        }
     };
 
     return {

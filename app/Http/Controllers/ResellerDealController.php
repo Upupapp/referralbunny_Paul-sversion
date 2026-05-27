@@ -985,6 +985,17 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        // Only the primary referrer on this deal may add co-referrers
+        $isPrimary = strtolower($reseller->name ?? '') === strtolower($lead->reseller_name ?? '')
+            || CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'primary')
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->exists();
+
+        if (!$isPrimary) {
+            return response()->json(['error' => 'Only the primary Referrer on this deal can add co-referrers.'], 403);
+        }
+
         $data = $request->validate([
             'referrer_email' => 'required|email|max:200',
             'percentage'     => 'required|numeric|min:0|max:100',
@@ -1413,7 +1424,7 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Only the primary Referrer on this deal can adjust co-referrer shares.'], 403);
         }
 
-        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $reseller->name, 'referrer');
+        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $reseller->name, 'referrer', $lead);
     }
 
     // ── Update Co-Referrer Split (Admin-initiated) ────────────────────────────
@@ -1430,13 +1441,13 @@ class ResellerDealController extends Controller
         // Verify deal belongs to this tenant
         $lead = \App\Models\Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
 
-        $actorName = method_exists($actor, 'full_name') ? $actor->full_name : ($actor->name ?? $actor->email ?? 'Admin');
+        $actorName = $actor->full_name ?? $actor->name ?? $actor->email ?? 'Admin';
 
-        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $actorName, 'admin');
+        return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
     }
 
     /** Shared logic for updating a co-referrer commission split. */
-    private function doUpdateSplit(Request $request, string $tenantId, string $dealId, string $splitId, string $actorName, string $actorRole): JsonResponse
+    private function doUpdateSplit(Request $request, string $tenantId, string $dealId, string $splitId, string $actorName, string $actorRole, Lead $lead): JsonResponse
     {
         $data = $request->validate([
             'percentage' => 'required|numeric|min:0.01|max:100',
@@ -1453,13 +1464,14 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Only co-referrer splits can be adjusted here.'], 422);
         }
 
-        // Validate commission pool limit: total across all splits must not exceed 100%
-        $otherTotal = CommissionSplit::where('lead_id', $dealId)
+        // Cap check: secondary splits combined must not exceed 100%
+        $otherSecondaryTotal = CommissionSplit::where('lead_id', $dealId)
             ->where('id', '!=', $splitId)
+            ->where('role', 'secondary')
             ->sum('percentage');
 
-        if ($otherTotal + $newPct > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $otherTotal, 2));
+        if ($otherSecondaryTotal + $newPct > 100.005) {
+            $available = max(0.0, round(100.0 - (float) $otherSecondaryTotal, 2));
             return response()->json([
                 'error'          => "Cannot exceed 100% total. Maximum available for this co-referrer: {$available}%.",
                 'max_percentage' => $available,
@@ -1468,8 +1480,6 @@ class ResellerDealController extends Controller
 
         $oldPct = (float) $split->percentage;
         $split->update(['percentage' => $newPct]);
-
-        $lead = \App\Models\Lead::find($dealId);
 
         // Notify the co-referrer whose share changed
         try {
@@ -1555,7 +1565,7 @@ class ResellerDealController extends Controller
         }
 
         $lead      = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
-        $actorName = method_exists($actor, 'full_name') ? $actor->full_name : ($actor->name ?? $actor->email ?? 'Admin');
+        $actorName = $actor->full_name ?? $actor->name ?? $actor->email ?? 'Admin';
 
         return $this->doRemoveSplit($tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
     }
@@ -1600,21 +1610,39 @@ class ResellerDealController extends Controller
             }
         } catch (\Throwable) {}
 
-        // Notify admin if removal was by a referrer
-        if ($actorRole === 'referrer') {
-            try {
-                app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+        // Notify admins in all cases
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Co-referrer removed',
+                body:         $actorName . ' removed ' . $removedName . ' as a co-referrer on "' . $lead->name . '".',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                actionLabel:  'View Deal',
+                dedupeSuffix: $splitId . ':coreferrer_removed_admin:' . now()->format('YmdH'),
+            );
+        } catch (\Throwable) {}
+
+        // Notify primary referrer so they know their commission pool changed
+        try {
+            $primaryReseller = Reseller::where('tenant_id', $tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name ?? '')])
+                ->first();
+            if ($primaryReseller && strtolower($primaryReseller->name ?? '') !== strtolower($removedName)) {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $primaryReseller->id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
                     priority:     'normal',
-                    title:        'Co-referrer removed',
+                    title:        'Co-referrer removed from your deal',
                     body:         $actorName . ' removed ' . $removedName . ' as a co-referrer on "' . $lead->name . '".',
-                    actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
+                    actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $splitId . ':coreferrer_removed_admin:' . now()->format('YmdH'),
+                    dedupeSuffix: $splitId . ':primary_coreferrer_removed:' . now()->format('YmdH'),
                 );
-            } catch (\Throwable) {}
-        }
+            }
+        } catch (\Throwable) {}
 
         // Activity log
         try {
