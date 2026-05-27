@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DealCommentController extends Controller
@@ -175,9 +176,10 @@ class DealCommentController extends Controller
         }
 
         // ── Save attachments ───────────────────────────────────────────────
+        $attachmentWarning = false;
         if ($hasFiles) {
             try {
-                DealNoteAttachmentController::storeFiles(
+                $stored = DealNoteAttachmentController::storeFiles(
                     $request->file('files'),
                     $tenantId,
                     $dealId,
@@ -185,7 +187,14 @@ class DealCommentController extends Controller
                     $actorId,
                     $role
                 );
-            } catch (\Throwable) {}
+                // Flag partial failure so frontend can warn the user
+                if (count($stored) < count($request->file('files'))) {
+                    $attachmentWarning = true;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('DealCommentController storeFiles failed', ['error' => $e->getMessage()]);
+                $attachmentWarning = true;
+            }
         }
 
         // ── Notify mentioned users ─────────────────────────────────────────
@@ -249,7 +258,12 @@ class DealCommentController extends Controller
             $comment->load(['attachments', 'mentions']);
         } catch (\Throwable) {}
 
-        return response()->json($this->formatComment($comment, $role, $dealId), 201);
+        $formatted = $this->formatComment($comment, $role, $dealId);
+        if ($attachmentWarning) {
+            $formatted['attachment_warning'] = 'Some files could not be attached. Please try re-uploading.';
+        }
+
+        return response()->json($formatted, 201);
     }
 
     // ── PATCH /api/deals/{dealId}/comments/{commentId} ──────────────────────

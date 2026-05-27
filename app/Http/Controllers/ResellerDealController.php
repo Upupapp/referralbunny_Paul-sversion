@@ -314,7 +314,8 @@ class ResellerDealController extends Controller
             ]);
 
             // Store attachments if provided
-            $attachments = [];
+            $attachments      = [];
+            $requestedFiles   = count($request->file('files') ?? []);
             if ($hasFiles) {
                 $attachments = \App\Http\Controllers\DealNoteAttachmentController::storeFiles(
                     $request->file('files'), $tenantId, $dealId, $comment->id, (string) $reseller->id, 'referrer'
@@ -324,6 +325,8 @@ class ResellerDealController extends Controller
             Log::error('ResellerDealController addNote failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not save note. Please try again.'], 500);
         }
+
+        $attachmentWarning = $hasFiles && count($attachments) < $requestedFiles;
 
         // Activity + admin notification — outside transaction so failures don't roll back
         try {
@@ -356,7 +359,7 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
-        return response()->json([
+        $response = [
             'success' => true,
             'note'    => [
                 'id'          => $comment->id,
@@ -365,7 +368,12 @@ class ResellerDealController extends Controller
                 'attachments' => count($attachments),
                 'created_ago' => 'just now',
             ],
-        ]);
+        ];
+        if ($attachmentWarning) {
+            $response['attachment_warning'] = 'Some files could not be attached. Please try re-uploading.';
+        }
+
+        return response()->json($response);
     }
 
     // ── Update Deal Amount ────────────────────────────────────────────────────

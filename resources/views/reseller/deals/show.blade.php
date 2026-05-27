@@ -1466,7 +1466,7 @@ function rsDealData() {
                 this.showAddNote = false;
                 this.noteBody = '';
                 this.noteFiles = [];
-                this.showToast('Note added.');
+                this.showToast(d.attachment_warning || 'Note added.');
                 setTimeout(() => window.location.reload(), 800);
             } catch(e) {
                 this.noteError = 'Network error. Please try again.';

@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -196,7 +197,11 @@ class DealNoteAttachmentController extends Controller
 
             try {
                 Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('DealNoteAttachment disk write failed', [
+                    'file'  => $file->getClientOriginalName(),
+                    'error' => $e->getMessage(),
+                ]);
                 continue;
             }
 
@@ -215,7 +220,11 @@ class DealNoteAttachmentController extends Controller
                     'file_type_group'  => DealNoteAttachment::typeGroup($mime),
                 ]);
                 $stored[] = $attachment;
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                Log::warning('DealNoteAttachment DB insert failed', [
+                    'file'  => $file->getClientOriginalName(),
+                    'error' => $e->getMessage(),
+                ]);
                 continue;
             }
         }

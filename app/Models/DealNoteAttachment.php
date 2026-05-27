@@ -34,9 +34,12 @@ class DealNoteAttachment extends Model
         if (str_starts_with($mime, 'image/')) return 'image';
         if (in_array($mime, ['application/pdf', 'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])) return 'document';
-        if (in_array($mime, ['application/vnd.ms-excel',
+        if (in_array($mime, [
+            'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/csv'])) return 'spreadsheet';
+            'application/zip', // xlsx/docx are ZIP-based; OS may report this
+            'text/csv',
+        ])) return 'spreadsheet';
         return 'other';
     }
 }
