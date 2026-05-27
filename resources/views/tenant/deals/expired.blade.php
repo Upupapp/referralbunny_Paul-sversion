@@ -4,11 +4,12 @@
 
 @section('content')
 @php
-$subtabCounts = [
-    'expired'         => $metrics['total'],
-    'pending_archive' => \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type', 'deal_archive')->where('status', 'pending')->count(),
+$_badgeCounts = \Illuminate\Support\Facades\Cache::remember("subtab_badge_counts:{$tenant->id}", 60, fn() => [
+    'expired'         => \App\Models\Lead::where('tenant_id', $tenant->id)->where('status','expired')->whereNull('deleted_at')->count(),
+    'pending_archive' => \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type','deal_archive')->where('status','pending')->count(),
     'deleted_archived'=> \App\Models\Lead::withTrashed()->where('tenant_id', $tenant->id)->where(fn($q) => $q->where('status','archived')->orWhereNotNull('deleted_at'))->count(),
-];
+]);
+$subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
 @endphp
 
 <div class="space-y-5">

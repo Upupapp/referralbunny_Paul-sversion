@@ -31,6 +31,7 @@ class Lead extends Model
         'reseller_name', 'commission_status',
         'base_cost', 'added_amount', 'deal_value',
         'data', 'organization_id', 'deleted_by',
+        'archived_at', 'archive_reason',
     ];
 
     protected $casts = [

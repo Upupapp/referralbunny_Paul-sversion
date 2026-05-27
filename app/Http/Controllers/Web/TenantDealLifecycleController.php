@@ -10,7 +10,6 @@ use App\Models\TenantConfig;
 use App\Models\TenantMembership;
 use App\Services\DealActivityService;
 use App\Services\NotificationDispatchService;
-use App\Services\PermissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -230,6 +229,7 @@ class TenantDealLifecycleController extends Controller
         } catch (\Throwable) {}
 
         Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        Cache::forget("subtab_badge_counts:{$tenantId}");
 
         return redirect()
             ->route('tenant.deals.archive-requests', $tenantId)
@@ -248,16 +248,6 @@ class TenantDealLifecycleController extends Controller
         $filter = $request->get('filter', 'all'); // all | archived | deleted
         $stage  = $request->get('stage', '');
         $per    = 20;
-
-        // Archived = status='archived' and not soft-deleted
-        // Deleted  = soft-deleted (deleted_at IS NOT NULL)
-        $query = Lead::withTrashed()
-            ->where('tenant_id', $tenantId)
-            ->where(function ($q) {
-                $q->where('status', 'archived')
-                  ->orWhereNotNull('deleted_at');
-            })
-            ->select('*');
 
         if ($filter === 'archived') {
             $query = Lead::where('tenant_id', $tenantId)->where('status', 'archived')->whereNull('deleted_at');
@@ -329,7 +319,30 @@ class TenantDealLifecycleController extends Controller
             app(DealActivityService::class)->record($lead, 'Deal restored by admin.', 'deal_restored');
         } catch (\Throwable) {}
 
+        // Notify the referrer that their deal has been restored
+        try {
+            if ($lead->reseller_name) {
+                $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                    ->first();
+                if ($reseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   (string) $reseller->id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Deal restored: "' . $lead->name . '"',
+                        body:         'Your deal "' . $lead->name . '" has been restored to active status.',
+                        actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $lead->id . ':restored:' . now()->format('Ymd'),
+                    );
+                }
+            }
+        } catch (\Throwable) {}
+
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
+        Cache::forget("subtab_badge_counts:{$tenantId}");
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
     }
@@ -367,6 +380,7 @@ class TenantDealLifecycleController extends Controller
         } catch (\Throwable) {}
 
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
+        Cache::forget("subtab_badge_counts:{$tenantId}");
 
         return redirect()
             ->route('tenant.deals.deleted-archived', $tenantId)

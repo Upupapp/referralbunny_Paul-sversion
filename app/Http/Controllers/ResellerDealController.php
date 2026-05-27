@@ -710,6 +710,26 @@ class ResellerDealController extends Controller
             );
         } catch (\Throwable) {}
 
+        // Email tenant owners/admins about new archive request
+        try {
+            $archiveTenant = Tenant::find($tenantId);
+            if ($archiveTenant) {
+                \App\Models\TenantMembership::where('tenant_id', $tenantId)
+                    ->whereIn('role', ['owner', 'admin'])
+                    ->where('status', 'active')
+                    ->with('tenantUser')
+                    ->get()
+                    ->each(function ($membership) use ($approval, $archiveTenant) {
+                        $tu = $membership->tenantUser;
+                        if ($tu?->email) {
+                            Mail::to($tu->email)->queue(
+                                new \App\Mail\ArchiveRequestSubmittedMail($approval, $archiveTenant, $tu->email, $tu->full_name)
+                            );
+                        }
+                    });
+            }
+        } catch (\Throwable) {}
+
         return response()->json(['success' => true, 'approval_id' => $approval->id]);
     }
 
@@ -1314,6 +1334,8 @@ class ResellerDealController extends Controller
                     'archived_at'    => now(),
                 ]);
                 \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
+                \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+                \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
 
                 app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
                     'category'   => 'archive',
@@ -1369,6 +1391,19 @@ class ResellerDealController extends Controller
                     );
                 }
             } catch (\Throwable) {}
+
+            // Email referrer on archive approval
+            try {
+                if ($approval->type === 'deal_archive') {
+                    $approvedReseller = Reseller::find($approval->requested_by_id);
+                    $approvedTenant   = Tenant::find($tenantId);
+                    if ($approvedReseller?->email && $approvedTenant) {
+                        Mail::to($approvedReseller->email)->queue(
+                            new \App\Mail\ArchiveRequestApprovedMail($approval, $approvedReseller, $approvedTenant)
+                        );
+                    }
+                }
+            } catch (\Throwable) {}
         }
 
         return response()->json(['success' => true, 'type' => $approval->type]);
@@ -1422,6 +1457,9 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
         }
 
+        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+
         // Notify after commit — never inside transaction
         if ($approval->requested_by_type === 'reseller') {
             try {
@@ -1451,6 +1489,19 @@ class ResellerDealController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: $approvalId . ':rejected',
                     );
+                }
+            } catch (\Throwable) {}
+
+            // Email referrer on archive rejection
+            try {
+                if ($approval->type === 'deal_archive') {
+                    $rejectedReseller = Reseller::find($approval->requested_by_id);
+                    $rejectedTenant   = Tenant::find($tenantId);
+                    if ($rejectedReseller?->email && $rejectedTenant) {
+                        Mail::to($rejectedReseller->email)->queue(
+                            new \App\Mail\ArchiveRequestRejectedMail($approval, $rejectedReseller, $rejectedTenant)
+                        );
+                    }
                 }
             } catch (\Throwable) {}
         }
