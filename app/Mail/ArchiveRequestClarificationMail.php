@@ -2,9 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\DealApprovalRequest;
-use App\Models\Reseller;
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,16 +13,18 @@ class ArchiveRequestClarificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public DealApprovalRequest $archiveRequest,
-        public Reseller $reseller,
-        public Tenant $tenant,
+        public string  $dealName,
+        public ?string $dealUrl,
+        public ?string $clarificationMessage,
+        public ?string $clarificationDueAt,
+        public string  $resellerName,
+        public string  $tenantName,
     ) {}
 
     public function envelope(): Envelope
     {
-        $dealName = $this->archiveRequest->lead?->name ?? 'your deal';
         return new Envelope(
-            subject: "Clarification needed for your archive request on \"{$dealName}\"",
+            subject: "Clarification needed for your archive request on \"{$this->dealName}\"",
         );
     }
 

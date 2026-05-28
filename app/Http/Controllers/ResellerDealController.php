@@ -727,9 +727,7 @@ class ResellerDealController extends Controller
         }
 
         try {
-            \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-            \Illuminate\Support\Facades\Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
-            \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+            \Illuminate\Support\Facades\Cache::deleteMultiple(["lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
             app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId);
         } catch (\Throwable) {}
 
@@ -761,16 +759,30 @@ class ResellerDealController extends Controller
         try {
             $archiveTenant = Tenant::find($tenantId);
             if ($archiveTenant) {
+                $mailDealName   = $lead->name;
+                $mailStage      = ucwords(str_replace('_', ' ', $lead->stage ?? ''));
+                $mailDealValue  = '₱' . number_format((float)($lead->deal_value ?? 0), 0);
+                $mailReason     = $approval->reason;
+                $mailReviewUrl  = url("/tenant/{$tenantId}/deals/archive-requests/{$approval->id}");
+                $mailTenantName = $archiveTenant->name;
                 \App\Models\TenantMembership::where('tenant_id', $tenantId)
                     ->whereIn('role', ['owner', 'admin'])
                     ->where('status', 'active')
                     ->with('tenantUser')
                     ->get()
-                    ->each(function ($membership) use ($approval, $archiveTenant) {
+                    ->each(function ($membership) use ($mailDealName, $mailStage, $mailDealValue, $mailReason, $mailReviewUrl, $mailTenantName) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
                             Mail::to($tu->email)->queue(
-                                new \App\Mail\ArchiveRequestSubmittedMail($approval, $archiveTenant, $tu->email, $tu->full_name ?: $tu->email)
+                                new \App\Mail\ArchiveRequestSubmittedMail(
+                                    dealName:   $mailDealName,
+                                    stage:      $mailStage,
+                                    dealValue:  $mailDealValue,
+                                    reason:     $mailReason,
+                                    reviewUrl:  $mailReviewUrl,
+                                    tenantName: $mailTenantName,
+                                    adminName:  $tu->full_name ?: $tu->email,
+                                )
                             );
                         }
                     });
@@ -807,8 +819,7 @@ class ResellerDealController extends Controller
         ]);
 
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
-        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["subtab_badge_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}"]);
 
         $dealId = $approval->deal_id;
         $lead   = null;
@@ -1519,7 +1530,7 @@ class ResellerDealController extends Controller
         }
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($reviewerUser?->id ?? '')); } catch (\Throwable) {}
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
         if ($approval->type === 'deal_stage_move' && $lead && $lead->tenant_id === 'lgu-ids') {
@@ -1567,7 +1578,14 @@ class ResellerDealController extends Controller
                     $approvedTenant   = Tenant::find($tenantId);
                     if ($approvedReseller?->email && $approvedTenant) {
                         Mail::to($approvedReseller->email)->queue(
-                            new \App\Mail\ArchiveRequestApprovedMail($approval, $approvedReseller, $approvedTenant)
+                            new \App\Mail\ArchiveRequestApprovedMail(
+                                dealName:     $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                stage:        $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
+                                dealValue:    $lead ? '₱' . number_format((float)($lead->deal_value ?? 0), 0) : '—',
+                                reviewerNote: $approval->reviewer_note,
+                                resellerName: $approvedReseller->name,
+                                tenantName:   $approvedTenant->name,
+                            )
                         );
                     }
                 }
@@ -1653,7 +1671,7 @@ class ResellerDealController extends Controller
         }
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($reviewerUser?->id ?? '')); } catch (\Throwable) {}
 
         // Notify after commit — never inside transaction
         if ($approval->requested_by_type === 'reseller') {
@@ -1694,7 +1712,14 @@ class ResellerDealController extends Controller
                     $rejectedTenant   = Tenant::find($tenantId);
                     if ($rejectedReseller?->email && $rejectedTenant) {
                         Mail::to($rejectedReseller->email)->queue(
-                            new \App\Mail\ArchiveRequestRejectedMail($approval, $rejectedReseller, $rejectedTenant)
+                            new \App\Mail\ArchiveRequestRejectedMail(
+                                dealName:     $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                stage:        $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
+                                dealUrl:      $lead ? url("/reseller/{$tenantId}/deals/{$lead->id}") : null,
+                                reviewerNote: $approval->reviewer_note,
+                                resellerName: $rejectedReseller->name,
+                                tenantName:   $rejectedTenant->name,
+                            )
                         );
                     }
                 }

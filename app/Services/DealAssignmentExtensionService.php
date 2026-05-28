@@ -23,8 +23,6 @@ use Illuminate\Support\Str;
  */
 class DealAssignmentExtensionService
 {
-    const ALLOWED_TENANT = 'lgu-ids'; // Extension requests are LGU IDS feature first
-
     /**
      * Create a new extension request.
      *

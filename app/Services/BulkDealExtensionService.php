@@ -250,7 +250,7 @@ class BulkDealExtensionService
             newDaysLeft:  $newDaysLeft,
             adminNote:    $reviewerNote,
         );
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $request;
     }
@@ -306,7 +306,7 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $request;
     }
@@ -356,7 +356,7 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $request;
     }
@@ -397,7 +397,7 @@ class BulkDealExtensionService
         if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
             $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
         }
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -433,7 +433,7 @@ class BulkDealExtensionService
         if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
             $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
         }
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -465,7 +465,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -501,7 +501,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -535,7 +535,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -569,7 +569,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -616,7 +616,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -662,7 +662,7 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId);
+        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }

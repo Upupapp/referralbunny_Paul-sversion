@@ -237,7 +237,11 @@ class DealAssignmentExtensionController extends Controller
     private function resolveActor(): array
     {
         if (Auth::guard('tenant')->check()) {
-            return [Auth::guard('tenant')->user()->id, 'manager'];
+            $userId   = Auth::guard('tenant')->id();
+            $tenantId = TenantContext::id();
+            $role     = $tenantId ? \App\Models\TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)->where('status', 'active')->value('role') : null;
+            return [$userId, $role ?? 'manager'];
         }
         if (Auth::guard('web')->check()) {
             return [Auth::guard('web')->user()->id, 'admin'];

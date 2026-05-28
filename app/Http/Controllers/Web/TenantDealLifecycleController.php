@@ -231,8 +231,16 @@ class TenantDealLifecycleController extends Controller
             $reseller       = \App\Models\Reseller::where('tenant_id', $tenantId)->find($archiveRequest->requested_by_id);
             $clarifyTenant  = \App\Models\Tenant::find($tenantId);
             if ($reseller?->email && $clarifyTenant) {
+                $clarifyLead = $archiveRequest->lead ?? \App\Models\Lead::where('id', $archiveRequest->deal_id)->where('tenant_id', $tenantId)->first();
                 \Illuminate\Support\Facades\Mail::to($reseller->email)
-                    ->queue(new \App\Mail\ArchiveRequestClarificationMail($archiveRequest, $reseller, $clarifyTenant));
+                    ->queue(new \App\Mail\ArchiveRequestClarificationMail(
+                        dealName:             $clarifyLead?->name ?? ($archiveRequest->request_payload['deal_name'] ?? 'your deal'),
+                        dealUrl:              $clarifyLead ? url("/reseller/{$tenantId}/deals/{$clarifyLead->id}") : null,
+                        clarificationMessage: $archiveRequest->clarification_message,
+                        clarificationDueAt:   $archiveRequest->clarification_due_at?->format('F d, Y'),
+                        resellerName:         $reseller->name,
+                        tenantName:           $clarifyTenant->name,
+                    ));
             }
         } catch (\Throwable) {}
 

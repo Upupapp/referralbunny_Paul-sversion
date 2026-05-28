@@ -2,9 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\DealApprovalRequest;
-use App\Models\Reseller;
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,17 +13,19 @@ class ArchiveRequestSubmittedMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public DealApprovalRequest $archiveRequest,
-        public Tenant $tenant,
-        public string $adminEmail,
-        public string $adminName,
+        public string  $dealName,
+        public string  $stage,
+        public string  $dealValue,
+        public ?string $reason,
+        public string  $reviewUrl,
+        public string  $tenantName,
+        public string  $adminName,
     ) {}
 
     public function envelope(): Envelope
     {
-        $dealName = $this->archiveRequest->lead?->name ?? 'a deal';
         return new Envelope(
-            subject: "Archive request submitted for \"{$dealName}\"",
+            subject: "Archive request submitted for \"{$this->dealName}\"",
         );
     }
 

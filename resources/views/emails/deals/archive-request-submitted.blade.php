@@ -1,12 +1,5 @@
 @extends('emails.layouts.base', ['headerLabel' => 'Archive Request'])
 @section('content')
-@php
-$lead      = $archiveRequest->lead;
-$dealName  = $lead?->name ?? 'a deal';
-$stage     = $lead ? ucwords(str_replace('_', ' ', $lead->stage)) : '—';
-$dealValue = $lead ? '₱' . number_format((float)$lead->deal_value, 0) : '—';
-$reviewUrl = url('/tenant/' . $tenant->id . '/deals/archive-requests/' . $archiveRequest->id);
-@endphp
 <p class="greeting">New Archive Request</p>
 <p class="text">Hi <strong>{{ $adminName }}</strong>, a Referrer has submitted an archive request for the deal below.</p>
 <div class="highlight-box highlight-orange">
@@ -15,8 +8,8 @@ $reviewUrl = url('/tenant/' . $tenant->id . '/deals/archive-requests/' . $archiv
         <strong>Deal:</strong> {{ $dealName }}<br>
         <strong>Stage:</strong> {{ $stage }}<br>
         <strong>Value:</strong> {{ $dealValue }}<br>
-        @if($archiveRequest->reason)
-        <strong>Reason:</strong> {{ $archiveRequest->reason }}
+        @if($reason)
+        <strong>Reason:</strong> {{ $reason }}
         @endif
     </div>
 </div>
@@ -25,5 +18,5 @@ $reviewUrl = url('/tenant/' . $tenant->id . '/deals/archive-requests/' . $archiv
     <a href="{{ $reviewUrl }}" class="cta cta-teal">Review Request →</a>
 </div>
 <hr class="divider">
-<p class="text" style="font-size:13px;color:#9CA3AF">You received this because you are an admin or manager on {{ $tenant->name }}.</p>
+<p class="text" style="font-size:13px;color:#9CA3AF">You received this because you are an admin or manager on {{ $tenantName }}.</p>
 @endsection
