@@ -848,13 +848,15 @@ class ResellerDealController extends Controller
             if ($archiveTenant) {
                 $approval->load('lead');
                 TenantMembership::where('tenant_id', $tenantId)
+                    ->whereIn('role', ['owner', 'admin', 'manager'])
+                    ->where('status', 'active')
                     ->with('tenantUser')
                     ->get()
                     ->each(function ($membership) use ($approval, $reseller, $archiveTenant) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
                             Mail::to($tu->email)->queue(
-                                new \App\Mail\ArchiveRequestRespondedMail($approval, $reseller, $archiveTenant, $tu->email, $tu->full_name ?: $tu->email)
+                                new \App\Mail\ArchiveRequestRespondedMail($approval, $reseller, $archiveTenant, $tu->full_name ?: $tu->email)
                             );
                         }
                     });

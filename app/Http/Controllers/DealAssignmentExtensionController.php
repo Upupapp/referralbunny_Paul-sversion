@@ -222,7 +222,16 @@ class DealAssignmentExtensionController extends Controller
 
     private function isAdminOrManager(): bool
     {
-        return Auth::guard('tenant')->check() || Auth::guard('web')->check();
+        if (Auth::guard('web')->check()) return true;
+        $userId = Auth::guard('tenant')->id();
+        if (!$userId) return false;
+        $tenantId = TenantContext::id();
+        if (!$tenantId) return false;
+        $role = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role');
+        return in_array($role, ['owner', 'admin', 'manager']);
     }
 
     private function resolveActor(): array

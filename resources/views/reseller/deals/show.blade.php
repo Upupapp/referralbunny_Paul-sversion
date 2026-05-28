@@ -720,7 +720,7 @@ window.__rsDeal = {
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
                     </button>
-                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', '{{ addslashes($split->reseller_name ?? '') }}', '{{ csrf_token() }}')"
+                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', {{ json_encode($split->reseller_name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }}, '{{ csrf_token() }}')"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                         Remove
                     </button>
@@ -794,7 +794,7 @@ window.__rsDeal = {
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
                     @if($canRemovePartner)
-                    <button onclick="rbRemovePartner('{{ $ps['id'] }}', '{{ addslashes($ps['partner_name'] ?? 'this partner') }}')"
+                    <button onclick="rbRemovePartner('{{ $ps['id'] }}', {{ json_encode($ps['partner_name'] ?? 'this partner', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                             title="Remove partner"
                             class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
                             aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">

@@ -149,11 +149,7 @@ class TenantDealLifecycleController extends Controller
                     ->count(),
             ];
         });
-        $subtabCounts['pending_archive'] = DealApprovalRequest::where('tenant_id', $tenantId)
-            ->where('type', 'deal_archive')
-            ->where(fn($q) => $q->where('status', 'pending')
-                ->orWhere(fn($q2) => $q2->where('status', 'clarification_requested')->whereNotNull('visible_response')))
-            ->count();
+        $subtabCounts['pending_archive'] = $metrics['pending'];
 
         return view('tenant.deals.archive-requests', array_merge(
             compact('tenant', 'requests', 'metrics', 'subtabCounts', 'role', 'search', 'status'),

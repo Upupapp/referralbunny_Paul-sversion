@@ -297,10 +297,11 @@ class DealAssignmentExtensionService
                     \Illuminate\Support\Facades\Mail::to($reseller->email)->queue(
                         new \App\Mail\DealExtensionDecisionMail(
                             extensionRequest: $request,
-                            deal:             $deal,
+                            dealName:         $deal->name,
+                            dealId:           $deal->id,
+                            dealTenantId:     $deal->tenant_id,
                             decision:         $decision,
                             resellerName:     $reseller->name,
-                            resellerEmail:    $reseller->email,
                             tenantName:       $tenant?->name ?? 'ReferralBunny',
                         )
                     );

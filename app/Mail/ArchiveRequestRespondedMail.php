@@ -19,13 +19,13 @@ class ArchiveRequestRespondedMail extends Mailable
         public DealApprovalRequest $archiveRequest,
         public Reseller $reseller,
         public Tenant $tenant,
-        public string $adminEmail,
         public string $adminName,
     ) {}
 
     public function envelope(): Envelope
     {
-        $dealName = $this->archiveRequest->lead?->name ?? 'a deal';
+        $dealName = $this->archiveRequest->lead?->name
+            ?? ($this->archiveRequest->request_payload['deal_name'] ?? 'a deal');
         return new Envelope(
             subject: "Referrer responded to archive clarification — \"{$dealName}\"",
         );

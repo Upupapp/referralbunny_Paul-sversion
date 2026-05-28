@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Models\DealAssignmentExtensionRequest;
-use App\Models\Lead;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,21 +15,21 @@ class DealExtensionDecisionMail extends Mailable
 
     public function __construct(
         public DealAssignmentExtensionRequest $extensionRequest,
-        public Lead $deal,
+        public string $dealName,
+        public string $dealId,
+        public string $dealTenantId,
         public string $decision,
         public string $resellerName,
-        public string $resellerEmail,
         public string $tenantName,
     ) {}
 
     public function envelope(): Envelope
     {
-        $dealName = $this->deal->name;
-        $subject  = match ($this->decision) {
-            'approved'                => "Extension approved — \"{$dealName}\"",
-            'rejected'                => "Extension request rejected — \"{$dealName}\"",
-            'clarification_requested' => "Clarification needed on your extension request — \"{$dealName}\"",
-            default                   => "Extension request update — \"{$dealName}\"",
+        $subject = match ($this->decision) {
+            'approved'                => "Extension approved — \"{$this->dealName}\"",
+            'rejected'                => "Extension request rejected — \"{$this->dealName}\"",
+            'clarification_requested' => "Clarification needed on your extension request — \"{$this->dealName}\"",
+            default                   => "Extension request update — \"{$this->dealName}\"",
         };
         return new Envelope(subject: $subject);
     }
