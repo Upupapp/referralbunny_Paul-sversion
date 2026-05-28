@@ -345,6 +345,7 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
+        Cache::forget("dash_counts:{$tenantId}");
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         Cache::forget("lifecycle_expired_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
@@ -385,6 +386,7 @@ class TenantDealLifecycleController extends Controller
             Log::warning('softDeleteDeal: activity log failed', ['deal_id' => $lead->id, 'error' => $e->getMessage()]);
         }
 
+        Cache::forget("dash_counts:{$tenantId}");
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
 

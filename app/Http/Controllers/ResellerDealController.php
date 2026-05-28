@@ -1390,14 +1390,13 @@ class ResellerDealController extends Controller
             try {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
                 if ($approval->type === 'deal_stage_move') {
-                    $targetStage = $approval->request_payload['target_stage'] ?? '';
                     app(NotificationDispatchService::class)->dispatchToReseller(
                         resellerId:   $approval->requested_by_id,
                         tenantId:     $tenantId,
                         category:     'deal_pipeline',
                         priority:     'high',
                         title:        'Stage move approved — ' . $dealName,
-                        body:         '"' . $dealName . '" has been moved to ' . ucfirst(str_replace('_', ' ', $targetStage)) . '. Great progress!',
+                        body:         '"' . $dealName . '" has been moved to ' . ucfirst(str_replace('_', ' ', $targetStage ?? '')) . '. Great progress!',
                         actionUrl:    url("/reseller/{$tenantId}/deals/{$approval->deal_id}"),
                         actionLabel:  'View Deal',
                         dedupeSuffix: $approvalId . ':stage_approved',
@@ -1420,7 +1419,7 @@ class ResellerDealController extends Controller
             // Email referrer on archive approval
             try {
                 if ($approval->type === 'deal_archive') {
-                    $approvedReseller = Reseller::find($approval->requested_by_id);
+                    $approvedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $approvedTenant   = Tenant::find($tenantId);
                     if ($approvedReseller?->email && $approvedTenant) {
                         Mail::to($approvedReseller->email)->queue(
@@ -1548,7 +1547,7 @@ class ResellerDealController extends Controller
             // Email referrer on archive rejection
             try {
                 if ($approval->type === 'deal_archive') {
-                    $rejectedReseller = Reseller::find($approval->requested_by_id);
+                    $rejectedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $rejectedTenant   = Tenant::find($tenantId);
                     if ($rejectedReseller?->email && $rejectedTenant) {
                         Mail::to($rejectedReseller->email)->queue(

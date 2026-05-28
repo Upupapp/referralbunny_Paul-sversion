@@ -45,6 +45,20 @@
      @rb-del-cancel.window="selectMode = false; selectedDeals = []"
      @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true">
 
+    {{-- Flash messages --}}
+    @if(session('success'))
+        <div class="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            {{ session('error') }}
+        </div>
+    @endif
+
     {{-- Inline deal-health alerts (computed from loaded deals — click to pre-filter) --}}
     <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || missingReferrerCount > 0)">
         <div class="flex flex-wrap gap-2">
