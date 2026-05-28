@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -23,7 +22,6 @@ class CoReferrerRemovedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "You've been removed as a co-referrer on \"{$this->dealName}\"",
         );
     }

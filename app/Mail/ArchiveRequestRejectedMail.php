@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -26,7 +25,6 @@ class ArchiveRequestRejectedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->recipientEmail)],
             subject: "Archive request rejected for \"{$this->dealName}\"",
         );
     }

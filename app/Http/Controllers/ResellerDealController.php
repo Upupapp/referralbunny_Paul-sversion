@@ -25,7 +25,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class ResellerDealController extends Controller
 {
@@ -766,16 +765,17 @@ class ResellerDealController extends Controller
                 $mailReason     = $approval->reason;
                 $mailReviewUrl  = url("/tenant/{$tenantId}/deals/archive-requests/{$approval->id}");
                 $mailTenantName = $archiveTenant->name;
+                $mailApprovalId = $approval->id;
                 \App\Models\TenantMembership::where('tenant_id', $tenantId)
                     ->whereIn('role', ['owner', 'admin'])
                     ->where('status', 'active')
                     ->with('tenantUser')
                     ->get()
-                    ->each(function ($membership) use ($mailDealName, $mailStage, $mailDealValue, $mailReason, $mailReviewUrl, $mailTenantName) {
+                    ->each(function ($membership) use ($mailDealName, $mailStage, $mailDealValue, $mailReason, $mailReviewUrl, $mailTenantName, $tenantId, $mailApprovalId) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
-                            Mail::queue(
-                                new \App\Mail\ArchiveRequestSubmittedMail(
+                            EmailLogger::send(
+                                mailable:      new \App\Mail\ArchiveRequestSubmittedMail(
                                     recipientEmail: $tu->email,
                                     dealName:       $mailDealName,
                                     stage:          $mailStage,
@@ -784,7 +784,13 @@ class ResellerDealController extends Controller
                                     reviewUrl:      $mailReviewUrl,
                                     tenantName:     $mailTenantName,
                                     adminName:      $tu->full_name ?: $tu->email,
-                                )
+                                ),
+                                recipientEmail: $tu->email,
+                                recipientType:  'tenant_user',
+                                emailKey:       'archive_submitted.' . $mailApprovalId . '.' . $tu->id,
+                                subject:        "Archive request submitted for \"{$mailDealName}\"",
+                                recipientId:    (string) $tu->id,
+                                tenantId:       $tenantId,
                             );
                         }
                     });
@@ -869,11 +875,11 @@ class ResellerDealController extends Controller
                     ->where('status', 'active')
                     ->with('tenantUser')
                     ->get()
-                    ->each(function ($membership) use ($mailDealName, $mailDealUrl, $mailVisibleResp, $mailTenantName, $mailResellerName) {
+                    ->each(function ($membership) use ($mailDealName, $mailDealUrl, $mailVisibleResp, $mailTenantName, $mailResellerName, $tenantId, $requestId) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
-                            Mail::queue(
-                                new \App\Mail\ArchiveRequestRespondedMail(
+                            EmailLogger::send(
+                                mailable:      new \App\Mail\ArchiveRequestRespondedMail(
                                     recipientEmail:  $tu->email,
                                     dealName:        $mailDealName,
                                     dealUrl:         $mailDealUrl,
@@ -881,7 +887,13 @@ class ResellerDealController extends Controller
                                     tenantName:      $mailTenantName,
                                     resellerName:    $mailResellerName,
                                     adminName:       $tu->full_name ?: $tu->email,
-                                )
+                                ),
+                                recipientEmail: $tu->email,
+                                recipientType:  'tenant_user',
+                                emailKey:       'archive_responded.' . $requestId . '.' . $tu->id,
+                                subject:        "Referrer responded to archive clarification — \"{$mailDealName}\"",
+                                recipientId:    (string) $tu->id,
+                                tenantId:       $tenantId,
                             );
                         }
                     });
@@ -1607,16 +1619,23 @@ class ResellerDealController extends Controller
                     $approvedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $approvedTenant   = Tenant::find($tenantId);
                     if ($approvedReseller?->email && $approvedTenant) {
-                        Mail::queue(
-                            new \App\Mail\ArchiveRequestApprovedMail(
+                        $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal');
+                        EmailLogger::send(
+                            mailable:      new \App\Mail\ArchiveRequestApprovedMail(
                                 recipientEmail: $approvedReseller->email,
-                                dealName:       $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                dealName:       $dealName,
                                 stage:          $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
                                 dealValue:      $lead ? '₱' . number_format((float)($lead->deal_value ?? 0), 0) : '—',
                                 reviewerNote:   $approval->reviewer_note,
                                 resellerName:   $approvedReseller->name,
                                 tenantName:     $approvedTenant->name,
-                            )
+                            ),
+                            recipientEmail: $approvedReseller->email,
+                            recipientType:  'reseller',
+                            emailKey:       'archive_approved.' . $approvalId . '.' . $approvedReseller->id,
+                            subject:        "Archive request approved for \"{$dealName}\"",
+                            recipientId:    (string) $approvedReseller->id,
+                            tenantId:       $tenantId,
                         );
                     }
                 }
@@ -1742,16 +1761,23 @@ class ResellerDealController extends Controller
                     $rejectedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $rejectedTenant   = Tenant::find($tenantId);
                     if ($rejectedReseller?->email && $rejectedTenant) {
-                        Mail::queue(
-                            new \App\Mail\ArchiveRequestRejectedMail(
+                        $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal');
+                        EmailLogger::send(
+                            mailable:      new \App\Mail\ArchiveRequestRejectedMail(
                                 recipientEmail: $rejectedReseller->email,
-                                dealName:       $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                dealName:       $dealName,
                                 stage:          $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
                                 dealUrl:        $lead ? url("/reseller/{$tenantId}/deals/{$lead->id}") : null,
                                 reviewerNote:   $approval->reviewer_note,
                                 resellerName:   $rejectedReseller->name,
                                 tenantName:     $rejectedTenant->name,
-                            )
+                            ),
+                            recipientEmail: $rejectedReseller->email,
+                            recipientType:  'reseller',
+                            emailKey:       'archive_rejected.' . $approvalId . '.' . $rejectedReseller->id,
+                            subject:        "Archive request rejected for \"{$dealName}\"",
+                            recipientId:    (string) $rejectedReseller->id,
+                            tenantId:       $tenantId,
                         );
                     }
                 }
@@ -1987,14 +2013,20 @@ class ResellerDealController extends Controller
                     dedupeSuffix: $splitId . ':coreferrer_removed:' . now()->format('YmdH'),
                 );
 
-                try {
-                    \Illuminate\Support\Facades\Mail::queue(new \App\Mail\CoReferrerRemovedMail(
+                EmailLogger::send(
+                    mailable:      new \App\Mail\CoReferrerRemovedMail(
                         resellerName:  $coRefReseller->name,
                         resellerEmail: $coRefReseller->email,
                         dealName:      $lead->name,
                         actorName:     $actorName,
-                    ));
-                } catch (\Throwable) {}
+                    ),
+                    recipientEmail: $coRefReseller->email,
+                    recipientType:  'reseller',
+                    emailKey:       'coreferrer_removed.' . $dealId . '.' . $coRefReseller->id . '.' . now()->format('YmdH'),
+                    subject:        "You've been removed as a co-referrer on \"{$lead->name}\"",
+                    recipientId:    (string) $coRefReseller->id,
+                    tenantId:       $tenantId,
+                );
             }
         } catch (\Throwable) {}
 
