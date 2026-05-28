@@ -1373,7 +1373,7 @@ class ResellerDealController extends Controller
 
                 $setupUrl = url("/reseller/setup?token={$inviteToken}");
 
-                Mail::to($email)->queue(new ResellerInvitation(
+                Mail::queue(new ResellerInvitation(
                     resellerName:  $newReseller->name,
                     resellerEmail: $email,
                     tenantName:    $tenant?->name ?? 'ReferralBunny',

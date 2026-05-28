@@ -78,7 +78,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function store(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found.'], 404);
         }
@@ -117,7 +117,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function approve(Request $request, string $id): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -154,7 +154,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function reject(Request $request, string $id): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
@@ -189,7 +189,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function clarify(Request $request, string $id): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || !$this->isAdminOrManager()) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }

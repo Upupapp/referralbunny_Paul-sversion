@@ -25,7 +25,7 @@ class DealPartnerSplitController extends Controller
      */
     public function index(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -44,7 +44,7 @@ class DealPartnerSplitController extends Controller
      */
     public function store(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -124,7 +124,7 @@ class DealPartnerSplitController extends Controller
      */
     public function update(Request $request, Lead $lead, string $splitId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -194,7 +194,7 @@ class DealPartnerSplitController extends Controller
      */
     public function destroy(Request $request, Lead $lead, string $splitId): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
