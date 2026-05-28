@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -15,7 +14,10 @@ class AccessExtendedMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Tenant  $tenant,
+        public string  $tenantId,
+        public string  $tenantName,
+        public string  $tenantAdminName,
+        public string  $adminEmail,
         public int     $days,
         public ?string $note = null,
     ) {}
@@ -23,7 +25,7 @@ class AccessExtendedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->tenant->admin_email, $this->tenant->name)],
+            to:      [new Address($this->adminEmail, $this->tenantName)],
             subject: "Your ReferralBunny.ai access has been extended by {$this->days} day" . ($this->days > 1 ? 's' : ''),
         );
     }
@@ -33,9 +35,9 @@ class AccessExtendedMail extends Mailable
         return new Content(
             view: 'emails.access-extended',
             with: [
-                'tenantId'        => $this->tenant->id,
-                'tenantName'      => $this->tenant->name,
-                'tenantAdminName' => $this->tenant->admin_name ?? $this->tenant->name,
+                'tenantId'        => $this->tenantId,
+                'tenantName'      => $this->tenantName,
+                'tenantAdminName' => $this->tenantAdminName,
                 'days'            => $this->days,
                 'note'            => $this->note,
             ],

@@ -24,9 +24,9 @@ class TenantInvitationAcceptedMail extends Mailable
     public string $usersUrl;
 
     public function __construct(
-        public TenantInvitation $invitation,
-        public TenantUser       $inviter,
-        public TenantUser       $acceptedBy,
+        TenantInvitation $invitation,
+        TenantUser       $inviter,
+        TenantUser       $acceptedBy,
     ) {
         $this->inviterName     = trim("{$inviter->first_name} {$inviter->last_name}");
         $this->inviterEmail    = $inviter->email;

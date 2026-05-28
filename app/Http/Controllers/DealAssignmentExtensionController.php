@@ -241,6 +241,7 @@ class DealAssignmentExtensionController extends Controller
             $tenantId = TenantContext::id();
             $role     = $tenantId ? \App\Models\TenantMembership::where('tenant_user_id', $userId)
                 ->where('tenant_id', $tenantId)->where('status', 'active')->value('role') : null;
+            // Fallback only reached when TenantContext::id() is null (super-admin, no tenant context); endpoint is already gated by isAdminOrManager().
             return [$userId, $role ?? 'manager'];
         }
         if (Auth::guard('web')->check()) {

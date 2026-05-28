@@ -255,8 +255,9 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
+        $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorUserId ?? '')); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.archive-requests', $tenantId)
@@ -369,8 +370,9 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
+        $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorUserId ?? '')); } catch (\Throwable) {}
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
     }
@@ -409,7 +411,7 @@ class TenantDealLifecycleController extends Controller
         }
 
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorId ?? '')); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.deleted-archived', $tenantId)

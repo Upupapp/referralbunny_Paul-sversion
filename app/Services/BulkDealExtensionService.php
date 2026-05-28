@@ -86,11 +86,12 @@ class BulkDealExtensionService
         // PHP swallows the exception but PostgreSQL marks the whole transaction as
         // aborted (SQLSTATE[25P02]), killing every subsequent statement in the batch.
         // Running audits after commit keeps the core transaction clean.
-        $auditItems = [];
+        $auditItems  = [];
+        $createdBatch = null;
 
         $result = DB::transaction(function () use (
             $reseller, $tenantId, $requestedDays, $sharedReason,
-            $perDealNotes, $eligible, $ineligible, &$auditItems
+            $perDealNotes, $eligible, $ineligible, &$auditItems, &$createdBatch
         ) {
             // Create the batch
             $batch = DealExtensionRequestBatch::create([
@@ -144,13 +145,7 @@ class BulkDealExtensionService
                 ]];
             }
 
-            // Notify admins/managers
-            $this->notifyAdminsBulkRequest($tenantId, $reseller, $batch);
-
-            // Bust caches — new pending batch changes metrics + nav badge
-            $this->criticalActions->invalidateCache($tenantId);
-            \Illuminate\Support\Facades\Cache::forget("bulk_ext_metrics:{$tenantId}");
-            \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
+            $createdBatch = $batch;
 
             return [
                 'batch'      => $batch->fresh(),
@@ -162,6 +157,13 @@ class BulkDealExtensionService
         // Write audit entries after the transaction commits (safe from type errors)
         foreach ($auditItems as $item) {
             $this->auditDeal(...$item);
+        }
+
+        // Post-commit side effects — outside the transaction so they cannot abort the batch creation
+        if ($createdBatch) {
+            try { $this->notifyAdminsBulkRequest($tenantId, $reseller, $createdBatch); } catch (\Throwable) {}
+            try { $this->criticalActions->invalidateCache($tenantId); } catch (\Throwable) {}
+            \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         }
 
         return $result;

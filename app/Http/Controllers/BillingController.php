@@ -149,7 +149,14 @@ class BillingController extends Controller
         try {
             if ($tenant->admin_email) {
                 \Illuminate\Support\Facades\Mail::queue(
-                    new \App\Mail\AccessExtendedMail($tenant, $data['days'], $data['note'] ?? null)
+                    new \App\Mail\AccessExtendedMail(
+                        tenantId:        $tenant->id,
+                        tenantName:      $tenant->name,
+                        tenantAdminName: $tenant->admin_name ?? $tenant->name,
+                        adminEmail:      $tenant->admin_email,
+                        days:            $data['days'],
+                        note:            $data['note'] ?? null,
+                    )
                 );
             }
         } catch (\Throwable $e) {

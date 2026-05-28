@@ -2,9 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\Partner;
-use App\Models\Reseller;
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -14,25 +11,22 @@ class PartnerInviteMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly Partner   $partner,
-        public readonly Tenant    $tenant,
-        public readonly ?Reseller $invitedBy = null,
+        public string  $partnerFirstName,
+        public string  $tenantName,
+        public string  $inviterName,
+        public string  $setupUrl,
     ) {}
 
     public function build(): static
     {
-        $setupUrl    = url('/partner/invite/' . $this->partner->setup_token);
-        $inviterName = $this->invitedBy?->name ?? 'A referrer';
-
         return $this
-            ->subject("You're invited as a Partner — {$this->tenant->name}")
+            ->subject("You're invited as a Partner — {$this->tenantName}")
             ->view('mail.partner-invite')
             ->with([
-                'partner'     => $this->partner,
-                'tenant'      => $this->tenant,
-                'invitedBy'   => $this->invitedBy,
-                'inviterName' => $inviterName,
-                'setupUrl'    => $setupUrl,
+                'partnerFirstName' => $this->partnerFirstName,
+                'tenantName'       => $this->tenantName,
+                'inviterName'      => $this->inviterName,
+                'setupUrl'         => $this->setupUrl,
             ]);
     }
 }

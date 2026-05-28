@@ -24,7 +24,7 @@ class TenantInviterReminderMail extends Mailable
     public string $usersUrl;
     public int    $inviterReminderNumber;
 
-    public function __construct(public TenantInvitation $invitation, public TenantUser $inviter)
+    public function __construct(TenantInvitation $invitation, TenantUser $inviter)
     {
         $this->inviterName          = trim("{$inviter->first_name} {$inviter->last_name}");
         $this->inviterEmail         = $inviter->email;

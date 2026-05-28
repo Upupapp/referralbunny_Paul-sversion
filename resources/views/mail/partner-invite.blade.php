@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Partner Invite — {{ $tenant->name }}</title>
+<title>Partner Invite — {{ $tenantName }}</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:#f0fdfa; font-family:'Inter',Arial,sans-serif; color:#374151; }
@@ -31,18 +31,18 @@
     {{-- Header --}}
     <div class="header">
       <h1>You're invited as a Partner</h1>
-      <p>{{ $tenant->name }} · ReferralBunny.ai</p>
+      <p>{{ $tenantName }} · ReferralBunny.ai</p>
     </div>
 
     {{-- Body --}}
     <div class="body">
       <span class="badge">Partner Invite</span>
 
-      <p>Hi {{ $partner->first_name ?? 'there' }},</p>
+      <p>Hi {{ $partnerFirstName ?? 'there' }},</p>
 
       <p>
         <strong>{{ $inviterName }}</strong> has invited you to join
-        <strong>{{ $tenant->name }}</strong> as a <strong>Partner</strong>
+        <strong>{{ $tenantName }}</strong> as a <strong>Partner</strong>
         on ReferralBunny.ai. As a Partner, you'll have access to the deals
         you're connected to and can track your commission.
       </p>
@@ -68,7 +68,7 @@
 
     {{-- Footer --}}
     <div class="footer">
-      This invite was sent by {{ $inviterName }} via {{ $tenant->name }} on ReferralBunny.ai.<br>
+      This invite was sent by {{ $inviterName }} via {{ $tenantName }} on ReferralBunny.ai.<br>
       If you weren't expecting this, you can safely ignore this email.
     </div>
 
