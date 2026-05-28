@@ -8,12 +8,12 @@ use App\Http\Controllers\TenantLegalAgreementController;
 use App\Mail\ResellerInvitation;
 use App\Mail\ResellerPasswordReset;
 use App\Models\Reseller;
+use App\Services\EmailLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class ResellerPortalAuthController extends Controller
@@ -105,15 +105,25 @@ class ResellerPortalAuthController extends Controller
                 'setup_token_created_at' => now(),
             ]);
 
-            try {
-                Mail::queue(new ResellerPasswordReset(
+            $sent = EmailLogger::send(
+                mailable:      new ResellerPasswordReset(
                     resellerName:  $reseller->name,
                     resellerEmail: $reseller->email,
                     tenantName:    $tenantName,
                     resetUrl:      $resetUrl,
-                ));
-            } catch (\Throwable $e) {
-                Log::warning("Reseller password reset email failed: {$e->getMessage()}");
+                ),
+                recipientEmail: $reseller->email,
+                recipientType:  'reseller',
+                emailKey:       'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16),
+                subject:        'Reset your referrer portal password',
+                recipientId:    (string) $reseller->id,
+                tenantId:       $reseller->tenant_id,
+            );
+            if (!$sent) {
+                Log::warning('ResellerPortalAuthController: password reset email failed to queue', [
+                    'reseller_id' => $reseller->id,
+                    'tenant_id'   => $reseller->tenant_id,
+                ]);
             }
         }
 
@@ -161,6 +171,15 @@ class ResellerPortalAuthController extends Controller
             'setup_token'            => null,
             'setup_token_created_at' => null,
         ]);
+
+        try {
+            Log::info('Reseller password reset completed', [
+                'reseller_id' => $reseller->id,
+                'tenant_id'   => $reseller->tenant_id,
+                'email'       => $reseller->email,
+                'ip'          => request()->ip(),
+            ]);
+        } catch (\Throwable) {}
 
         return redirect()->route('reseller.login')
             ->with('success', 'Password updated. You can now sign in.');

@@ -244,7 +244,7 @@ class PartnerAuthController extends Controller
                 'reset_token_expires_at' => now()->addHour(),
             ]);
 
-            EmailLogger::send(
+            $sent = EmailLogger::send(
                 mailable:      new PartnerPasswordReset(
                     partnerName:  $partner->full_name ?: $partner->email,
                     partnerEmail: $partner->email,
@@ -258,6 +258,12 @@ class PartnerAuthController extends Controller
                 recipientId:    (string) $partner->id,
                 tenantId:       $partner->tenant_id,
             );
+            if (!$sent) {
+                Log::warning('PartnerAuthController: password reset email failed to queue', [
+                    'partner_id' => $partner->id,
+                    'tenant_id'  => $partner->tenant_id,
+                ]);
+            }
         }
 
         return back()->with('success', 'If an account exists with that email, a reset link has been sent.');
@@ -302,12 +308,14 @@ class PartnerAuthController extends Controller
             'reset_token_expires_at' => null,
         ]);
 
-        Log::info('Partner password reset completed', [
-            'partner_id' => $partner->id,
-            'tenant_id'  => $partner->tenant_id,
-            'email'      => $partner->email,
-            'ip'         => request()->ip(),
-        ]);
+        try {
+            Log::info('Partner password reset completed', [
+                'partner_id' => $partner->id,
+                'tenant_id'  => $partner->tenant_id,
+                'email'      => $partner->email,
+                'ip'         => request()->ip(),
+            ]);
+        } catch (\Throwable) {}
 
         return redirect()->route('partner.login')
             ->with('success', 'Password updated. You can now sign in with your new password.');
