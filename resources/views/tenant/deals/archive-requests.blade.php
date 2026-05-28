@@ -205,7 +205,7 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                 <template x-if="confirmModal.type === 'approve'">
                     <div class="flex justify-end gap-3">
                         <button type="button" @click="confirmModal.open = false" class="btn-secondary">Cancel</button>
-                        <form :action="`{{ url('/tenant/' . $tenant->id . '/approvals/`) }}${confirmModal.requestId}/approve`" method="POST" @submit="submitting = true">
+                        <form :action="`{{ route('tenant.approvals.approve', [$tenant->id, '__ID__']) }}`.replace('__ID__', confirmModal.requestId)" method="POST" @submit="submitting = true">
                             @csrf
                             <button type="submit" :disabled="submitting"
                                     class="btn-primary bg-green-600 hover:bg-green-700">
@@ -216,7 +216,7 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                     </div>
                 </template>
                 <template x-if="confirmModal.type === 'reject'">
-                    <form :action="`{{ url('/tenant/' . $tenant->id . '/approvals/`) }}${confirmModal.requestId}/reject`" method="POST" @submit="submitting = true">
+                    <form :action="`{{ route('tenant.approvals.reject', [$tenant->id, '__ID__']) }}`.replace('__ID__', confirmModal.requestId)" method="POST" @submit="submitting = true">
                         @csrf
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Reason for rejection <span class="text-red-500">*</span></label>

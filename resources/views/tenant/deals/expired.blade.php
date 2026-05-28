@@ -56,8 +56,8 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
             </div>
             <select name="stage" class="pill-select">
                 <option value="">All Stages</option>
-                @foreach(['introduction','presentation','contract_sent','signed','paid'] as $s)
-                    <option value="{{ $s }}" @selected($stage === $s)>{{ ucwords(str_replace('_',' ',$s)) }}</option>
+                @foreach(collect($config?->stages ?? []) as $s)
+                    <option value="{{ $s['key'] }}" @selected($stage === $s['key'])>{{ $s['label'] }}</option>
                 @endforeach
             </select>
             <button type="submit" class="btn-primary">Filter</button>
