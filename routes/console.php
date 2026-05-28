@@ -15,6 +15,8 @@ Schedule::job(new SendTenantAdminDailyBriefingJob)->dailyAt('08:00')->timezone('
 Schedule::job(new SendResellerDailySummariesJob)->dailyAt('08:00')->timezone('Asia/Manila');
 
 // ── LGU IDS weekly referrer note reminder (every Wednesday 10:00 AM Perth) ───
+// Australia/Perth = UTC+8 year-round (no DST) — same wall-clock offset as Asia/Manila.
+// Do NOT change to a DST-observing timezone; Perth is intentional for a fixed UTC+8 label.
 Schedule::command(SendLguIdsReferrerNoteReminders::class)
     ->weeklyOn(3, '10:00')
     ->timezone('Australia/Perth')
@@ -63,10 +65,10 @@ Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila')
 Schedule::command('invitations:send-reminders')->hourly();
 
 // ── Lead expiry & pipeline ────────────────────────────────────
-Schedule::command('leads:expire')->dailyAt('00:05');
-Schedule::command('leads:purge-archived')->dailyAt('01:30');
-Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30');
-Schedule::command('leads:notify-expiring')->dailyAt('07:00');
+Schedule::command('leads:expire')->dailyAt('00:05')->timezone('Asia/Manila');
+Schedule::command('leads:purge-archived')->dailyAt('01:30')->timezone('Asia/Manila');
+Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30')->timezone('Asia/Manila');
+Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Manila');
 
 // ── Promo jobs ────────────────────────────────────────────────
 Schedule::command('promos:expire')->dailyAt('00:15');

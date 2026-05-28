@@ -226,7 +226,7 @@ class ResellerDealController extends Controller
         // added_amount drives the commission pool (70%). Never let a service failure zero it out.
         $addedAmountFallback = (float) ($lead->added_amount ?? 0);
         $commissionPool = (float) ($breakdown['commission_pool']
-            ?? ($addedAmountFallback > 0 ? round($addedAmountFallback * 0.70, 2) : 0));
+            ?? ($addedAmountFallback > 0 ? round($addedAmountFallback * \App\Services\CommissionCalculationService::COMMISSION_POOL_RATE, 2) : 0));
 
         // Partners Commission — computed FIRST so we can deduct from referrer's net.
         $partnersCommission = 0.0;
@@ -773,15 +773,16 @@ class ResellerDealController extends Controller
                     ->each(function ($membership) use ($mailDealName, $mailStage, $mailDealValue, $mailReason, $mailReviewUrl, $mailTenantName) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
-                            Mail::to($tu->email)->queue(
+                            Mail::queue(
                                 new \App\Mail\ArchiveRequestSubmittedMail(
-                                    dealName:   $mailDealName,
-                                    stage:      $mailStage,
-                                    dealValue:  $mailDealValue,
-                                    reason:     $mailReason,
-                                    reviewUrl:  $mailReviewUrl,
-                                    tenantName: $mailTenantName,
-                                    adminName:  $tu->full_name ?: $tu->email,
+                                    recipientEmail: $tu->email,
+                                    dealName:       $mailDealName,
+                                    stage:          $mailStage,
+                                    dealValue:      $mailDealValue,
+                                    reason:         $mailReason,
+                                    reviewUrl:      $mailReviewUrl,
+                                    tenantName:     $mailTenantName,
+                                    adminName:      $tu->full_name ?: $tu->email,
                                 )
                             );
                         }
@@ -870,14 +871,15 @@ class ResellerDealController extends Controller
                     ->each(function ($membership) use ($mailDealName, $mailDealUrl, $mailVisibleResp, $mailTenantName, $mailResellerName) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
-                            Mail::to($tu->email)->queue(
+                            Mail::queue(
                                 new \App\Mail\ArchiveRequestRespondedMail(
-                                    $mailDealName,
-                                    $mailDealUrl,
-                                    $mailVisibleResp,
-                                    $mailTenantName,
-                                    $mailResellerName,
-                                    $tu->full_name ?: $tu->email,
+                                    recipientEmail:  $tu->email,
+                                    dealName:        $mailDealName,
+                                    dealUrl:         $mailDealUrl,
+                                    visibleResponse: $mailVisibleResp,
+                                    tenantName:      $mailTenantName,
+                                    resellerName:    $mailResellerName,
+                                    adminName:       $tu->full_name ?: $tu->email,
                                 )
                             );
                         }
@@ -1582,14 +1584,15 @@ class ResellerDealController extends Controller
                     $approvedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $approvedTenant   = Tenant::find($tenantId);
                     if ($approvedReseller?->email && $approvedTenant) {
-                        Mail::to($approvedReseller->email)->queue(
+                        Mail::queue(
                             new \App\Mail\ArchiveRequestApprovedMail(
-                                dealName:     $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
-                                stage:        $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
-                                dealValue:    $lead ? '₱' . number_format((float)($lead->deal_value ?? 0), 0) : '—',
-                                reviewerNote: $approval->reviewer_note,
-                                resellerName: $approvedReseller->name,
-                                tenantName:   $approvedTenant->name,
+                                recipientEmail: $approvedReseller->email,
+                                dealName:       $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                stage:          $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
+                                dealValue:      $lead ? '₱' . number_format((float)($lead->deal_value ?? 0), 0) : '—',
+                                reviewerNote:   $approval->reviewer_note,
+                                resellerName:   $approvedReseller->name,
+                                tenantName:     $approvedTenant->name,
                             )
                         );
                     }
@@ -1716,14 +1719,15 @@ class ResellerDealController extends Controller
                     $rejectedReseller = Reseller::where('id', $approval->requested_by_id)->where('tenant_id', $tenantId)->first();
                     $rejectedTenant   = Tenant::find($tenantId);
                     if ($rejectedReseller?->email && $rejectedTenant) {
-                        Mail::to($rejectedReseller->email)->queue(
+                        Mail::queue(
                             new \App\Mail\ArchiveRequestRejectedMail(
-                                dealName:     $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
-                                stage:        $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
-                                dealUrl:      $lead ? url("/reseller/{$tenantId}/deals/{$lead->id}") : null,
-                                reviewerNote: $approval->reviewer_note,
-                                resellerName: $rejectedReseller->name,
-                                tenantName:   $rejectedTenant->name,
+                                recipientEmail: $rejectedReseller->email,
+                                dealName:       $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'your deal'),
+                                stage:          $lead ? ucwords(str_replace('_', ' ', $lead->stage ?? '')) : '—',
+                                dealUrl:        $lead ? url("/reseller/{$tenantId}/deals/{$lead->id}") : null,
+                                reviewerNote:   $approval->reviewer_note,
+                                resellerName:   $rejectedReseller->name,
+                                tenantName:     $rejectedTenant->name,
                             )
                         );
                     }

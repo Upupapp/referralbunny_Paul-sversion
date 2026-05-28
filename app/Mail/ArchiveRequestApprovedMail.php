@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -13,6 +14,7 @@ class ArchiveRequestApprovedMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
+        public string  $recipientEmail,
         public string  $dealName,
         public string  $stage,
         public string  $dealValue,
@@ -24,6 +26,7 @@ class ArchiveRequestApprovedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            to:      [new Address($this->recipientEmail)],
             subject: "Archive request approved for \"{$this->dealName}\"",
         );
     }

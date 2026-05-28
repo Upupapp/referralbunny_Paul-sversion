@@ -178,6 +178,10 @@ class BillingController extends Controller
             ],
         ]);
 
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $this->actorId());
+        } catch (\Throwable) {}
+
         return response()->json([
             'message'      => "Access extended by {$data['days']} day(s).",
             'subscription' => $sub,
