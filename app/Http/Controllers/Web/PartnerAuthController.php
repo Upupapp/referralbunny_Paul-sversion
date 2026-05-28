@@ -8,13 +8,13 @@ use App\Http\Controllers\TenantLegalAgreementController;
 use App\Mail\PartnerPasswordReset;
 use App\Models\DealPartner;
 use App\Models\Partner;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class PartnerAuthController extends Controller
@@ -244,16 +244,20 @@ class PartnerAuthController extends Controller
                 'reset_token_expires_at' => now()->addHour(),
             ]);
 
-            try {
-                Mail::queue(new PartnerPasswordReset(
+            EmailLogger::send(
+                mailable:      new PartnerPasswordReset(
                     partnerName:  $partner->full_name ?: $partner->email,
                     partnerEmail: $partner->email,
                     tenantName:   $partner->tenant?->name ?? 'ReferralBunny',
                     resetUrl:     $resetUrl,
-                ));
-            } catch (\Throwable $e) {
-                Log::warning("Partner password reset email failed: {$e->getMessage()}");
-            }
+                ),
+                recipientEmail: $partner->email,
+                recipientType:  'partner',
+                emailKey:       'partner_reset.' . $partner->id . '.' . substr($token, 0, 16),
+                subject:        'Reset your Partner Portal password',
+                recipientId:    (string) $partner->id,
+                tenantId:       $partner->tenant_id,
+            );
         }
 
         return back()->with('success', 'If an account exists with that email, a reset link has been sent.');
@@ -296,6 +300,13 @@ class PartnerAuthController extends Controller
             'password'               => Hash::make($data['password']),
             'reset_token'            => null,
             'reset_token_expires_at' => null,
+        ]);
+
+        Log::info('Partner password reset completed', [
+            'partner_id' => $partner->id,
+            'tenant_id'  => $partner->tenant_id,
+            'email'      => $partner->email,
+            'ip'         => request()->ip(),
         ]);
 
         return redirect()->route('partner.login')

@@ -80,6 +80,7 @@ class CheckPipelineStageLimits extends Command
                             'tenant_id'         => $tenantId,
                             'notifiable_type'   => 'tenant_admin',
                             'notifiable_id'     => $adminId,
+                            'title'             => "\"{$lead->name}\" — {$lead->days_left}d left in {$rule->stage}",
                             'category'          => 'deal_pipeline',
                             'type'              => 'warning',
                             'priority'          => $lead->days_left <= 1 ? 'critical' : 'high',
