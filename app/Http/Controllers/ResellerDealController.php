@@ -724,6 +724,10 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
         }
 
+        Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+
         // Activity log + notification AFTER commit — never let these roll back the business record
         try {
             app(DealActivityService::class)->record($lead, 'Archive request submitted by referrer — reason: ' . \Illuminate\Support\Str::limit($data['reason'], 100), 'archive', [
@@ -797,11 +801,16 @@ class ResellerDealController extends Controller
             'visible_response' => $data['visible_response'],
         ]);
 
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        Cache::forget("subtab_badge_counts:{$tenantId}");
+        Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+
         $dealId = $approval->deal_id;
+        $lead   = null;
+        try { $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->first(); } catch (\Throwable) {}
 
         // Activity log
         try {
-            $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->first();
             if ($lead) {
                 app(DealActivityService::class)->record($lead, 'Referrer responded to archive clarification: ' . \Illuminate\Support\Str::limit($data['visible_response'], 100), 'archive', [
                     'category'   => 'archive',
@@ -814,7 +823,6 @@ class ResellerDealController extends Controller
 
         // Notify all tenant admins/managers about the referrer's response
         try {
-            $lead     = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->first();
             $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
 
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(

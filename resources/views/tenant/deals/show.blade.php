@@ -2578,7 +2578,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
             this.loadingComments = true;
             this.loadError = false;
             try {
-                const res = await fetch(`/api/deals/${dealId}/comments`, {
+                const res = await fetch(`/api/deals/${dealId}/comments?tenant_id=${encodeURIComponent(tenantId)}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -2599,7 +2599,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
             this.loadingMore = true;
             try {
                 const beforeId = this.comments[this.comments.length - 1].id;
-                const res = await fetch(`/api/deals/${dealId}/comments?before_id=${beforeId}`, {
+                const res = await fetch(`/api/deals/${dealId}/comments?before_id=${beforeId}&tenant_id=${encodeURIComponent(tenantId)}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -2630,6 +2630,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
                 fd.append('visibility',        this.newVisibility);
                 fd.append('mentions',          JSON.stringify(this.mentions));
                 fd.append('client_request_id', this.clientRequestId);
+                fd.append('tenant_id',         tenantId);
                 this.selectedFiles.forEach((f, i) => fd.append(`files[${i}]`, f));
 
                 const res = await fetch(`/api/deals/${dealId}/comments`, {
@@ -2697,7 +2698,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
                         'X-CSRF-TOKEN': this.csrf(),
                         'X-Requested-With': 'XMLHttpRequest',
                     },
-                    body: JSON.stringify({ body: this.editBody }),
+                    body: JSON.stringify({ body: this.editBody, tenant_id: tenantId }),
                 });
                 let data = null;
                 try { data = await res.json(); } catch {}
@@ -2721,7 +2722,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
             if (!confirm('Delete this note?')) return;
             this.deletingId = c.id;
             try {
-                const res = await fetch(`/api/deals/${dealId}/comments/${c.id}`, {
+                const res = await fetch(`/api/deals/${dealId}/comments/${c.id}?tenant_id=${encodeURIComponent(tenantId)}`, {
                     method: 'DELETE',
                     credentials: 'same-origin',
                     headers: { 'X-CSRF-TOKEN': this.csrf(), 'X-Requested-With': 'XMLHttpRequest' },
@@ -2768,7 +2769,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
         async fetchMentions(q) {
             this.mentionLoading = true;
             try {
-                const res = await fetch(`/api/deals/${dealId}/mentions/search?q=${encodeURIComponent(q)}`, {
+                const res = await fetch(`/api/deals/${dealId}/mentions/search?q=${encodeURIComponent(q)}&tenant_id=${encodeURIComponent(tenantId)}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
