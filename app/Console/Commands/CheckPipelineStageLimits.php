@@ -25,6 +25,7 @@ class CheckPipelineStageLimits extends Command
 
         $warned    = 0;
         $notified  = 0;
+        $today     = now()->format('Y-m-d');
 
         foreach ($rules as $tenantId => $stageRules) {
             $tenantName = DB::table('tenants')->where('id', $tenantId)->value('name') ?? $tenantId;
@@ -59,18 +60,20 @@ class CheckPipelineStageLimits extends Command
                     ->get(['id', 'name', 'email'])
                     ->keyBy('name');
 
-                $today = now()->format('Y-m-d');
+                // Pre-fetch all pipeline warning dedup keys sent today — one range scan instead of N×M EXISTS queries
+                $sentDedupKeys = array_flip(
+                    DB::table('notifications')
+                        ->where('tenant_id', $tenantId)
+                        ->where('deduplication_key', 'LIKE', "pipeline_warning.{$tenantId}.%.{$today}")
+                        ->pluck('deduplication_key')
+                        ->toArray()
+                );
 
                 foreach ($warningLeads as $lead) {
                     // Create one in-app notification per active admin/manager for this tenant
                     foreach ($adminIds as $adminId) {
-                        // Dedup via indexed deduplication_key — avoids non-sargable metadata_json scan
-                        $dedupKey    = "pipeline_warning.{$tenantId}.{$lead->id}.{$adminId}.{$today}";
-                        $alreadySent = DB::table('notifications')
-                            ->where('tenant_id', $tenantId)
-                            ->where('deduplication_key', $dedupKey)
-                            ->exists();
-                        if ($alreadySent) continue;
+                        $dedupKey = "pipeline_warning.{$tenantId}.{$lead->id}.{$adminId}.{$today}";
+                        if (isset($sentDedupKeys[$dedupKey])) continue;
 
                         DB::table('notifications')->insert([
                             'id'                => (string) Str::uuid(),
@@ -97,6 +100,7 @@ class CheckPipelineStageLimits extends Command
                             'sent_at'           => now(),
                             'created_at'        => now(),
                         ]);
+                        $sentDedupKeys[$dedupKey] = 1;
                         $warned++;
                     }
 
