@@ -723,7 +723,7 @@ class ResellerDealController extends Controller
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
                             Mail::to($tu->email)->queue(
-                                new \App\Mail\ArchiveRequestSubmittedMail($approval, $archiveTenant, $tu->email, $tu->full_name)
+                                new \App\Mail\ArchiveRequestSubmittedMail($approval, $archiveTenant, $tu->email, $tu->full_name ?: $tu->email)
                             );
                         }
                     });

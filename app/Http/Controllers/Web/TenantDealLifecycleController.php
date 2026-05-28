@@ -363,10 +363,9 @@ class TenantDealLifecycleController extends Controller
             ->whereNull('deleted_at')
             ->firstOrFail();
 
-        $actorId   = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
-        $actorType = Auth::guard('web')->check() ? 'web' : 'tenant_user';
+        $actorId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
 
-        DB::transaction(function () use ($lead, $actorId, $actorType, $data) {
+        DB::transaction(function () use ($lead, $actorId, $data) {
             $lead->update([
                 'deleted_by' => $actorId,
             ]);
