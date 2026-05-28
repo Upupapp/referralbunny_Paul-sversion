@@ -14,16 +14,18 @@ class TenantInvitationExpiredMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public string $recipientEmail;
     public string $tenantName;
     public string $inviterName;
     public string $roleLabel;
 
-    public function __construct(public TenantInvitation $invitation)
+    public function __construct(TenantInvitation $invitation)
     {
-        $this->tenantName  = $invitation->tenant?->name ?? 'the workspace';
-        $this->roleLabel   = ucfirst($invitation->role);
+        $this->recipientEmail = $invitation->email;
+        $this->tenantName     = $invitation->tenant?->name ?? 'the workspace';
+        $this->roleLabel      = ucfirst($invitation->role);
 
-        $inviter          = $invitation->invitedBy;
+        $inviter           = $invitation->invitedBy;
         $this->inviterName = $inviter
             ? trim("{$inviter->first_name} {$inviter->last_name}")
             : $this->tenantName;
@@ -32,7 +34,7 @@ class TenantInvitationExpiredMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->invitation->email)],
+            to:      [new Address($this->recipientEmail)],
             subject: "Your invitation to {$this->tenantName} has expired",
         );
     }

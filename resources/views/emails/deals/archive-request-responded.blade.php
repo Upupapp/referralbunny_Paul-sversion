@@ -5,7 +5,7 @@
 
 <div class="highlight-box" style="background:#F0FDF4;border-left:4px solid #22C55E;padding:16px;border-radius:8px;margin:20px 0">
     <div class="highlight-title" style="color:#15803D;font-weight:600;margin-bottom:8px">Referrer's Response</div>
-    <div class="highlight-text" style="color:#166534">{{ nl2br(e($visibleResponse)) }}</div>
+    <div class="highlight-text" style="color:#166534">{!! nl2br(e($visibleResponse)) !!}</div>
 </div>
 
 <p class="text">Please review the response and approve, reject, or ask for further clarification.</p>

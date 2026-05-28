@@ -14,19 +14,21 @@ class TenantInvitationRevokedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public string $recipientEmail;
     public string $tenantName;
     public string $roleLabel;
 
-    public function __construct(public TenantInvitation $invitation)
+    public function __construct(TenantInvitation $invitation)
     {
-        $this->tenantName = $invitation->tenant?->name ?? 'the workspace';
-        $this->roleLabel  = ucfirst($invitation->role);
+        $this->recipientEmail = $invitation->email;
+        $this->tenantName     = $invitation->tenant?->name ?? 'the workspace';
+        $this->roleLabel      = ucfirst($invitation->role);
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->invitation->email)],
+            to:      [new Address($this->recipientEmail)],
             subject: "Your invitation to {$this->tenantName} has been cancelled",
         );
     }

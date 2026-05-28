@@ -14,6 +14,7 @@ class TenantInvitationReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public string $recipientEmail;
     public string $acceptUrl;
     public string $tenantName;
     public string $inviterName;
@@ -22,8 +23,9 @@ class TenantInvitationReminderMail extends Mailable
     public int    $reminderNumber;
     public bool   $isLastReminder;
 
-    public function __construct(public TenantInvitation $invitation)
+    public function __construct(TenantInvitation $invitation)
     {
+        $this->recipientEmail = $invitation->email;
         $this->acceptUrl      = url("/tenant/accept-invite/{$invitation->token}");
         $this->tenantName     = $invitation->tenant?->name ?? 'the workspace';
         $this->roleLabel      = ucfirst($invitation->role);
@@ -31,7 +33,7 @@ class TenantInvitationReminderMail extends Mailable
         $this->reminderNumber = $invitation->reminder_count + 1;
         $this->isLastReminder = $this->reminderNumber >= 3;
 
-        $inviter          = $invitation->invitedBy;
+        $inviter           = $invitation->invitedBy;
         $this->inviterName = $inviter
             ? trim("{$inviter->first_name} {$inviter->last_name}")
             : $this->tenantName;
@@ -41,7 +43,7 @@ class TenantInvitationReminderMail extends Mailable
     {
         $urgency = $this->isLastReminder ? 'Last chance — ' : 'Reminder: ';
         return new Envelope(
-            to:      [new Address($this->invitation->email)],
+            to:      [new Address($this->recipientEmail)],
             subject: "{$urgency}Your invitation to join {$this->tenantName} expires on {$this->expiresAt}",
         );
     }
