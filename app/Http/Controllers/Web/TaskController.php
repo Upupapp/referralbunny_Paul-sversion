@@ -455,6 +455,8 @@ class TaskController extends Controller
             ? 'Task assigned to you.'
             : 'Task reassigned to you.';
 
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+
         return response()->json([
             'message'          => $msg,
             'action'           => $actionType,

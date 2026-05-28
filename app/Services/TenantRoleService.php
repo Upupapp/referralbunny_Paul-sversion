@@ -200,7 +200,7 @@ class TenantRoleService
             Notification::create([
                 'id'                => (string) Str::uuid(),
                 'tenant_id'         => $tenantId,
-                'notifiable_type'   => 'App\\Models\\TenantUser',
+                'notifiable_type'   => 'tenant_admin',
                 'notifiable_id'     => $tenantUserId,
                 'category'          => 'reseller_referrer',
                 'type'              => 'info',

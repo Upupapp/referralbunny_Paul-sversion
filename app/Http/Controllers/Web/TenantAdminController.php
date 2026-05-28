@@ -466,7 +466,8 @@ class TenantAdminController extends Controller
             ),
             recipientEmail: $reseller->email,
             recipientType:  'reseller',
-            emailKey:       "reseller_invite_resend.{$reseller->id}." . now()->format('Y-m-d-H'),
+            emailKey:       "reseller_invite_resend.{$reseller->id}",
+            dailyDedup:     true,
             subject:        'Your ReferralBunny.ai referrer account invitation',
             tenantId:       $tenantId,
         );

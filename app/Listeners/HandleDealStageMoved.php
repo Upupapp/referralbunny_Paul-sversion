@@ -61,11 +61,11 @@ class HandleDealStageMoved implements ShouldQueue
                 ),
                 recipientEmail: $email,
                 recipientType:  'reseller',
-                emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage . '.' . now()->format('Ymd'),
+                emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage,
                 subject:        "Deal stage updated: {$event->leadName} → {$toStageLabel}",
                 recipientId:    $resellerId,
                 tenantId:       $event->tenantId,
-                dailyDedup:     false,
+                dailyDedup:     true,
             );
         }
 
@@ -81,7 +81,7 @@ class HandleDealStageMoved implements ShouldQueue
                     body:         "Your deal moved to {$toStageLabel}.",
                     actionUrl:    url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}:" . now()->format('Ymd'),
+                    dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}",
                 );
             } catch (\Throwable $e) {
                 Log::warning('[HandleDealStageMoved] Referrer in-app failed', ['error' => $e->getMessage()]);

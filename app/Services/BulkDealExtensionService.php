@@ -162,7 +162,7 @@ class BulkDealExtensionService
         // Post-commit side effects — outside the transaction so they cannot abort the batch creation
         if ($createdBatch) {
             try { $this->notifyAdminsBulkRequest($tenantId, $reseller, $createdBatch); } catch (\Throwable) {}
-            try { $this->criticalActions->invalidateCache($tenantId); } catch (\Throwable) {}
+            try { $this->criticalActions->invalidateCache($tenantId, (string) $reseller->id); } catch (\Throwable) {}
             \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         }
 

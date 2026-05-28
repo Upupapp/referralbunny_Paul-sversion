@@ -332,7 +332,8 @@ class ContactRoleAssignmentController extends Controller
             mailable:       new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $deal?->name),
             recipientEmail: $invitation->invited_email,
             recipientType:  'external',
-            emailKey:       'contact_role_invite_resend.' . $invitation->id . '.' . now()->format('Ymd'),
+            emailKey:       'contact_role_invite_resend.' . $invitation->id,
+            dailyDedup:     true,
             subject:        "Reminder: You've been invited to join {$tenant?->name ?? 'the platform'}",
             tenantId:       $tenantId,
         );
@@ -460,7 +461,7 @@ class ContactRoleAssignmentController extends Controller
                 Notification::create([
                     'id'              => (string) Str::uuid(),
                     'tenant_id'       => $tenantId,
-                    'notifiable_type' => 'App\\Models\\TenantUser',
+                    'notifiable_type' => 'tenant_admin',
                     'notifiable_id'   => $userId,
                     'category'        => 'reseller_referrer',
                     'type'            => 'info',

@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Mail\EmailDigestMail;
 use App\Models\EmailDigest;
+use App\Services\EmailLogger;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Email Digest Batching Service
@@ -87,8 +87,14 @@ class EmailDigestService
 
         foreach ($due as $digest) {
             try {
-                Mail::to($digest->recipient_email, $digest->recipient_name)
-                    ->queue(new EmailDigestMail($digest));
+                EmailLogger::send(
+                    mailable:       new EmailDigestMail($digest),
+                    recipientEmail: $digest->recipient_email,
+                    recipientType:  'reseller',
+                    emailKey:       'email_digest.' . $digest->id,
+                    subject:        $digest->topic_label ?? 'Your activity summary',
+                    tenantId:       $digest->tenant_id,
+                );
                 $digest->update(['sent_at' => now()]);
                 $sent++;
             } catch (\Throwable $e) {

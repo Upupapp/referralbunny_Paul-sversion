@@ -20,6 +20,9 @@ class SendLguIdsTaskDueReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries   = 3;
+    public int $backoff = 30;
+
     private const TENANT_ID = 'lgu-ids';
 
     public function handle(): void

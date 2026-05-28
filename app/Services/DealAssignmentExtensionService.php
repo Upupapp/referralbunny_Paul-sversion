@@ -290,8 +290,8 @@ class DealAssignmentExtensionService
                     dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 );
 
-                // Email notification
-                if ($reseller->email) {
+                // Email notification (approved case is handled by HandleDealExtensionApproved listener)
+                if ($reseller->email && $decision !== 'approved') {
                     $tenant = \App\Models\Tenant::find($tenantId);
                     EmailLogger::send(
                         mailable:       new \App\Mail\DealExtensionDecisionMail(

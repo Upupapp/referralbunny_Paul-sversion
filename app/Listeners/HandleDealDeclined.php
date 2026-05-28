@@ -47,11 +47,11 @@ class HandleDealDeclined implements ShouldQueue
             ),
             recipientEmail: $email,
             recipientType:  'reseller',
-            emailKey:       'deal_declined.' . $event->leadId . '.' . now()->format('Ymd'),
+            emailKey:       'deal_declined.' . $event->leadId,
             subject:        "Deal update — {$event->leadName} has been declined",
             recipientId:    $resellerId,
             tenantId:       $event->tenantId,
-            dailyDedup:     false,
+            dailyDedup:     true,
         );
     }
 

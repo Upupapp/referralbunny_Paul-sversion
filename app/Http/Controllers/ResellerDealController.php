@@ -728,7 +728,7 @@ class ResellerDealController extends Controller
 
         try {
             \Illuminate\Support\Facades\Cache::deleteMultiple(["lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-            app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId);
+            app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $reseller->id);
         } catch (\Throwable) {}
 
         // Activity log + notification AFTER commit — never let these roll back the business record
@@ -826,7 +826,7 @@ class ResellerDealController extends Controller
             'visible_response' => $data['visible_response'],
         ]);
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $reseller->id); } catch (\Throwable) {}
         \Illuminate\Support\Facades\Cache::deleteMultiple(["subtab_badge_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}"]);
 
         $dealId = $approval->deal_id;

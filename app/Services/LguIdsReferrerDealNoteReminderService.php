@@ -250,7 +250,7 @@ class LguIdsReferrerDealNoteReminderService
             metadata:       ['type' => 'lgu_ids_referrer_note_reminder', 'week_key' => $weekKey],
         );
 
-        return null;
+        return $emailKey;
     }
 
     // ── Payload builders ───────────────────────────────────────────

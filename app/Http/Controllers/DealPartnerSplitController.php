@@ -182,7 +182,7 @@ class DealPartnerSplitController extends Controller
                 $lead,
                 'Partner split updated',
                 'The split for ' . $data['partner_name'] . ' on "' . $lead->name . '" was updated to ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . '.',
-                $lead->id . ':partner_updated:' . $splitId . ':' . now()->format('YmdHi'),
+                $lead->id . ':partner_updated:' . $splitId . ':v' . md5((string)($data['split_share_value'] ?? '') . ($data['split_share_type'] ?? 'percentage')),
             );
 
             try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, $this->resolveActorId()); } catch (\Throwable) {}
