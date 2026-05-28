@@ -212,10 +212,11 @@ class TenantDealLifecycleController extends Controller
 
         // Send email notification
         try {
-            $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)->find($archiveRequest->requested_by_id);
-            if ($reseller?->email) {
+            $reseller       = \App\Models\Reseller::where('tenant_id', $tenantId)->find($archiveRequest->requested_by_id);
+            $clarifyTenant  = \App\Models\Tenant::find($tenantId);
+            if ($reseller?->email && $clarifyTenant) {
                 \Illuminate\Support\Facades\Mail::to($reseller->email)
-                    ->queue(new \App\Mail\ArchiveRequestClarificationMail($archiveRequest, $reseller, $tenant));
+                    ->queue(new \App\Mail\ArchiveRequestClarificationMail($archiveRequest, $reseller, $clarifyTenant));
             }
         } catch (\Throwable) {}
 

@@ -154,7 +154,7 @@ $statusMap  = [
 
         {{-- Decision panel --}}
         <div class="space-y-4">
-            @if($archiveRequest->status === 'pending')
+            @if(in_array($archiveRequest->status, ['pending', 'clarification_requested']))
             <div class="card p-5 space-y-3">
                 <h2 class="font-semibold text-[#1E1B4B]">Decision</h2>
 

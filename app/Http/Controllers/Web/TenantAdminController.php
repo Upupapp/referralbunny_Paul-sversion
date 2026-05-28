@@ -265,7 +265,7 @@ class TenantAdminController extends Controller
         try {
             $pendingApprovals = \App\Models\DealApprovalRequest::where('deal_id', $dealId)
                 ->where('tenant_id', $tenantId)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'clarification_requested'])
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->toArray();

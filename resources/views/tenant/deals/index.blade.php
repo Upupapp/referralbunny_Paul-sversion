@@ -1006,7 +1006,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         // Referrer combobox
         activatedReferrers: [], loadingReferrers: false, manualReferrer: false,
         referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
-        form: { name: '', stage: 'introduction', deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '', customOrgName: '' },
+        form: { name: '', stage: _rbDefaultStage, deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '', customOrgName: '' },
 
         get expiringCount()       { return this.leads.filter(l => l.status === 'expiring').length; },
         get expiredCount()        { return this.leads.filter(l => l.status === 'expired').length; },

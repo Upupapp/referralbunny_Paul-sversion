@@ -11,6 +11,7 @@ use App\Models\LeadHistory;
 use App\Models\CommissionSplit;
 use App\Models\Reseller;
 use App\Models\Tenant;
+use App\Models\TenantConfig;
 use App\Services\CommissionCalculationService;
 use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
@@ -18,6 +19,7 @@ use App\Services\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -483,8 +485,14 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        $cfgStages  = array_values(array_filter(
+            TenantConfig::where('tenant_id', $tenantId)->value('stages') ?? [],
+            fn($s) => is_array($s) && isset($s['key'])
+        ));
+        $stageKeys  = count($cfgStages) ? array_column($cfgStages, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+
         $data = $request->validate([
-            'stage'  => 'required|in:introduction,presentation,contract_sent,signed,paid',
+            'stage'  => ['required', Rule::in($stageKeys)],
             'reason' => 'nullable|string|max:1000',
         ]);
 
@@ -496,7 +504,7 @@ class ResellerDealController extends Controller
         }
 
         // Server-side forward-only guard — UI enforces this too but API must also validate
-        $stageOrder = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+        $stageOrder = $stageKeys;
         $currentIdx = array_search($oldStage, $stageOrder, true);
         $targetIdx  = array_search($targetStage, $stageOrder, true);
         if ($targetIdx !== false && $currentIdx !== false && $targetIdx <= $currentIdx) {
@@ -559,10 +567,16 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        $cfgStagesApproval  = array_values(array_filter(
+            TenantConfig::where('tenant_id', $tenantId)->value('stages') ?? [],
+            fn($s) => is_array($s) && isset($s['key'])
+        ));
+        $stageKeysApproval  = count($cfgStagesApproval) ? array_column($cfgStagesApproval, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+
         $data = $request->validate([
-            'target_stage'         => 'required|in:introduction,presentation,contract_sent,signed,paid',
-            'reason'               => 'required|string|max:2000',
-            'missing_requirements' => 'nullable|array',
+            'target_stage'           => ['required', Rule::in($stageKeysApproval)],
+            'reason'                 => 'required|string|max:2000',
+            'missing_requirements'   => 'nullable|array',
             'missing_requirements.*' => 'string|max:200',
         ]);
 
@@ -750,11 +764,30 @@ class ResellerDealController extends Controller
             ->where('requested_by_type', 'reseller')
             ->firstOrFail();
 
+        if ($approval->visible_response) {
+            return redirect()
+                ->route('reseller.deals.show', [$tenantId, $approval->deal_id])
+                ->with('error', 'You have already responded to this clarification.');
+        }
+
         $approval->update([
             'visible_response' => $data['visible_response'],
         ]);
 
         $dealId = $approval->deal_id;
+
+        // Activity log
+        try {
+            $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->first();
+            if ($lead) {
+                app(DealActivityService::class)->record($lead, 'Referrer responded to archive clarification: ' . \Illuminate\Support\Str::limit($data['visible_response'], 100), 'archive', [
+                    'category'   => 'archive',
+                    'actor_name' => $reseller->name ?? 'Referrer',
+                    'actor_role' => 'referrer',
+                    'new_values' => ['visible_response' => $data['visible_response']],
+                ]);
+            }
+        } catch (\Throwable) {}
 
         // Notify all tenant admins/managers about the referrer's response
         try {
@@ -1336,7 +1369,7 @@ class ResellerDealController extends Controller
 
         $approval = DealApprovalRequest::where('id', $approvalId)
             ->where('tenant_id', $tenantId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->firstOrFail();
 
         $lead = Lead::where('id', $approval->deal_id)->where('tenant_id', $tenantId)->first();
@@ -1509,7 +1542,7 @@ class ResellerDealController extends Controller
 
         $approval = DealApprovalRequest::where('id', $approvalId)
             ->where('tenant_id', $tenantId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->firstOrFail();
 
         $lead = Lead::where('id', $approval->deal_id)->where('tenant_id', $tenantId)->first();
