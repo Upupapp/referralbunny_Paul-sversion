@@ -107,6 +107,7 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                         'clarification_requested'  => ['bg-blue-100 text-blue-700', 'Clarification Requested'],
                     ];
                     [$statusCls, $statusLabel] = $statusMap[$req->status] ?? ['bg-gray-100 text-gray-600', ucfirst($req->status)];
+                    $hasReply = $req->status === 'clarification_requested' && !empty($req->visible_response);
                 @endphp
                 <div class="p-4 hover:bg-gray-50/40 transition-colors">
                     <div class="flex items-start gap-3">
@@ -119,6 +120,12 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium {{ $statusCls }}">
                                     {{ $statusLabel }}
                                 </span>
+                                @if($hasReply)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-purple-100 text-purple-700">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                    Referrer Replied
+                                </span>
+                                @endif
                             </div>
                             <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
                                 @if($lead)
@@ -158,6 +165,23 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 Reject
                             </button>
+                        </div>
+                        @elseif($req->status === 'clarification_requested')
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button @click="openApprove('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                Approve
+                            </button>
+                            <button @click="openReject('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                Reject
+                            </button>
+                            <a href="{{ route('tenant.deals.archive-requests.show', [$tenant->id, $req->id]) }}"
+                               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors">
+                                View
+                            </a>
                         </div>
                         @else
                         <a href="{{ route('tenant.deals.archive-requests.show', [$tenant->id, $req->id]) }}"

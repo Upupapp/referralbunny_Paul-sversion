@@ -16,8 +16,8 @@
     $BASE    = url("reseller/{$tenantId}/deals/{$lead->id}");
     $CSRF    = csrf_token();
 
-    $stageLabels = ['introduction' => 'Introduction','presentation' => 'Presentation','contract_sent' => 'Contract Sent','signed' => 'Signed','paid' => 'Paid'];
-    $stageOrder  = ['introduction','presentation','contract_sent','signed','paid'];
+    $stageOrder  = $cfgStageOrder;
+    $stageLabels = $cfgStageLabels;
     $currentIdx  = array_search($lead->stage, $stageOrder);
 
     $pendingStageMoveRequest  = collect($pendingApprovals)->where('type', 'deal_stage_move')->first();
@@ -157,7 +157,7 @@ window.__rsDeal = {
             <textarea x-model="reply" rows="3" maxlength="1000"
                       class="w-full border border-blue-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-white"
                       placeholder="Type your clarification response here…"></textarea>
-            <form action="{{ route('reseller.deals.archive-request.respond', [$tenantId, $pendingArchiveRequest['id']]) }}"
+            <form action="{{ route('reseller.archive-request.respond', [$tenantId, $pendingArchiveRequest['id']]) }}"
                   method="POST" class="flex gap-2" @submit="sending = true">
                 @csrf
                 <input type="hidden" name="visible_response" :value="reply">
@@ -1042,7 +1042,6 @@ window.__rsDeal = {
                     <label class="form-label">Move to Stage</label>
                     <select x-model="targetStage" @change="reqChecks = {}; stageError = ''" class="form-input w-full">
                         <option value="">Select target stage…</option>
-                        @php $stageOrder = ['introduction','presentation','contract_sent','signed','paid']; $currentIdx = array_search($lead->stage, $stageOrder); @endphp
                         @foreach($stageOrder as $idx => $s)
                             @if($s !== $lead->stage && $idx > $currentIdx)
                             <option value="{{ $s }}">{{ $stageLabels[$s] }}</option>

@@ -134,7 +134,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::post('/deals/{dealId}/move-stage',                  [\App\Http\Controllers\ResellerDealController::class, 'moveStage'])->name('deals.move-stage');
         Route::post('/deals/{dealId}/stage-approval',              [\App\Http\Controllers\ResellerDealController::class, 'requestStageApproval'])->name('deals.stage-approval');
         Route::post('/deals/{dealId}/archive-request',             [\App\Http\Controllers\ResellerDealController::class, 'requestArchive'])->name('deals.archive-request');
-        Route::post('/archive-requests/{requestId}/respond',      [\App\Http\Controllers\ResellerDealController::class, 'respondToArchiveRequestClarification'])->name('deals.archive-request.respond');
+        Route::post('/archive-requests/{requestId}/respond',      [\App\Http\Controllers\ResellerDealController::class, 'respondToArchiveRequestClarification'])->name('archive-request.respond');
         Route::post('/deals/{dealId}/extension-request',          [\App\Http\Controllers\ResellerDealController::class, 'requestExtension'])->name('deals.extension-request');
         Route::get('/extension-requests',                          [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerIndex'])->name('extension-requests.index');
         Route::get('/extension-requests/{batchId}',                [\App\Http\Controllers\BulkDealExtensionWebController::class, 'resellerShow'])->name('extension-requests.show');

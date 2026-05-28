@@ -270,6 +270,18 @@ class ResellerDealController extends Controller
             ],
         ];
 
+        // Dynamic stages for view — drives stage tracker and Move Stage modal dropdown.
+        $cfgCachedView  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
+        $cfgViewStages  = array_values(array_filter(
+            ($cfgCachedView ? (new TenantConfig())->setRawAttributes($cfgCachedView)->stages : null) ?? [],
+            fn($s) => is_array($s) && isset($s['key'])
+        ));
+        $cfgStageOrder  = count($cfgViewStages) ? array_column($cfgViewStages, 'key') : ['introduction','presentation','contract_sent','signed','paid'];
+        $cfgStageLabels = count($cfgViewStages) ? array_combine(
+            array_column($cfgViewStages, 'key'),
+            array_map(fn($s) => $s['label'] ?? ucwords(str_replace('_', ' ', $s['key'])), $cfgViewStages)
+        ) : ['introduction'=>'Introduction','presentation'=>'Presentation','contract_sent'=>'Contract Sent','signed'=>'Signed','paid'=>'Paid'];
+
         // no-store: ensures every page load fetches fresh DB data.
         // This guarantees that after a referrer updates the deal amount and the
         // page reloads, the browser never serves a cached (stale) response.
@@ -280,7 +292,7 @@ class ResellerDealController extends Controller
                 'attachments', 'history', 'breakdown',
                 'myCommission', 'partnersCommission',
                 'commissionPool', 'remainingPool',
-                'stageRequirements'
+                'stageRequirements', 'cfgStageOrder', 'cfgStageLabels'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
             ->header('Pragma', 'no-cache');
