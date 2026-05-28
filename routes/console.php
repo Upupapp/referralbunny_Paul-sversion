@@ -41,22 +41,22 @@ Schedule::job(new SendLguIdsTaskDueReminderJob)
     ->skip(fn() => now()->setTimezone('Asia/Manila')->lt(\Carbon\Carbon::parse('2026-05-18', 'Asia/Manila')));
 
 // ── Daily jobs ────────────────────────────────────────────────
-Schedule::command('metrics:calculate')->dailyAt('01:00');
-Schedule::command('metrics:check-inactivity')->dailyAt('08:00');
-Schedule::command('notifications:escalate')->dailyAt('09:00');
+Schedule::command('metrics:calculate')->dailyAt('01:00')->timezone('Asia/Manila');
+Schedule::command('metrics:check-inactivity')->dailyAt('08:00')->timezone('Asia/Manila');
+Schedule::command('notifications:escalate')->dailyAt('09:00')->timezone('Asia/Manila');
 
 // ── Weekly jobs ───────────────────────────────────────────────
-Schedule::command('reports:weekly')->weeklyOn(1, '08:00'); // Every Monday
+Schedule::command('reports:weekly')->weeklyOn(1, '08:00')->timezone('Asia/Manila'); // Every Monday
 
 // ── Monthly jobs ──────────────────────────────────────────────
-Schedule::command('reports:monthly')->monthlyOn(1, '08:00');  // 1st of each month
-Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00'); // Reset usage counters
+Schedule::command('reports:monthly')->monthlyOn(1, '08:00')->timezone('Asia/Manila');  // 1st of each month
+Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00')->timezone('Asia/Manila'); // Reset usage counters
 
 // ── Search index ──────────────────────────────────────────────
-Schedule::command('search:reindex')->dailyAt('03:00');
+Schedule::command('search:reindex')->dailyAt('03:00')->timezone('Asia/Manila');
 
 // ── Email digests (batch / anti-spam) ────────────────────────
-Schedule::command('email:send-digests')->everyThirtyMinutes();
+Schedule::command('email:send-digests')->everyThirtyMinutes()->timezone('Asia/Manila');
 
 // ── Message reminders (R Bunny AI Dialog) ────────────────────
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
@@ -71,7 +71,7 @@ Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30')->timezone('As
 Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Manila');
 
 // ── Promo jobs ────────────────────────────────────────────────
-Schedule::command('promos:expire')->dailyAt('00:15');
+Schedule::command('promos:expire')->dailyAt('00:15')->timezone('Asia/Manila');
 
 // ── Billing jobs ──────────────────────────────────────────────
 Schedule::command('billing:process-trials')->dailyAt('07:00')->timezone('Asia/Manila');
@@ -79,7 +79,7 @@ Schedule::command('billing:retry-payments')->dailyAt('10:00')->timezone('Asia/Ma
 Schedule::command('billing:update-rates')->dailyAt('00:30')->timezone('Asia/Manila');
 
 // ── Export cleanup (expire old export files daily) ────────────
-Schedule::command('exports:cleanup-expired')->dailyAt('02:00');
+Schedule::command('exports:cleanup-expired')->dailyAt('02:00')->timezone('Asia/Manila');
 
 // ── Subscription expiry check ─────────────────────────────────
-Schedule::command('subscriptions:check-expiry')->dailyAt('08:30');
+Schedule::command('subscriptions:check-expiry')->dailyAt('08:30')->timezone('Asia/Manila');
