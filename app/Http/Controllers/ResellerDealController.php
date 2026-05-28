@@ -1995,6 +1995,7 @@ class ResellerDealController extends Controller
         $split->delete();
 
         // System notification to the removed co-referrer
+        $coRefReseller = null;
         try {
             $coRefReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($removedName)])
@@ -2012,7 +2013,11 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $splitId . ':coreferrer_removed:' . now()->format('YmdH'),
                 );
+            }
+        } catch (\Throwable) {}
 
+        try {
+            if ($coRefReseller && in_array($coRefReseller->status, ['active', 'nda_signed'])) {
                 EmailLogger::send(
                     mailable:      new \App\Mail\CoReferrerRemovedMail(
                         resellerName:  $coRefReseller->name,
