@@ -323,6 +323,13 @@
     });
 </script>
 @endif
+@if (session('error'))
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'error', message: @json(session('error')) } })), 200);
+    });
+</script>
+@endif
 
 {{-- Toast --}}
 <div x-data="{ toasts: [], add(d){ const id=Date.now()+Math.random(); this.toasts.push({...d,id}); setTimeout(()=>this.remove(id), d.duration||4000); }, remove(id){ this.toasts=this.toasts.filter(t=>t.id!==id); } }"

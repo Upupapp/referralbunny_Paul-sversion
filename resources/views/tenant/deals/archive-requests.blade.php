@@ -3,14 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('content')
-@php
-$_badgeCounts = \Illuminate\Support\Facades\Cache::remember("subtab_badge_counts:{$tenant->id}", 60, fn() => [
-    'expired'         => \App\Models\Lead::where('tenant_id', $tenant->id)->where('status','expired')->whereNull('deleted_at')->count(),
-    'pending_archive' => \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type','deal_archive')->where('status','pending')->count(),
-    'deleted_archived'=> \App\Models\Lead::withTrashed()->where('tenant_id', $tenant->id)->where(fn($q) => $q->where('status','archived')->orWhereNotNull('deleted_at'))->count(),
-]);
-$subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pending']]);
-@endphp
+{{-- $subtabCounts is passed from TenantDealLifecycleController::archiveRequests() --}}
 
 <div class="space-y-5"
      x-data="{
@@ -125,6 +118,11 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                                     Referrer Replied
                                 </span>
+                                @elseif($req->status === 'clarification_requested')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Awaiting Reply
+                                </span>
                                 @endif
                             </div>
                             <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
@@ -153,17 +151,17 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                             <button @click="openApprove('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                Approve
+                                <span class="hidden sm:inline">Approve</span>
                             </button>
                             <button @click="openClarify('{{ $req->id }}')"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold hover:bg-blue-200 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                Clarify
+                                <span class="hidden sm:inline">Clarify</span>
                             </button>
                             <button @click="openReject('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                Reject
+                                <span class="hidden sm:inline">Reject</span>
                             </button>
                         </div>
                         @elseif($req->status === 'clarification_requested')
@@ -171,16 +169,24 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
                             <button @click="openApprove('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                Approve
+                                <span class="hidden sm:inline">Approve</span>
                             </button>
+                            @if(!$hasReply)
+                            <span title="Waiting for referrer reply"
+                                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-400 text-xs font-semibold cursor-not-allowed select-none">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="hidden sm:inline">Clarify</span>
+                            </span>
+                            @endif
                             <button @click="openReject('{{ $req->id }}', '{{ addslashes($lead?->name ?? 'this deal') }}')"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-100 text-red-700 text-xs font-semibold hover:bg-red-200 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                Reject
+                                <span class="hidden sm:inline">Reject</span>
                             </button>
                             <a href="{{ route('tenant.deals.archive-requests.show', [$tenant->id, $req->id]) }}"
                                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors">
-                                View
+                                <span class="hidden sm:inline">View</span>
+                                <svg class="w-3.5 h-3.5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </a>
                         </div>
                         @else

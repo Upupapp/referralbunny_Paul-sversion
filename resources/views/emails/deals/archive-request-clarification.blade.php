@@ -16,7 +16,7 @@ $dealUrl   = $lead ? url('/reseller/' . $tenant->id . '/deals/' . $lead->id) : n
     </div>
     @endif
 </div>
-<p class="text">Please reply to this email or visit your deal page to provide the requested information.</p>
+<p class="text">Please visit your deal page to provide the requested information using the response form.</p>
 @if($dealUrl)
 <div class="cta-wrap">
     <a href="{{ $dealUrl }}" class="cta cta-teal">View Deal →</a>

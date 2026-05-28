@@ -19,6 +19,7 @@
     $stageOrder  = $cfgStageOrder;
     $stageLabels = $cfgStageLabels;
     $currentIdx  = array_search($lead->stage, $stageOrder);
+    $currentIdx  = ($currentIdx === false) ? -1 : $currentIdx;
 
     $pendingStageMoveRequest  = collect($pendingApprovals)->where('type', 'deal_stage_move')->first();
     $pendingArchiveRequest    = collect($pendingApprovals)->where('type', 'deal_archive')->first();

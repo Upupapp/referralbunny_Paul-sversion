@@ -59,12 +59,15 @@ class CriticalActionService
             }
         } catch (\Throwable) {}
 
-        // 2. Pending archive + stage-move requests — idx_dar_tenant_type_pending
+        // 2. Pending archive + stage-move requests, plus clarification_requested with a referrer reply
         try {
             $count += DB::table('deal_approval_requests')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('type', ['deal_archive', 'deal_stage_move'])
-                ->where('status', 'pending')
+                ->where(fn($q) => $q
+                    ->where('status', 'pending')
+                    ->orWhere(fn($q2) => $q2->where('status', 'clarification_requested')->whereNotNull('visible_response'))
+                )
                 ->count();
         } catch (\Throwable) {}
 
@@ -1148,32 +1151,40 @@ class CriticalActionService
                 ->where('dar.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
                 ->where('l.status', '!=', 'archived')
-                ->where('dar.status', 'pending')
+                ->whereIn('dar.status', ['pending', 'clarification_requested'])
                 ->where('dar.requested_by_type', 'reseller')
                 ->where('dar.requested_by_id', $reseller)
-                ->select('dar.id', 'dar.type', 'dar.created_at', 'l.id as lead_id', 'l.name as lead_name')
+                ->select('dar.id', 'dar.type', 'dar.status', 'dar.visible_response', 'dar.created_at', 'l.id as lead_id', 'l.name as lead_name')
                 ->orderByDesc('dar.created_at')
                 ->limit(5)
                 ->get();
 
-            return $rows->map(fn($r) => $this->make([
-                'type'          => $r->type === 'deal_archive' ? 'pending_archive_request' : 'pending_stage_approval',
-                'category'      => 'deal',
-                'severity'      => 'medium',
-                'summary'       => $r->type === 'deal_archive'
-                    ? "Archive request pending review: {$r->lead_name}"
-                    : "Stage approval pending review: {$r->lead_name}",
-                'actor_name'    => 'You',
-                'actor_role'    => 'Referrer',
-                'related_label' => $r->lead_name,
-                'related_type'  => 'deal',
-                'related_id'    => $r->lead_id,
-                'occurred_at'   => $r->created_at ?? now(),
-                'action_url'    => "/reseller/{$tenantId}/deals/{$r->lead_id}",
-                'action_label'  => 'View Deal',
-                'action_needed' => false,
-                'source'        => 'deal_approval_requests',
-            ]))->toArray();
+            return $rows->map(function ($r) use ($tenantId) {
+                $isClarify  = $r->status === 'clarification_requested';
+                $hasReply   = $isClarify && !empty($r->visible_response);
+                $summary    = match(true) {
+                    $r->type === 'deal_stage_move'  => "Stage approval pending review: {$r->lead_name}",
+                    $hasReply                       => "Reply sent — waiting for admin decision: {$r->lead_name}",
+                    $isClarify                      => "Clarification needed — your input required: {$r->lead_name}",
+                    default                         => "Archive request pending review: {$r->lead_name}",
+                };
+                return $this->make([
+                    'type'          => $r->type === 'deal_archive' ? 'pending_archive_request' : 'pending_stage_approval',
+                    'category'      => 'deal',
+                    'severity'      => ($isClarify && !$hasReply) ? 'high' : 'medium',
+                    'summary'       => $summary,
+                    'actor_name'    => 'You',
+                    'actor_role'    => 'Referrer',
+                    'related_label' => $r->lead_name,
+                    'related_type'  => 'deal',
+                    'related_id'    => $r->lead_id,
+                    'occurred_at'   => $r->created_at ?? now(),
+                    'action_url'    => "/reseller/{$tenantId}/deals/{$r->lead_id}",
+                    'action_label'  => ($isClarify && !$hasReply) ? 'Respond to Clarification' : 'View Deal',
+                    'action_needed' => ($isClarify && !$hasReply),
+                    'source'        => 'deal_approval_requests',
+                ]);
+            })->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] resellerPendingApprovals failed', ['error' => $e->getMessage()]);
             return [];
@@ -1358,10 +1369,13 @@ class CriticalActionService
                 ->where('r.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
                 ->where('r.type', 'deal_archive')
-                ->where('r.status', 'pending')
+                ->where(fn($q) => $q
+                    ->where('r.status', 'pending')
+                    ->orWhere(fn($q2) => $q2->where('r.status', 'clarification_requested')->whereNotNull('r.visible_response'))
+                )
                 ->select(
-                    'r.id', 'r.reason', 'r.created_at', 'r.requested_by_id',
-                    'r.request_payload',
+                    'r.id', 'r.status', 'r.reason', 'r.created_at', 'r.requested_by_id',
+                    'r.request_payload', 'r.visible_response',
                     'l.id as lead_id', 'l.name as lead_name', 'l.reseller_name', 'l.stage'
                 )
                 ->orderBy('r.created_at')
@@ -1369,26 +1383,29 @@ class CriticalActionService
                 ->get();
 
             return $rows->map(function ($r) use ($tenantId) {
-                $payload = is_string($r->request_payload) ? json_decode($r->request_payload, true) : (array) ($r->request_payload ?? []);
+                $payload      = is_string($r->request_payload) ? json_decode($r->request_payload, true) : (array) ($r->request_payload ?? []);
                 $referrerName = $payload['referrer_name'] ?? $r->reseller_name ?? 'Referrer';
-                $reason = \Illuminate\Support\Str::limit($r->reason ?? '', 80);
+                $reason       = \Illuminate\Support\Str::limit($r->reason ?? '', 80);
+                $replied      = !empty($r->visible_response);
 
                 return $this->make([
                     'type'          => 'archive_request_pending',
                     'category'      => 'deal',
                     'severity'      => 'high',
-                    'summary'       => "Archive request pending: {$r->lead_name}",
+                    'summary'       => $replied
+                        ? "Referrer replied to clarification: {$r->lead_name}"
+                        : "Archive request pending: {$r->lead_name}",
                     'actor_name'    => $referrerName,
                     'actor_role'    => 'Referrer',
                     'related_label' => $r->lead_name,
                     'related_type'  => 'deal',
                     'related_id'    => $r->lead_id,
                     'occurred_at'   => $r->created_at ?? now(),
-                    'action_url'    => "/tenant/{$tenantId}/deals/{$r->lead_id}",
-                    'action_label'  => 'Review Archive Request',
+                    'action_url'    => "/tenant/{$tenantId}/deals/archive-requests/{$r->id}",
+                    'action_label'  => $replied ? 'Review Reply' : 'Review Archive Request',
                     'action_needed' => true,
                     'source'        => 'deal_approval_requests',
-                    'meta'          => ['reason' => $reason, 'stage' => $r->stage, 'approval_id' => $r->id],
+                    'meta'          => ['reason' => $reason, 'stage' => $r->stage, 'approval_id' => $r->id, 'replied' => $replied],
                 ]);
             })->toArray();
         } catch (\Throwable $e) {

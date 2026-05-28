@@ -63,6 +63,32 @@ class ResellerDealController extends Controller
         return $lead;
     }
 
+    private function tenantStageConfig(string $tenantId): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember("tenant_config_stages:{$tenantId}", 300, function () use ($tenantId) {
+            $cfg    = TenantConfig::where('tenant_id', $tenantId)->first();
+            $stages = array_values(array_filter($cfg?->stages ?? [], fn($s) => is_array($s) && isset($s['key'])));
+            $seen   = [];
+            $stages = array_values(array_filter($stages, function ($s) use (&$seen) {
+                if (isset($seen[$s['key']])) return false;
+                return $seen[$s['key']] = true;
+            }));
+            if (empty($stages)) {
+                return [
+                    'keys'   => ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'],
+                    'labels' => ['introduction' => 'Introduction', 'presentation' => 'Presentation', 'contract_sent' => 'Contract Sent', 'signed' => 'Signed', 'paid' => 'Paid'],
+                ];
+            }
+            return [
+                'keys'   => array_column($stages, 'key'),
+                'labels' => array_combine(
+                    array_column($stages, 'key'),
+                    array_map(fn($s) => $s['label'] ?? ucwords(str_replace('_', ' ', $s['key'])), $stages)
+                ),
+            ];
+        });
+    }
+
     private function resellerCanAccessDeal(Reseller $reseller, Lead $lead): bool
     {
         // Primary assignment — case-insensitive to handle import name-casing differences
@@ -271,16 +297,9 @@ class ResellerDealController extends Controller
         ];
 
         // Dynamic stages for view — drives stage tracker and Move Stage modal dropdown.
-        $cfgCachedView  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
-        $cfgViewStages  = array_values(array_filter(
-            ($cfgCachedView ? (new TenantConfig())->setRawAttributes($cfgCachedView)->stages : null) ?? [],
-            fn($s) => is_array($s) && isset($s['key'])
-        ));
-        $cfgStageOrder  = count($cfgViewStages) ? array_column($cfgViewStages, 'key') : ['introduction','presentation','contract_sent','signed','paid'];
-        $cfgStageLabels = count($cfgViewStages) ? array_combine(
-            array_column($cfgViewStages, 'key'),
-            array_map(fn($s) => $s['label'] ?? ucwords(str_replace('_', ' ', $s['key'])), $cfgViewStages)
-        ) : ['introduction'=>'Introduction','presentation'=>'Presentation','contract_sent'=>'Contract Sent','signed'=>'Signed','paid'=>'Paid'];
+        $stageCfg       = $this->tenantStageConfig($tenantId);
+        $cfgStageOrder  = $stageCfg['keys'];
+        $cfgStageLabels = $stageCfg['labels'];
 
         // no-store: ensures every page load fetches fresh DB data.
         // This guarantees that after a referrer updates the deal amount and the
@@ -497,12 +516,7 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
-        $cfgCached  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
-        $cfgStages  = array_values(array_filter(
-            ($cfgCached ? (new TenantConfig())->setRawAttributes($cfgCached)->stages : null) ?? [],
-            fn($s) => is_array($s) && isset($s['key'])
-        ));
-        $stageKeys  = count($cfgStages) ? array_column($cfgStages, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+        $stageKeys  = $this->tenantStageConfig($tenantId)['keys'];
 
         $data = $request->validate([
             'stage'  => ['required', Rule::in($stageKeys)],
@@ -580,12 +594,7 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
-        $cfgCachedApproval  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
-        $cfgStagesApproval  = array_values(array_filter(
-            ($cfgCachedApproval ? (new TenantConfig())->setRawAttributes($cfgCachedApproval)->stages : null) ?? [],
-            fn($s) => is_array($s) && isset($s['key'])
-        ));
-        $stageKeysApproval  = count($cfgStagesApproval) ? array_column($cfgStagesApproval, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
+        $stageKeysApproval  = $this->tenantStageConfig($tenantId)['keys'];
 
         $data = $request->validate([
             'target_stage'           => ['required', Rule::in($stageKeysApproval)],
@@ -816,7 +825,7 @@ class ResellerDealController extends Controller
                 body:         ($reseller->name ?? 'Referrer') . ' replied to your clarification request for "' . $dealName . '". Review and decide.',
                 actionUrl:    url("/tenant/{$tenantId}/deals/archive-requests/{$requestId}"),
                 actionLabel:  'Review Request',
-                dedupeSuffix: $requestId . ':clarification_responded',
+                dedupeSuffix: $requestId . ':clarification_responded:' . now()->format('Ymd'),
             );
         } catch (\Throwable) {}
 
@@ -1468,6 +1477,7 @@ class ResellerDealController extends Controller
         \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
         if ($approval->type === 'deal_stage_move' && $lead && $lead->tenant_id === 'lgu-ids') {
@@ -1603,6 +1613,7 @@ class ResellerDealController extends Controller
         \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         // Notify after commit — never inside transaction
         if ($approval->requested_by_type === 'reseller') {

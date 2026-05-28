@@ -134,15 +134,25 @@ class TenantDealLifecycleController extends Controller
 
         $metrics = Cache::remember("lifecycle_archive_req_metrics:{$tenantId}", 60, function () use ($tenantId) {
             return [
-                'pending'   => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'pending')->count(),
-                'approved'  => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'approved')->count(),
-                'rejected'  => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'rejected')->count(),
+                'pending'       => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'pending')->count(),
+                'approved'      => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'approved')->count(),
+                'rejected'      => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'rejected')->count(),
                 'clarification' => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'clarification_requested')->count(),
             ];
         });
 
+        $subtabCounts = Cache::remember("subtab_badge_counts:{$tenantId}", 60, function () use ($tenantId) {
+            return [
+                'expired'          => Lead::where('tenant_id', $tenantId)->where('status', 'expired')->whereNull('deleted_at')->count(),
+                'deleted_archived' => Lead::withTrashed()->where('tenant_id', $tenantId)
+                    ->where(fn($q) => $q->where('status', 'archived')->orWhereNotNull('deleted_at'))
+                    ->count(),
+            ];
+        });
+        $subtabCounts['pending_archive'] = $metrics['pending'];
+
         return view('tenant.deals.archive-requests', array_merge(
-            compact('tenant', 'requests', 'metrics', 'role', 'search', 'status'),
+            compact('tenant', 'requests', 'metrics', 'subtabCounts', 'role', 'search', 'status'),
             $this->configMeta($tenantId)
         ));
     }
@@ -210,7 +220,7 @@ class TenantDealLifecycleController extends Controller
                     title:        'Clarification needed on your archive request',
                     body:         'Your archive request for "' . ($archiveRequest->lead?->name ?? 'a deal') . '" needs clarification before it can be processed.',
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$archiveRequest->deal_id}"),
-                    actionLabel:  'View Deal',
+                    actionLabel:  'Respond to Clarification',
                     dedupeSuffix: $requestId . ':clarify:' . now()->format('Ymd'),
                 );
             }
@@ -240,6 +250,7 @@ class TenantDealLifecycleController extends Controller
         Cache::forget("dash_counts:{$tenantId}");
         Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.archive-requests', $tenantId)
