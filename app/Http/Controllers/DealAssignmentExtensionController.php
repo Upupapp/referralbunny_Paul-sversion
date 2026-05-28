@@ -19,7 +19,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function forDeal(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found.'], 404);
         }
@@ -34,7 +34,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId) {
             return response()->json(['error' => 'No tenant context.'], 403);
         }
@@ -55,7 +55,7 @@ class DealAssignmentExtensionController extends Controller
      */
     public function show(Request $request, string $id): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
         if (!$tenantId) {
             return response()->json(['error' => 'Not found.'], 404);
         }

@@ -10,7 +10,7 @@
 
 <div class="highlight-box highlight-orange">
     <div class="highlight-title" style="color:#D97706">Security Notice</div>
-    <div class="highlight-text">This link expires after use. If you didn't request a password reset, please ignore this email — your account is safe.</div>
+    <div class="highlight-text">This link expires in 1 hour or after use, whichever comes first. If you didn't request a password reset, please ignore this email — your account is safe.</div>
 </div>
 
 <div class="cta-wrap">

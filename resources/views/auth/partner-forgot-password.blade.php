@@ -47,8 +47,8 @@
     <form method="POST" action="{{ route('partner.forgot-password.post') }}" x-data="{ sub: false }" @submit="sub=true">
         @csrf
         <div style="margin-bottom:1.25rem">
-            <label class="field-label">Email address</label>
-            <input name="email" type="email" required value="{{ old('email') }}" class="field-input" placeholder="you@email.com">
+            <label for="email" class="field-label">Email address</label>
+            <input id="email" name="email" type="email" required value="{{ old('email') }}" class="field-input" placeholder="you@email.com">
         </div>
         <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Sending...' : 'Send Reset Link'">Send Reset Link</button>
     </form>
