@@ -1375,6 +1375,7 @@ class ResellerDealController extends Controller
 
         \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
 
         // LGU IDS: create note task if deal moved to a target stage with no notes

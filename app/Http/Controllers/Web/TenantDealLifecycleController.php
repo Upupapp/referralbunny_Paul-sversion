@@ -388,6 +388,7 @@ class TenantDealLifecycleController extends Controller
 
         Cache::forget("dash_counts:{$tenantId}");
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
+        Cache::forget("lifecycle_expired_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
 
         return redirect()

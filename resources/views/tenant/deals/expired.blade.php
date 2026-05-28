@@ -56,7 +56,7 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
             </div>
             <select name="stage" class="pill-select">
                 <option value="">All Stages</option>
-                @foreach(collect($config?->stages ?? []) as $s)
+                @foreach(collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key'])) as $s)
                     <option value="{{ $s['key'] }}" @selected($stage === $s['key'])>{{ $s['label'] }}</option>
                 @endforeach
             </select>

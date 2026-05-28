@@ -138,11 +138,9 @@
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 <select x-model="filterStage" @change="applyFilters()">
                     <option value="">All Stages</option>
-                    <option value="introduction">Introduction</option>
-                    <option value="presentation">Presentation</option>
-                    <option value="contract_sent">Contract Sent</option>
-                    <option value="signed">Signed</option>
-                    <option value="paid">Paid</option>
+                    @foreach(collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key'])) as $s)
+                        <option value="{{ $s['key'] }}">{{ $s['label'] }}</option>
+                    @endforeach
                 </select>
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
@@ -656,11 +654,9 @@
                 <div>
                     <label class="form-label">Stage</label>
                     <select x-model="form.stage" class="form-input">
-                        <option value="introduction">Introduction</option>
-                        <option value="presentation">Presentation</option>
-                        <option value="contract_sent">Contract Sent</option>
-                        <option value="signed">Signed</option>
-                        <option value="paid">Paid</option>
+                        @foreach(collect($config?->stages ?? []) as $s)
+                            <option value="{{ $s['key'] }}">{{ $s['label'] }}</option>
+                        @endforeach
                     </select>
                 </div>
 

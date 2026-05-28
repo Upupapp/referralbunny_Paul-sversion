@@ -244,7 +244,7 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
          role="dialog" aria-modal="true"
          @keydown.escape.window="clarifyModal.open = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
-            <form :action="`{{ url('/tenant/' . $tenant->id . '/deals/archive-requests/') }}${clarifyModal.requestId}/clarify`"
+            <form :action="`{{ route('tenant.deals.archive-requests.clarify', [$tenant->id, '__ID__']) }}`.replace('__ID__', clarifyModal.requestId)"
                   method="POST" @submit="submitting = true">
                 @csrf
                 <div class="p-6 space-y-4">
