@@ -2,8 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\DealApprovalRequest;
-use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -15,18 +13,18 @@ class ArchiveRequestRespondedMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public DealApprovalRequest $archiveRequest,
-        public string $resellerName,
-        public Tenant $tenant,
-        public string $adminName,
+        public string  $dealName,
+        public string  $dealUrl,
+        public ?string $visibleResponse,
+        public string  $tenantName,
+        public string  $resellerName,
+        public string  $adminName,
     ) {}
 
     public function envelope(): Envelope
     {
-        $dealName = $this->archiveRequest->lead?->name
-            ?? ($this->archiveRequest->request_payload['deal_name'] ?? 'a deal');
         return new Envelope(
-            subject: "Referrer responded to archive clarification — \"{$dealName}\"",
+            subject: "Referrer responded to archive clarification — \"{$this->dealName}\"",
         );
     }
 

@@ -846,17 +846,28 @@ class ResellerDealController extends Controller
         try {
             $archiveTenant = Tenant::find($tenantId);
             if ($archiveTenant) {
-                $approval->load('lead');
+                $mailDealName     = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
+                $mailDealUrl      = url("/tenant/{$tenantId}/deals/archive-requests/{$requestId}");
+                $mailVisibleResp  = $approval->visible_response;
+                $mailTenantName   = $archiveTenant->name;
+                $mailResellerName = $reseller->name;
                 TenantMembership::where('tenant_id', $tenantId)
                     ->whereIn('role', ['owner', 'admin', 'manager'])
                     ->where('status', 'active')
                     ->with('tenantUser')
                     ->get()
-                    ->each(function ($membership) use ($approval, $reseller, $archiveTenant) {
+                    ->each(function ($membership) use ($mailDealName, $mailDealUrl, $mailVisibleResp, $mailTenantName, $mailResellerName) {
                         $tu = $membership->tenantUser;
                         if ($tu?->email) {
                             Mail::to($tu->email)->queue(
-                                new \App\Mail\ArchiveRequestRespondedMail($approval, $reseller->name, $archiveTenant, $tu->full_name ?: $tu->email)
+                                new \App\Mail\ArchiveRequestRespondedMail(
+                                    $mailDealName,
+                                    $mailDealUrl,
+                                    $mailVisibleResp,
+                                    $mailTenantName,
+                                    $mailResellerName,
+                                    $tu->full_name ?: $tu->email,
+                                )
                             );
                         }
                     });
@@ -1507,10 +1518,7 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
-        \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
@@ -1644,9 +1652,7 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
-        \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         // Notify after commit — never inside transaction
