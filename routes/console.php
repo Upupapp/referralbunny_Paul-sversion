@@ -62,7 +62,7 @@ Schedule::command('email:send-digests')->everyThirtyMinutes();
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
 
 // ── Invitation reminders (invitee + inviter) ──────────────────
-Schedule::command('invitations:send-reminders')->hourly();
+Schedule::command('invitations:send-reminders')->hourly()->timezone('Asia/Manila');
 
 // ── Lead expiry & pipeline ────────────────────────────────────
 Schedule::command('leads:expire')->dailyAt('00:05')->timezone('Asia/Manila');
@@ -74,9 +74,9 @@ Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Man
 Schedule::command('promos:expire')->dailyAt('00:15');
 
 // ── Billing jobs ──────────────────────────────────────────────
-Schedule::command('billing:process-trials')->dailyAt('07:00');
-Schedule::command('billing:retry-payments')->dailyAt('10:00');
-Schedule::command('billing:update-rates')->dailyAt('00:30');
+Schedule::command('billing:process-trials')->dailyAt('07:00')->timezone('Asia/Manila');
+Schedule::command('billing:retry-payments')->dailyAt('10:00')->timezone('Asia/Manila');
+Schedule::command('billing:update-rates')->dailyAt('00:30')->timezone('Asia/Manila');
 
 // ── Export cleanup (expire old export files daily) ────────────
 Schedule::command('exports:cleanup-expired')->dailyAt('02:00');

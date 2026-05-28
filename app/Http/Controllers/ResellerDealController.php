@@ -1135,13 +1135,13 @@ class ResellerDealController extends Controller
             ]);
 
             try {
-                \Illuminate\Support\Facades\Mail::to($partnerEmail)
-                    ->queue(new \App\Mail\PartnerInviteMail(
-                        partnerFirstName: $newPartner->first_name ?? 'there',
-                        tenantName:       $tenant->name,
-                        inviterName:      $reseller->name ?? 'A referrer',
-                        setupUrl:         url('/partner/invite/' . $newPartner->setup_token),
-                    ));
+                \Illuminate\Support\Facades\Mail::queue(new \App\Mail\PartnerInviteMail(
+                    recipientEmail:   $partnerEmail,
+                    partnerFirstName: $newPartner->first_name ?? 'there',
+                    tenantName:       $tenant->name,
+                    inviterName:      $reseller->name ?? 'A referrer',
+                    setupUrl:         url('/partner/invite/' . $newPartner->setup_token),
+                ));
                 $inviteSent = true;
             } catch (\Throwable $mailEx) {
                 Log::warning('PartnerInviteMail queue failed in addPartnerSplit', [

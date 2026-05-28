@@ -88,7 +88,7 @@ class EmailDigestService
         foreach ($due as $digest) {
             try {
                 Mail::to($digest->recipient_email, $digest->recipient_name)
-                    ->send(new EmailDigestMail($digest));
+                    ->queue(new EmailDigestMail($digest));
                 $digest->update(['sent_at' => now()]);
                 $sent++;
             } catch (\Throwable $e) {
