@@ -38,7 +38,6 @@ class TenantInvitationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->recipientEmail)],
             subject: "You've been invited to join {$this->tenantName} on ReferralBunny.ai",
         );
     }

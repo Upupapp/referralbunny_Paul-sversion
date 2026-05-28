@@ -32,7 +32,6 @@ class ResellerDealAssigned extends Mailable
             : "You've been assigned to a deal: {$this->dealName}";
 
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: $subject,
         );
     }

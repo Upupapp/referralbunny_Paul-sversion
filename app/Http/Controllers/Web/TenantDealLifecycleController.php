@@ -232,15 +232,23 @@ class TenantDealLifecycleController extends Controller
             $clarifyTenant  = \App\Models\Tenant::find($tenantId);
             if ($reseller?->email && $clarifyTenant) {
                 $clarifyLead = $archiveRequest->lead ?? \App\Models\Lead::where('id', $archiveRequest->deal_id)->where('tenant_id', $tenantId)->first();
-                \Illuminate\Support\Facades\Mail::queue(new \App\Mail\ArchiveRequestClarificationMail(
-                    recipientEmail:       $reseller->email,
-                    dealName:             $clarifyLead?->name ?? ($archiveRequest->request_payload['deal_name'] ?? 'your deal'),
-                    dealUrl:              $clarifyLead ? url("/reseller/{$tenantId}/deals/{$clarifyLead->id}") : null,
-                    clarificationMessage: $archiveRequest->clarification_message,
-                    clarificationDueAt:   $archiveRequest->clarification_due_at?->format('F d, Y'),
-                    resellerName:         $reseller->name,
-                    tenantName:           $clarifyTenant->name,
-                ));
+                \App\Services\EmailLogger::send(
+                    mailable: new \App\Mail\ArchiveRequestClarificationMail(
+                        recipientEmail:       $reseller->email,
+                        dealName:             $clarifyLead?->name ?? ($archiveRequest->request_payload['deal_name'] ?? 'your deal'),
+                        dealUrl:              $clarifyLead ? url("/reseller/{$tenantId}/deals/{$clarifyLead->id}") : null,
+                        clarificationMessage: $archiveRequest->clarification_message,
+                        clarificationDueAt:   $archiveRequest->clarification_due_at?->format('F d, Y'),
+                        resellerName:         $reseller->name,
+                        tenantName:           $clarifyTenant->name,
+                    ),
+                    recipientEmail: $reseller->email,
+                    recipientType:  'reseller',
+                    recipientId:    (string) $reseller->id,
+                    emailKey:       'archive_clarification.' . $requestId . '.' . $reseller->id,
+                    subject:        'Clarification needed on your archive request',
+                    tenantId:       $tenantId,
+                );
             }
         } catch (\Throwable) {}
 

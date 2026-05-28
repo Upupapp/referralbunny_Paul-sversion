@@ -34,7 +34,6 @@ class TenantInvitationExpiredMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->recipientEmail)],
             subject: "Your invitation to {$this->tenantName} has expired",
         );
     }

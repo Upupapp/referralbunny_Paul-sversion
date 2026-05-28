@@ -691,7 +691,7 @@ class CriticalActionService
 
         return $rows->map(fn($r) => $this->make([
             'type'          => 'deal_' . $r->type,
-            'category'      => 'deal',
+            'category'      => $r->type === 'commission' ? 'commission' : 'deal',
             'severity'      => $r->type === 'commission' ? 'medium' : 'info',
             'summary'       => $r->action,
             'actor_name'    => $r->reseller ?? 'System',
@@ -1134,7 +1134,7 @@ class CriticalActionService
 
         return $rows->map(fn($r) => $this->make([
             'type'          => 'deal_' . $r->type,
-            'category'      => 'deal',
+            'category'      => $r->type === 'commission' ? 'commission' : 'deal',
             'severity'      => 'info',
             'summary'       => $r->action,
             'actor_name'    => 'You',

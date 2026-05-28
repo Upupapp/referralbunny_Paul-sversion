@@ -1147,7 +1147,7 @@ class ResellerDealController extends Controller
                 'invited_by_id'   => (string) $reseller->id,
             ]);
 
-            $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('YmdHis');
+            $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('Ymd');
             $inviteSent = EmailLogger::send(
                 mailable:      new \App\Mail\PartnerInviteMail(
                     recipientEmail:   $partnerEmail,
@@ -1393,7 +1393,7 @@ class ResellerDealController extends Controller
                 ]);
 
                 $setupUrl       = url("/reseller/setup?token={$inviteToken}");
-                $inviteEmailKey = 'reseller_invite.' . $newReseller->id . '.' . now()->format('YmdHis');
+                $inviteEmailKey = 'reseller_invite.' . $newReseller->id . '.' . now()->format('Ymd');
                 $sent = EmailLogger::send(
                     mailable:      new ResellerInvitation(
                         resellerName:  $newReseller->name,
@@ -1819,16 +1819,21 @@ class ResellerDealController extends Controller
 
     public function adminUpdateCoReferrerSplit(Request $request, string $tenantId, string $dealId, string $splitId): JsonResponse
     {
-        // Admin/manager: must be authenticated as tenant user
-        $actor     = \Illuminate\Support\Facades\Auth::guard('tenant')->user()
-                  ?? \Illuminate\Support\Facades\Auth::guard('web')->user();
+        $actor = \Illuminate\Support\Facades\Auth::guard('tenant')->user()
+              ?? \Illuminate\Support\Facades\Auth::guard('web')->user();
         if (!$actor) {
             return response()->json(['error' => 'Unauthenticated.'], 401);
         }
 
-        // Verify deal belongs to this tenant
-        $lead = \App\Models\Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+        // Only owner/admin/manager or super admin may modify co-referrer splits
+        if (!\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+            $role = \App\Services\TenantContext::role();
+            if (!in_array($role, ['owner', 'admin', 'manager'])) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
+        }
 
+        $lead      = \App\Models\Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
         $actorName = $actor->full_name ?? $actor->name ?? $actor->email ?? 'Admin';
 
         return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
@@ -1977,6 +1982,14 @@ class ResellerDealController extends Controller
         $actor = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
         if (!$actor) {
             return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
+
+        // Only owner/admin/manager or super admin may remove co-referrers
+        if (!Auth::guard('web')->check()) {
+            $role = \App\Services\TenantContext::role();
+            if (!in_array($role, ['owner', 'admin', 'manager'])) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
         }
 
         $lead      = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();

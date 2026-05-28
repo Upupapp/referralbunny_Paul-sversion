@@ -26,7 +26,6 @@ class ArchiveRequestClarificationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->recipientEmail)],
             subject: "Clarification needed for your archive request on \"{$this->dealName}\"",
         );
     }

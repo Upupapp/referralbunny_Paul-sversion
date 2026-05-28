@@ -104,7 +104,7 @@ class ResellerPortalAuthController extends Controller
                 'reset_token_created_at' => now(),
             ]);
 
-            $emailKey = 'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16);
+            $emailKey = 'reseller_reset.' . $reseller->id . '.' . substr(hash('sha256', $token), 0, 16);
             $sent = EmailLogger::send(
                 mailable:      new ResellerPasswordReset(
                     resellerName:  $reseller->name,

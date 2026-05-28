@@ -25,7 +25,6 @@ class ResellerDealExpired extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "Deal expired: {$this->dealName}",
         );
     }

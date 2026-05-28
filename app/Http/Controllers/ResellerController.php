@@ -577,7 +577,7 @@ class ResellerController extends Controller
             ),
             recipientEmail: $reseller->email,
             recipientType:  'reseller',
-            emailKey:       'reseller-invite-resend-' . $reseller->id . '-' . now()->format('YmdHis'),
+            emailKey:       'reseller-invite-resend-' . $reseller->id . '-' . now()->format('Ymd'),
             subject:        "You've been invited as a Referrer for {$tenantName}",
             recipientId:    $reseller->id,
             tenantId:       $tenantId,

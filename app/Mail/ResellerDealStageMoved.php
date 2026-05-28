@@ -28,7 +28,6 @@ class ResellerDealStageMoved extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "Deal stage updated: {$this->dealName} → " . ucfirst(str_replace('_', ' ', $this->toStage)),
         );
     }

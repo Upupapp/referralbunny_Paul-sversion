@@ -39,7 +39,6 @@ class TenantInviterReminderMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->inviterEmail, $this->inviterName)],
             subject: "Heads up: {$this->inviteeEmail} hasn't accepted your invitation yet",
         );
     }

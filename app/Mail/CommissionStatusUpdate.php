@@ -27,7 +27,6 @@ class CommissionStatusUpdate extends Mailable
     {
         $labels = ['pending' => 'Commission pending', 'locked' => 'Commission locked', 'paid' => 'Commission paid'];
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: ($labels[$this->status] ?? 'Commission update') . " for {$this->dealName}",
         );
     }

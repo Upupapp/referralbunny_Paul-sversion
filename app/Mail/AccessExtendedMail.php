@@ -25,7 +25,6 @@ class AccessExtendedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->adminEmail, $this->tenantName)],
             subject: "Your ReferralBunny.ai access has been extended by {$this->days} day" . ($this->days > 1 ? 's' : ''),
         );
     }

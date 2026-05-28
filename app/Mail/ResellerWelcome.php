@@ -23,7 +23,6 @@ class ResellerWelcome extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "Your ReferralBunny.ai referrer account is ready",
         );
     }

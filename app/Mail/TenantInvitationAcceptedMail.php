@@ -6,7 +6,6 @@ use App\Models\TenantInvitation;
 use App\Models\TenantUser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -40,7 +39,6 @@ class TenantInvitationAcceptedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->inviterEmail, $this->inviterName)],
             subject: "{$this->acceptedByName} accepted your invitation to {$this->tenantName}",
         );
     }

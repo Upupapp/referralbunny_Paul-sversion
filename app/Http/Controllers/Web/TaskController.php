@@ -314,6 +314,8 @@ class TaskController extends Controller
             }
         }
 
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+
         $selfMsg  = $isSelfAssign ? 'Task created and assigned to you.' : null;
         $total    = count($createdTasks);
         $multiMsg = $total === 1 ? 'Task created and assignee notified.' : "{$total} tasks created and assignees notified.";
@@ -690,6 +692,8 @@ class TaskController extends Controller
                 } catch (\Throwable) {}
             }
 
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+
             return response()->json([
                 'status'       => 'completed',
                 'email_status' => $result['email_status'] ?? 'skipped',
@@ -718,6 +722,8 @@ class TaskController extends Controller
                 'metadata'    => ['source' => 'kanban'],
             ]);
         });
+
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         $statusLabel = ucwords(str_replace('_', ' ', $newStatus));
 
@@ -1038,6 +1044,8 @@ class TaskController extends Controller
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
         $svc->complete($task, $actorType, $actorId, $actorName);
 
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+
         return response()->json(['status' => 'completed', 'message' => 'Task completed.']);
     }
 
@@ -1099,6 +1107,8 @@ class TaskController extends Controller
             clientRequestId: $data['client_request_id'] ?? null,
             sendEmail:       $sendEmail,
         );
+
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         $msg = match ($result['email_status']) {
             'sent'    => 'Task completed and response sent to requestor.',

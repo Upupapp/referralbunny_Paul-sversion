@@ -235,7 +235,7 @@ class PartnerAuthController extends Controller
         $partner = Partner::where('email', strtolower(trim($request->email)))->first();
 
         // Always return success to prevent email enumeration
-        if ($partner && $partner->status === 'active' && $partner->password) {
+        if ($partner && in_array($partner->status, ['active', 'nda_signed']) && $partner->password) {
             $token    = Str::random(64);
             $resetUrl = url('/partner/reset-password?token=' . $token . '&email=' . urlencode($partner->email));
 
@@ -244,7 +244,7 @@ class PartnerAuthController extends Controller
                 'reset_token_expires_at' => now()->addHour(),
             ]);
 
-            $emailKey = 'partner_reset.' . $partner->id . '.' . substr($token, 0, 16);
+            $emailKey = 'partner_reset.' . $partner->id . '.' . substr(hash('sha256', $token), 0, 16);
             $sent = EmailLogger::send(
                 mailable:      new PartnerPasswordReset(
                     partnerName:  $partner->full_name ?: $partner->email,

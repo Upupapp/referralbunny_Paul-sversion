@@ -27,22 +27,47 @@ class SendTenantAdminDailyBriefingJob implements ShouldQueue
         foreach ($tenants as $tenant) {
             $tenantId = $tenant->id;
 
-            // Build data
-            $allLeads     = DB::table('leads')->where('tenant_id', $tenantId)->whereNull('deleted_at')->get();
-            $expiringList = $allLeads->whereIn('status', ['expiring'])->map(fn($l) => [
-                'name'     => $l->name,
-                'days_left'=> $l->days_left ?? 0,
-                'stage'    => $l->stage,
-                'reseller' => $l->reseller_name,
-            ])->values()->toArray();
-            $newDealsList = $allLeads->where('created_at', '>=', $since->toDateTimeString())->map(fn($l) => [
-                'name'     => $l->name,
-                'stage'    => $l->stage,
-                'reseller' => $l->reseller_name,
-            ])->values()->toArray();
+            // Targeted queries — no full table load
+            $expiringList = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('status', 'expiring')
+                ->select('name', 'days_left', 'stage', 'reseller_name')
+                ->get()
+                ->map(fn($l) => [
+                    'name'     => $l->name,
+                    'days_left'=> $l->days_left ?? 0,
+                    'stage'    => $l->stage,
+                    'reseller' => $l->reseller_name,
+                ])->values()->toArray();
+
+            $newDealsList = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('created_at', '>=', $since->toDateTimeString())
+                ->select('name', 'stage', 'reseller_name')
+                ->get()
+                ->map(fn($l) => [
+                    'name'     => $l->name,
+                    'stage'    => $l->stage,
+                    'reseller' => $l->reseller_name,
+                ])->values()->toArray();
 
             // Skip if nothing to report
             if (count($expiringList) === 0 && count($newDealsList) === 0) continue;
+
+            $activeDeals = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereIn('status', ['active', 'expiring'])
+                ->count();
+
+            $newResellers = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereNotIn('status', ['deactivated'])
+                ->where('created_at', '>=', $since)
+                ->count();
 
             // Get tenant admins
             $admins = DB::table('tenant_memberships as tm')
@@ -63,8 +88,8 @@ class SendTenantAdminDailyBriefingJob implements ShouldQueue
                         tenantName:   $tenant->name,
                         expiringDeals: count($expiringList),
                         newDeals:     count($newDealsList),
-                        newResellers: DB::table('resellers')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereNotIn('status', ['deactivated'])->where('created_at', '>=', $since)->count(),
-                        activeDeals:  $allLeads->whereIn('status', ['active', 'expiring'])->count(),
+                        newResellers: $newResellers,
+                        activeDeals:  $activeDeals,
                         expiringList: $expiringList,
                         newDealsList: $newDealsList,
                         dashboardUrl: url("/tenant/{$tenantId}/dashboard"),

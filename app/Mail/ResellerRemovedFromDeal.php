@@ -26,7 +26,6 @@ class ResellerRemovedFromDeal extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "You've been removed from a deal: {$this->dealName}",
         );
     }

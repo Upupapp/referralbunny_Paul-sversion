@@ -43,7 +43,6 @@ class TenantInvitationReminderMail extends Mailable
     {
         $urgency = $this->isLastReminder ? 'Last chance — ' : 'Reminder: ';
         return new Envelope(
-            to:      [new Address($this->recipientEmail)],
             subject: "{$urgency}Your invitation to join {$this->tenantName} expires on {$this->expiresAt}",
         );
     }

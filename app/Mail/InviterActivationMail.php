@@ -32,7 +32,6 @@ class InviterActivationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->inviterEmail, $this->inviterName)],
             subject: "{$this->acceptedUserName} has activated their {$this->roleLabel} account on {$this->tenantName}",
         );
     }

@@ -305,7 +305,7 @@ class ReferrerPartnerController extends Controller
                     'invited_by_id'   => (string) $reseller->id,
                 ]);
 
-                $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('YmdHis');
+                $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('Ymd');
                 $inviteSent = \App\Services\EmailLogger::send(
                     mailable:      new \App\Mail\PartnerInviteMail(
                         recipientEmail:   $partnerEmail,

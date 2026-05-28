@@ -6,10 +6,24 @@ use App\Events\CommissionStatusChanged;
 use App\Mail\CommissionStatusUpdate;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 
-class HandleCommissionStatusChanged
+class HandleCommissionStatusChanged implements ShouldQueue
 {
+    use Queueable, InteractsWithQueue;
+
+    public int $tries = 3;
+
+    public function failed(CommissionStatusChanged $event, \Throwable $e): void
+    {
+        \Illuminate\Support\Facades\Log::error(
+            'HandleCommissionStatusChanged failed permanently for lead ' . $event->leadId . ': ' . $e->getMessage()
+        );
+    }
+
     public function handle(CommissionStatusChanged $event): void
     {
         $reseller = DB::table('resellers')

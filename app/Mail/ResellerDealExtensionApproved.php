@@ -27,7 +27,6 @@ class ResellerDealExtensionApproved extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            to:      [new Address($this->resellerEmail, $this->resellerName)],
             subject: "Extension approved — {$this->approvedDays} days added to: {$this->dealName}",
         );
     }

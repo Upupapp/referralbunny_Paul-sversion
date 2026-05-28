@@ -7,7 +7,6 @@ use App\Mail\TenantInvitationExpiredMail;
 use App\Mail\TenantInviterReminderMail;
 use App\Models\TenantInvitation;
 use App\Models\TenantUser;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Processes pending invitation reminders on a schedule.
@@ -115,7 +114,14 @@ class InvitationReminderService
         ]);
 
         try {
-            Mail::queue(new TenantInvitationReminderMail($invitation));
+            EmailLogger::send(
+                mailable:      new TenantInvitationReminderMail($invitation),
+                recipientEmail: $invitation->email,
+                recipientType:  'tenant_user',
+                emailKey:       'invite_reminder.' . $invitation->id . '.' . $newCount,
+                subject:        'Invitation reminder — ' . ($invitation->tenant?->name ?? 'workspace'),
+                tenantId:       $invitation->tenant_id,
+            );
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[InvitationReminderService] Failed to queue invitee reminder', [
                 'invitation_id' => $invitation->id,
@@ -169,7 +175,14 @@ class InvitationReminderService
         // Email on second inviter reminder (day 5) only
         if ($newCount >= 2) {
             try {
-                Mail::queue(new TenantInviterReminderMail($invitation, $inviter));
+                EmailLogger::send(
+                    mailable:      new TenantInviterReminderMail($invitation, $inviter),
+                    recipientEmail: $inviter->email,
+                    recipientType:  'tenant_admin',
+                    emailKey:       'invite_inviter_reminder.' . $invitation->id . '.' . $newCount,
+                    subject:        'Pending invitation reminder — ' . ($invitation->tenant?->name ?? 'workspace'),
+                    tenantId:       $invitation->tenant_id,
+                );
             } catch (\Throwable) {
                 // silent — in-app notification already fired above
             }

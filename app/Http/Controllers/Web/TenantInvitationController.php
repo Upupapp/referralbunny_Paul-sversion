@@ -9,6 +9,7 @@ use App\Mail\TenantInvitationAcceptedMail;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\EmailLogger;
 use App\Services\InvitationReminderService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
@@ -128,7 +129,14 @@ class TenantInvitationController extends Controller
         try {
             $inviter = $invitation->invitedBy;
             if ($inviter && $inviter->id !== $user->id) {
-                Mail::queue(new TenantInvitationAcceptedMail($invitation, $inviter, $user));
+                EmailLogger::send(
+                    mailable:       new TenantInvitationAcceptedMail($invitation, $inviter, $user),
+                    recipientEmail: $inviter->email,
+                    recipientType:  'tenant_admin',
+                    emailKey:       'tenant_invite_accepted.' . $invitation->id . '.' . $inviter->id,
+                    subject:        trim("{$user->first_name} {$user->last_name}") . ' accepted your invitation',
+                    tenantId:       $invitation->tenant_id,
+                );
             }
         } catch (\Throwable) {}
 

@@ -21,8 +21,16 @@ class SendResellerDailySummariesJob implements ShouldQueue
         $resellers = DB::table('resellers')
             ->whereNotNull('email')
             ->whereNotNull('password')
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'nda_signed'])
             ->get();
+
+        // Batch-resolve tenant names to avoid one query per reseller
+        $tenantNames = DB::table('tenants')
+            ->whereIn('id', $resellers->pluck('tenant_id')->unique()->all())
+            ->pluck('name', 'id')
+            ->all();
+
+        $today = now()->setTimezone('Asia/Manila');
 
         foreach ($resellers as $reseller) {
             $emailKey = "reseller_daily.{$reseller->id}";
@@ -43,7 +51,7 @@ class SendResellerDailySummariesJob implements ShouldQueue
                 'stage'    => $l->stage,
             ])->values()->toArray();
 
-            $tenantName = DB::table('tenants')->where('id', $reseller->tenant_id)->value('name') ?? '';
+            $tenantName = $tenantNames[$reseller->tenant_id] ?? '';
 
             EmailLogger::send(
                 mailable: new ResellerDailySummary(
@@ -61,7 +69,7 @@ class SendResellerDailySummariesJob implements ShouldQueue
                 recipientType:  'reseller',
                 recipientId:    $reseller->id,
                 emailKey:       $emailKey,
-                subject:        "Your daily referral summary — " . now()->setTimezone('Asia/Manila')->format('M j'),
+                subject:        "Your daily referral summary — " . $today->format('M j'),
                 tenantId:       $reseller->tenant_id,
                 dailyDedup:     true,
             );

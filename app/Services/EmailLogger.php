@@ -35,16 +35,21 @@ class EmailLogger
             return true;
         }
 
-        $log = EmailLog::create([
-            'email_key'      => $dedupKey,
-            'recipient_email'=> $recipientEmail,
-            'recipient_type' => $recipientType,
-            'recipient_id'   => $recipientId,
-            'tenant_id'      => $tenantId,
-            'subject'        => $subject,
-            'status'         => 'queued',
-            'metadata'       => $metadata,
-        ]);
+        try {
+            $log = EmailLog::create([
+                'email_key'      => $dedupKey,
+                'recipient_email'=> $recipientEmail,
+                'recipient_type' => $recipientType,
+                'recipient_id'   => $recipientId,
+                'tenant_id'      => $tenantId,
+                'subject'        => $subject,
+                'status'         => 'queued',
+                'metadata'       => $metadata,
+            ]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            // Concurrent worker already inserted this key — mail was already queued.
+            return true;
+        }
 
         try {
             Mail::to($recipientEmail)->queue($mailable);
