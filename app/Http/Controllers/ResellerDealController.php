@@ -485,8 +485,9 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        $cfgCached  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
         $cfgStages  = array_values(array_filter(
-            \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes())['stages'] ?? [],
+            ($cfgCached ? (new TenantConfig())->setRawAttributes($cfgCached)->stages : null) ?? [],
             fn($s) => is_array($s) && isset($s['key'])
         ));
         $stageKeys  = count($cfgStages) ? array_column($cfgStages, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
@@ -567,8 +568,9 @@ class ResellerDealController extends Controller
         $reseller = $this->reseller();
         $lead     = $this->deal($tenantId, $dealId);
 
+        $cfgCachedApproval  = \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes());
         $cfgStagesApproval  = array_values(array_filter(
-            \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes())['stages'] ?? [],
+            ($cfgCachedApproval ? (new TenantConfig())->setRawAttributes($cfgCachedApproval)->stages : null) ?? [],
             fn($s) => is_array($s) && isset($s['key'])
         ));
         $stageKeysApproval  = count($cfgStagesApproval) ? array_column($cfgStagesApproval, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];

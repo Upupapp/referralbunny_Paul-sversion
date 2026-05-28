@@ -188,7 +188,7 @@ class TenantDealLifecycleController extends Controller
 
         if ($archiveRequest->status === 'clarification_requested') {
             return redirect()
-                ->route('tenant.deals.archive-requests.show', [$tenantId, $requestId])
+                ->route('tenant.deals.archive-requests.show', ['tenantId' => $tenantId, 'requestId' => $requestId])
                 ->with('error', 'A clarification has already been requested. Wait for the referrer to respond before sending another.');
         }
 
