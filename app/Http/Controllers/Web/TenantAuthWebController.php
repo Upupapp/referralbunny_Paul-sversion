@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Mail\TenantPasswordResetMail;
-use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use App\Services\EmailLogger;

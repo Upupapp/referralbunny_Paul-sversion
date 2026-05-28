@@ -244,6 +244,7 @@ class PartnerAuthController extends Controller
                 'reset_token_expires_at' => now()->addHour(),
             ]);
 
+            $emailKey = 'partner_reset.' . $partner->id . '.' . substr($token, 0, 16);
             $sent = EmailLogger::send(
                 mailable:      new PartnerPasswordReset(
                     partnerName:  $partner->full_name ?: $partner->email,
@@ -253,7 +254,7 @@ class PartnerAuthController extends Controller
                 ),
                 recipientEmail: $partner->email,
                 recipientType:  'partner',
-                emailKey:       'partner_reset.' . $partner->id . '.' . substr($token, 0, 16),
+                emailKey:       $emailKey,
                 subject:        'Reset your Partner Portal password',
                 recipientId:    (string) $partner->id,
                 tenantId:       $partner->tenant_id,
@@ -262,7 +263,7 @@ class PartnerAuthController extends Controller
                 Log::warning('PartnerAuthController: password reset email failed to queue', [
                     'partner_id' => $partner->id,
                     'tenant_id'  => $partner->tenant_id,
-                    'email_key'  => 'partner_reset.' . $partner->id . '.' . substr($token, 0, 16),
+                    'email_key'  => $emailKey,
                 ]);
             }
         }

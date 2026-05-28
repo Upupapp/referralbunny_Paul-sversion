@@ -104,6 +104,7 @@ class ResellerPortalAuthController extends Controller
                 'setup_token_created_at' => now(),
             ]);
 
+            $emailKey = 'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16);
             $sent = EmailLogger::send(
                 mailable:      new ResellerPasswordReset(
                     resellerName:  $reseller->name,
@@ -113,7 +114,7 @@ class ResellerPortalAuthController extends Controller
                 ),
                 recipientEmail: $reseller->email,
                 recipientType:  'reseller',
-                emailKey:       'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16),
+                emailKey:       $emailKey,
                 subject:        'Reset your referrer portal password',
                 recipientId:    (string) $reseller->id,
                 tenantId:       $reseller->tenant_id,
@@ -122,7 +123,7 @@ class ResellerPortalAuthController extends Controller
                 Log::warning('ResellerPortalAuthController: password reset email failed to queue', [
                     'reseller_id' => $reseller->id,
                     'tenant_id'   => $reseller->tenant_id,
-                    'email_key'   => 'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16),
+                    'email_key'   => $emailKey,
                 ]);
             }
         }
