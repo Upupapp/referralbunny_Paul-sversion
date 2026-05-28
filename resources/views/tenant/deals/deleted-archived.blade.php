@@ -200,7 +200,7 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                 </div>
                 <div class="flex justify-end gap-3">
                     <button @click="restoreModal.open = false" class="btn-secondary">Cancel</button>
-                    <form :action="`{{ url('/tenant/' . $tenant->id . '/deals/') }}${restoreModal.dealId}/restore`"
+                    <form :action="`{{ route('tenant.deals.restore', [$tenant->id, '__ID__']) }}`.replace('__ID__', restoreModal.dealId)"
                           method="POST" @submit="submitting = true">
                         @csrf
                         <button type="submit" :disabled="submitting" class="btn-primary bg-green-600 hover:bg-green-700">
@@ -219,7 +219,7 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
          role="dialog" aria-modal="true"
          @keydown.escape.window="deleteModal.open = false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm" @click.stop>
-            <form :action="`{{ url('/tenant/' . $tenant->id . '/deals/') }}${deleteModal.dealId}/soft-delete`"
+            <form :action="`{{ route('tenant.deals.soft-delete', [$tenant->id, '__ID__']) }}`.replace('__ID__', deleteModal.dealId)"
                   method="POST" @submit="submitting = true">
                 @csrf
                 @method('DELETE')

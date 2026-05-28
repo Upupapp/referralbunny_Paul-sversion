@@ -81,12 +81,12 @@ class ResellerDealController extends Controller
 
         $tenant = DB::table('tenants')->where('id', $tenantId)->first();
 
-        // Pending approval requests for this deal
+        // Pending approval requests for this deal (include clarification_requested so referrer sees the response form)
         $pendingApprovals = [];
         try {
             $pendingApprovals = DealApprovalRequest::where('deal_id', $dealId)
                 ->where('tenant_id', $tenantId)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'clarification_requested'])
                 ->get()
                 ->toArray();
         } catch (\Throwable) {}
@@ -732,6 +732,50 @@ class ResellerDealController extends Controller
         } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'approval_id' => $approval->id]);
+    }
+
+    // ── Referrer responds to admin clarification on an archive request ────────
+
+    public function respondToArchiveRequestClarification(Request $request, string $tenantId, string $requestId): RedirectResponse
+    {
+        $reseller = $this->reseller();
+
+        $data = $request->validate(['visible_response' => 'required|string|max:1000']);
+
+        $approval = DealApprovalRequest::where('id', $requestId)
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'deal_archive')
+            ->where('status', 'clarification_requested')
+            ->where('requested_by_id', (string) $reseller->id)
+            ->where('requested_by_type', 'reseller')
+            ->firstOrFail();
+
+        $approval->update([
+            'visible_response' => $data['visible_response'],
+        ]);
+
+        $dealId = $approval->deal_id;
+
+        // Notify all tenant admins/managers about the referrer's response
+        try {
+            $lead     = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->first();
+            $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
+
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'high',
+                title:        'Referrer responded to clarification — ' . $dealName,
+                body:         ($reseller->name ?? 'Referrer') . ' replied to your clarification request for "' . $dealName . '". Review and decide.',
+                actionUrl:    url("/tenant/{$tenantId}/deals/archive-requests/{$requestId}"),
+                actionLabel:  'Review Request',
+                dedupeSuffix: $requestId . ':clarification_responded',
+            );
+        } catch (\Throwable) {}
+
+        return redirect()
+            ->route('reseller.deals.show', [$tenantId, $dealId])
+            ->with('success', 'Your response has been sent. The admin will review and decide on the archive request.');
     }
 
     // ── Admin: Add Co-Referrer ───────────────────────────────────────────────

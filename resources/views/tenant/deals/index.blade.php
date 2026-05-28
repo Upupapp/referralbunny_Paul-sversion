@@ -963,7 +963,17 @@
 
 </div>
 
+@php
+$_stagePalette = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#6366F1'];
+$_badgePalette = ['badge badge-gray','badge badge-blue','badge badge-orange','badge badge-purple','badge badge-green','badge badge-red','badge badge-indigo'];
+$_cfgStages    = collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key']))->values();
+@endphp
 <script>
+const _rbStages      = @json($_cfgStages->map(fn($s,$i) => ['key'=>$s['key'],'label'=>$s['label'],'color'=>$_stagePalette[$i]??'#6B7280'])->values());
+const _rbStageOrder  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$i]));
+const _rbStageLabel  = @json($_cfgStages->mapWithKeys(fn($s) => [$s['key']=>$s['label']]));
+const _rbStageBadge  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$_badgePalette[$i]??'badge badge-gray']));
+const _rbDefaultStage= @json($_cfgStages->first()['key'] ?? 'introduction');
 // Philippine municipalities by province — used for the deal creation form dropdown
 const PH_MUNICIPALITIES = @json(\App\Support\PhilippineMunicipalities::all());
 
@@ -1002,13 +1012,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         get expiredCount()        { return this.leads.filter(l => l.status === 'expired').length; },
         get missingReferrerCount(){ return this.leads.filter(l => !l.reseller_name && ['active','expiring'].includes(l.status)).length; },
 
-        stages: [
-            { key: 'introduction',  label: 'Introduction',  color: '#9CA3AF' },
-            { key: 'presentation',  label: 'Presentation',  color: '#3B82F6' },
-            { key: 'contract_sent', label: 'Contract Sent', color: '#F59E0B' },
-            { key: 'signed',        label: 'Signed',        color: '#8B5CF6' },
-            { key: 'paid',          label: 'Paid',          color: '#10B981' },
-        ],
+        stages: _rbStages,
 
         async init() {
             // Drive the standalone floating delete bar via $watch
@@ -1178,7 +1182,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         sortedFiltered() {
-            const stageOrder   = { introduction:0, presentation:1, contract_sent:2, signed:3, paid:4 };
+            const stageOrder   = _rbStageOrder;
             const commOrder    = { pending:0, locked:1, paid:2 };
             const statusOrder  = { active:0, expiring:1, expired:2, reassigned:3, declined:3 };
 
@@ -1246,13 +1250,11 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         },
 
         stageLabel(s) {
-            const m = { introduction:'Intro', presentation:'Presentation', contract_sent:'Contract', signed:'Signed', paid:'Paid' };
-            return m[s] || s;
+            return _rbStageLabel[s] || s;
         },
 
         stageBadge(s) {
-            const m = { introduction:'badge badge-gray', presentation:'badge badge-blue', contract_sent:'badge badge-orange', signed:'badge badge-purple', paid:'badge badge-green' };
-            return m[s] || 'badge badge-gray';
+            return _rbStageBadge[s] || 'badge badge-gray';
         },
 
         commissionBadge(s) {
@@ -1423,7 +1425,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
 
         resetForm() {
             this.dealMode = 'standard';
-            this.form = { name:'', stage:'introduction', deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'', customOrgName:'' };
+            this.form = { name:'', stage: _rbDefaultStage, deal_value: showLocation ? 4000000 : 0, base_cost:0, added_amount:0, reseller_name:'', reseller_email:'', province:'', municipality:'', customOrgName:'' };
             this.formError      = '';
             this.nameAutoFilled = false;
             this.municipalityOptions = [];

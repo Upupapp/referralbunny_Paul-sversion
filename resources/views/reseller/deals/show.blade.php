@@ -123,6 +123,56 @@ window.__rsDeal = {
             <p class="text-xs text-gray-500 mt-0.5">Archived deals are read-only. Contact an admin if you need to reactivate this deal.</p>
         </div>
     </div>
+    @elseif($pendingArchiveRequest && ($pendingArchiveRequest['status'] ?? '') === 'clarification_requested')
+    {{-- Clarification requested — show response form ──────────── --}}
+    <div x-data="{ showReply: false, reply: '', sending: false }"
+         class="rounded-2xl bg-blue-50 border border-blue-200 p-4 space-y-3">
+        <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-blue-800">Admin needs clarification on your archive request</p>
+                <p class="text-sm text-blue-700 mt-1 whitespace-pre-wrap">{{ $pendingArchiveRequest['clarification_message'] ?? '' }}</p>
+                @if(!empty($pendingArchiveRequest['clarification_due_at']))
+                    <p class="text-xs text-blue-500 mt-1">Response due: {{ \Carbon\Carbon::parse($pendingArchiveRequest['clarification_due_at'])->format('M d, Y') }}</p>
+                @endif
+                @if(!empty($pendingArchiveRequest['visible_response']))
+                    <div class="mt-2 pt-2 border-t border-blue-200">
+                        <p class="text-xs font-semibold text-blue-700">Your response:</p>
+                        <p class="text-sm text-blue-800 mt-0.5">{{ $pendingArchiveRequest['visible_response'] }}</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+        @if(empty($pendingArchiveRequest['visible_response']))
+        <div x-show="!showReply">
+            <button @click="showReply = true"
+                    class="text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                Reply to admin
+            </button>
+        </div>
+        <div x-show="showReply" x-cloak class="space-y-2">
+            <textarea x-model="reply" rows="3" maxlength="1000"
+                      class="w-full border border-blue-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none bg-white"
+                      placeholder="Type your clarification response here…"></textarea>
+            <form action="{{ route('reseller.deals.archive-request.respond', [$tenantId, $pendingArchiveRequest['id']]) }}"
+                  method="POST" class="flex gap-2" @submit="sending = true">
+                @csrf
+                <input type="hidden" name="visible_response" :value="reply">
+                <button type="submit" :disabled="sending || !reply.trim()"
+                        class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                    <svg x-show="sending" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-show="!sending">Send Response</span>
+                    <span x-show="sending">Sending…</span>
+                </button>
+                <button type="button" @click="showReply = false; reply = ''"
+                        class="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+            </form>
+        </div>
+        @endif
+    </div>
     @elseif($pendingArchiveRequest)
     <div class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-red-50 border border-red-200">
         <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
