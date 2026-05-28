@@ -16,6 +16,7 @@ use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1270,7 +1271,7 @@ class ResellerDealController extends Controller
 
     // ── Approve / Reject deal approval (for tenant admins) ───────────────────
 
-    public function approveRequest(Request $request, string $tenantId, string $approvalId): JsonResponse
+    public function approveRequest(Request $request, string $tenantId, string $approvalId): JsonResponse|RedirectResponse
     {
         // Tenant admin/manager only
         if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) {
@@ -1290,6 +1291,10 @@ class ResellerDealController extends Controller
         $reviewerUser = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
         $reviewerName = $reviewerUser?->full_name ?? $reviewerUser?->name ?? $reviewerUser?->email ?? 'Admin';
 
+        $oldStage      = null;
+        $targetStage   = null;
+        $archiveReason = null;
+
         DB::beginTransaction();
         try {
             $approval->update([
@@ -1306,25 +1311,6 @@ class ResellerDealController extends Controller
                 if ($targetStage) {
                     $oldStage = $lead->stage;
                     $lead->update(['stage' => $targetStage]);
-
-                    app(DealActivityService::class)->record($lead, 'Stage move approved by admin', 'stage', [
-                        'category'   => 'stage',
-                        'actor_name' => $reviewerName,
-                        'actor_role' => 'admin',
-                        'old_values' => ['stage' => $oldStage],
-                        'new_values' => ['stage' => $targetStage],
-                    ]);
-
-                    DealStageMoved::dispatch(
-                        leadId:       $lead->id,
-                        leadName:     $lead->name,
-                        tenantId:     $lead->tenant_id,
-                        resellerName: $lead->reseller_name ?? '',
-                        fromStage:    $oldStage,
-                        toStage:      $targetStage,
-                        dealValue:    (float) ($lead->deal_value ?? 0),
-                        movedByName:  $reviewerName,
-                    );
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {
                 $archiveReason = $approval->reason ?? ($approval->request_payload['reason'] ?? null);
@@ -1333,13 +1319,6 @@ class ResellerDealController extends Controller
                     'archive_reason' => $archiveReason,
                     'archived_at'    => now(),
                 ]);
-
-                app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
-                    'category'   => 'archive',
-                    'actor_name' => $reviewerName,
-                    'actor_role' => 'admin',
-                    'new_values' => ['archive_reason' => $archiveReason],
-                ]);
             }
 
             DB::commit();
@@ -1347,6 +1326,38 @@ class ResellerDealController extends Controller
             DB::rollBack();
             Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
+        }
+
+        // Activity log + event dispatch — must run after DB commit
+        if ($approval->type === 'deal_stage_move' && $lead && $oldStage !== null && $targetStage !== null) {
+            try {
+                app(DealActivityService::class)->record($lead, 'Stage move approved by admin', 'stage', [
+                    'category'   => 'stage',
+                    'actor_name' => $reviewerName,
+                    'actor_role' => 'admin',
+                    'old_values' => ['stage' => $oldStage],
+                    'new_values' => ['stage' => $targetStage],
+                ]);
+                DealStageMoved::dispatch(
+                    leadId:       $lead->id,
+                    leadName:     $lead->name,
+                    tenantId:     $lead->tenant_id,
+                    resellerName: $lead->reseller_name ?? '',
+                    fromStage:    $oldStage,
+                    toStage:      $targetStage,
+                    dealValue:    (float) ($lead->deal_value ?? 0),
+                    movedByName:  $reviewerName,
+                );
+            } catch (\Throwable) {}
+        } elseif ($approval->type === 'deal_archive' && $lead) {
+            try {
+                app(DealActivityService::class)->record($lead, 'Deal archive approved and closed by ' . $reviewerName, 'archive', [
+                    'category'   => 'archive',
+                    'actor_name' => $reviewerName,
+                    'actor_role' => 'admin',
+                    'new_values' => ['archive_reason' => $archiveReason],
+                ]);
+            } catch (\Throwable) {}
         }
 
         \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
@@ -1407,10 +1418,16 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
+        if (!$request->wantsJson()) {
+            $msg = $approval->type === 'deal_archive'
+                ? '"' . ($lead?->name ?? 'Deal') . '" has been archived.'
+                : 'Stage move approved.';
+            return redirect()->route('tenant.deals.archive-requests', $tenantId)->with('success', $msg);
+        }
         return response()->json(['success' => true, 'type' => $approval->type]);
     }
 
-    public function rejectRequest(Request $request, string $tenantId, string $approvalId): JsonResponse
+    public function rejectRequest(Request $request, string $tenantId, string $approvalId): JsonResponse|RedirectResponse
     {
         if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) {
             abort(403);
@@ -1439,7 +1456,16 @@ class ResellerDealController extends Controller
                 'reviewer_id'   => (string) ($reviewerUser?->id ?? ''),
             ]);
 
-            if ($lead) {
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
+        }
+
+        // Activity log — must run after DB commit
+        if ($lead) {
+            try {
                 $activityLabel = $approval->type === 'deal_stage_move'
                     ? 'Stage move request declined by ' . $reviewerName
                     : 'Archive request declined by ' . $reviewerName;
@@ -1449,13 +1475,7 @@ class ResellerDealController extends Controller
                     'actor_role' => 'admin',
                     'new_values' => ['rejection_reason' => $data['reviewer_note']],
                 ]);
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
+            } catch (\Throwable) {}
         }
 
         \Illuminate\Support\Facades\Cache::forget("dash_counts:{$tenantId}");
@@ -1508,6 +1528,12 @@ class ResellerDealController extends Controller
             } catch (\Throwable) {}
         }
 
+        if (!$request->wantsJson()) {
+            $msg = $approval->type === 'deal_archive'
+                ? 'Archive request for "' . ($lead?->name ?? 'deal') . '" has been rejected.'
+                : 'Stage move request has been rejected.';
+            return redirect()->route('tenant.deals.archive-requests', $tenantId)->with('success', $msg);
+        }
         return response()->json(['success' => true]);
     }
 

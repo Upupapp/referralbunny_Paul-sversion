@@ -20,9 +20,9 @@ $subtabCounts = array_merge($_badgeCounts, ['pending_archive' => $metrics['pendi
          clarifyDue: '',
          rejectNote: '',
          submitting: false,
-         openApprove(id, name) { this.confirmModal = { open: true, type: 'approve', requestId: id, dealName: name }; },
-         openReject(id, name)  { this.confirmModal = { open: true, type: 'reject',  requestId: id, dealName: name }; this.rejectNote = ''; },
-         openClarify(id) { this.clarifyModal = { open: true, requestId: id }; this.clarifyMessage = ''; this.clarifyDue = ''; },
+         openApprove(id, name) { this.submitting = false; this.confirmModal = { open: true, type: 'approve', requestId: id, dealName: name }; },
+         openReject(id, name)  { this.submitting = false; this.rejectNote = ''; this.confirmModal = { open: true, type: 'reject',  requestId: id, dealName: name }; },
+         openClarify(id) { this.submitting = false; this.clarifyMessage = ''; this.clarifyDue = ''; this.clarifyModal = { open: true, requestId: id }; },
      }">
 
     {{-- Subtab navigation --}}

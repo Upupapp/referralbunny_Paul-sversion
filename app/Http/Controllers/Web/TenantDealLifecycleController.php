@@ -230,6 +230,7 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
+        Cache::forget("dash_counts:{$tenantId}");
         Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
 
@@ -303,6 +304,7 @@ class TenantDealLifecycleController extends Controller
         DB::transaction(function () use ($lead, $tenantId) {
             if ($lead->trashed()) {
                 $lead->restore();
+                $lead->refresh();
             }
             // If archived, revert to active
             if ($lead->status === 'archived') {

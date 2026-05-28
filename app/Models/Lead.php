@@ -40,6 +40,7 @@ class Lead extends Model
         'added_amount' => 'decimal:2',
         'deal_value'   => 'decimal:2',
         'days_left'    => 'integer',
+        'archived_at'  => 'datetime',
     ];
 
     public function tenant(): BelongsTo

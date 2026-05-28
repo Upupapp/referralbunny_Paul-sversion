@@ -157,11 +157,11 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                                             class="text-xs text-green-600 hover:underline font-medium whitespace-nowrap">
                                         Restore
                                     </button>
-                                    {{-- Permanent delete (only for soft-deleted; already-deleted can be force-deleted) --}}
+                                    {{-- Soft-delete archived deals (reversible — lands in Deleted Only filter) --}}
                                     @if(!$isDeleted)
                                         <button @click="openDelete('{{ $deal->id }}', '{{ addslashes($deal->name) }}')"
                                                 class="text-xs text-red-500 hover:underline font-medium whitespace-nowrap">
-                                            Delete
+                                            Soft Delete
                                         </button>
                                     @endif
                                 </div>
@@ -213,7 +213,7 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
         </div>
     </div>
 
-    {{-- Delete confirm modal (for archived deals → soft-delete) --}}
+    {{-- Soft-delete confirm modal (reversible — deal can still be restored) --}}
     <div x-show="deleteModal.open" x-cloak
          class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          role="dialog" aria-modal="true"
@@ -231,8 +231,8 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                             </svg>
                         </div>
                         <div>
-                            <p class="font-semibold text-[#1E1B4B]">Delete deal?</p>
-                            <p class="text-sm text-gray-500" x-text="'\"' + deleteModal.dealName + '\"'"></p>
+                            <p class="font-semibold text-[#1E1B4B]">Soft-delete this deal?</p>
+                            <p class="text-sm text-gray-500" x-text="'\"' + deleteModal.dealName + '\" — this is reversible and can be restored.'"></p>
                         </div>
                     </div>
                     <div>
@@ -243,7 +243,7 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                     <div class="flex justify-end gap-3">
                         <button type="button" @click="deleteModal.open = false" class="btn-secondary">Cancel</button>
                         <button type="submit" :disabled="submitting" class="btn-primary bg-red-600 hover:bg-red-700">
-                            <span x-show="!submitting">Delete</span>
+                            <span x-show="!submitting">Soft Delete</span>
                             <span x-show="submitting">Deleting…</span>
                         </button>
                     </div>
