@@ -724,9 +724,11 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Could not submit archive request. Please try again.'], 500);
         }
 
-        Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-        Cache::forget("subtab_badge_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try {
+            \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+            \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+            app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId);
+        } catch (\Throwable) {}
 
         // Activity log + notification AFTER commit — never let these roll back the business record
         try {
@@ -802,8 +804,8 @@ class ResellerDealController extends Controller
         ]);
 
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
-        Cache::forget("subtab_badge_counts:{$tenantId}");
-        Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
+        \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
 
         $dealId = $approval->deal_id;
         $lead   = null;
