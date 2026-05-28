@@ -55,13 +55,15 @@ class DealAssignmentExtensionController extends Controller
      */
     public function show(Request $request, string $id): JsonResponse
     {
-        $req = \App\Models\DealAssignmentExtensionRequest::with('lead:id,name,reseller_name,tenant_id')->find($id);
-        if (!$req) return response()->json(['error' => 'Not found.'], 404);
-
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
-        if ($tenantId && $req->tenant_id !== $tenantId) {
+        if (!$tenantId) {
             return response()->json(['error' => 'Not found.'], 404);
         }
+
+        $req = \App\Models\DealAssignmentExtensionRequest::with('lead:id,name,reseller_name,tenant_id')
+            ->where('tenant_id', $tenantId)
+            ->find($id);
+        if (!$req) return response()->json(['error' => 'Not found.'], 404);
 
         return response()->json(array_merge($req->toArray(), [
             'deal_name'          => $req->lead?->name,

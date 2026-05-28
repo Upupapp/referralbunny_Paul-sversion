@@ -188,9 +188,18 @@ class CriticalActionService
      */
     public function invalidateCache(string $tenantId, ?string $userId = null): void
     {
-        // Bust dashboard and master-list caches — best-effort on key prefixes we can derive.
-        Cache::forget("ca_dashboard:{$tenantId}:" . md5(serialize(['billing' => false, 'exports' => true, 'users' => true, 'limit_per_source' => 5])));
-        Cache::forget("ca_dashboard:{$tenantId}:" . md5(serialize(['billing' => true,  'exports' => true, 'users' => true, 'limit_per_source' => 5])));
+        // Bust all ca_dashboard and ca_master permutations for this tenant.
+        // Enumerate all 8 billing×exports×users combos to cover every manager permission set.
+        foreach ([false, true] as $billing) {
+            foreach ([false, true] as $exports) {
+                foreach ([false, true] as $users) {
+                    $dashOpts   = ['billing' => $billing, 'exports' => $exports, 'users' => $users, 'limit_per_source' => 5];
+                    $masterOpts = ['billing' => $billing, 'exports' => $exports, 'users' => $users, 'limit_per_source' => 50, 'since' => null, 'until' => null];
+                    Cache::forget("ca_dashboard:{$tenantId}:" . md5(serialize($dashOpts)));
+                    Cache::forget("ca_master:{$tenantId}:"    . md5(serialize($masterOpts)));
+                }
+            }
+        }
 
         if ($userId) {
             Cache::forget("ca_badge_{$tenantId}_{$userId}");

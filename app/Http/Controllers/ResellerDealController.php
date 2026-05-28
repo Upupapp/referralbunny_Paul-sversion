@@ -12,6 +12,7 @@ use App\Models\CommissionSplit;
 use App\Models\Reseller;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
+use App\Models\TenantMembership;
 use App\Services\CommissionCalculationService;
 use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
@@ -159,6 +160,7 @@ class ResellerDealController extends Controller
 
             // Legacy notes: lead_notes (old system, no attachments)
             $legacyNotes = LeadNote::where('lead_id', $dealId)
+                ->whereIn('lead_id', Lead::where('tenant_id', $tenantId)->select('id'))
                 ->orderBy('created_at', 'asc')
                 ->get()
                 ->map(fn($n) => [
@@ -726,6 +728,7 @@ class ResellerDealController extends Controller
 
         try {
             \Illuminate\Support\Facades\Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
+            \Illuminate\Support\Facades\Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
             \Illuminate\Support\Facades\Cache::forget("subtab_badge_counts:{$tenantId}");
             app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId);
         } catch (\Throwable) {}
@@ -837,6 +840,25 @@ class ResellerDealController extends Controller
                 actionLabel:  'Review Request',
                 dedupeSuffix: $requestId . ':clarification_responded:' . now()->format('Ymd'),
             );
+        } catch (\Throwable) {}
+
+        // Email all tenant admins/managers about the referrer's response
+        try {
+            $archiveTenant = Tenant::find($tenantId);
+            if ($archiveTenant) {
+                $approval->load('lead');
+                TenantMembership::where('tenant_id', $tenantId)
+                    ->with('tenantUser')
+                    ->get()
+                    ->each(function ($membership) use ($approval, $reseller, $archiveTenant) {
+                        $tu = $membership->tenantUser;
+                        if ($tu?->email) {
+                            Mail::to($tu->email)->queue(
+                                new \App\Mail\ArchiveRequestRespondedMail($approval, $reseller, $archiveTenant, $tu->email, $tu->full_name ?: $tu->email)
+                            );
+                        }
+                    });
+            }
         } catch (\Throwable) {}
 
         return redirect()

@@ -134,7 +134,7 @@ class TenantDealLifecycleController extends Controller
 
         $metrics = Cache::remember("lifecycle_archive_req_metrics:{$tenantId}", 60, function () use ($tenantId) {
             return [
-                'pending'       => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'pending')->count(),
+                'pending'       => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where(fn($q) => $q->where('status', 'pending')->orWhere(fn($q2) => $q2->where('status', 'clarification_requested')->whereNotNull('visible_response')))->count(),
                 'approved'      => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'approved')->count(),
                 'rejected'      => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'rejected')->count(),
                 'clarification' => DealApprovalRequest::where('tenant_id', $tenantId)->where('type', 'deal_archive')->where('status', 'clarification_requested')->count(),
@@ -149,7 +149,11 @@ class TenantDealLifecycleController extends Controller
                     ->count(),
             ];
         });
-        $subtabCounts['pending_archive'] = $metrics['pending'];
+        $subtabCounts['pending_archive'] = DealApprovalRequest::where('tenant_id', $tenantId)
+            ->where('type', 'deal_archive')
+            ->where(fn($q) => $q->where('status', 'pending')
+                ->orWhere(fn($q2) => $q2->where('status', 'clarification_requested')->whereNotNull('visible_response')))
+            ->count();
 
         return view('tenant.deals.archive-requests', array_merge(
             compact('tenant', 'requests', 'metrics', 'subtabCounts', 'role', 'search', 'status'),
@@ -367,6 +371,7 @@ class TenantDealLifecycleController extends Controller
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         Cache::forget("lifecycle_expired_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
     }
@@ -408,6 +413,7 @@ class TenantDealLifecycleController extends Controller
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
         Cache::forget("lifecycle_expired_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.deleted-archived', $tenantId)

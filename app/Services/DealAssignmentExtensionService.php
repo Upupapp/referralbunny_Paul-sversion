@@ -256,33 +256,55 @@ class DealAssignmentExtensionService
 
     private function notifyRequesterOfDecision(string $tenantId, Lead $deal, DealAssignmentExtensionRequest $request, string $decision): void
     {
+        $titleLabels = [
+            'approved'                => 'Approved',
+            'rejected'                => 'Rejected',
+            'clarification_requested' => 'Clarification Needed',
+        ];
+
+        $messages = [
+            'approved'                => "Your extension request for \"{$deal->name}\" was approved. {$request->approved_days} days added.",
+            'rejected'                => "Your extension request for \"{$deal->name}\" was rejected." . ($request->admin_note ? " Reason: {$request->admin_note}" : ''),
+            'clarification_requested' => "The admin needs clarification on your extension request for \"{$deal->name}\"." . ($request->admin_note ? " {$request->admin_note}" : ''),
+        ];
+
+        $titleLabel = $titleLabels[$decision] ?? ucfirst($decision);
+        $message    = $messages[$decision] ?? "Your extension request for \"{$deal->name}\" was updated.";
+
         try {
-            $messages = [
-                'approved'                => "Your extension request for \"{$deal->name}\" was approved. {$request->approved_days} days added.",
-                'rejected'                => "Your extension request for \"{$deal->name}\" was rejected. Reason: {$request->admin_note}",
-                'clarification_requested' => "The admin needs clarification on your extension request for \"{$deal->name}\": {$request->admin_note}",
-            ];
-
-            $message = $messages[$decision] ?? "Your extension request for \"{$deal->name}\" was updated.";
-
-            // Notify via in-app if reseller record exists
             $reseller = DB::table('resellers')
                 ->where('tenant_id', $tenantId)
                 ->where('id', $request->requested_by_user_id)
                 ->first();
 
             if ($reseller) {
+                // In-app notification
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   $reseller->id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
                     priority:     $decision === 'approved' ? 'normal' : 'high',
-                    title:        ucfirst($decision) . ": Extension request for \"{$deal->name}\"",
+                    title:        "{$titleLabel}: Extension request for \"{$deal->name}\"",
                     body:         $message,
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$deal->id}"),
                     actionLabel:  'View Deal',
                     dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 );
+
+                // Email notification
+                if ($reseller->email) {
+                    $tenant = \App\Models\Tenant::find($tenantId);
+                    \Illuminate\Support\Facades\Mail::to($reseller->email)->queue(
+                        new \App\Mail\DealExtensionDecisionMail(
+                            extensionRequest: $request,
+                            deal:             $deal,
+                            decision:         $decision,
+                            resellerName:     $reseller->name,
+                            resellerEmail:    $reseller->email,
+                            tenantName:       $tenant?->name ?? 'ReferralBunny',
+                        )
+                    );
+                }
             }
         } catch (\Throwable) {}
     }
