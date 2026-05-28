@@ -1996,6 +1996,7 @@ class ResellerDealController extends Controller
 
         // Resolve removed co-referrer — isolated so a DB failure doesn't suppress notification or email
         $coRefReseller = null;
+        $coRefHour     = now()->format('YmdH');
         try {
             $coRefReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($removedName)])
@@ -2014,7 +2015,7 @@ class ResellerDealController extends Controller
                     body:         $actorName . ' removed you as a co-referrer on "' . $lead->name . '".',
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $splitId . ':coreferrer_removed:' . now()->format('YmdH'),
+                    dedupeSuffix: $splitId . ':coreferrer_removed:' . $coRefHour,
                 );
             }
         } catch (\Throwable) {}
@@ -2031,7 +2032,7 @@ class ResellerDealController extends Controller
                     ),
                     recipientEmail: $coRefReseller->email,
                     recipientType:  'reseller',
-                    emailKey:       'coreferrer_removed.' . $dealId . '.' . $coRefReseller->id . '.' . now()->format('YmdH'),
+                    emailKey:       'coreferrer_removed.' . $dealId . '.' . $coRefReseller->id . '.' . $coRefHour,
                     subject:        "You've been removed as a co-referrer on \"{$lead->name}\"",
                     recipientId:    (string) $coRefReseller->id,
                     tenantId:       $tenantId,
