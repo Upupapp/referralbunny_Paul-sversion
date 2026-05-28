@@ -1994,13 +1994,16 @@ class ResellerDealController extends Controller
         $removedName = $split->reseller_name;
         $split->delete();
 
-        // System notification to the removed co-referrer
+        // Resolve removed co-referrer — isolated so a DB failure doesn't suppress notification or email
         $coRefReseller = null;
         try {
             $coRefReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($removedName)])
                 ->first();
+        } catch (\Throwable) {}
 
+        // In-app notification to the removed co-referrer
+        try {
             if ($coRefReseller && in_array($coRefReseller->status, ['active', 'nda_signed'])) {
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   (string) $coRefReseller->id,
@@ -2016,6 +2019,7 @@ class ResellerDealController extends Controller
             }
         } catch (\Throwable) {}
 
+        // Email to the removed co-referrer
         try {
             if ($coRefReseller && in_array($coRefReseller->status, ['active', 'nda_signed'])) {
                 EmailLogger::send(
