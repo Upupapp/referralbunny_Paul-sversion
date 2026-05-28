@@ -37,10 +37,10 @@ class HandleCommissionStatusChanged implements ShouldQueue
 
         // Priority map used for both reseller and partner notifications
         $priorities = ['pending' => 'normal', 'locked' => 'high', 'paid' => 'high'];
+        $dispatcher = app(NotificationDispatchService::class);
 
         // In-app notification
         if ($reseller) {
-            $dispatcher = app(NotificationDispatchService::class);
             $titles = [
                 'pending' => 'Commission pending',
                 'locked'  => 'Commission approved',

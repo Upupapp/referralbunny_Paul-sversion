@@ -249,7 +249,8 @@ class TenantUserManagementController extends Controller
                 mailable:       new TenantInvitationMail($invitation),
                 recipientEmail: $invitation->email,
                 recipientType:  'tenant_user',
-                emailKey:       "tenant_invite_resend.{$invitation->id}." . now()->format('YmdHi'),
+                emailKey:       "tenant_invite_resend.{$invitation->id}",
+                dailyDedup:     true,
                 subject:        "Reminder: You've been invited to join on ReferralBunny.ai",
                 tenantId:       $tenantId,
             );
@@ -266,7 +267,7 @@ class TenantUserManagementController extends Controller
                 body:         "Invitation to {$invitation->email} was resent.",
                 actionUrl:    route('tenant.users', $tenantId),
                 actionLabel:  'View Users',
-                dedupeSuffix: "resend:{$invitation->id}:" . now()->format('YmdHi'),
+                dedupeSuffix: "resend:{$invitation->id}",
             );
         } catch (\Throwable) {}
 

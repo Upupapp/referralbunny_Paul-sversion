@@ -8,13 +8,13 @@ use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\Tenant;
 use App\Models\TenantUser;
+use App\Services\EmailLogger;
 use App\Services\TaskCompletionService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class TaskController extends Controller
 {
@@ -271,16 +271,22 @@ class TaskController extends Controller
 
                 // Email to tenant user
                 if ($assignee->email) {
-                    try {
-                        Mail::to($assignee->email)->queue(new ManualTaskAssignedMail(
+                    EmailLogger::send(
+                        mailable:       new ManualTaskAssignedMail(
                             assigneeName: $assignee->name,
                             senderName:   $actorName,
                             taskTitle:    $task->title,
                             taskPriority: $task->priority,
                             dueAt:        $task->due_at?->format('M j, Y'),
                             taskUrl:      url("/tenant/{$tenantId}/tasks/{$task->id}"),
-                        ));
-                    } catch (\Throwable) {}
+                        ),
+                        recipientEmail: $assignee->email,
+                        recipientType:  'tenant_admin',
+                        recipientId:    $assignee->id,
+                        emailKey:       'manual_task_assigned.' . $task->id . '.' . $assignee->id,
+                        subject:        "New task assigned: {$task->title}",
+                        tenantId:       $tenantId,
+                    );
                 }
             } elseif ($assigneeType === 'reseller') {
                 // In-app notification to referrer portal
@@ -300,21 +306,27 @@ class TaskController extends Controller
 
                 // Email to referrer
                 if ($assignee->email) {
-                    try {
-                        Mail::to($assignee->email)->queue(new ManualTaskAssignedMail(
+                    EmailLogger::send(
+                        mailable:       new ManualTaskAssignedMail(
                             assigneeName: $assignee->name ?? $assignee->email,
                             senderName:   $actorName,
                             taskTitle:    $task->title,
                             taskPriority: $task->priority,
                             dueAt:        $task->due_at?->format('M j, Y'),
                             taskUrl:      url("/reseller/{$tenantId}/tasks"),
-                        ));
-                    } catch (\Throwable) {}
+                        ),
+                        recipientEmail: $assignee->email,
+                        recipientType:  'reseller',
+                        recipientId:    $assignee->id,
+                        emailKey:       'manual_task_assigned.' . $task->id . '.' . $assignee->id,
+                        subject:        "New task assigned: {$task->title}",
+                        tenantId:       $tenantId,
+                    );
                 }
             }
         }
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         $selfMsg  = $isSelfAssign ? 'Task created and assigned to you.' : null;
         $total    = count($createdTasks);
@@ -692,7 +704,7 @@ class TaskController extends Controller
                 } catch (\Throwable) {}
             }
 
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
             return response()->json([
                 'status'       => 'completed',
@@ -723,7 +735,7 @@ class TaskController extends Controller
             ]);
         });
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         $statusLabel = ucwords(str_replace('_', ' ', $newStatus));
 
@@ -1044,7 +1056,7 @@ class TaskController extends Controller
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
         $svc->complete($task, $actorType, $actorId, $actorName);
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         return response()->json(['status' => 'completed', 'message' => 'Task completed.']);
     }
@@ -1108,7 +1120,7 @@ class TaskController extends Controller
             sendEmail:       $sendEmail,
         );
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         $msg = match ($result['email_status']) {
             'sent'    => 'Task completed and response sent to requestor.',

@@ -29,7 +29,8 @@ use Illuminate\Support\Str;
  */
 class HandleInviteAccepted implements ShouldQueue
 {
-    public int $tries = 3;
+    public int $tries   = 3;
+    public int $backoff = 10;
 
     public function handle(InviteAcceptedEvent $event): void
     {

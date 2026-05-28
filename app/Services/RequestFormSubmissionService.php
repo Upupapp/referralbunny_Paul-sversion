@@ -8,9 +8,9 @@ use App\Models\RequestFormSubmission;
 use App\Models\RequestFormSubmissionRecipient;
 use App\Models\Task;
 use App\Models\TaskActivity;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class RequestFormSubmissionService
@@ -181,17 +181,22 @@ class RequestFormSubmissionService
                 } catch (\Throwable) {}
             }
 
-            try {
-                Mail::to($recipient->email)
-                    ->queue(new TaskAssignedMail(
-                        recipientName: $recipient->display_name,
-                        submitterName: $submitterName,
-                        requestFor:    $requestLabel,
-                        formTitle:     $form->title,
-                        notes:         $notes,
-                        tenantId:      $tenantId,
-                    ));
-            } catch (\Throwable) {}
+            EmailLogger::send(
+                mailable:       new TaskAssignedMail(
+                    recipientName: $recipient->display_name,
+                    submitterName: $submitterName,
+                    requestFor:    $requestLabel,
+                    formTitle:     $form->title,
+                    notes:         $notes,
+                    tenantId:      $tenantId,
+                ),
+                recipientEmail: $recipient->email,
+                recipientType:  'tenant_admin',
+                recipientId:    $recipient->recipient_id,
+                emailKey:       'req_form_task.' . $submission->id . '.' . $recipient->recipient_id,
+                subject:        "New request: {$requestLabel}",
+                tenantId:       $tenantId,
+            );
         }
 
         // ── 2. Notify tenant admins (consolidated — one notification per submission) ─

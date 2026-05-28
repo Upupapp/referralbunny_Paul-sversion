@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 
 class HandleDealReferrerAssigned implements ShouldQueue
 {
-    public int $tries = 3;
+    public int $tries   = 3;
+    public int $backoff = 10;
 
     public function handle(DealReferrerAssigned $event): void
     {

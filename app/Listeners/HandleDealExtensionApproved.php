@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 
 class HandleDealExtensionApproved implements ShouldQueue
 {
-    public int $tries = 3;
+    public int $tries   = 3;
+    public int $backoff = 10;
 
     public function handle(DealExtensionApproved $event): void
     {
@@ -46,7 +47,7 @@ class HandleDealExtensionApproved implements ShouldQueue
             ),
             recipientEmail: $email,
             recipientType:  'reseller',
-            emailKey:       'deal_extension_approved.' . $event->leadId . '.' . now()->format('YmdHi'),
+            emailKey:       'deal_extension_approved.' . $event->leadId . '.' . ($resellerId ?? md5($email)),
             subject:        "Extension approved — {$event->approvedDays} days added to: {$event->leadName}",
             recipientId:    $resellerId,
             tenantId:       $event->tenantId,

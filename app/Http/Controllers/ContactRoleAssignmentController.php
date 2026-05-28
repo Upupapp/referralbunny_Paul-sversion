@@ -17,7 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use App\Services\EmailLogger;
 use Illuminate\Support\Str;
 
 class ContactRoleAssignmentController extends Controller
@@ -237,14 +237,14 @@ class ContactRoleAssignmentController extends Controller
         $contactName = trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')) ?: $contact->email;
         $dealName    = $deal ? ($deal->name ?? null) : null;
 
-        try {
-            Mail::to($contact->email)->queue(
-                new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $dealName)
-            );
-        } catch (\Throwable $e) {
-            // Log but don't fail — invitation record is created
-            \Log::error('ContactRoleInvitationMail failed', ['error' => $e->getMessage(), 'invitation_id' => $invitation->id]);
-        }
+        EmailLogger::send(
+            mailable:       new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $dealName),
+            recipientEmail: $contact->email,
+            recipientType:  'external',
+            emailKey:       'contact_role_invite.' . $invitation->id,
+            subject:        "You've been invited to join {$tenant?->name ?? 'the platform'}",
+            tenantId:       $tenantId,
+        );
 
         // ── 10. Audit log ──────────────────────────────────────────────────
         $this->auditLog(
@@ -328,13 +328,14 @@ class ContactRoleAssignmentController extends Controller
 
         $contactName = $contact ? trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')) : $invitation->invited_email;
 
-        try {
-            Mail::to($invitation->invited_email)->queue(
-                new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $deal?->name)
-            );
-        } catch (\Throwable $e) {
-            \Log::error('ContactRoleInvitationMail queue failed', ['error' => $e->getMessage()]);
-        }
+        EmailLogger::send(
+            mailable:       new ContactRoleInvitationMail($invitation, $contactName, $tenant?->name ?? 'the platform', $deal?->name),
+            recipientEmail: $invitation->invited_email,
+            recipientType:  'external',
+            emailKey:       'contact_role_invite_resend.' . $invitation->id . '.' . now()->format('Ymd'),
+            subject:        "Reminder: You've been invited to join {$tenant?->name ?? 'the platform'}",
+            tenantId:       $tenantId,
+        );
 
         [$actorUserId, $actorRole] = $this->resolveActor();
         $this->auditLog(
@@ -461,8 +462,8 @@ class ContactRoleAssignmentController extends Controller
                     'tenant_id'       => $tenantId,
                     'notifiable_type' => 'App\\Models\\TenantUser',
                     'notifiable_id'   => $userId,
-                    'category'        => 'role_assignment',
-                    'type'            => 'contact_invited_as_' . $role,
+                    'category'        => 'reseller_referrer',
+                    'type'            => 'info',
                     'priority'        => 'normal',
                     'title'           => 'New Partner Invitation Sent',
                     'message'         => "{$contactName} was invited as a Partner" . ($deal ? " for deal \"{$deal->name}\"" : '') . " by a Referrer.",

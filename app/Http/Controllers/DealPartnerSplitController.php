@@ -113,6 +113,8 @@ class DealPartnerSplitController extends Controller
                 }
             } catch (\Throwable) {}
 
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, $this->resolveActorId()); } catch (\Throwable) {}
+
             return response()->json($split, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -183,6 +185,8 @@ class DealPartnerSplitController extends Controller
                 $lead->id . ':partner_updated:' . $splitId . ':' . now()->format('YmdHi'),
             );
 
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, $this->resolveActorId()); } catch (\Throwable) {}
+
             return response()->json($split);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -248,6 +252,8 @@ class DealPartnerSplitController extends Controller
                     } catch (\Throwable) {}
                 }
             }
+
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, $this->resolveActorId()); } catch (\Throwable) {}
 
             return response()->json(['success' => true, 'message' => 'Partner split removed.']);
         } catch (\Throwable $e) {

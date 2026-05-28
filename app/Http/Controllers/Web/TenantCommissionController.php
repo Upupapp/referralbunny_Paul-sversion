@@ -92,6 +92,8 @@ class TenantCommissionController extends Controller
         $partnerSplits = DB::table('deal_partner_splits')
             ->whereIn('lead_id', $dealIds)
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
             ->get()
             ->groupBy('lead_id');
 
@@ -199,7 +201,7 @@ class TenantCommissionController extends Controller
 
         $dealIds = (clone $query)->pluck('id');
         $splits  = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->get()->groupBy('lead_id');
-        $pSplits = DB::table('deal_partner_splits')->whereIn('lead_id', $dealIds)->where('tenant_id', $tenantId)->get()->groupBy('lead_id');
+        $pSplits = DB::table('deal_partner_splits')->whereIn('lead_id', $dealIds)->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', '!=', 'removed')->get()->groupBy('lead_id');
         $deals   = $query->orderByDesc('created_at')->cursor();
 
         $filename = 'commission-' . $tenant->slug . '-' . now()->format('Y-m-d') . '.csv';

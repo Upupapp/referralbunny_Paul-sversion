@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 
 class HandleDealDeclined implements ShouldQueue
 {
-    public int $tries = 3;
+    public int $tries   = 3;
+    public int $backoff = 10;
 
     public function handle(DealDeclined $event): void
     {

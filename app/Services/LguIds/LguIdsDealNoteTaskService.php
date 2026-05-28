@@ -2,17 +2,16 @@
 
 namespace App\Services\LguIds;
 
-use App\Models\EmailLog;
 use App\Models\Lead;
 use App\Models\Reseller;
 use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\Tenant;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * LGU IDS only — auto-creates and auto-completes referrer "add a note" tasks
@@ -324,49 +323,27 @@ class LguIdsDealNoteTaskService
 
         $emailKey = "lgu_ids_deal_note_task_email:{$tenant->id}:{$referrer->id}:{$lead->id}";
 
-        if (EmailLog::where('email_key', $emailKey)->exists()) {
-            return;
-        }
-
-        try {
-            try {
-                $log = EmailLog::create([
-                    'email_key'       => $emailKey,
-                    'recipient_email' => $referrer->email,
-                    'recipient_type'  => 'reseller',
-                    'recipient_id'    => $referrer->id,
-                    'tenant_id'       => $tenant->id,
-                    'subject'         => 'Action needed: Add a note to "' . $lead->name . '"',
-                    'status'          => 'queued',
-                    'metadata'        => [
-                        'type'       => 'lgu_ids_deal_note_task',
-                        'deal_id'    => $lead->id,
-                        'task_id'    => $task->id,
-                        'stage'      => $lead->stage,
-                    ],
-                ]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
-                return; // concurrent worker already queued this email
-            }
-
-            Mail::to($referrer->email)->queue(
-                new \App\Mail\LguIdsDealNoteTaskMail(
-                    referrerName: $referrer->name,
-                    dealName:     $lead->name,
-                    stageLabel:   $this->stageLabel($lead->stage),
-                    dealUrl:      url("/reseller/{$tenant->id}/deals/{$lead->id}") . '#rb-notes',
-                    tenantName:   $tenant->name,
-                )
-            );
-
-            $log->update(['status' => 'sent', 'sent_at' => now()]);
-        } catch (\Throwable $e) {
-            Log::warning('[LguIdsDealNoteTask] Email queue failed', [
-                'deal_id'     => $lead->id,
-                'referrer_id' => $referrer->id,
-                'error'       => $e->getMessage(),
-            ]);
-        }
+        EmailLogger::send(
+            mailable:       new \App\Mail\LguIdsDealNoteTaskMail(
+                referrerName: $referrer->name,
+                dealName:     $lead->name,
+                stageLabel:   $this->stageLabel($lead->stage),
+                dealUrl:      url("/reseller/{$tenant->id}/deals/{$lead->id}") . '#rb-notes',
+                tenantName:   $tenant->name,
+            ),
+            recipientEmail: $referrer->email,
+            recipientType:  'reseller',
+            recipientId:    $referrer->id,
+            emailKey:       $emailKey,
+            subject:        'Action needed: Add a note to "' . $lead->name . '"',
+            tenantId:       $tenant->id,
+            metadata:       [
+                'type'    => 'lgu_ids_deal_note_task',
+                'deal_id' => $lead->id,
+                'task_id' => $task->id,
+                'stage'   => $lead->stage,
+            ],
+        );
     }
 
     // ── Tenant resolution ──────────────────────────────────────────────────────

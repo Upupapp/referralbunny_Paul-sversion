@@ -3,13 +3,12 @@
 namespace App\Services;
 
 use App\Mail\LguIdsReferrerDealNoteReminderMail;
-use App\Models\EmailLog;
 use App\Models\Reseller;
 use App\Models\Tenant;
+use App\Services\EmailLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * LGU IDS only — sends one grouped in-app notification + one queued email per
@@ -220,52 +219,38 @@ class LguIdsReferrerDealNoteReminderService
     {
         $emailKey = "lgu_ids_referrer_note_reminder_email:{$tenant->id}:{$referrer->id}:{$weekKey}";
 
-        if (EmailLog::where('email_key', $emailKey)->exists()) {
-            return null;
-        }
+        $dealsArray = $deals->map(fn($d) => [
+            'id'         => $d->id,
+            'name'       => $d->name,
+            'stage'      => $d->stage,
+            'status'     => $d->status,
+            'days_left'  => $d->days_left,
+            'deal_value' => $d->deal_value,
+            'url'        => url("reseller/{$tenant->id}/deals/{$d->id}") . '#rb-notes',
+        ])->all();
 
-        try {
-            $dealsArray = $deals->map(fn($d) => [
-                'id'         => $d->id,
-                'name'       => $d->name,
-                'stage'      => $d->stage,
-                'status'     => $d->status,
-                'days_left'  => $d->days_left,
-                'deal_value' => $d->deal_value,
-                'url'        => url("reseller/{$tenant->id}/deals/{$d->id}") . '#rb-notes',
-            ])->all();
+        $count = $deals->count();
 
-            $mailable = new LguIdsReferrerDealNoteReminderMail(
+        EmailLogger::send(
+            mailable:       new LguIdsReferrerDealNoteReminderMail(
                 referrerName: $referrer->name,
                 deals:        $dealsArray,
                 tenantName:   $tenant->name,
                 dealsUrl:     url("reseller/{$tenant->id}/deals") . '?filter=no_notes',
                 weekLabel:    Carbon::now()->timezone('Asia/Manila')->format('F j, Y'),
-            );
+            ),
+            recipientEmail: $referrer->email,
+            recipientType:  'reseller',
+            recipientId:    $referrer->id,
+            emailKey:       $emailKey,
+            subject:        $count === 1
+                ? 'Weekly reminder: 1 of your deals has no notes yet'
+                : "Weekly reminder: {$count} of your deals have no notes yet",
+            tenantId:       $tenant->id,
+            metadata:       ['type' => 'lgu_ids_referrer_note_reminder', 'week_key' => $weekKey],
+        );
 
-            try {
-                $log = EmailLog::create([
-                    'email_key'       => $emailKey,
-                    'recipient_email' => $referrer->email,
-                    'tenant_id'       => $tenant->id,
-                    'status'          => 'queued',
-                    'metadata'        => ['type' => 'lgu_ids_referrer_note_reminder', 'week_key' => $weekKey],
-                ]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
-                return null; // concurrent worker already queued this email
-            }
-
-            Mail::to($referrer->email)->queue($mailable);
-
-            $log->update(['status' => 'sent']);
-            return $log->id;
-        } catch (\Throwable $e) {
-            Log::warning('[LguIdsNoteReminder] Email queue failed', [
-                'referrer_id' => $referrer->id,
-                'error'       => $e->getMessage(),
-            ]);
-            return null;
-        }
+        return null;
     }
 
     // ── Payload builders ───────────────────────────────────────────

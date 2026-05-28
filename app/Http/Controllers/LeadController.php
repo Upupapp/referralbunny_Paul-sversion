@@ -456,7 +456,7 @@ class LeadController extends Controller
      */
     private function resolveStageLimit(string $tenantId, string $stage): ?int
     {
-        $map = Cache::remember("stage_limits_{$tenantId}", 3600, function () use ($tenantId) {
+        $map = Cache::remember("stage_limits_{$tenantId}", 600, function () use ($tenantId) {
             if ($tenantId === 'lgu-ids') {
                 return DB::table('tenant_pipeline_stage_rules')
                     ->where('tenant_id', 'lgu-ids')

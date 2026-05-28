@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\DealAssignmentExtensionRequest;
 use App\Models\Lead;
 use App\Models\Notification;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -292,8 +293,8 @@ class DealAssignmentExtensionService
                 // Email notification
                 if ($reseller->email) {
                     $tenant = \App\Models\Tenant::find($tenantId);
-                    \Illuminate\Support\Facades\Mail::to($reseller->email)->queue(
-                        new \App\Mail\DealExtensionDecisionMail(
+                    EmailLogger::send(
+                        mailable:       new \App\Mail\DealExtensionDecisionMail(
                             dealName:     $deal->name,
                             dealId:       $deal->id,
                             dealTenantId: $deal->tenant_id,
@@ -302,7 +303,13 @@ class DealAssignmentExtensionService
                             tenantName:   $tenant?->name ?? 'ReferralBunny',
                             approvedDays: $request->approved_days,
                             adminNote:    $request->admin_note,
-                        )
+                        ),
+                        recipientEmail: $reseller->email,
+                        recipientType:  'reseller',
+                        recipientId:    $reseller->id,
+                        emailKey:       'deal_ext_decision.' . $request->id . '.' . $decision,
+                        subject:        ($decision === 'approved' ? 'Extension approved' : 'Extension request update') . ': ' . $deal->name,
+                        tenantId:       $tenantId,
                     );
                 }
             }

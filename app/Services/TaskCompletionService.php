@@ -7,8 +7,8 @@ use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\TaskCompletionResponse;
 use App\Services\EmailContentFormatter;
+use App\Services\EmailLogger;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -132,8 +132,8 @@ class TaskCompletionService
         if ($sendEmail && $requestorEmail) {
             try {
                 $bodyHtml = EmailContentFormatter::renderTaskResponseEmailBody($body);
-                Mail::to($requestorEmail)
-                    ->queue(new TaskCompletionResponseMail(
+                EmailLogger::send(
+                    mailable:       new TaskCompletionResponseMail(
                         recipientName: $requestorName ?? $requestorEmail,
                         senderName:    $actorName,
                         emailSubject:  $subject,
@@ -142,7 +142,13 @@ class TaskCompletionService
                         fileAttachments: $attachmentPaths,
                         taskTitle:     $task->title,
                         tenantId:      $task->tenant_id,
-                    ));
+                    ),
+                    recipientEmail: $requestorEmail,
+                    recipientType:  'external',
+                    emailKey:       'task_completion_response.' . $response->id,
+                    subject:        $subject ?? $task->title,
+                    tenantId:       $task->tenant_id,
+                );
 
                 $response->update(['status' => 'sent', 'sent_at' => now()]);
                 $emailQueued = true;

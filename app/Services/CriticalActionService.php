@@ -1941,8 +1941,8 @@ class CriticalActionService
                 ->where('tenant_id', $tenantId)
                 ->whereNotIn('status', ['expired', 'declined', 'archived'])
                 ->whereNull('deleted_at')
-                ->whereRaw("data::jsonb->>'amount_defaulted' = 'true'")
-                ->whereRaw("data::jsonb->>'amount_confirmation_status' = 'pending'")
+                ->whereRaw("data->>'amount_defaulted' = 'true'")
+                ->whereRaw("data->>'amount_confirmation_status' = 'pending'")
                 ->select('id', 'name', 'reseller_name', 'stage', 'deal_value', 'updated_at')
                 ->orderByRaw("CASE stage WHEN 'paid' THEN 0 WHEN 'signed' THEN 1 WHEN 'contract_sent' THEN 2 ELSE 3 END")
                 ->limit(10)
@@ -2427,7 +2427,7 @@ class CriticalActionService
 
             return [$this->make([
                 'type'          => 'lgu_ids_deals_no_notes',
-                'category'      => 'deal_pipeline',
+                'category'      => 'deal',
                 'severity'      => 'medium',
                 'summary'       => $count === 1
                     ? "No notes yet on: {$rows->first()->name}"
