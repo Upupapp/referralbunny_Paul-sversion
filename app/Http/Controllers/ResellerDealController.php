@@ -1273,8 +1273,18 @@ class ResellerDealController extends Controller
 
     public function approveRequest(Request $request, string $tenantId, string $approvalId): JsonResponse|RedirectResponse
     {
-        // Tenant admin/manager only
-        if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) {
+        if (Auth::guard('web')->check()) {
+            // super_admin — unconditionally allowed
+        } elseif (Auth::guard('tenant')->check()) {
+            $userId     = Auth::guard('tenant')->id();
+            $memberRole = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->value('role') ?? 'viewer';
+            if (!in_array($memberRole, ['owner', 'admin', 'manager'])) {
+                abort(403);
+            }
+        } else {
             abort(403);
         }
 
@@ -1325,6 +1335,9 @@ class ResellerDealController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ResellerDealController approveRequest failed', ['error' => $e->getMessage()]);
+            if (!$request->wantsJson()) {
+                return back()->with('error', 'Could not process approval. Please try again.');
+            }
             return response()->json(['error' => 'Could not process approval. Please try again.'], 500);
         }
 
@@ -1419,17 +1432,32 @@ class ResellerDealController extends Controller
         }
 
         if (!$request->wantsJson()) {
-            $msg = $approval->type === 'deal_archive'
-                ? '"' . ($lead?->name ?? 'Deal') . '" has been archived.'
-                : 'Stage move approved.';
-            return redirect()->route('tenant.deals.archive-requests', $tenantId)->with('success', $msg);
+            if ($approval->type === 'deal_archive') {
+                return redirect()
+                    ->route('tenant.deals.archive-requests', $tenantId)
+                    ->with('success', '"' . ($lead?->name ?? 'Deal') . '" has been archived.');
+            }
+            return redirect()
+                ->route('tenant.deals', $tenantId)
+                ->with('success', 'Stage move approved for "' . ($lead?->name ?? 'deal') . '".');
         }
         return response()->json(['success' => true, 'type' => $approval->type]);
     }
 
     public function rejectRequest(Request $request, string $tenantId, string $approvalId): JsonResponse|RedirectResponse
     {
-        if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) {
+        if (Auth::guard('web')->check()) {
+            // super_admin — unconditionally allowed
+        } elseif (Auth::guard('tenant')->check()) {
+            $userId     = Auth::guard('tenant')->id();
+            $memberRole = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->value('role') ?? 'viewer';
+            if (!in_array($memberRole, ['owner', 'admin', 'manager'])) {
+                abort(403);
+            }
+        } else {
             abort(403);
         }
 
@@ -1460,6 +1488,9 @@ class ResellerDealController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('ResellerDealController rejectRequest failed', ['error' => $e->getMessage()]);
+            if (!$request->wantsJson()) {
+                return back()->with('error', 'Could not process rejection. Please try again.');
+            }
             return response()->json(['error' => 'Could not process rejection. Please try again.'], 500);
         }
 

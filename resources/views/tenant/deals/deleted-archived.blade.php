@@ -17,8 +17,8 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
          deleteModal:  { open: false, dealId: '', dealName: '', reason: '' },
          restoreModal: { open: false, dealId: '', dealName: '' },
          submitting: false,
-         openDelete(id, name)  { this.deleteModal  = { open: true, dealId: id, dealName: name, reason: '' }; },
-         openRestore(id, name) { this.restoreModal = { open: true, dealId: id, dealName: name }; },
+         openDelete(id, name)  { this.submitting = false; this.deleteModal  = { open: true, dealId: id, dealName: name, reason: '' }; },
+         openRestore(id, name) { this.submitting = false; this.restoreModal = { open: true, dealId: id, dealName: name }; },
      }">
 
     {{-- Subtab navigation --}}

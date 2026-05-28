@@ -346,6 +346,7 @@ class TenantDealLifecycleController extends Controller
         } catch (\Throwable) {}
 
         Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
+        Cache::forget("lifecycle_expired_metrics:{$tenantId}");
         Cache::forget("subtab_badge_counts:{$tenantId}");
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
