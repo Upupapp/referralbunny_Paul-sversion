@@ -148,15 +148,20 @@ class BillingController extends Controller
         // Send access-extended email to tenant admin
         try {
             if ($tenant->admin_email) {
-                \Illuminate\Support\Facades\Mail::queue(
-                    new \App\Mail\AccessExtendedMail(
+                \App\Services\EmailLogger::send(
+                    mailable: new \App\Mail\AccessExtendedMail(
                         tenantId:        $tenant->id,
                         tenantName:      $tenant->name,
                         tenantAdminName: $tenant->admin_name ?? $tenant->name,
                         adminEmail:      $tenant->admin_email,
                         days:            $data['days'],
                         note:            $data['note'] ?? null,
-                    )
+                    ),
+                    recipientEmail: $tenant->admin_email,
+                    recipientType:  'tenant_admin',
+                    emailKey:       'access_extended.' . $tenant->id . '.' . now()->format('Ymd'),
+                    subject:        "Your {$tenant->name} access has been extended",
+                    tenantId:       $tenant->id,
                 );
             }
         } catch (\Throwable $e) {

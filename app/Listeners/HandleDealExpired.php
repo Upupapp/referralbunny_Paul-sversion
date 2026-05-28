@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use App\Services\EmailLogger;
 
 /**
  * Queued so expiry notifications don't block the expiry job.
@@ -68,18 +68,26 @@ class HandleDealExpired implements ShouldQueue
                 dedupeSuffix: "{$event->leadId}:expired",
             );
 
-            // Send email to reseller — mailable exists, wire it here
+            // Send email to reseller
             if ($event->resellerEmail) {
                 try {
                     $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? 'Referral Bunny';
-                    Mail::to($event->resellerEmail)->queue(new ResellerDealExpired(
-                        resellerName: $event->resellerName ?? '',
-                        resellerEmail: $event->resellerEmail,
-                        tenantName: $tenantName,
-                        dealName: $event->leadName,
-                        stage: $event->stage,
-                        dashboardUrl: url("/reseller/{$event->tenantId}/deals"),
-                    ));
+                    EmailLogger::send(
+                        mailable: new ResellerDealExpired(
+                            resellerName:  $event->resellerName ?? '',
+                            resellerEmail: $event->resellerEmail,
+                            tenantName:    $tenantName,
+                            dealName:      $event->leadName,
+                            stage:         $event->stage,
+                            dashboardUrl:  url("/reseller/{$event->tenantId}/deals"),
+                        ),
+                        recipientEmail: $event->resellerEmail,
+                        recipientType:  'reseller',
+                        recipientId:    $resellerId ? (string) $resellerId : null,
+                        emailKey:       'deal_expired.' . $event->leadId . '.' . ($resellerId ?? md5($event->resellerEmail)),
+                        subject:        "Deal expired: {$event->leadName}",
+                        tenantId:       $event->tenantId,
+                    );
                 } catch (\Throwable) {}
             }
         }

@@ -240,16 +240,20 @@ class LguIdsReferrerDealNoteReminderService
                 deals:        $dealsArray,
                 tenantName:   $tenant->name,
                 dealsUrl:     url("reseller/{$tenant->id}/deals") . '?filter=no_notes',
-                weekLabel:    Carbon::now()->timezone('Australia/Perth')->format('F j, Y'),
+                weekLabel:    Carbon::now()->timezone('Asia/Manila')->format('F j, Y'),
             );
 
-            $log = EmailLog::create([
-                'email_key'       => $emailKey,
-                'recipient_email' => $referrer->email,
-                'tenant_id'       => $tenant->id,
-                'status'          => 'queued',
-                'metadata'        => ['type' => 'lgu_ids_referrer_note_reminder', 'week_key' => $weekKey],
-            ]);
+            try {
+                $log = EmailLog::create([
+                    'email_key'       => $emailKey,
+                    'recipient_email' => $referrer->email,
+                    'tenant_id'       => $tenant->id,
+                    'status'          => 'queued',
+                    'metadata'        => ['type' => 'lgu_ids_referrer_note_reminder', 'week_key' => $weekKey],
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                return null; // concurrent worker already queued this email
+            }
 
             Mail::to($referrer->email)->queue($mailable);
 
@@ -322,6 +326,6 @@ class LguIdsReferrerDealNoteReminderService
 
     public function weekKey(): string
     {
-        return Carbon::now()->timezone('Australia/Perth')->format('oW'); // ISO year + ISO week e.g. "202622"
+        return Carbon::now()->timezone('Asia/Manila')->format('oW'); // ISO year + ISO week e.g. "202622"
     }
 }

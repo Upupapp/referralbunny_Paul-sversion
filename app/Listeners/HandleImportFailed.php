@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use App\Services\EmailLogger;
 
 /**
  * Handles notifications when an import fails or completes with warnings.
@@ -95,8 +95,8 @@ class HandleImportFailed implements ShouldQueue
                 foreach ($admins as $admin) {
                     $name = trim("{$admin->first_name} {$admin->last_name}") ?: 'Team';
                     try {
-                        Mail::to($admin->email)->queue(
-                            new \App\Mail\ImportFailedMail(
+                        EmailLogger::send(
+                            mailable: new \App\Mail\ImportFailedMail(
                                 recipientName: $name,
                                 tenantName:    $tenantName,
                                 fileName:      $event->fileName,
@@ -104,7 +104,12 @@ class HandleImportFailed implements ShouldQueue
                                 failedRows:    $event->failedRows,
                                 totalRows:     $event->totalRows,
                                 reportUrl:     url($batchUrl),
-                            )
+                            ),
+                            recipientEmail: $admin->email,
+                            recipientType:  'tenant_admin',
+                            emailKey:       'import_failed.' . $event->batchId . '.' . md5($admin->email),
+                            subject:        "Import failed: {$event->fileName}",
+                            tenantId:       $event->tenantId,
                         );
                     } catch (\Throwable $mailErr) {
                         Log::warning('[HandleImportFailed] email failed for admin', [

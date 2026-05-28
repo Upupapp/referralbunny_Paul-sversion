@@ -603,7 +603,8 @@ class LeadController extends Controller
                     ->value('id');
                 Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
             }
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
+            [$actorIdForCache] = $this->resolveActor();
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdForCache); } catch (\Throwable) {}
         }
 
         // Fire commission status event AFTER the DB write succeeds
@@ -1254,7 +1255,7 @@ class LeadController extends Controller
                 ->value('id');
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
         }
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdStage); } catch (\Throwable) {}
 
         // Notify tenant admins and assigned referrer about stage movement
         try {

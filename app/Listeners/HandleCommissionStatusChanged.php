@@ -6,16 +6,13 @@ use App\Events\CommissionStatusChanged;
 use App\Mail\CommissionStatusUpdate;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 
 class HandleCommissionStatusChanged implements ShouldQueue
 {
-    use Queueable, InteractsWithQueue;
-
-    public int $tries = 3;
+    public int $tries   = 3;
+    public int $backoff = 10;
 
     public function failed(CommissionStatusChanged $event, \Throwable $e): void
     {

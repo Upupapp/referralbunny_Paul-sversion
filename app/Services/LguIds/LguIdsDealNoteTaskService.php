@@ -329,21 +329,25 @@ class LguIdsDealNoteTaskService
         }
 
         try {
-            $log = EmailLog::create([
-                'email_key'       => $emailKey,
-                'recipient_email' => $referrer->email,
-                'recipient_type'  => 'reseller',
-                'recipient_id'    => $referrer->id,
-                'tenant_id'       => $tenant->id,
-                'subject'         => 'Action needed: Add a note to "' . $lead->name . '"',
-                'status'          => 'queued',
-                'metadata'        => [
-                    'type'       => 'lgu_ids_deal_note_task',
-                    'deal_id'    => $lead->id,
-                    'task_id'    => $task->id,
-                    'stage'      => $lead->stage,
-                ],
-            ]);
+            try {
+                $log = EmailLog::create([
+                    'email_key'       => $emailKey,
+                    'recipient_email' => $referrer->email,
+                    'recipient_type'  => 'reseller',
+                    'recipient_id'    => $referrer->id,
+                    'tenant_id'       => $tenant->id,
+                    'subject'         => 'Action needed: Add a note to "' . $lead->name . '"',
+                    'status'          => 'queued',
+                    'metadata'        => [
+                        'type'       => 'lgu_ids_deal_note_task',
+                        'deal_id'    => $lead->id,
+                        'task_id'    => $task->id,
+                        'stage'      => $lead->stage,
+                    ],
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                return; // concurrent worker already queued this email
+            }
 
             Mail::to($referrer->email)->queue(
                 new \App\Mail\LguIdsDealNoteTaskMail(
