@@ -486,7 +486,7 @@ class ResellerDealController extends Controller
         $lead     = $this->deal($tenantId, $dealId);
 
         $cfgStages  = array_values(array_filter(
-            TenantConfig::where('tenant_id', $tenantId)->value('stages') ?? [],
+            \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes())['stages'] ?? [],
             fn($s) => is_array($s) && isset($s['key'])
         ));
         $stageKeys  = count($cfgStages) ? array_column($cfgStages, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
@@ -515,7 +515,7 @@ class ResellerDealController extends Controller
         $pendingExists = DealApprovalRequest::where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
             ->where('type', 'deal_stage_move')
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->exists();
 
         if ($pendingExists) {
@@ -568,7 +568,7 @@ class ResellerDealController extends Controller
         $lead     = $this->deal($tenantId, $dealId);
 
         $cfgStagesApproval  = array_values(array_filter(
-            TenantConfig::where('tenant_id', $tenantId)->value('stages') ?? [],
+            \Illuminate\Support\Facades\Cache::remember("tenant_config:{$tenantId}", 300, fn() => TenantConfig::where('tenant_id', $tenantId)->first()?->getAttributes())['stages'] ?? [],
             fn($s) => is_array($s) && isset($s['key'])
         ));
         $stageKeysApproval  = count($cfgStagesApproval) ? array_column($cfgStagesApproval, 'key') : ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
@@ -580,11 +580,11 @@ class ResellerDealController extends Controller
             'missing_requirements.*' => 'string|max:200',
         ]);
 
-        // Block if already pending
+        // Block if already pending or awaiting clarification
         $alreadyPending = DealApprovalRequest::where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
             ->where('type', 'deal_stage_move')
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->exists();
 
         if ($alreadyPending) {
@@ -662,11 +662,11 @@ class ResellerDealController extends Controller
             'reason' => 'required|string|max:2000',
         ]);
 
-        // Block if already pending
+        // Block if already pending or awaiting clarification
         $alreadyPending = DealApprovalRequest::where('deal_id', $dealId)
             ->where('tenant_id', $tenantId)
             ->where('type', 'deal_archive')
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->exists();
 
         if ($alreadyPending) {

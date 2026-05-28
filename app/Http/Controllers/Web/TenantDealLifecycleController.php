@@ -182,9 +182,15 @@ class TenantDealLifecycleController extends Controller
         $archiveRequest = DealApprovalRequest::where('id', $requestId)
             ->where('tenant_id', $tenantId)
             ->where('type', 'deal_archive')
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'clarification_requested'])
             ->with('lead')
             ->firstOrFail();
+
+        if ($archiveRequest->status === 'clarification_requested') {
+            return redirect()
+                ->route('tenant.deals.archive-requests.show', [$tenantId, $requestId])
+                ->with('error', 'A clarification has already been requested. Wait for the referrer to respond before sending another.');
+        }
 
         $archiveRequest->update([
             'status'                => 'clarification_requested',
