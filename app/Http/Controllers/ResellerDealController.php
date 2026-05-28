@@ -1870,6 +1870,7 @@ class ResellerDealController extends Controller
         $split->update(['percentage' => $newPct]);
 
         // Notify the co-referrer whose share changed
+        $hour = now()->format('YmdH');
         try {
             $coRefReseller = Reseller::where('tenant_id', $tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($split->reseller_name)])
@@ -1884,7 +1885,7 @@ class ResellerDealController extends Controller
                     body:         $actorName . ' updated your commission share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $splitId . ':share_updated:' . now()->format('YmdH'),
+                    dedupeSuffix: $splitId . ':share_updated:' . $hour,
                     metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'actor' => $actorName],
                 );
             }
@@ -1900,7 +1901,7 @@ class ResellerDealController extends Controller
                 body:         $actorName . ' changed ' . $split->reseller_name . '\'s share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'Review Deal',
-                dedupeSuffix: $splitId . ':share_updated_admin:' . now()->format('YmdH'),
+                dedupeSuffix: $splitId . ':share_updated_admin:' . $hour,
                 metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'actor' => $actorName, 'co_referrer' => $split->reseller_name],
             );
         } catch (\Throwable) {}
@@ -1923,7 +1924,7 @@ class ResellerDealController extends Controller
                     body:         $actorName . ' updated ' . $split->reseller_name . '\'s commission share on "' . ($lead->name ?? 'a deal') . '" from ' . $oldPct . '% to ' . $newPct . '%.',
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $splitId . ':primary_share_updated:' . now()->format('YmdH'),
+                    dedupeSuffix: $splitId . ':primary_share_updated:' . $hour,
                     metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'co_referrer' => $split->reseller_name],
                 );
             }
@@ -2050,7 +2051,7 @@ class ResellerDealController extends Controller
                 body:         $actorName . ' removed ' . $removedName . ' as a co-referrer on "' . $lead->name . '".',
                 actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
                 actionLabel:  'View Deal',
-                dedupeSuffix: $splitId . ':coreferrer_removed_admin:' . now()->format('YmdH'),
+                dedupeSuffix: $splitId . ':coreferrer_removed_admin:' . $coRefHour,
             );
         } catch (\Throwable) {}
 
@@ -2072,7 +2073,7 @@ class ResellerDealController extends Controller
                     body:         $actorName . ' removed ' . $removedName . ' as a co-referrer on "' . $lead->name . '".',
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$dealId}"),
                     actionLabel:  'View Deal',
-                    dedupeSuffix: $splitId . ':primary_coreferrer_removed:' . now()->format('YmdH'),
+                    dedupeSuffix: $splitId . ':primary_coreferrer_removed:' . $coRefHour,
                 );
             }
         } catch (\Throwable) {}
