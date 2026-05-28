@@ -279,7 +279,7 @@
 
                                 {{-- Delete single --}}
                                 <button type="button"
-                                        onclick="rbConfirmDeleteForm('{{ $form->id }}','{{ addslashes($form->title) }}','{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
+                                        onclick="rbConfirmDeleteForm('{{ $form->id }}',{{ json_encode($form->title, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},'{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
                                         style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#dc2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;white-space:nowrap"
                                         onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>

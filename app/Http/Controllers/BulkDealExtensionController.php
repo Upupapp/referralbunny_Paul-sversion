@@ -117,12 +117,14 @@ class BulkDealExtensionController extends Controller
         $batch = $this->bulk->getBatchWithItems($batchId, $tenantId);
         if (!$batch) return response()->json(['error' => 'Batch not found.'], 404);
 
-        // Referrer can only view their own batches
+        // Referrer can only view their own batches; TenantUsers must be admin/manager
         if (Auth::guard('reseller')->check()) {
             $reseller = $this->resolveReseller($tenantId);
             if (!$reseller || $batch->requested_by_reseller_id !== $reseller->id) {
                 return response()->json(['error' => 'Not authorized.'], 403);
             }
+        } elseif (!$this->isAdminOrManager()) {
+            return response()->json(['error' => 'Not authorized.'], 403);
         }
 
         return response()->json($this->formatBatch($batch, $tenantId));
@@ -552,7 +554,16 @@ class BulkDealExtensionController extends Controller
 
     private function isAdminOrManager(): bool
     {
-        return Auth::guard('tenant')->check() || Auth::guard('web')->check();
+        if (Auth::guard('web')->check()) return true;
+        $userId = Auth::guard('tenant')->id();
+        if (!$userId) return false;
+        $tenantId = TenantContext::id();
+        if (!$tenantId) return false;
+        $role = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role');
+        return in_array($role, ['owner', 'admin', 'manager']);
     }
 
     private function resolveActor(): array

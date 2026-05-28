@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\DealAssignmentExtensionRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -14,13 +13,14 @@ class DealExtensionDecisionMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public DealAssignmentExtensionRequest $extensionRequest,
-        public string $dealName,
-        public string $dealId,
-        public string $dealTenantId,
-        public string $decision,
-        public string $resellerName,
-        public string $tenantName,
+        public string  $dealName,
+        public string  $dealId,
+        public string  $dealTenantId,
+        public string  $decision,
+        public string  $resellerName,
+        public string  $tenantName,
+        public ?int    $approvedDays = null,
+        public ?string $adminNote = null,
     ) {}
 
     public function envelope(): Envelope

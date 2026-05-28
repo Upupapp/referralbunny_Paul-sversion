@@ -11,7 +11,7 @@
      x-data="tasksPage(
          '{{ $tenant->id }}',
          '{{ $actorId }}',
-         '{{ addslashes($actorName) }}',
+         {{ json_encode($actorName, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},
          '{{ $view }}',
          {{ $completionEmailEnabled ? 'true' : 'false' }},
          {{ $isAdmin ? 'true' : 'false' }}

@@ -18,7 +18,7 @@
 
 @section('content')
 <div class="space-y-5"
-     x-data="resellerDeals('{{ $tenant->id }}', '{{ addslashes($reseller->name) }}')"
+     x-data="resellerDeals('{{ $tenant->id }}', {{ json_encode($reseller->name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
      x-init="init()"
      @open-claim-deal.window="showClaim = true">
 

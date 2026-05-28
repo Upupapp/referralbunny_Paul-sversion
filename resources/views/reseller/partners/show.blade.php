@@ -226,7 +226,7 @@
                                     View Deal
                                 </a>
                                 @if(!in_array($lead?->commission_status ?? '', ['locked','paid']))
-                                <button @click="confirmRemove('{{ $split->id }}', '{{ addslashes($lead?->name ?? '') }}')"
+                                <button @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                                         class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                                     Remove
                                 </button>
@@ -267,7 +267,7 @@
                         View Deal
                     </a>
                     @if(!in_array($lead?->commission_status ?? '', ['locked','paid']))
-                    <button @click="confirmRemove('{{ $split->id }}', '{{ addslashes($lead?->name ?? '') }}')"
+                    <button @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                         Remove
                     </button>
@@ -509,8 +509,8 @@ function partnerDetail() {
     const CSRF       = document.querySelector('meta[name=csrf-token]')?.content ?? '';
     const STORE      = '{{ route('reseller.partners.store', $tenantId) }}';
     const REMOVE_BASE= '{{ url('reseller/' . $tenantId . '/partners/splits') }}';
-    const PARTNER_NAME = '{{ addslashes($first->partner_name) }}';
-    const PARTNER_EMAIL= '{{ addslashes($email) }}';
+    const PARTNER_NAME = {!! json_encode($first->partner_name, JSON_HEX_TAG|JSON_HEX_AMP) !!};
+    const PARTNER_EMAIL= {!! json_encode($email, JSON_HEX_TAG|JSON_HEX_AMP) !!};
 
     return {
         tab:         'overview',

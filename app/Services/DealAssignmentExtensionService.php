@@ -296,13 +296,14 @@ class DealAssignmentExtensionService
                     $tenant = \App\Models\Tenant::find($tenantId);
                     \Illuminate\Support\Facades\Mail::to($reseller->email)->queue(
                         new \App\Mail\DealExtensionDecisionMail(
-                            extensionRequest: $request,
-                            dealName:         $deal->name,
-                            dealId:           $deal->id,
-                            dealTenantId:     $deal->tenant_id,
-                            decision:         $decision,
-                            resellerName:     $reseller->name,
-                            tenantName:       $tenant?->name ?? 'ReferralBunny',
+                            dealName:     $deal->name,
+                            dealId:       $deal->id,
+                            dealTenantId: $deal->tenant_id,
+                            decision:     $decision,
+                            resellerName: $reseller->name,
+                            tenantName:   $tenant?->name ?? 'ReferralBunny',
+                            approvedDays: $request->approved_days,
+                            adminNote:    $request->admin_note,
                         )
                     );
                 }

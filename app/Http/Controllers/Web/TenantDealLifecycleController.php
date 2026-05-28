@@ -247,9 +247,7 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
-        Cache::forget("dash_counts:{$tenantId}");
-        Cache::forget("lifecycle_archive_req_metrics:{$tenantId}");
-        Cache::forget("subtab_badge_counts:{$tenantId}");
+        Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return redirect()
@@ -363,10 +361,7 @@ class TenantDealLifecycleController extends Controller
             }
         } catch (\Throwable) {}
 
-        Cache::forget("dash_counts:{$tenantId}");
-        Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
-        Cache::forget("lifecycle_expired_metrics:{$tenantId}");
-        Cache::forget("subtab_badge_counts:{$tenantId}");
+        Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
@@ -405,10 +400,7 @@ class TenantDealLifecycleController extends Controller
             Log::warning('softDeleteDeal: activity log failed', ['deal_id' => $lead->id, 'error' => $e->getMessage()]);
         }
 
-        Cache::forget("dash_counts:{$tenantId}");
-        Cache::forget("lifecycle_del_arch_metrics:{$tenantId}");
-        Cache::forget("lifecycle_expired_metrics:{$tenantId}");
-        Cache::forget("subtab_badge_counts:{$tenantId}");
+        Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         return redirect()

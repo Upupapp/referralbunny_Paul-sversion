@@ -154,8 +154,8 @@
                     {{-- LGU IDS: Province + Municipality row with dynamic org lookup --}}
                     <tr class="hover:bg-gray-50/40 transition-colors"
                         x-data="{
-                            province: '{{ addslashes($rowProvince) }}',
-                            municipality: '{{ addslashes($rowMunicipality) }}',
+                            province: {{ json_encode($rowProvince, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},
+                            municipality: {{ json_encode($rowMunicipality, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},
                             municipalities: [],
                             loading: false,
                             saving: false,

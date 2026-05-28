@@ -216,7 +216,7 @@
                                 View
                             </a>
                             <button type="button"
-                                    onclick="rbConfirmDeleteSubmission('{{ $sub->id }}','{{ addslashes($sub->submitter_name ?: $sub->submitter_email ?: 'this response') }}','{{ route('tenant.request-forms.submissions.destroy', [$tenant->id, $form->id, $sub->id]) }}')"
+                                    onclick="rbConfirmDeleteSubmission('{{ $sub->id }}',{{ json_encode($sub->submitter_name ?: $sub->submitter_email ?: 'this response', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},'{{ route('tenant.request-forms.submissions.destroy', [$tenant->id, $form->id, $sub->id]) }}')"
                                     style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#dc2626;background:#fee2e2;padding:5px 10px;border-radius:8px;border:none;cursor:pointer"
                                     title="Delete this response">
                                 <svg style="width:11px;height:11px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>

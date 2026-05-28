@@ -13,7 +13,7 @@
         @csrf
         <button type="submit"
                 class="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-100"
-                onclick="return confirm('Resend invite to {{ addslashes($reseller->email) }}?')">
+                onclick="return confirm({{ json_encode('Resend invite to ' . $reseller->email . '?', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})">
             <span class="hidden sm:inline">Resend Invite</span>
             <span class="sm:hidden">Invite</span>
         </button>

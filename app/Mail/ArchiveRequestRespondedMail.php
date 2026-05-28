@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Models\DealApprovalRequest;
-use App\Models\Reseller;
 use App\Models\Tenant;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -17,7 +16,7 @@ class ArchiveRequestRespondedMail extends Mailable
 
     public function __construct(
         public DealApprovalRequest $archiveRequest,
-        public Reseller $reseller,
+        public string $resellerName,
         public Tenant $tenant,
         public string $adminName,
     ) {}

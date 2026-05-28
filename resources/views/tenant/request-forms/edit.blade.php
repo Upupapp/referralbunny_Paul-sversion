@@ -491,7 +491,7 @@
             <h3 style="font-size:12px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px">Danger Zone</h3>
             <p style="font-size:12px;color:#9ca3af;margin:0 0 12px;line-height:1.5">Permanently deletes this form, all fields, and all submitted responses. This cannot be undone.</p>
             <button type="button"
-                    onclick="rbConfirmDeleteForm('{{ $form->id }}','{{ addslashes($form->title) }}','{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
+                    onclick="rbConfirmDeleteForm('{{ $form->id }}',{{ json_encode($form->title, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }},'{{ route('tenant.request-forms.destroy', [$tenant->id, $form->id]) }}')"
                     style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid #fca5a5;background:white;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">
                 <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Delete Form
