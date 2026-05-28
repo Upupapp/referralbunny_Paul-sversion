@@ -7,12 +7,12 @@ use App\Mail\TenantPasswordResetMail;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\EmailLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class TenantAuthWebController extends Controller
@@ -141,14 +141,25 @@ class TenantAuthWebController extends Controller
                 ['token', 'created_at']
             );
 
-            try {
-                Mail::queue(new TenantPasswordResetMail(
+            $emailKey = 'tenant_reset.' . $user->id . '.' . substr($token, 0, 16);
+            $sent = EmailLogger::send(
+                mailable:      new TenantPasswordResetMail(
                     userName:  trim("{$user->first_name} {$user->last_name}"),
                     userEmail: $user->email,
                     resetUrl:  $resetUrl,
-                ));
-            } catch (\Throwable $e) {
-                Log::warning('[TenantAuth] Password reset email failed', ['error' => $e->getMessage()]);
+                ),
+                recipientEmail: $user->email,
+                recipientType:  'tenant_user',
+                emailKey:       $emailKey,
+                subject:        'Reset your ReferralBunny.ai password',
+                recipientId:    (string) $user->id,
+                tenantId:       null,
+            );
+            if (!$sent) {
+                Log::warning('[TenantAuth] Password reset email failed to queue', [
+                    'user_id'   => $user->id,
+                    'email_key' => $emailKey,
+                ]);
             }
         }
 

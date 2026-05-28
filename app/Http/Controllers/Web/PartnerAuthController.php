@@ -262,6 +262,7 @@ class PartnerAuthController extends Controller
                 Log::warning('PartnerAuthController: password reset email failed to queue', [
                     'partner_id' => $partner->id,
                     'tenant_id'  => $partner->tenant_id,
+                    'email_key'  => 'partner_reset.' . $partner->id . '.' . substr($token, 0, 16),
                 ]);
             }
         }

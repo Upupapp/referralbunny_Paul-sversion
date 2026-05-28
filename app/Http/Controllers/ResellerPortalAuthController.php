@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Events\InviteAcceptedEvent;
 use App\Events\ResellerJoined;
 use App\Http\Controllers\TenantLegalAgreementController;
-use App\Mail\ResellerInvitation;
 use App\Mail\ResellerPasswordReset;
 use App\Models\Reseller;
 use App\Services\EmailLogger;
@@ -123,6 +122,7 @@ class ResellerPortalAuthController extends Controller
                 Log::warning('ResellerPortalAuthController: password reset email failed to queue', [
                     'reseller_id' => $reseller->id,
                     'tenant_id'   => $reseller->tenant_id,
+                    'email_key'   => 'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16),
                 ]);
             }
         }
