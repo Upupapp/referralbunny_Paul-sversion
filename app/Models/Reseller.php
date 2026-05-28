@@ -51,7 +51,8 @@ class Reseller extends Authenticatable
         'tenant_id', 'name', 'email', 'status',
         'assigned_leads', 'closed_value', 'performance_score',
         'joined_date', 'phone', 'territory', 'is_anonymous', 'anonymous_onboarded_at',
-        'password', 'setup_token', 'setup_token_created_at', 'remember_token',
+        'password', 'setup_token', 'setup_token_created_at',
+        'reset_token', 'reset_token_created_at', 'remember_token',
         'nickname', 'job_title', 'department', 'organization',
         'location', 'timezone', 'language', 'bio', 'profile_photo_path',
         // Multi-role support (v40)
@@ -62,11 +63,12 @@ class Reseller extends Authenticatable
         'invite_sent_at',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'setup_token'];
+    protected $hidden = ['password', 'remember_token', 'setup_token', 'reset_token'];
 
     protected $casts = [
         'joined_date'              => 'date',
         'setup_token_created_at'   => 'datetime',
+        'reset_token_created_at'   => 'datetime',
         'closed_value'          => 'decimal:2',
         'assigned_leads'        => 'integer',
         'performance_score'     => 'integer',

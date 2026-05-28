@@ -16,6 +16,7 @@ use App\Models\TenantMembership;
 use App\Services\CommissionCalculationService;
 use App\Services\DealActivityService;
 use App\Services\DealPartnerSplitService;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -1134,19 +1135,27 @@ class ResellerDealController extends Controller
                 'invited_by_id'   => (string) $reseller->id,
             ]);
 
-            try {
-                \Illuminate\Support\Facades\Mail::queue(new \App\Mail\PartnerInviteMail(
+            $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('YmdHis');
+            $inviteSent = EmailLogger::send(
+                mailable:      new \App\Mail\PartnerInviteMail(
                     recipientEmail:   $partnerEmail,
                     partnerFirstName: $newPartner->first_name ?? 'there',
                     tenantName:       $tenant->name,
                     inviterName:      $reseller->name ?? 'A referrer',
                     setupUrl:         url('/partner/invite/' . $newPartner->setup_token),
-                ));
-                $inviteSent = true;
-            } catch (\Throwable $mailEx) {
+                ),
+                recipientEmail: $partnerEmail,
+                recipientType:  'partner',
+                emailKey:       $partnerInviteKey,
+                subject:        "You're invited as a Partner — {$tenant->name}",
+                recipientId:    (string) $newPartner->id,
+                tenantId:       $tenantId,
+            );
+            if (!$inviteSent) {
                 Log::warning('PartnerInviteMail queue failed in addPartnerSplit', [
-                    'tenant_id' => $tenantId, 'email' => $partnerEmail,
-                    'error'     => $mailEx->getMessage(),
+                    'tenant_id' => $tenantId,
+                    'email'     => $partnerEmail,
+                    'email_key' => $partnerInviteKey,
                 ]);
             }
         }
@@ -1371,20 +1380,34 @@ class ResellerDealController extends Controller
                     'setup_token' => $inviteToken,
                 ]);
 
-                $setupUrl = url("/reseller/setup?token={$inviteToken}");
-
-                Mail::queue(new ResellerInvitation(
-                    resellerName:  $newReseller->name,
-                    resellerEmail: $email,
-                    tenantName:    $tenant?->name ?? 'ReferralBunny',
-                    setupUrl:      $setupUrl,
-                    dealName:      $lead->name,
-                    dealCount:     1,
-                    dealNames:     [$lead->name],
-                ));
+                $setupUrl       = url("/reseller/setup?token={$inviteToken}");
+                $inviteEmailKey = 'reseller_invite.' . $newReseller->id . '.' . now()->format('YmdHis');
+                $sent = EmailLogger::send(
+                    mailable:      new ResellerInvitation(
+                        resellerName:  $newReseller->name,
+                        resellerEmail: $email,
+                        tenantName:    $tenant?->name ?? 'ReferralBunny',
+                        setupUrl:      $setupUrl,
+                        dealName:      $lead->name,
+                        dealCount:     1,
+                        dealNames:     [$lead->name],
+                    ),
+                    recipientEmail: $email,
+                    recipientType:  'reseller',
+                    emailKey:       $inviteEmailKey,
+                    subject:        "You've been invited as a referrer for " . ($tenant?->name ?? 'ReferralBunny'),
+                    recipientId:    (string) $newReseller->id,
+                    tenantId:       $tenantId,
+                );
+                if (!$sent) {
+                    Log::warning('addReferrer: invite email failed to queue', [
+                        'email'     => $email,
+                        'email_key' => $inviteEmailKey,
+                    ]);
+                }
                 $invited = true;
             } catch (\Throwable $e) {
-                Log::warning('addReferrer: invite email failed', ['email' => $email, 'error' => $e->getMessage()]);
+                Log::warning('addReferrer: reseller creation failed', ['email' => $email, 'error' => $e->getMessage()]);
             }
         }
 

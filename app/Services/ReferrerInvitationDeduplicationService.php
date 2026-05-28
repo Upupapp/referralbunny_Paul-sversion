@@ -8,7 +8,6 @@ use App\Models\Notification;
 use App\Models\Reseller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 /**
@@ -185,26 +184,42 @@ class ReferrerInvitationDeduplicationService
         string   $actorId    = 'system',
         string   $actorRole  = 'system'
     ): bool {
-        try {
-            Mail::queue(new ResellerInvitation(
+        $dealCount  = $reseller->invite_deal_count ?? 0;
+        $subject    = $dealCount > 1
+            ? "You're invited as a Referrer for {$tenantName} — {$dealCount} deal(s) assigned"
+            : "You've been invited as a referrer for {$tenantName}";
+        $emailKey   = 'reseller_invite.' . $reseller->id . '.' . now()->format('YmdHis');
+
+        $sent = EmailLogger::send(
+            mailable:      new ResellerInvitation(
                 resellerName:  $reseller->name,
                 resellerEmail: $reseller->email,
                 tenantName:    $tenantName,
                 setupUrl:      $setupUrl,
-                dealCount:     $reseller->invite_deal_count,
-                dealNames:     array_slice($dealNames, 0, 3), // show at most 3 names
-            ));
+                dealCount:     $dealCount,
+                dealNames:     array_slice($dealNames, 0, 3),
+            ),
+            recipientEmail: $reseller->email,
+            recipientType:  'reseller',
+            emailKey:       $emailKey,
+            subject:        $subject,
+            recipientId:    (string) $reseller->id,
+            tenantId:       $reseller->tenant_id,
+        );
+
+        if ($sent) {
             $this->markEmailSent($reseller);
             $this->audit($reseller->tenant_id, $reseller->email, 'referrer_invitation_email_sent', $actorId, $actorRole, $reseller->invite_deal_ids ?? []);
             return true;
-        } catch (\Throwable $e) {
-            Log::warning("Referrer invite email failed for {$reseller->email}: {$e->getMessage()}", [
-                'reseller_id' => $reseller->id,
-                'tenant_id'   => $reseller->tenant_id,
-            ]);
-            $this->audit($reseller->tenant_id, $reseller->email, 'referrer_invitation_email_failed', $actorId, $actorRole, $reseller->invite_deal_ids ?? []);
-            return false;
         }
+
+        Log::warning("Referrer invite email failed to queue for {$reseller->email}", [
+            'reseller_id' => $reseller->id,
+            'tenant_id'   => $reseller->tenant_id,
+            'email_key'   => $emailKey,
+        ]);
+        $this->audit($reseller->tenant_id, $reseller->email, 'referrer_invitation_email_failed', $actorId, $actorRole, $reseller->invite_deal_ids ?? []);
+        return false;
     }
 
     /**

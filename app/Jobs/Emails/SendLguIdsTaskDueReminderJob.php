@@ -105,7 +105,7 @@ class SendLguIdsTaskDueReminderJob implements ShouldQueue
                     recipientEmail: $admin->email,
                     recipientType:  'tenant_admin',
                     emailKey:       $emailKey,
-                    subject:        "⏰ Task Due Today: {$task->title}",
+                    subject:        "[Due Today] Task: {$task->title}",
                     tenantId:       self::TENANT_ID,
                     dailyDedup:     true,
                 );

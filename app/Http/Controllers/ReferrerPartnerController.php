@@ -305,20 +305,27 @@ class ReferrerPartnerController extends Controller
                     'invited_by_id'   => (string) $reseller->id,
                 ]);
 
-                try {
-                    \Illuminate\Support\Facades\Mail::queue(new \App\Mail\PartnerInviteMail(
+                $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('YmdHis');
+                $inviteSent = \App\Services\EmailLogger::send(
+                    mailable:      new \App\Mail\PartnerInviteMail(
                         recipientEmail:   $partnerEmail,
                         partnerFirstName: $newPartner->first_name ?? 'there',
                         tenantName:       $tenant->name,
                         inviterName:      $reseller->name ?? 'A referrer',
                         setupUrl:         url('/partner/invite/' . $newPartner->setup_token),
-                    ));
-                    $inviteSent = true;
-                } catch (\Throwable $mailEx) {
+                    ),
+                    recipientEmail: $partnerEmail,
+                    recipientType:  'partner',
+                    emailKey:       $partnerInviteKey,
+                    subject:        "You're invited as a Partner — {$tenant->name}",
+                    recipientId:    (string) $newPartner->id,
+                    tenantId:       $tenantId,
+                );
+                if (!$inviteSent) {
                     Log::warning('PartnerInviteMail queue failed', [
                         'tenant_id' => $tenantId,
                         'email'     => $partnerEmail,
-                        'error'     => $mailEx->getMessage(),
+                        'email_key' => $partnerInviteKey,
                     ]);
                 }
             }

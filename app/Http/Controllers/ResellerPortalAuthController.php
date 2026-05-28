@@ -100,8 +100,8 @@ class ResellerPortalAuthController extends Controller
             $resetUrl   = url('/reseller/reset-password?token=' . $token . '&email=' . urlencode($reseller->email));
 
             DB::table('resellers')->where('id', $reseller->id)->update([
-                'setup_token'            => Hash::make($token),
-                'setup_token_created_at' => now(),
+                'reset_token'            => Hash::make($token),
+                'reset_token_created_at' => now(),
             ]);
 
             $emailKey = 'reseller_reset.' . $reseller->id . '.' . substr($token, 0, 16);
@@ -138,11 +138,11 @@ class ResellerPortalAuthController extends Controller
         if (!$token || !$email) return redirect()->route('reseller.login');
 
         $reseller = Reseller::whereRaw('lower(email) = ?', [strtolower($email)])->first();
-        if (!$reseller || !$reseller->setup_token || !Hash::check($token, $reseller->setup_token)) {
+        if (!$reseller || !$reseller->reset_token || !Hash::check($token, $reseller->reset_token)) {
             return redirect()->route('reseller.login')
                 ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
         }
-        if ($reseller->setup_token_created_at && $reseller->setup_token_created_at->lt(now()->subHour())) {
+        if ($reseller->reset_token_created_at && $reseller->reset_token_created_at->lt(now()->subHour())) {
             return redirect()->route('reseller.login')
                 ->withErrors(['reset' => 'This reset link has expired. Please request a new one.']);
         }
@@ -160,17 +160,17 @@ class ResellerPortalAuthController extends Controller
         ]);
 
         $reseller = Reseller::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
-        if (!$reseller || !$reseller->setup_token || !Hash::check($data['token'], $reseller->setup_token)) {
+        if (!$reseller || !$reseller->reset_token || !Hash::check($data['token'], $reseller->reset_token)) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
-        if ($reseller->setup_token_created_at && $reseller->setup_token_created_at->lt(now()->subHour())) {
+        if ($reseller->reset_token_created_at && $reseller->reset_token_created_at->lt(now()->subHour())) {
             return back()->withErrors(['token' => 'This reset link has expired. Please request a new one.']);
         }
 
         DB::table('resellers')->where('id', $reseller->id)->update([
             'password'               => Hash::make($data['password']),
-            'setup_token'            => null,
-            'setup_token_created_at' => null,
+            'reset_token'            => null,
+            'reset_token_created_at' => null,
         ]);
 
         try {
