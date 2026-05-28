@@ -240,7 +240,7 @@ class PartnerAuthController extends Controller
             $resetUrl = url('/partner/reset-password?token=' . $token . '&email=' . urlencode($partner->email));
 
             $partner->update([
-                'setup_token'            => Hash::make($token),
+                'reset_token'            => Hash::make($token),
                 'reset_token_expires_at' => now()->addHour(),
             ]);
 
@@ -268,7 +268,7 @@ class PartnerAuthController extends Controller
         }
 
         $partner = Partner::whereRaw('lower(email) = ?', [strtolower($email)])->first();
-        if (!$partner || !$partner->setup_token || !Hash::check($token, $partner->setup_token)
+        if (!$partner || !$partner->reset_token || !Hash::check($token, $partner->reset_token)
             || !$partner->reset_token_expires_at || $partner->reset_token_expires_at->lt(now())) {
             return redirect()->route('partner.login')
                 ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
@@ -287,14 +287,14 @@ class PartnerAuthController extends Controller
         ]);
 
         $partner = Partner::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
-        if (!$partner || !$partner->setup_token || !Hash::check($data['token'], $partner->setup_token)
+        if (!$partner || !$partner->reset_token || !Hash::check($data['token'], $partner->reset_token)
             || !$partner->reset_token_expires_at || $partner->reset_token_expires_at->lt(now())) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
 
         $partner->update([
             'password'               => Hash::make($data['password']),
-            'setup_token'            => null,
+            'reset_token'            => null,
             'reset_token_expires_at' => null,
         ]);
 

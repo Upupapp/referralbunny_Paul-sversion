@@ -12,6 +12,7 @@ use App\Services\TaskCompletionService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -1195,23 +1196,25 @@ class TaskController extends Controller
 
     private function tenantCompletionEmailEnabled(string $tenantId): bool
     {
-        try {
-            $config = DB::table('tenant_configs')->where('tenant_id', $tenantId)->first();
-            if (!$config) return false;
-            if (isset($config->task_completion_email_enabled)) {
-                return (bool) $config->task_completion_email_enabled;
-            }
-            foreach (['settings', 'commission', 'fields'] as $jsonField) {
-                if (isset($config->{$jsonField})) {
-                    $decoded = is_string($config->{$jsonField})
-                        ? json_decode($config->{$jsonField}, true)
-                        : (array) $config->{$jsonField};
-                    if (isset($decoded['task_completion_email_enabled'])) {
-                        return (bool) $decoded['task_completion_email_enabled'];
+        return Cache::remember("tenant_config_task_email:{$tenantId}", 300, function () use ($tenantId) {
+            try {
+                $config = DB::table('tenant_configs')->where('tenant_id', $tenantId)->first();
+                if (!$config) return false;
+                if (isset($config->task_completion_email_enabled)) {
+                    return (bool) $config->task_completion_email_enabled;
+                }
+                foreach (['settings', 'commission', 'fields'] as $jsonField) {
+                    if (isset($config->{$jsonField})) {
+                        $decoded = is_string($config->{$jsonField})
+                            ? json_decode($config->{$jsonField}, true)
+                            : (array) $config->{$jsonField};
+                        if (isset($decoded['task_completion_email_enabled'])) {
+                            return (bool) $decoded['task_completion_email_enabled'];
+                        }
                     }
                 }
-            }
-        } catch (\Throwable) {}
-        return false;
+            } catch (\Throwable) {}
+            return false;
+        });
     }
 }

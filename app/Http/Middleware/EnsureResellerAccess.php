@@ -13,7 +13,8 @@ class EnsureResellerAccess
         // Super admins use the tenant admin portal, not the reseller portal
         if (Auth::guard('web')->check()) {
             $tenantId = $request->route('tenantId');
-            return redirect()->route('tenant.dashboard', $tenantId);
+            return redirect()->route('tenant.dashboard', $tenantId)
+                ->with('info', 'You are signed in as a Super Admin. Use the Tenant Admin portal to manage this workspace.');
         }
 
         if (!Auth::guard('reseller')->check()) {

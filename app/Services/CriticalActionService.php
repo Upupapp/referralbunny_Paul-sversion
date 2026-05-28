@@ -1267,7 +1267,7 @@ class CriticalActionService
 
         return $rows->map(fn($r) => $this->make([
             'type'          => $r->commission_status === 'paid' ? 'commission_paid' : 'commission_locked',
-            'category'      => 'deal',
+            'category'      => 'commission',
             'severity'      => $r->commission_status === 'paid' ? 'info' : 'medium',
             'summary'       => $r->commission_status === 'paid'
                 ? "Commission paid for: {$r->name}"

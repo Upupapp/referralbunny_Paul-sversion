@@ -37,13 +37,13 @@ class Partner extends Authenticatable
     }
 
     protected $fillable = [
-        'id', 'tenant_id', 'email', 'password', 'setup_token', 'reset_token_expires_at', 'remember_token', 'status',
+        'id', 'tenant_id', 'email', 'password', 'setup_token', 'reset_token', 'reset_token_expires_at', 'remember_token', 'status',
         'first_name', 'last_name', 'nickname', 'phone_number',
         'organization', 'location', 'timezone', 'language', 'bio', 'profile_photo_path',
         'invited_by_type', 'invited_by_id', 'setup_completed_at', 'last_login_at',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'setup_token'];
+    protected $hidden = ['password', 'remember_token', 'setup_token', 'reset_token'];
 
     protected $casts = [
         'setup_completed_at'      => 'datetime',

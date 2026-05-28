@@ -3,10 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Mail\PipelineStageWarning;
+use App\Services\EmailLogger;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 /**
@@ -69,7 +68,7 @@ class CheckPipelineStageLimits extends Command
                             'tenant_id'      => $tenantId,
                             'notifiable_type'=> 'tenant_admin',
                             'notifiable_id'  => $adminId,
-                            'category'       => 'system',
+                            'category'       => 'deal_pipeline',
                             'type'           => 'warning',
                             'priority'       => $lead->days_left <= 1 ? 'critical' : 'high',
                             'message'        => "Deal \"{$lead->name}\" (assigned to {$lead->reseller_name}) has {$lead->days_left} day(s) left in the {$rule->stage} stage.",
@@ -98,8 +97,9 @@ class CheckPipelineStageLimits extends Command
                         ->value('email');
 
                     if ($resellerEmail) {
-                        try {
-                            Mail::send(new PipelineStageWarning(
+                        $urgency  = $lead->days_left <= 1 ? 'URGENT: ' : '';
+                        $queued   = EmailLogger::send(
+                            mailable:      new PipelineStageWarning(
                                 resellerName:  $lead->reseller_name,
                                 resellerEmail: $resellerEmail,
                                 tenantName:    $tenantName,
@@ -107,11 +107,15 @@ class CheckPipelineStageLimits extends Command
                                 stage:         $rule->stage,
                                 daysLeft:      $lead->days_left,
                                 loginUrl:      url('/reseller/login'),
-                            ));
-                            $notified++;
-                        } catch (\Throwable $e) {
-                            Log::warning("Pipeline warning email failed: {$e->getMessage()}");
-                        }
+                            ),
+                            recipientEmail: $resellerEmail,
+                            recipientType:  'reseller',
+                            emailKey:       "pipeline_warning.{$tenantId}.{$lead->id}.{$lead->reseller_name}",
+                            subject:        "{$urgency}\"{$lead->name}\" needs your attention — {$lead->days_left}d left",
+                            tenantId:       $tenantId,
+                            dailyDedup:     true,
+                        );
+                        if ($queued) $notified++;
                     }
                 }
             }
