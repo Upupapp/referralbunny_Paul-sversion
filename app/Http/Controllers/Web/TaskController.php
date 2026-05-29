@@ -567,7 +567,16 @@ class TaskController extends Controller
 
         // Responses tab always loads regardless of view mode
         if ($tab === 'responses') {
-            $responsesColumns = $this->buildResponsesData($tenantId, $actorType, $actorId, $isAdmin);
+            try {
+                $responsesColumns = $this->buildResponsesData($tenantId, $actorType, $actorId, $isAdmin);
+            } catch (\Throwable $e) {
+                \Log::error('TaskController: buildResponsesData failed: ' . $e->getMessage());
+                $responsesColumns = ['groups' => [
+                    ['key' => 'new',        'label' => 'New Requests', 'items' => [], 'count' => 0],
+                    ['key' => 'processing', 'label' => 'In Progress',  'items' => [], 'count' => 0],
+                    ['key' => 'completed',  'label' => 'Resolved',     'items' => [], 'count' => 0],
+                ], 'total_count' => 0, 'showing_count' => 0, 'is_capped' => false];
+            }
         }
 
         return view('tenant.tasks.index', compact(
@@ -860,7 +869,7 @@ class TaskController extends Controller
     private function buildResponsesData(string $tenantId, string $actorType, string $actorId, bool $isAdmin): array
     {
         $query = \App\Models\RequestFormSubmission::where('tenant_id', $tenantId)
-            ->with(['form:id,title', 'tasks' => fn($q) => $q->whereNull('deleted_at')->orderByDesc('created_at')->limit(1)])
+            ->with(['form:id,title', 'tasks' => fn($q) => $q->whereNull('deleted_at')->orderByDesc('created_at')])
             ->orderByDesc('submitted_at');
 
         if (!$isAdmin) {
@@ -887,7 +896,7 @@ class TaskController extends Controller
             $col = match(true) {
                 $taskStatus === 'completed'                       => 'completed',
                 in_array($taskStatus, ['in_progress','waiting'])  => 'processing',
-                $taskStatus === 'open'                            => 'processing',
+                $taskStatus === 'open'                            => 'new',
                 default                                           => 'new',
             };
 

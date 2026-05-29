@@ -370,7 +370,7 @@ class ContactRoleAssignmentController extends Controller
         // This endpoint validates and returns the invitation data for the acceptance UI
         return response()->json([
             'invitation'   => $invitation,
-            'contact'      => DB::table('contacts')->where('id', $invitation->contact_id)->first(),
+            'contact'      => DB::table('contacts')->where('id', $invitation->contact_id)->select(['id','first_name','last_name','email'])->first(),
             'tenant'       => Tenant::find($invitation->tenant_id),
             'role_label'   => $invitation->roleLabel(),
         ]);
@@ -382,7 +382,7 @@ class ContactRoleAssignmentController extends Controller
     {
         if (Auth::guard('tenant')->check()) {
             $user = Auth::guard('tenant')->user();
-            $role = TenantContext::role() ?? 'manager';
+            $role = TenantContext::role() ?? 'viewer';
             return [$user->id, $role];
         }
         if (Auth::guard('web')->check()) {
@@ -435,14 +435,14 @@ class ContactRoleAssignmentController extends Controller
                 'action'    => 'contact_role_' . $event,
                 'entity'    => 'contact',
                 'entity_id' => $contactId,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'assigned_role'      => $role,
                     'associated_deal_id' => $dealId,
                     'actor_role'         => $actorRole,
                     'target_user_id'     => $targetUserId,
                     'reason'             => $reason,
                     'timestamp'          => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {
             // Never crash on audit failure
@@ -460,7 +460,6 @@ class ContactRoleAssignmentController extends Controller
 
             foreach ($adminMembers as $userId) {
                 Notification::create([
-                    'id'              => (string) Str::uuid(),
                     'tenant_id'       => $tenantId,
                     'notifiable_type' => 'tenant_admin',
                     'notifiable_id'   => $userId,
