@@ -196,6 +196,11 @@ class TenantRoleService
             };
 
             $dealPart = $dealId ? ' A deal has been associated with your Referrer account.' : '';
+            $dedupKey = "reseller_referrer:{$tenantId}:{$tenantUserId}:role_added:" . now()->format('Ymd');
+
+            if (Notification::where('deduplication_key', $dedupKey)->where('tenant_id', $tenantId)->exists()) {
+                return;
+            }
 
             Notification::create([
                 'id'                => (string) Str::uuid(),
@@ -207,7 +212,7 @@ class TenantRoleService
                 'priority'          => 'normal',
                 'title'             => 'Referrer role added to your account',
                 'message'           => "Your account now includes the Referrer role in addition to your {$roleLabel} access.{$dealPart}",
-                'deduplication_key' => "reseller_referrer:{$tenantId}:{$tenantUserId}:role_added:" . now()->format('Ymd'),
+                'deduplication_key' => $dedupKey,
                 'is_read'           => false,
                 'is_dismissed'      => false,
                 'sent_at'           => now(),

@@ -38,7 +38,7 @@ class SendLguIdsPendingTasksDigestJob implements ShouldQueue
                 ->whereNull('deleted_at')
                 ->orderByRaw("CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END")
                 ->orderBy('due_at')
-                ->get(['id', 'title', 'description', 'priority', 'status', 'due_at', 'assigned_to_type', 'assigned_to_id']);
+                ->get(['id', 'title', 'description', 'priority', 'status', 'due_at', 'assigned_to_type', 'assigned_to_id', 'source_type', 'source_id']);
         } catch (\Throwable $e) {
             Log::error('[LguIdsTaskDigest] Failed to fetch tasks', ['error' => $e->getMessage()]);
             return;
@@ -62,7 +62,9 @@ class SendLguIdsPendingTasksDigestJob implements ShouldQueue
             ? DB::table('resellers')->whereIn('id', $resellerIds)->pluck('name', 'id')
             : collect();
 
-        $taskRows = $tasks->map(function ($t) use ($tenantUserNames, $resellerNames, $tz) {
+        // Map each task to a display row, then group deal-note tasks by source_id
+        // so a deal with two co-referrers shows as one row instead of two.
+        $mapped = $tasks->map(function ($t) use ($tenantUserNames, $resellerNames, $tz) {
             $dueAt   = $t->due_at ? \Carbon\Carbon::parse($t->due_at)->setTimezone($tz) : null;
             $overdue = $dueAt && $dueAt->isPast() && !in_array($t->status, ['completed', 'cancelled', 'archived']);
 
@@ -74,6 +76,8 @@ class SendLguIdsPendingTasksDigestJob implements ShouldQueue
             }
 
             return [
+                'source_type' => $t->source_type,
+                'source_id'   => $t->source_id,
                 'title'       => $t->title,
                 'description' => $t->description,
                 'priority'    => $t->priority ?? 'medium',
@@ -83,7 +87,32 @@ class SendLguIdsPendingTasksDigestJob implements ShouldQueue
                 'assigned_to' => $assignedTo,
                 'url'         => url("/tenant/" . self::TENANT_ID . "/tasks"),
             ];
-        })->toArray();
+        });
+
+        // Deduplicate: merge deal-note tasks that share the same source_id into one row
+        $seen     = [];
+        $taskRows = [];
+        foreach ($mapped as $row) {
+            $groupKey = ($row['source_type'] === 'lgu_ids_deal_note_task' && $row['source_id'])
+                ? 'deal_note:' . $row['source_id']
+                : null;
+
+            if ($groupKey) {
+                if (isset($seen[$groupKey])) {
+                    // Append this referrer's name to the existing row
+                    $idx = $seen[$groupKey];
+                    if ($row['assigned_to'] && $taskRows[$idx]['assigned_to'] !== $row['assigned_to']) {
+                        $taskRows[$idx]['assigned_to'] .= ', ' . $row['assigned_to'];
+                    }
+                    continue;
+                }
+                $seen[$groupKey] = count($taskRows);
+            }
+
+            unset($row['source_type'], $row['source_id']);
+            $taskRows[] = $row;
+        }
+
 
         $totalCount = count($taskRows);
         $tasksUrl   = url("/tenant/" . self::TENANT_ID . "/tasks");

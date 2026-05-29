@@ -111,6 +111,8 @@ class HandleDealStageMoved implements ShouldQueue
 
         // ── 4. Cache bust ─────────────────────────────────────────────────────
         try {
+            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+
             $adminIds = DB::table('tenant_memberships as tm')
                 ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
                 ->where('tm.tenant_id', $event->tenantId)

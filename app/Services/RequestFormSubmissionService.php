@@ -171,7 +171,7 @@ class RequestFormSubmissionService
                         priority:         'urgent',
                         title:            "New request: {$requestLabel}",
                         body:             "\"{$submitterName}\" submitted a request via \"{$form->title}\". Review and respond.",
-                        notifiableType:   'tenant_user',
+                        notifiableType:   'tenant_admin',
                         notifiableId:     $recipient->recipient_id,
                         tenantId:         $tenantId,
                         actionUrl:        $taskUrl,

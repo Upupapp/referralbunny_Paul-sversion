@@ -139,6 +139,8 @@ class HandleImportFailed implements ShouldQueue
                 ->whereIn('tm.role', ['owner', 'admin', 'manager'])
                 ->pluck('u.id');
 
+            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+
             foreach ($adminsForBust as $uid) {
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
                 Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");

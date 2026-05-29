@@ -152,6 +152,9 @@ class ContactController extends Controller
     public function forDeal(string $dealId): JsonResponse
     {
         $tenantId = TenantContext::id();
+        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
         $contacts = DB::table('deal_contacts as dc')
             ->join('contacts as c', 'dc.contact_id', '=', 'c.id')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
@@ -202,6 +205,9 @@ class ContactController extends Controller
     public function unlinkFromDeal(string $dealId, string $contactId): JsonResponse
     {
         $tenantId = TenantContext::id();
+        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
         $q = DB::table('deal_contacts')
             ->where('deal_id', $dealId)
             ->where('contact_id', $contactId);

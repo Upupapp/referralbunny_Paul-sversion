@@ -316,13 +316,13 @@ class DealAssignmentExtensionService
         } catch (\Throwable) {}
     }
 
-    private function audit(string $tenantId, string $dealId, string $requestId, string $event, string $actorId, array $extra = []): void
+    private function audit(string $tenantId, string $dealId, string $requestId, string $event, ?string $actorId, array $extra = []): void
     {
         try {
             ActivityLog::create([
                 'id'        => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
-                'user_id'   => $actorId,
+                'user_id'   => is_numeric($actorId) ? (int) $actorId : null,
                 'action'    => $event,
                 'entity'    => 'extension_request',
                 'entity_id' => $requestId,

@@ -216,6 +216,7 @@ class CriticalActionsController extends Controller
         // Bust badge cache so count updates promptly
         Cache::forget("ca_badge_{$tenantId}_{$userId}");
         Cache::forget("ca_badge_urgent:{$tenantId}:{$userId}");
+        Cache::forget("ca_badge_suppressed:{$tenantId}:{$userId}");
         // Bust dismissed-fingerprint cache so the next masterList() reflects this
         // dismissal immediately without waiting for the 30 s TTL to expire.
         Cache::forget("ca_dismissed:{$tenantId}:{$userId}:{$userType}");

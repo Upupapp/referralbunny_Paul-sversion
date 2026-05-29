@@ -100,9 +100,14 @@ class DealCommentController extends Controller
         [$actorId, $role, $actor] = $this->resolveActor();
         if (!$actorId) return response()->json(['error' => 'Unauthenticated.'], 401);
 
-        // Permission: Referrer must be assigned to the deal
+        // Permission: Referrer must be the primary referrer or a co-referrer on the deal
         if ($role === 'referrer') {
-            if ($deal->reseller_name !== ($actor->name ?? '')) {
+            $isPrimary = strcasecmp((string) ($actor->name ?? ''), (string) ($deal->reseller_name ?? '')) === 0;
+            $isCoReferrer = !$isPrimary && DB::table('commission_splits')
+                ->where('lead_id', $dealId)
+                ->where('reseller_id', $actorId)
+                ->exists();
+            if (!$isPrimary && !$isCoReferrer) {
                 return response()->json(['error' => 'You are not assigned to this deal.'], 403);
             }
         }

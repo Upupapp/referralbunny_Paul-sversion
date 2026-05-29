@@ -371,7 +371,7 @@ class BulkDealExtensionService
     public function approveAll(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         int     $approvedDays,
         ?string $reviewerNote = null
     ): array {
@@ -409,7 +409,7 @@ class BulkDealExtensionService
     public function declineAll(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         string  $reviewerNote
     ): array {
         $batch = $this->loadBatch($batchId, $tenantId);
@@ -444,7 +444,7 @@ class BulkDealExtensionService
     public function skipAll(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         ?string $reviewerNote = null
     ): array {
         $this->loadBatch($batchId, $tenantId);
@@ -474,7 +474,7 @@ class BulkDealExtensionService
     public function approveSelected(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         array   $requestIds,
         int     $approvedDays,
         ?string $reviewerNote = null
@@ -510,7 +510,7 @@ class BulkDealExtensionService
     public function declineSelected(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         array   $requestIds,
         string  $reviewerNote
     ): array {
@@ -544,7 +544,7 @@ class BulkDealExtensionService
     public function skipSelected(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         array   $requestIds,
         ?string $reviewerNote = null
     ): array {
@@ -579,7 +579,7 @@ class BulkDealExtensionService
     public function rejectSelectedApproveRest(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         array   $rejectRequestIds,
         int     $approvedDays,
         string  $rejectionReason,
@@ -625,7 +625,7 @@ class BulkDealExtensionService
     public function approveSelectedRejectRest(
         string  $batchId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         array   $approveRequestIds,
         int     $approvedDays,
         string  $rejectionReason,

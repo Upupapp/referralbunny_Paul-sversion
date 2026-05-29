@@ -249,7 +249,7 @@ class BillingService
 
     // ── Helpers ───────────────────────────────────────────────
 
-    private function moveTo(Subscription $subscription, string $status, string $reason = '', ?int $userId = null): void
+    private function moveTo(Subscription $subscription, string $status, string $reason = '', ?string $userId = null): void
     {
         $old = $subscription->status;
         $subscription->update(['status' => $status]);
@@ -257,7 +257,7 @@ class BillingService
         $this->syncMetrics($subscription->tenant, $subscription);
     }
 
-    private function recordHistory(Subscription $subscription, string $oldStatus, string $newStatus, ?int $userId = null, string $reason = ''): void
+    private function recordHistory(Subscription $subscription, string $oldStatus, string $newStatus, ?string $userId = null, string $reason = ''): void
     {
         SubscriptionHistory::create([
             'tenant_id'   => $subscription->tenant_id,

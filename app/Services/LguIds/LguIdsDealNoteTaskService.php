@@ -143,7 +143,7 @@ class LguIdsDealNoteTaskService
      * Auto-complete all open note tasks for this deal when a note is added.
      * Returns the number of tasks completed.
      */
-    public function autocompleteForDeal(string $tenantId, string $dealId, Reseller $actor): int
+    public function autocompleteForDeal(string $tenantId, string $dealId, Reseller $actor, ?string $onlyAssigneeId = null): int
     {
         $openTasks = Task::where('tenant_id', $tenantId)
             ->where('source_type', self::SOURCE_TYPE)
@@ -151,6 +151,7 @@ class LguIdsDealNoteTaskService
             ->where('taskable_id', $dealId)
             ->whereIn('status', ['open', 'in_progress', 'waiting'])
             ->whereNull('deleted_at')
+            ->when($onlyAssigneeId, fn($q) => $q->where('assigned_to_id', $onlyAssigneeId))
             ->get();
 
         $completed = 0;

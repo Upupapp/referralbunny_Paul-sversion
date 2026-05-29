@@ -378,7 +378,7 @@ class ResellerDealController extends Controller
         if ($lead->tenant_id === 'lgu-ids') {
             try {
                 app(\App\Services\LguIds\LguIdsDealNoteTaskService::class)
-                    ->autocompleteForDeal($tenantId, $dealId, $reseller);
+                    ->autocompleteForDeal($tenantId, $dealId, $reseller, (string) $reseller->id);
             } catch (\Throwable) {}
         }
 
@@ -1368,7 +1368,7 @@ class ResellerDealController extends Controller
                     priority:         'normal',
                     title:            'You were added as a co-referrer on a deal',
                     body:             $reseller->name . ' added you as a co-referrer on "' . $lead->name . '".',
-                    notifiableType:   'tenant_user',
+                    notifiableType:   'tenant_admin',
                     notifiableId:     (string) $tenantUserByEmail->id,
                     tenantId:         $tenantId,
                     actionUrl:        url("/tenant/{$tenantId}/deals/{$lead->id}"),
