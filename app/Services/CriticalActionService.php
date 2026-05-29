@@ -634,7 +634,7 @@ class CriticalActionService
         return $rows->map(fn($r) => $this->make([
             'type'          => 'deal_expired',
             'category'      => 'deal',
-            'severity'      => 'high',
+            'severity'      => 'urgent',
             'summary'       => "Deal expired: {$r->name}",
             'actor_name'    => $r->reseller_name ?? 'Unassigned',
             'actor_role'    => 'Referrer',

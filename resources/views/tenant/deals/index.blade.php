@@ -91,11 +91,19 @@
 
     {{-- Subtab navigation --}}
     @php
-    $subtabCounts = \Illuminate\Support\Facades\Cache::remember("subtab_badge_counts:{$tenant->id}", 60, fn() => [
-        'expired'         => \App\Models\Lead::where('tenant_id', $tenant->id)->where('status','expired')->whereNull('deleted_at')->count(),
-        'pending_archive' => \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type','deal_archive')->where(fn($q) => $q->where('status','pending')->orWhere(fn($q2) => $q2->where('status','clarification_requested')->whereNotNull('visible_response')))->count(),
-        'deleted_archived'=> \App\Models\Lead::withTrashed()->where('tenant_id', $tenant->id)->where(fn($q) => $q->where('status','archived')->orWhereNotNull('deleted_at'))->count(),
-    ]);
+    $subtabCounts = \Illuminate\Support\Facades\Cache::remember("subtab_badge_counts:{$tenant->id}", 60, function () use ($tenant) {
+        $counts = [
+            'expired'         => 0,
+            'pending_archive' => 0,
+            'deleted_archived'=> 0,
+        ];
+        try {
+            $counts['expired']          = \App\Models\Lead::where('tenant_id', $tenant->id)->where('status','expired')->whereNull('deleted_at')->count();
+            $counts['pending_archive']  = \App\Models\DealApprovalRequest::where('tenant_id', $tenant->id)->where('type','deal_archive')->where(fn($q) => $q->where('status','pending')->orWhere(fn($q2) => $q2->where('status','clarification_requested')->whereNotNull('visible_response')))->count();
+            $counts['deleted_archived'] = \App\Models\Lead::withTrashed()->where('tenant_id', $tenant->id)->where(fn($q) => $q->where('status','archived')->orWhereNotNull('deleted_at'))->count();
+        } catch (\Throwable) {}
+        return $counts;
+    });
     @endphp
     @include('tenant.deals._subtabs')
 
@@ -204,6 +212,14 @@
     <div x-show="loading && activeTab === 'deals'" class="card flex items-center justify-center py-16 gap-3 text-gray-400">
         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span class="text-sm">Loading deals…</span>
+    </div>
+
+    {{-- Error state (API fetch failed) --}}
+    <div x-show="!loading && initError && activeTab === 'deals'" class="card flex flex-col items-center justify-center py-16 gap-3 text-center">
+        <svg class="w-10 h-10 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <p class="text-sm font-semibold text-gray-700">Couldn't load deals</p>
+        <p class="text-xs text-gray-400">There was a problem fetching your pipeline. Please refresh or try again.</p>
+        <button @click="initError = false; loading = true; await init()" class="mt-2 btn btn-sm btn-outline">Retry</button>
     </div>
 
     {{-- Table view --}}
@@ -964,19 +980,26 @@
 </div>
 
 @php
-$_stagePalette = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#6366F1'];
-$_badgePalette = ['badge badge-gray','badge badge-blue','badge badge-orange','badge badge-purple','badge badge-green','badge badge-red','badge badge-indigo'];
-$_cfgStages    = collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key']))->values();
-$_rbStagesData = $_cfgStages->map(fn($s,$i) => ['key'=>$s['key'],'label'=>$s['label'],'color'=>$_stagePalette[$i]??'#6B7280'])->values();
+$_stagePalette  = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#6366F1'];
+$_badgePalette  = ['badge badge-gray','badge badge-blue','badge badge-orange','badge badge-purple','badge badge-green','badge badge-red','badge badge-indigo'];
+$_cfgStages     = collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key']))->values();
+$_rbStagesData  = $_cfgStages->map(fn($s,$i) => ['key'=>$s['key'],'label'=>$s['label'],'color'=>$_stagePalette[$i]??'#6B7280'])->values();
+$_rbStageOrder  = $_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$i]);
+$_rbStageLabel  = $_cfgStages->mapWithKeys(fn($s) => [$s['key']=>$s['label']]);
+$_rbStageBadge  = $_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$_badgePalette[$i]??'badge badge-gray']);
 @endphp
 <script>
 const _rbStages      = @json($_rbStagesData);
-const _rbStageOrder  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$i]));
-const _rbStageLabel  = @json($_cfgStages->mapWithKeys(fn($s) => [$s['key']=>$s['label']]));
-const _rbStageBadge  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$_badgePalette[$i]??'badge badge-gray']));
+const _rbStageOrder  = @json($_rbStageOrder);
+const _rbStageLabel  = @json($_rbStageLabel);
+const _rbStageBadge  = @json($_rbStageBadge);
 const _rbDefaultStage= @json($_cfgStages->first()['key'] ?? 'introduction');
 // Philippine municipalities by province — used for the deal creation form dropdown
+@if($showLocation)
 const PH_MUNICIPALITIES = @json(\App\Support\PhilippineMunicipalities::all());
+@else
+const PH_MUNICIPALITIES = {};
+@endif
 
 // LGU IDS pricing — range-based % of deal amount (mirrors LguIdsPricingService::RANGES)
 // ₱0–₱6M → 60% | ₱6M+–₱12M → 58% | ₱12M+–₱15M → 48% | ₱15M+ → 41%
@@ -989,7 +1012,7 @@ function lguBaseCost(dv) {
 
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
-        leads: [], filtered: [], loading: true, totalDeals: 0,
+        leads: [], filtered: [], loading: true, initError: false, totalDeals: 0,
         canViewReferrers,
         showLocation,
         viewMode: 'table',
@@ -1038,10 +1061,14 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 this.leads = Array.isArray(data) ? data : (data.data || []);
                 this.totalDeals = data.total ?? this.leads.length;
-            } catch(e) { this.leads = []; }
+            } catch(e) {
+                this.leads = [];
+                this.initError = true;
+            }
             this.applyFilters();
             this.loading = false;
 
@@ -1311,7 +1338,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                     this.selectMode    = false;
                     this.showDeleteConfirm = false;
                     this.applyFilters();
-                    this.$dispatch('show-toast', { type: 'success', message: `${data.deleted_count} deal${data.deleted_count !== 1 ? 's' : ''} permanently deleted.` });
+                    this.$dispatch('show-toast', { type: 'success', message: `${data.deleted_count} deal${data.deleted_count !== 1 ? 's' : ''} moved to archive.` });
                 } else {
                     this.$dispatch('show-toast', { type: 'error', message: data.error || 'Delete failed. Please try again.' });
                 }

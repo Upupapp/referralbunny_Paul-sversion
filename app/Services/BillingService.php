@@ -138,6 +138,15 @@ class BillingService
         $this->recordHistory($subscription, $subscription->getOriginal('status'), 'canceled', $userId, $reason);
         $this->syncMetrics($subscription->tenant, $subscription);
 
+        $this->notifications->send(
+            category: 'billing',
+            type:     'action_required',
+            priority: 'critical',
+            message:  "Subscription canceled: {$reason}",
+            tenantId: $subscription->tenant_id,
+            channel:  'all',
+        );
+
         BillingAuditLog::log('subscription_canceled', [
             'tenant_id'    => $subscription->tenant_id,
             'entity_type'  => 'subscription',

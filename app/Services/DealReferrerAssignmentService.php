@@ -80,16 +80,16 @@ class DealReferrerAssignmentService
                 ->where('tm.status', 'active')
                 ->whereIn('tm.role', ['owner', 'admin', 'manager'])
                 ->whereNotNull('u.email')
-                ->select('u.id as tenant_user_id', 'u.name', 'u.email', 'tm.role as tenant_role');
+                ->selectRaw("u.id as tenant_user_id, TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) as name, u.email, tm.role as tenant_role");
 
             if ($q) {
                 $tenantUserQuery->where(function ($qb) use ($q) {
-                    $qb->whereRaw('LOWER(u.name) LIKE ?', [$q])
+                    $qb->whereRaw("LOWER(TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')))) LIKE ?", [$q])
                        ->orWhereRaw('LOWER(u.email) LIKE ?', [$q]);
                 });
             }
 
-            $tenantUsers = $tenantUserQuery->orderBy('u.name')->get();
+            $tenantUsers = $tenantUserQuery->orderByRaw("TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')))")->get();
         } catch (\Throwable) {
             // Schema unavailable in this environment — admin/manager enrichment skipped
         }

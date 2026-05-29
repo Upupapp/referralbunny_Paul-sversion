@@ -440,6 +440,8 @@ class LeadController extends Controller
             $inviteAction    = $result['action'];
         }
 
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
+
         return response()->json(array_merge(
             $lead->load(['commissionSplits', 'notes', 'history'])->toArray(),
             [
@@ -1018,9 +1020,12 @@ class LeadController extends Controller
 
         [$actorId, $actorRole, $actorName] = $this->resolveActor();
 
-        $count = Lead::where('tenant_id', $tenantId)
+        $affectedLeads = Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
-            ->count();
+            ->select('id', 'name', 'reseller_name', 'reseller_id')
+            ->get();
+
+        $count = $affectedLeads->count();
 
         Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
@@ -1031,6 +1036,48 @@ class LeadController extends Controller
             'count'      => $count,
             'deleted_by' => $actorName,
         ]);
+
+        // Notify each unique Referrer who had deals archived
+        $byReseller = $affectedLeads->whereNotNull('reseller_name')->groupBy('reseller_name');
+        foreach ($byReseller as $resellerName => $deals) {
+            try {
+                $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
+                    ->whereIn('status', ['active', 'nda_signed'])
+                    ->first();
+                if (!$reseller) continue;
+                $n = $deals->count();
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $reseller->id,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        $n === 1 ? "Your deal was archived" : "{$n} of your deals were archived",
+                    body:         $n === 1
+                        ? "\"{$deals->first()->name}\" was moved to the archive by {$actorName}."
+                        : "{$n} deals assigned to you were moved to the archive by {$actorName}.",
+                    actionUrl:    "/reseller/{$tenantId}/deals",
+                    actionLabel:  'View Deals',
+                    dedupeSuffix: "bulk_archive:{$tenantId}:{$reseller->id}:" . now()->format('YmdH'),
+                );
+            } catch (\Throwable) {}
+        }
+
+        // Notify Tenant Admins once with the aggregate count
+        try {
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        $count === 1 ? "Deal archived" : "{$count} deals archived",
+                body:         $count === 1
+                    ? "\"{$affectedLeads->first()->name}\" was moved to the archive by {$actorName}."
+                    : "{$count} deals were moved to the archive by {$actorName}.",
+                actionUrl:    "/tenant/{$tenantId}/deals",
+                actionLabel:  'View Deals',
+                dedupeSuffix: "bulk_archive_admin:{$tenantId}:" . now()->format('YmdH'),
+            );
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'deleted_count' => $count]);
     }
@@ -1461,6 +1508,7 @@ class LeadController extends Controller
             }
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,
