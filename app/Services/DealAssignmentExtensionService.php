@@ -326,11 +326,11 @@ class DealAssignmentExtensionService
                 'action'    => $event,
                 'entity'    => 'extension_request',
                 'entity_id' => $requestId,
-                'metadata'  => json_encode(array_merge([
+                'metadata'  => array_merge([
                     'deal_id'              => $dealId,
                     'extension_request_id' => $requestId,
                     'timestamp'            => now()->toIso8601String(),
-                ], $extra)),
+                ], $extra),
             ]);
         } catch (\Throwable) {}
     }

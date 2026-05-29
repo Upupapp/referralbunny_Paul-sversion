@@ -27,9 +27,9 @@ class BillingController extends Controller
         private PayMongoService $paymongo,
     ) {}
 
-    private function actorId(): string
+    private function actorId(): ?string
     {
-        return (string) (Auth::guard('web')->id() ?? Auth::guard('tenant')->id() ?? 'system');
+        return Auth::guard('web')->id() ?? Auth::guard('tenant')->id() ?? null;
     }
 
     // ── Dashboard ─────────────────────────────────────────────
@@ -420,7 +420,7 @@ class BillingController extends Controller
             'id'            => (string) \Illuminate\Support\Str::uuid(),
             'tenant_id'     => $tenantId,
             'category'      => 'billing',
-            'type'          => 'subscription_plan_changed',
+            'type'          => 'info',
             'priority'      => 'high',
             'message'       => "Your ReferralBunny.ai plan has been updated to {$newPlan->name}.",
             'channel'       => 'in_app',

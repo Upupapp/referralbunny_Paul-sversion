@@ -416,12 +416,12 @@ class TenantUserManagementController extends Controller
                 'action'    => 'team_member_deactivated',
                 'entity'    => 'tenant_membership',
                 'entity_id' => $membership->id,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'target_user_id' => $userId,
                     'target_name'    => $userName,
                     'target_role'    => $membership->role,
                     'timestamp'      => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {}
 
@@ -504,13 +504,13 @@ class TenantUserManagementController extends Controller
                 'action'    => 'team_member_removed',
                 'entity'    => 'tenant_membership',
                 'entity_id' => $membership->id,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'target_user_id' => $userId,
                     'target_name'    => $removedName,
                     'target_email'   => $removedEmail,
                     'target_role'    => $membership->role,
                     'timestamp'      => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {}
 

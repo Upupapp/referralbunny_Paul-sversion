@@ -554,7 +554,7 @@ class DealCommentController extends Controller
                 'action'    => $action,
                 'entity'    => 'lead',
                 'entity_id' => $dealId,
-                'metadata'  => json_encode(['timestamp' => now()->toIso8601String()]),
+                'metadata'  => ['timestamp' => now()->toIso8601String()],
             ]);
         } catch (\Throwable) {}
     }

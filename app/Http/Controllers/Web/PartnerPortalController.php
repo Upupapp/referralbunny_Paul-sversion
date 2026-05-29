@@ -300,13 +300,13 @@ class PartnerPortalController extends Controller
                 'action'    => 'partner_note_added',
                 'entity'    => 'lead',
                 'entity_id' => $dealId,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'note_id'      => $note->id,
                     'partner_name' => $partner->full_name ?: $partner->email,
                     'has_body'     => $hasBody,
                     'has_files'    => $hasFiles,
                     'timestamp'    => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {}
 

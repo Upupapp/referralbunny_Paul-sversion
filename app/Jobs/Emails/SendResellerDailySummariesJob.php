@@ -17,6 +17,7 @@ class SendResellerDailySummariesJob implements ShouldQueue
 
     public int $tries   = 3;
     public int $backoff = 30;
+    public int $timeout = 180;
 
     public function handle(): void
     {
@@ -45,7 +46,9 @@ class SendResellerDailySummariesJob implements ShouldQueue
                 ->whereNull('deleted_at')
                 ->where(fn($q) => $q
                     ->where('reseller_id', $reseller->id)
-                    ->orWhere('reseller_name', $reseller->name)
+                    ->when(!empty($reseller->name), fn($q2) =>
+                        $q2->orWhereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                    )
                 )
                 ->get();
 

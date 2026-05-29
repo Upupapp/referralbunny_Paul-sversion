@@ -600,12 +600,12 @@ class ResellerController extends Controller
                 'action'    => 'referrer_' . $event,
                 'entity'    => 'reseller',
                 'entity_id' => $reseller->id,
-                'metadata'  => json_encode(array_merge([
+                'metadata'  => array_merge([
                     'referrer_name'  => $reseller->name,
                     'referrer_email' => $reseller->email,
                     'reason'         => $reason,
                     'timestamp'      => now()->toIso8601String(),
-                ], $extra)),
+                ], $extra),
             ]);
         } catch (\Throwable) {
             // Never crash on audit failure

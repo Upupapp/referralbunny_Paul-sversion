@@ -73,12 +73,14 @@ class ContactRoleInviteWebController extends Controller
         $tenantUser = TenantUser::whereRaw('LOWER(email) = ?', [$email])->first();
 
         if (!$tenantUser) {
+            $nameParts  = explode(' ', trim($request->name), 2);
             $tenantUser = TenantUser::create([
-                'id'       => (string) Str::uuid(),
-                'name'     => $request->name,
-                'email'    => $email,
-                'password' => Hash::make($request->password),
-                'status'   => 'active',
+                'id'         => (string) Str::uuid(),
+                'first_name' => $nameParts[0],
+                'last_name'  => $nameParts[1] ?? '',
+                'email'      => $email,
+                'password'   => Hash::make($request->password),
+                'status'     => 'active',
             ]);
         } else {
             // Update password if they are setting up via invitation
@@ -132,11 +134,11 @@ class ContactRoleInviteWebController extends Controller
                 'action'    => 'contact_role_invite_accepted',
                 'entity'    => 'contact',
                 'entity_id' => $invitation->contact_id,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'assigned_role'    => $invitation->invited_role,
                     'tenant_user_id'   => $tenantUser->id,
                     'timestamp'        => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {}
 

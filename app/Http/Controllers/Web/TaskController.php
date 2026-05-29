@@ -869,7 +869,7 @@ class TaskController extends Controller
     private function buildResponsesData(string $tenantId, string $actorType, string $actorId, bool $isAdmin): array
     {
         $query = \App\Models\RequestFormSubmission::where('tenant_id', $tenantId)
-            ->with(['form:id,title', 'tasks' => fn($q) => $q->whereNull('deleted_at')->orderByDesc('created_at')])
+            ->with(['form:id,title', 'tasks' => fn($q) => $q->where('tenant_id', $tenantId)->whereNull('deleted_at')->orderByDesc('created_at')])
             ->orderByDesc('submitted_at');
 
         if (!$isAdmin) {
@@ -891,7 +891,8 @@ class TaskController extends Controller
         $groups = ['new' => [], 'processing' => [], 'completed' => []];
 
         foreach ($submissions as $sub) {
-            $task       = $sub->tasks->first();
+            $task = $sub->tasks->first(fn($t) => !in_array($t->status, ['completed', 'cancelled', 'archived']))
+                ?? $sub->tasks->first();
             $taskStatus = $task?->status;
             $col = match(true) {
                 $taskStatus === 'completed'                       => 'completed',
@@ -936,10 +937,10 @@ class TaskController extends Controller
         $assigneeInitials = '--';
         if ($task->assigned_to_id) {
             if ($task->assigned_to_type === 'tenant_user') {
-                $u = TenantUser::find($task->assigned_to_id);
-                $assigneeName = $u?->full_name;
+                $u = TenantUser::where('id', $task->assigned_to_id)->select(['id', 'first_name', 'last_name'])->first();
+                $assigneeName = $u ? trim("{$u->first_name} {$u->last_name}") ?: null : null;
             } elseif ($task->assigned_to_type === 'reseller') {
-                $r = \App\Models\Reseller::find($task->assigned_to_id);
+                $r = \App\Models\Reseller::where('id', $task->assigned_to_id)->select(['id', 'name', 'email'])->first();
                 $assigneeName = $r?->name ?: $r?->email;
             }
             if ($assigneeName) {
@@ -1174,7 +1175,7 @@ class TaskController extends Controller
             $u = Auth::guard('web')->user();
             return ['admin_user', (string) $u->id];
         }
-        return ['system', 'system'];
+        return ['system', null];
     }
 
     private function resolveActorFull(): array
@@ -1190,7 +1191,7 @@ class TaskController extends Controller
             $u = Auth::guard('web')->user();
             return ['admin_user', (string) $u->id, $u->name ?? $u->email ?? 'Super Admin'];
         }
-        return ['system', 'system', 'System'];
+        return ['system', null, 'System'];
     }
 
     private function resolveUserName(string $type, string $id): string

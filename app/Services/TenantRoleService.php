@@ -170,13 +170,13 @@ class TenantRoleService
                 'action'    => $event,
                 'entity'    => 'tenant_user',
                 'entity_id' => $targetUserId,
-                'metadata'  => json_encode([
+                'metadata'  => [
                     'actor_role'     => $actorRole,
                     'existing_roles' => [$existingRole],
                     'role_added'     => 'referrer',
                     'deal_id'        => $dealId,
                     'timestamp'      => now()->toIso8601String(),
-                ]),
+                ],
             ]);
         } catch (\Throwable) {}
     }
@@ -207,6 +207,7 @@ class TenantRoleService
                 'priority'          => 'normal',
                 'title'             => 'Referrer role added to your account',
                 'message'           => "Your account now includes the Referrer role in addition to your {$roleLabel} access.{$dealPart}",
+                'deduplication_key' => "reseller_referrer:{$tenantUserId}:role_added",
                 'is_read'           => false,
                 'is_dismissed'      => false,
                 'sent_at'           => now(),

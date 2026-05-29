@@ -156,13 +156,13 @@ class LguIdsPurgeDealsCommand extends Command
                     'action'    => 'lguids_deals_purged',
                     'entity'    => 'lead',
                     'entity_id' => 'bulk',
-                    'metadata'  => json_encode([
+                    'metadata'  => [
                         'count'         => $total,
                         'deletion_mode' => $isHard ? 'hard_delete' : 'soft_delete',
                         'backup_path'   => $backupPath,
                         'actor'         => 'artisan_command',
                         'timestamp'     => now()->toIso8601String(),
-                    ]),
+                    ],
                     'created_at' => now(),
                 ]);
             } catch (\Throwable) {}

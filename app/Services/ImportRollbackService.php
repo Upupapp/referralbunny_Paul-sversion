@@ -291,7 +291,7 @@ class ImportRollbackService
                 'action'    => $action,
                 'entity'    => 'import_batch',
                 'entity_id' => $batchId,
-                'metadata'  => json_encode($summary),
+                'metadata'  => $summary,
             ]);
         } catch (\Throwable) {}
     }

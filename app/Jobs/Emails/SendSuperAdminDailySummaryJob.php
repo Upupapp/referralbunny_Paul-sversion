@@ -25,10 +25,10 @@ class SendSuperAdminDailySummaryJob implements ShouldQueue
 
         $stats = [
             'activeTenants' => DB::table('tenants')->where('status', '!=', 'suspended')->count(),
-            'newDealsToday' => DB::table('leads')->where('created_at', '>=', $since)->count(),
-            'expiringDeals' => DB::table('leads')->whereIn('status', ['expiring'])->count(),
-            'newResellers'  => DB::table('resellers')->where('created_at', '>=', $since)->count(),
-            'totalDeals'    => DB::table('leads')->count(),
+            'newDealsToday' => DB::table('leads')->whereNull('deleted_at')->where('created_at', '>=', $since)->count(),
+            'expiringDeals' => DB::table('leads')->whereNull('deleted_at')->whereIn('status', ['expiring'])->count(),
+            'newResellers'  => DB::table('resellers')->whereNull('deleted_at')->where('created_at', '>=', $since)->count(),
+            'totalDeals'    => DB::table('leads')->whereNull('deleted_at')->count(),
         ];
 
         // Send to all super admins

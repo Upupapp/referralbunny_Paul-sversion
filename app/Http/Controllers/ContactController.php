@@ -124,8 +124,10 @@ class ContactController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
+        $tenantId = TenantContext::requireId();
         DB::table('contacts')
             ->where('id', $id)
+            ->where('tenant_id', $tenantId)
             ->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json($this->contactWithMeta($id));
@@ -133,7 +135,8 @@ class ContactController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        DB::table('contacts')->where('id', $id)->delete();
+        $tenantId = TenantContext::requireId();
+        DB::table('contacts')->where('id', $id)->where('tenant_id', $tenantId)->delete();
         return response()->json(['deleted' => true]);
     }
 

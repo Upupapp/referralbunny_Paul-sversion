@@ -278,14 +278,14 @@ class ReferrerInvitationDeduplicationService
                 'action'    => $event,
                 'entity'    => 'reseller_invitation',
                 'entity_id' => md5($tenantId . ':' . strtolower($email)),
-                'metadata'  => json_encode(array_merge([
+                'metadata'  => array_merge([
                     'email_masked' => substr($email, 0, 3) . '***@***',
                     'role'         => 'referrer',
                     'actor_role'   => $actorRole,
                     'deal_ids'     => array_filter($dealIds),
                     'source'       => $source,
                     'timestamp'    => now()->toIso8601String(),
-                ], $extra)),
+                ], $extra),
             ]);
         } catch (\Throwable) {}
     }

@@ -18,6 +18,7 @@ class NotifyExpiringLeads extends Command
         // All expiring leads grouped by tenant
         $byTenant = DB::table('leads')
             ->where('status', 'expiring')
+            ->whereNull('deleted_at')
             ->select('tenant_id', 'name', 'reseller_name', 'days_left', 'deal_value')
             ->orderBy('tenant_id')
             ->orderBy('days_left')
@@ -87,6 +88,7 @@ class NotifyExpiringLeads extends Command
                 $reseller = DB::table('resellers')
                     ->where('tenant_id', $tenantId)
                     ->where('name', $resellerName)
+                    ->whereNull('deleted_at')
                     ->select('id', 'email')
                     ->first();
 

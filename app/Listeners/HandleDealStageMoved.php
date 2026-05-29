@@ -120,6 +120,7 @@ class HandleDealStageMoved implements ShouldQueue
 
             foreach ($adminIds as $uid) {
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
+                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
             }
         } catch (\Throwable) {}
     }

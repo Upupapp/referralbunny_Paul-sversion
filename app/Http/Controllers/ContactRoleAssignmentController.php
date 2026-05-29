@@ -7,7 +7,6 @@ use App\Models\ActivityLog;
 use App\Models\ContactRoleInvitation;
 use App\Models\DealPartner;
 use App\Models\Lead;
-use App\Models\Notification;
 use App\Models\Partner;
 use App\Models\Reseller;
 use App\Models\Tenant;
@@ -255,7 +254,7 @@ class ContactRoleAssignmentController extends Controller
 
         // ── 11. Notify tenant admin (if actor is a referrer) ──────────────
         if ($actorRole === 'referrer' && $data['role'] === 'partner') {
-            $this->notifyTenantAdmin($tenantId, $contactName, 'partner', $deal);
+            $this->notifyTenantAdmin($tenantId, $contactName, 'partner', $deal, $invitation->id);
         }
 
         return response()->json([
@@ -324,7 +323,9 @@ class ContactRoleAssignmentController extends Controller
 
         $contact = DB::table('contacts')->where('id', $invitation->contact_id)->first();
         $tenant  = Tenant::find($tenantId);
-        $deal    = $invitation->associated_deal_id ? Lead::find($invitation->associated_deal_id) : null;
+        $deal    = $invitation->associated_deal_id
+            ? Lead::where('id', $invitation->associated_deal_id)->where('tenant_id', $tenantId)->first()
+            : null;
 
         $contactName = $contact ? trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')) : $invitation->invited_email;
 
@@ -393,7 +394,7 @@ class ContactRoleAssignmentController extends Controller
             $reseller = Auth::guard('reseller')->user();
             return [$reseller->id, 'referrer'];
         }
-        return ['unknown', 'unknown'];
+        return ['unknown', 'viewer'];
     }
 
     private function checkPermission(string $actorRole, string $targetRole, string $tenantId, ?string $dealId, string $actorUserId): bool|string
@@ -449,30 +450,19 @@ class ContactRoleAssignmentController extends Controller
         }
     }
 
-    private function notifyTenantAdmin(string $tenantId, string $contactName, string $role, ?Lead $deal): void
+    private function notifyTenantAdmin(string $tenantId, string $contactName, string $role, ?Lead $deal, string $invitationId): void
     {
         try {
-            $adminMembers = DB::table('tenant_memberships')
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->whereIn('role', ['owner', 'admin'])
-                ->pluck('tenant_user_id');
-
-            foreach ($adminMembers as $userId) {
-                Notification::create([
-                    'tenant_id'       => $tenantId,
-                    'notifiable_type' => 'tenant_admin',
-                    'notifiable_id'   => $userId,
-                    'category'        => 'reseller_referrer',
-                    'type'            => 'info',
-                    'priority'        => 'normal',
-                    'title'           => 'New Partner Invitation Sent',
-                    'message'         => "{$contactName} was invited as a Partner" . ($deal ? " for deal \"{$deal->name}\"" : '') . " by a Referrer.",
-                    'is_read'         => false,
-                    'is_dismissed'    => false,
-                    'sent_at'         => now(),
-                ]);
-            }
+            app(\App\Services\NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'reseller_referrer',
+                priority:     'normal',
+                title:        'New Partner Invitation Sent',
+                body:         "{$contactName} was invited as a Partner" . ($deal ? " for deal \"{$deal->name}\"" : '') . " by a Referrer.",
+                actionUrl:    "/tenant/{$tenantId}/contacts",
+                actionLabel:  'View Contacts',
+                dedupeSuffix: $invitationId . ':partner_invited',
+            );
         } catch (\Throwable) {}
     }
 }

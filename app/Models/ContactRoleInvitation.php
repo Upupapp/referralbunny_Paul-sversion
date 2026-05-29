@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class ContactRoleInvitation extends Model
 {
@@ -12,8 +13,14 @@ class ContactRoleInvitation extends Model
     public    $incrementing = false;
     protected $keyType      = 'string';
 
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(fn($m) => $m->id ??= (string) Str::uuid());
+    }
+
     protected $fillable = [
-        'tenant_id', 'contact_id', 'invited_email', 'invited_role',
+        'id', 'tenant_id', 'contact_id', 'invited_email', 'invited_role',
         'invited_by_user_id', 'invited_by_role',
         'status', 'token', 'expires_at', 'accepted_at',
         'revoked_at', 'revoked_by_user_id',

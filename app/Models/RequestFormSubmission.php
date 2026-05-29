@@ -49,6 +49,7 @@ class RequestFormSubmission extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'source_id')
-            ->where('source_type', 'request_form_submission');
+            ->where('source_type', 'request_form_submission')
+            ->whereNull('deleted_at');
     }
 }

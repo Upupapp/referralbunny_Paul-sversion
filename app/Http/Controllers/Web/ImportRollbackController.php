@@ -144,7 +144,7 @@ class ImportRollbackController extends Controller
                 'action'    => 'import_rollback_started',
                 'entity'    => 'import_batch',
                 'entity_id' => $batch->id,
-                'metadata'  => json_encode(['rollback_id' => $rollback->id]),
+                'metadata'  => ['rollback_id' => $rollback->id],
             ]);
         } catch (\Throwable) {}
 

@@ -22,6 +22,7 @@ class SendLguIdsTaskDueReminderJob implements ShouldQueue
 
     public int $tries   = 3;
     public int $backoff = 30;
+    public int $timeout = 120;
 
     private const TENANT_ID = 'lgu-ids';
 

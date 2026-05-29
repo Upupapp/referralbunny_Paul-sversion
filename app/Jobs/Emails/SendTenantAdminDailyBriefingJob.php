@@ -10,14 +10,13 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-
 class SendTenantAdminDailyBriefingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries   = 3;
     public int $backoff = 30;
+    public int $timeout = 120;
 
     public function handle(): void
     {
@@ -83,7 +82,6 @@ class SendTenantAdminDailyBriefingJob implements ShouldQueue
 
             foreach ($admins as $admin) {
                 $emailKey = "tenant_daily_briefing.{$tenantId}.{$admin->email}";
-                if (EmailLogger::sentToday($emailKey)) continue;
 
                 EmailLogger::send(
                     mailable: new TenantAdminDailyBriefing(

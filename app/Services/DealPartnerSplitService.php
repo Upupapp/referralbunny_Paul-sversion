@@ -214,10 +214,10 @@ class DealPartnerSplitService
                 'action'    => $event,
                 'entity'    => 'deal_partner_split',
                 'entity_id' => $splitId,
-                'metadata'  => json_encode(array_merge([
+                'metadata'  => array_merge([
                     'deal_id'   => $dealId,
                     'timestamp' => now()->toIso8601String(),
-                ], $extra)),
+                ], $extra),
             ]);
         } catch (\Throwable) {}
     }

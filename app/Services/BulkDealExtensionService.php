@@ -399,7 +399,6 @@ class BulkDealExtensionService
         if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
             $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
         }
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -435,7 +434,6 @@ class BulkDealExtensionService
         if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
             $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
         }
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -466,8 +464,6 @@ class BulkDealExtensionService
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
             }
         }
-
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -1081,12 +1077,12 @@ class BulkDealExtensionService
                 'action'    => $event,
                 'entity'    => 'extension_request',
                 'entity_id' => $requestId,
-                'metadata'  => json_encode(array_merge([
+                'metadata'  => array_merge([
                     'deal_id'              => $dealId,
                     'extension_request_id' => $requestId,
                     'actor_id'             => $actorId,
                     'timestamp'            => now()->toIso8601String(),
-                ], $extra)),
+                ], $extra),
             ]);
         } catch (\Throwable) {}
     }

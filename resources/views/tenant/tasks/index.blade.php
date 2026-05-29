@@ -27,7 +27,7 @@
         <div class="flex items-center gap-2.5 flex-wrap">
 
             {{-- View Switcher (hidden on Responses tab) --}}
-            <div x-show="{{ $tab !== 'responses' ? 'true' : 'false' }}"
+            <div x-show="{{ $tab !== 'responses' ? 1 : 0 }}"
                  class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5"
                  role="group" aria-label="View options">
                 <button @click="switchView('list')"

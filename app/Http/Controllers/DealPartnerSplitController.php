@@ -261,12 +261,12 @@ class DealPartnerSplitController extends Controller
         }
     }
 
-    private function resolveActorId(): string
+    private function resolveActorId(): ?string
     {
         return Auth::guard('tenant')->user()?->id
             ?? Auth::guard('web')->user()?->id
             ?? Auth::guard('reseller')->user()?->id
-            ?? 'system';
+            ?? null;
     }
 
     /** Notify the Referrer assigned to a deal. Never throws — best-effort only. */

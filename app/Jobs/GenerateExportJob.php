@@ -20,6 +20,7 @@ class GenerateExportJob implements ShouldQueue
 
     public int $tries   = 2;
     public int $timeout = 300;
+    public int $backoff = 60;
 
     public function __construct(
         private string $exportRequestId,

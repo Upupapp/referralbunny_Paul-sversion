@@ -483,17 +483,17 @@ class LeadController extends Controller
     {
         if (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('tenant')->user();
-            return [$u->id ?? 'unknown', 'Tenant Admin', $u->full_name ?? $u->email ?? 'Admin'];
+            return [$u->id ?? null, 'Tenant Admin', $u->full_name ?? $u->email ?? 'Admin'];
         }
         if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('web')->user();
-            return [$u->id ?? 'unknown', 'Super Admin', $u->name ?? $u->email ?? 'Super Admin'];
+            return [$u->id ?? null, 'Super Admin', $u->name ?? $u->email ?? 'Super Admin'];
         }
         if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
             $u = \Illuminate\Support\Facades\Auth::guard('reseller')->user();
-            return [$u->id ?? 'unknown', 'Referrer', $u->name ?? 'Referrer'];
+            return [$u->id ?? null, 'Referrer', $u->name ?? 'Referrer'];
         }
-        return ['system', 'System', 'System'];
+        return [null, 'System', 'System'];
     }
 
     /**
@@ -714,7 +714,7 @@ class LeadController extends Controller
                 if ($isReferrer) {
                     $this->notifyAssignedReferrer($lead, 'Deal amount updated by Referrer',
                         ($actorName ?? 'Referrer') . ' changed "' . $lead->name . '" from the default ₱4,000,000 to ₱' . number_format($newDealValue, 0) . '.',
-                        $lead->id . ':default_updated:' . now()->format('YmdHi'));
+                        $lead->id . ':default_updated:' . now()->format('Ymd'));
                 }
             }
 
@@ -724,7 +724,7 @@ class LeadController extends Controller
                     $lead,
                     'Deal amount updated',
                     ($actorName ?? 'Admin') . ' updated the contract value of "' . $lead->name . '" to ₱' . number_format($newDealValue, 0) . '.',
-                    $lead->id . ':amount:' . now()->format('YmdHi'),
+                    $lead->id . ':amount:' . now()->format('Ymd'),
                 );
             }
         }
@@ -887,7 +887,7 @@ class LeadController extends Controller
                         body:         '"' . $statusArchived->name . '" has been reactivated by an admin and is now active again.',
                         actionUrl:    "/reseller/{$statusArchived->tenant_id}/deals/{$statusArchived->id}",
                         actionLabel:  'View Deal',
-                        dedupeSuffix: $statusArchived->id . ':reactivated:' . now()->format('YmdHi'),
+                        dedupeSuffix: $statusArchived->id . ':reactivated:' . now()->format('Ymd'),
                     );
                 }
             } catch (\Throwable) {}
@@ -1262,7 +1262,7 @@ class LeadController extends Controller
             $stageName  = ucwords(str_replace('_', ' ', $targetStage));
             $fromName   = ucwords(str_replace('_', ' ', $capturedStage));
             $priority   = ($isPaid || $isLocking) ? 'high' : 'normal';
-            $minute     = now()->format('YmdHi');
+            $minute     = now()->format('YmdH');
 
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $lead->tenant_id,
