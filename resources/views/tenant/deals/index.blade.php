@@ -967,9 +967,10 @@
 $_stagePalette = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#6366F1'];
 $_badgePalette = ['badge badge-gray','badge badge-blue','badge badge-orange','badge badge-purple','badge badge-green','badge badge-red','badge badge-indigo'];
 $_cfgStages    = collect($config?->stages ?? [])->filter(fn($s) => is_array($s) && isset($s['key']))->values();
+$_rbStagesData = $_cfgStages->map(fn($s,$i) => ['key'=>$s['key'],'label'=>$s['label'],'color'=>$_stagePalette[$i]??'#6B7280'])->values();
 @endphp
 <script>
-const _rbStages      = @json($_cfgStages->map(fn($s,$i) => ['key'=>$s['key'],'label'=>$s['label'],'color'=>$_stagePalette[$i]??'#6B7280'])->values());
+const _rbStages      = @json($_rbStagesData);
 const _rbStageOrder  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$i]));
 const _rbStageLabel  = @json($_cfgStages->mapWithKeys(fn($s) => [$s['key']=>$s['label']]));
 const _rbStageBadge  = @json($_cfgStages->mapWithKeys(fn($s,$i) => [$s['key']=>$_badgePalette[$i]??'badge badge-gray']));
