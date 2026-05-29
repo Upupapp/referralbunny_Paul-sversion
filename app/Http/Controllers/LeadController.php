@@ -208,12 +208,16 @@ class LeadController extends Controller
 
         // Strip reseller_name from API response for callers without view_referrers permission.
         // The Blade layer also gates the UI, but server-side stripping prevents DevTools leakage.
+        // Membership lookup is cached 60s — the composite index covers (tenant_user_id, tenant_id, status).
         if (Auth::guard('tenant')->check() && $tenantId) {
             $callerUid  = Auth::guard('tenant')->id();
-            $membership = \App\Models\TenantMembership::where('tenant_user_id', $callerUid)
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->first();
+            $cacheKey   = "tm_role:{$callerUid}:{$tenantId}";
+            $membership = Cache::remember($cacheKey, 60, fn() =>
+                \App\Models\TenantMembership::where('tenant_user_id', $callerUid)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first()
+            );
 
             $canViewReferrers = !$membership
                 || in_array($membership->role, ['owner', 'admin'])
@@ -221,8 +225,9 @@ class LeadController extends Controller
 
             if (!$canViewReferrers) {
                 $leads = $leads->map(function ($lead) {
-                    if ($lead instanceof Lead) {
-                        $lead->reseller_name = null;
+                    // leads may be Eloquent objects (default path) or plain arrays (include_partners path)
+                    if (is_array($lead)) {
+                        $lead['reseller_name'] = null;
                     } else {
                         $lead->reseller_name = null;
                     }
@@ -622,8 +627,8 @@ class LeadController extends Controller
         $oldStatusForEvent   = $lead->status         ?? '';
         $lead->update($data);
 
-        // Bust CA cache when reseller, commission status, or stage changes
-        if (isset($data['reseller_name']) || isset($data['commission_status']) || isset($data['stage'])) {
+        // Bust CA cache when reseller, commission status, stage, or status changes
+        if (isset($data['reseller_name']) || isset($data['commission_status']) || isset($data['stage']) || isset($data['status'])) {
             foreach (array_unique(array_filter([$oldResellerName, $lead->reseller_name ?? ''])) as $rName) {
                 $rid = Reseller::where('tenant_id', $lead->tenant_id)
                     ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
@@ -888,10 +893,12 @@ class LeadController extends Controller
             ->where('status', 'archived')
             ->first();
 
+        [$actorId, , ] = $this->resolveActor();
+
         if ($statusArchived) {
             $statusArchived->update(['status' => 'active']);
             Cache::forget("dash_counts:{$tenantId}");
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
             // Log activity
             try {
@@ -937,9 +944,9 @@ class LeadController extends Controller
         $lead->restore();
         $lead->update(['deleted_by' => null]);
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
-        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+        [, $actorRole, $actorName] = $this->resolveActor();
 
         try {
             app(\App\Services\DealActivityService::class)->record(
@@ -1021,7 +1028,7 @@ class LeadController extends Controller
         $leadName    = $lead->name;
         $lead->forceDelete();
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         Log::info('Deal permanently deleted (force)', [
             'lead_id'    => $deletedId,

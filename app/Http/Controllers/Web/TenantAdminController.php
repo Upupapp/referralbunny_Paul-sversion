@@ -305,7 +305,7 @@ class TenantAdminController extends Controller
                 ->where('status', 'active')
                 ->first();
 
-            if ($membership && $membership->role === 'manager') {
+            if ($membership && !in_array($membership->role, ['owner', 'admin'])) {
                 $canViewReferrers = app(\App\Services\PermissionService::class)->can($membership, 'view_referrers');
             }
         }

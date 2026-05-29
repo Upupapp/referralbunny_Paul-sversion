@@ -59,13 +59,19 @@ class CriticalActionService
             }
         } catch (\Throwable) {}
 
-        // 1b. Expired deals (urgent severity after commit 130c5ad) — must also trigger has_urgent
+        // 1b. Expired deals — must also trigger has_urgent
+        // Exclude deals already counted by block 8 (signed/paid + pending commission)
+        // to prevent double-counting in the badge and duplicate items in the panel.
         try {
             $expiredCount = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'expired')
                 ->where('updated_at', '>', now()->subDays(7))
                 ->whereNull('deleted_at')
+                ->where(fn($q) =>
+                    $q->whereNotIn('stage', ['signed', 'paid'])
+                      ->orWhere('commission_status', '!=', 'pending')
+                )
                 ->count();
             if ($expiredCount > 0) {
                 $count    += $expiredCount;
