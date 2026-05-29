@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    public bool $withinTransaction = false;
+
     public function up(): void
     {
         // leads(tenant_id, reseller_id) — used by SendResellerDailySummariesJob per-reseller query
