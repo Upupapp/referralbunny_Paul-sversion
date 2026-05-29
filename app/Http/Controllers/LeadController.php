@@ -207,21 +207,28 @@ class LeadController extends Controller
         }
 
         // Strip reseller_name from API response for callers without view_referrers permission.
-        // The Blade layer also gates the UI, but server-side stripping prevents DevTools leakage.
-        // Membership lookup is cached 60s — the composite index covers (tenant_user_id, tenant_id, status).
+        // Cache only the scalar role string — safe with any cache driver (avoids Eloquent model serialization).
+        // Owner/admin short-circuit with zero extra DB query. Manager/member path fetches the full model once.
         if (Auth::guard('tenant')->check() && $tenantId) {
             $callerUid  = Auth::guard('tenant')->id();
             $cacheKey   = "tm_role:{$callerUid}:{$tenantId}";
-            $membership = Cache::remember($cacheKey, 60, fn() =>
+            $cachedRole = Cache::remember($cacheKey, 60, fn() =>
                 \App\Models\TenantMembership::where('tenant_user_id', $callerUid)
                     ->where('tenant_id', $tenantId)
                     ->where('status', 'active')
-                    ->first()
+                    ->value('role') ?? 'none'
             );
 
-            $canViewReferrers = !$membership
-                || in_array($membership->role, ['owner', 'admin'])
-                || app(\App\Services\PermissionService::class)->can($membership, 'view_referrers');
+            if ($cachedRole === 'none' || in_array($cachedRole, ['owner', 'admin'])) {
+                $canViewReferrers = true;
+            } else {
+                $membership = \App\Models\TenantMembership::where('tenant_user_id', $callerUid)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first();
+                $canViewReferrers = $membership
+                    && app(\App\Services\PermissionService::class)->can($membership, 'view_referrers');
+            }
 
             if (!$canViewReferrers) {
                 $leads = $leads->map(function ($lead) {
@@ -893,7 +900,7 @@ class LeadController extends Controller
             ->where('status', 'archived')
             ->first();
 
-        [$actorId, , ] = $this->resolveActor();
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
 
         if ($statusArchived) {
             $statusArchived->update(['status' => 'active']);
@@ -945,8 +952,6 @@ class LeadController extends Controller
         $lead->update(['deleted_by' => null]);
         Cache::forget("dash_counts:{$tenantId}");
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
-
-        [, $actorRole, $actorName] = $this->resolveActor();
 
         try {
             app(\App\Services\DealActivityService::class)->record(

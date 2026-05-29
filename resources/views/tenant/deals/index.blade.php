@@ -921,7 +921,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             const urlParams   = new URLSearchParams(window.location.search);
             const preStatus   = urlParams.get('status');
             const preReseller = urlParams.get('reseller_name');
-            if (['expiring', 'expired', 'active'].includes(preStatus)) {
+            if (['expiring', 'expired', 'active', 'reassigned', 'declined'].includes(preStatus)) {
                 this.filterStatus = preStatus;
             }
             if (preReseller) {
@@ -1005,7 +1005,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         sortedFiltered() {
             const stageOrder   = _rbStageOrder;
             const commOrder    = { pending:0, locked:1, paid:2 };
-            const statusOrder  = { active:0, expiring:1, expired:2, reassigned:3, declined:3 };
+            const statusOrder  = { active:0, expiring:1, expired:2, reassigned:3, declined:4 };
 
             return [...this.filtered].sort((a, b) => {
                 let va, vb;
@@ -1063,7 +1063,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             }
         },
 
-        leadsInStage(stage) { return this.leads.filter(l => l.stage === stage); },
+        leadsInStage(stage) { return this.filtered.filter(l => l.stage === stage); },
 
         totalValue() {
             const t = Math.round(this.filtered.reduce((s, l) => s + (Number(l.deal_value) || 0), 0));

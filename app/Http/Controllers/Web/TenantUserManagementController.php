@@ -344,6 +344,7 @@ class TenantUserManagementController extends Controller
         ]);
 
         $this->permissionService->updateManagerPermissions($membership, $incoming['permissions']);
+        Cache::forget("tm_role:{$userId}:{$tenantId}");
 
         return back()->with('success', 'Permissions updated successfully.');
     }
@@ -368,6 +369,7 @@ class TenantUserManagementController extends Controller
         $this->permissionService->updateManagerPermissions($membership, [
             'manage_billing_and_subscription' => $enable,
         ]);
+        Cache::forget("tm_role:{$userId}:{$tenantId}");
 
         $label = $enable ? 'enabled' : 'disabled';
         return back()->with('success', "Billing access {$label} for this manager.");
@@ -401,6 +403,7 @@ class TenantUserManagementController extends Controller
         Cache::forget("tenant_membership:{$userId}:{$tenantId}");
         Cache::forget("nav_role:{$tenantId}:{$userId}");
         Cache::forget("tenant_user_primary_tenant:{$userId}");
+        Cache::forget("tm_role:{$userId}:{$tenantId}");
 
         $userName = $membership->tenantUser?->first_name
             ? trim($membership->tenantUser->first_name . ' ' . ($membership->tenantUser->last_name ?? ''))
@@ -487,6 +490,7 @@ class TenantUserManagementController extends Controller
         Cache::forget("tenant_membership:{$userId}:{$tenantId}");
         Cache::forget("nav_role:{$tenantId}:{$userId}");
         Cache::forget("tenant_user_primary_tenant:{$userId}");
+        Cache::forget("tm_role:{$userId}:{$tenantId}");
 
         $removedUser  = $membership->tenantUser;
         $removedEmail = $removedUser?->email ?? 'A team member';

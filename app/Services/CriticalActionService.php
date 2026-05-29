@@ -647,9 +647,13 @@ class CriticalActionService
             ->where('status', 'expired')
             ->where('updated_at', '>', now()->subDays(7))
             ->whereNull('deleted_at')
+            ->where(fn($q) =>
+                $q->whereNotIn('stage', ['signed', 'paid'])
+                  ->orWhere('commission_status', '!=', 'pending')
+            )
             ->select('id', 'name', 'reseller_name', 'updated_at')
             ->orderByDesc('updated_at')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
         return $rows->map(fn($r) => $this->make([
