@@ -206,6 +206,31 @@ class LeadController extends Controller
             }
         }
 
+        // Strip reseller_name from API response for callers without view_referrers permission.
+        // The Blade layer also gates the UI, but server-side stripping prevents DevTools leakage.
+        if (Auth::guard('tenant')->check() && $tenantId) {
+            $callerUid  = Auth::guard('tenant')->id();
+            $membership = \App\Models\TenantMembership::where('tenant_user_id', $callerUid)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->first();
+
+            $canViewReferrers = !$membership
+                || in_array($membership->role, ['owner', 'admin'])
+                || app(\App\Services\PermissionService::class)->can($membership, 'view_referrers');
+
+            if (!$canViewReferrers) {
+                $leads = $leads->map(function ($lead) {
+                    if ($lead instanceof Lead) {
+                        $lead->reseller_name = null;
+                    } else {
+                        $lead->reseller_name = null;
+                    }
+                    return $lead;
+                });
+            }
+        }
+
         if (isset($paginated)) {
             return response()->json([
                 'data'      => $leads->values(),
