@@ -227,7 +227,7 @@ class LeadController extends Controller
             \Log::error('LeadController::store failed: ' . $e->getMessage(), [
                 'file' => $e->getFile(), 'line' => $e->getLine(),
             ]);
-            return response()->json(['message' => $e->getMessage(), 'error_detail' => $e->getFile().':'.$e->getLine()], 500);
+            return response()->json(['message' => 'An unexpected error occurred. Please try again.'], 500);
         }
     }
 
@@ -755,6 +755,7 @@ class LeadController extends Controller
         $lead->save();
         $lead->delete();
         Cache::forget("dash_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
@@ -1022,7 +1023,7 @@ class LeadController extends Controller
 
         $affectedLeads = Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
-            ->select('id', 'name', 'reseller_name', 'reseller_id')
+            ->select('id', 'name', 'reseller_name')
             ->get();
 
         $count = $affectedLeads->count();
@@ -1037,14 +1038,21 @@ class LeadController extends Controller
             'deleted_by' => $actorName,
         ]);
 
-        // Notify each unique Referrer who had deals archived
-        $byReseller = $affectedLeads->whereNotNull('reseller_name')->groupBy('reseller_name');
+        Cache::forget("dash_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+
+        // Notify each unique Referrer who had deals archived — batch Reseller lookup to avoid N+1
+        $byReseller = $affectedLeads->whereNotNull('reseller_name')->groupBy(fn($l) => strtolower(trim($l->reseller_name)));
+        $uniqueLowerNames = $byReseller->keys()->map(fn($n) => strtolower($n))->all();
+        $resellerMap = \App\Models\Reseller::where('tenant_id', $tenantId)
+            ->whereIn(DB::raw('LOWER(name)'), $uniqueLowerNames)
+            ->whereIn('status', ['active', 'nda_signed'])
+            ->get()
+            ->keyBy(fn($r) => strtolower($r->name));
+
         foreach ($byReseller as $resellerName => $deals) {
             try {
-                $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
-                    ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
-                    ->whereIn('status', ['active', 'nda_signed'])
-                    ->first();
+                $reseller = $resellerMap[strtolower($resellerName)] ?? null;
                 if (!$reseller) continue;
                 $n = $deals->count();
                 app(NotificationDispatchService::class)->dispatchToReseller(

@@ -20,6 +20,7 @@ class HandleDealDeclined implements ShouldQueue
     {
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
+        $skipInvited = false;
 
         if (!$email || !$resellerId) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
@@ -28,54 +29,57 @@ class HandleDealDeclined implements ShouldQueue
             $email      = $email      ?? $reseller?->email;
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
 
-            if ($reseller && $reseller->status === 'invited') return;
+            if ($reseller && $reseller->status === 'invited') {
+                $skipInvited = true;
+            }
         }
-
-        if (!$email) return;
 
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
         $dispatcher = app(NotificationDispatchService::class);
 
-        EmailLogger::send(
-            mailable: new ResellerDealDeclined(
-                resellerName:   $event->resellerName,
-                resellerEmail:  $email,
-                tenantName:     $tenantName,
-                dealName:       $event->leadName,
-                stage:          $event->stage,
-                dealValue:      $event->dealValue,
-                declinedByName: $event->declinedByName ?? 'Admin',
-                dashboardUrl:   url("/reseller/{$event->tenantId}/deals"),
-            ),
-            recipientEmail: $email,
-            recipientType:  'reseller',
-            emailKey:       'deal_declined.' . $event->leadId,
-            subject:        "Deal update — {$event->leadName} has been declined",
-            recipientId:    $resellerId,
-            tenantId:       $event->tenantId,
-            dailyDedup:     true,
-        );
+        // Email + Referrer in-app: only if reseller is active and has an email
+        if (!$skipInvited && $email) {
+            EmailLogger::send(
+                mailable: new ResellerDealDeclined(
+                    resellerName:   $event->resellerName,
+                    resellerEmail:  $email,
+                    tenantName:     $tenantName,
+                    dealName:       $event->leadName,
+                    stage:          $event->stage,
+                    dealValue:      $event->dealValue,
+                    declinedByName: $event->declinedByName ?? 'Admin',
+                    dashboardUrl:   url("/reseller/{$event->tenantId}/deals"),
+                ),
+                recipientEmail: $email,
+                recipientType:  'reseller',
+                emailKey:       'deal_declined.' . $event->leadId,
+                subject:        "Deal update — {$event->leadName} has been declined",
+                recipientId:    $resellerId,
+                tenantId:       $event->tenantId,
+                dailyDedup:     true,
+            );
 
-        // In-app: Referrer
-        if ($resellerId) {
-            try {
-                $dispatcher->dispatchToReseller(
-                    resellerId:   $resellerId,
-                    tenantId:     $event->tenantId,
-                    category:     'deal_pipeline',
-                    priority:     'high',
-                    title:        "Deal declined: {$event->leadName}",
-                    body:         "\"{$event->leadName}\" has been declined by " . ($event->declinedByName ?? 'Admin') . '.',
-                    actionUrl:    url("/reseller/{$event->tenantId}/deals"),
-                    actionLabel:  'View Deals',
-                    dedupeSuffix: "{$event->leadId}:declined",
-                );
-            } catch (\Throwable $e) {
-                Log::warning('[HandleDealDeclined] Referrer in-app failed', ['error' => $e->getMessage()]);
+            // In-app: Referrer
+            if ($resellerId) {
+                try {
+                    $dispatcher->dispatchToReseller(
+                        resellerId:   $resellerId,
+                        tenantId:     $event->tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'high',
+                        title:        "Deal declined: {$event->leadName}",
+                        body:         "\"{$event->leadName}\" has been declined by " . ($event->declinedByName ?? 'Admin') . '.',
+                        actionUrl:    url("/reseller/{$event->tenantId}/deals"),
+                        actionLabel:  'View Deals',
+                        dedupeSuffix: "{$event->leadId}:declined",
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('[HandleDealDeclined] Referrer in-app failed', ['error' => $e->getMessage()]);
+                }
             }
         }
 
-        // In-app: Tenant Admins
+        // In-app: Tenant Admins — always fires regardless of reseller email/status
         try {
             $dispatcher->dispatchToTenantAdmins(
                 tenantId:     $event->tenantId,

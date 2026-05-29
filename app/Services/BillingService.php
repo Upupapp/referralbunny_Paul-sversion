@@ -134,8 +134,9 @@ class BillingService
 
     public function cancel(Subscription $subscription, string $reason, ?string $userId): void
     {
+        $oldStatus = $subscription->status;
         $subscription->update(['status' => 'canceled', 'canceled_at' => now()]);
-        $this->recordHistory($subscription, $subscription->getOriginal('status'), 'canceled', $userId, $reason);
+        $this->recordHistory($subscription, $oldStatus, 'canceled', $userId, $reason);
         $this->syncMetrics($subscription->tenant, $subscription);
 
         $this->notifications->send(
@@ -274,7 +275,7 @@ class BillingService
             'new_plan_id' => $subscription->plan_id,
             'old_status'  => $oldStatus,
             'new_status'  => $newStatus,
-            'changed_by'  => is_numeric($userId) ? (int) $userId : null,
+            'changed_by'  => $userId ?: null,
             'reason'      => $reason,
         ]);
     }

@@ -219,7 +219,7 @@
         <svg class="w-10 h-10 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
         <p class="text-sm font-semibold text-gray-700">Couldn't load deals</p>
         <p class="text-xs text-gray-400">There was a problem fetching your pipeline. Please refresh or try again.</p>
-        <button @click="initError = false; loading = true; await init()" class="mt-2 btn btn-sm btn-outline">Retry</button>
+        <button @click="initError = false; loading = true; init()" class="mt-2 btn btn-sm btn-outline">Retry</button>
     </div>
 
     {{-- Table view --}}
@@ -1012,7 +1012,7 @@ function lguBaseCost(dv) {
 
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
-        leads: [], filtered: [], loading: true, initError: false, totalDeals: 0,
+        leads: [], filtered: [], loading: true, initError: false, totalDeals: 0, _watchersInited: false,
         canViewReferrers,
         showLocation,
         viewMode: 'table',
@@ -1039,23 +1039,33 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         stages: _rbStages,
 
         async init() {
-            // Drive the standalone floating delete bar via $watch
-            this.$watch('selectMode', (val) => {
-                const bar = document.getElementById('rb-del-bar');
-                if (bar) bar.style.display = val ? 'flex' : 'none';
-                if (!val) rbDelBarCount(0);
-            });
+            // Register watchers exactly once — guard prevents duplicates on Retry
+            if (!this._watchersInited) {
+                this._watchersInited = true;
 
-            // Pre-filter from URL params (e.g. from expiry alert notifications)
-            const urlParams    = new URLSearchParams(window.location.search);
-            const preStatus    = urlParams.get('status');
-            const preReseller  = urlParams.get('reseller_name');
-            if (['expiring', 'expired', 'active'].includes(preStatus)) {
-                this.filterStatus = preStatus;
+                this.$watch('selectMode', (val) => {
+                    const bar = document.getElementById('rb-del-bar');
+                    if (bar) bar.style.display = val ? 'flex' : 'none';
+                    if (!val) rbDelBarCount(0);
+                });
+
+                // Load archive list when user switches to that tab
+                this.$watch('activeTab', (val) => {
+                    if (val === 'archive' && this.loadingArchive) this.loadArchivedLeads();
+                });
+
+                // Pre-filter from URL params (e.g. from expiry alert notifications) — only on first load
+                const urlParams   = new URLSearchParams(window.location.search);
+                const preStatus   = urlParams.get('status');
+                const preReseller = urlParams.get('reseller_name');
+                if (['expiring', 'expired', 'active'].includes(preStatus)) {
+                    this.filterStatus = preStatus;
+                }
+                if (preReseller) {
+                    this.filterReseller = decodeURIComponent(preReseller);
+                }
             }
-            if (preReseller) {
-                this.filterReseller = decodeURIComponent(preReseller);
-            }
+
             try {
                 const res  = await fetch(`/api/leads?tenant_id=${tenantId}&include_partners=1`, {
                     credentials: 'same-origin',
@@ -1071,11 +1081,6 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             }
             this.applyFilters();
             this.loading = false;
-
-            // Load archive list when user switches to that tab
-            this.$watch('activeTab', (val) => {
-                if (val === 'archive' && this.loadingArchive) this.loadArchivedLeads();
-            });
         },
 
         async loadArchivedLeads() {
@@ -1414,6 +1419,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         // All values remain editable — these are smart defaults, not locked rules.
 
         syncFromDealValue() {
+            if (!this.showLocation) return;
             const dv = Number(this.form.deal_value) || 0;
             if (dv <= 0) return;
             const bc = lguBaseCost(dv);
