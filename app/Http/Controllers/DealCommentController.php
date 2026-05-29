@@ -105,7 +105,7 @@ class DealCommentController extends Controller
             $isPrimary = strcasecmp((string) ($actor->name ?? ''), (string) ($deal->reseller_name ?? '')) === 0;
             $isCoReferrer = !$isPrimary && DB::table('commission_splits')
                 ->where('lead_id', $dealId)
-                ->where('reseller_id', $actorId)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($actor->name ?? '')])
                 ->exists();
             if (!$isPrimary && !$isCoReferrer) {
                 return response()->json(['error' => 'You are not assigned to this deal.'], 403);
