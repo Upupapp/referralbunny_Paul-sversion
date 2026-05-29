@@ -1053,17 +1053,18 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 this.$watch('activeTab', (val) => {
                     if (val === 'archive' && this.loadingArchive) this.loadArchivedLeads();
                 });
+            }
 
-                // Pre-filter from URL params (e.g. from expiry alert notifications) — only on first load
-                const urlParams   = new URLSearchParams(window.location.search);
-                const preStatus   = urlParams.get('status');
-                const preReseller = urlParams.get('reseller_name');
-                if (['expiring', 'expired', 'active'].includes(preStatus)) {
-                    this.filterStatus = preStatus;
-                }
-                if (preReseller) {
-                    this.filterReseller = decodeURIComponent(preReseller);
-                }
+            // Pre-filter from URL params — runs every init() call (idempotent, safe on Retry)
+            // This ensures notification deep-links like ?status=expired still work after a retry
+            const urlParams   = new URLSearchParams(window.location.search);
+            const preStatus   = urlParams.get('status');
+            const preReseller = urlParams.get('reseller_name');
+            if (['expiring', 'expired', 'active'].includes(preStatus)) {
+                this.filterStatus = preStatus;
+            }
+            if (preReseller) {
+                this.filterReseller = decodeURIComponent(preReseller);
             }
 
             try {

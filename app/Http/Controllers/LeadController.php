@@ -755,7 +755,7 @@ class LeadController extends Controller
         $lead->save();
         $lead->delete();
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
@@ -865,6 +865,8 @@ class LeadController extends Controller
 
         if ($statusArchived) {
             $statusArchived->update(['status' => 'active']);
+            Cache::forget("dash_counts:{$tenantId}");
+            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
             // Log activity
             try {
@@ -910,6 +912,7 @@ class LeadController extends Controller
         $lead->restore();
         $lead->update(['deleted_by' => null]);
         Cache::forget("dash_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         [$actorId, $actorRole, $actorName] = $this->resolveActor();
 
@@ -992,6 +995,8 @@ class LeadController extends Controller
         $deletedId   = $lead->id;
         $leadName    = $lead->name;
         $lead->forceDelete();
+        Cache::forget("dash_counts:{$tenantId}");
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
 
         Log::info('Deal permanently deleted (force)', [
             'lead_id'    => $deletedId,
@@ -1039,11 +1044,12 @@ class LeadController extends Controller
         ]);
 
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
 
         // Notify each unique Referrer who had deals archived — batch Reseller lookup to avoid N+1
+        // groupBy keys are already lowercase+trimmed — no further strtolower needed below
         $byReseller = $affectedLeads->whereNotNull('reseller_name')->groupBy(fn($l) => strtolower(trim($l->reseller_name)));
-        $uniqueLowerNames = $byReseller->keys()->map(fn($n) => strtolower($n))->all();
+        $uniqueLowerNames = $byReseller->keys()->all();
         $resellerMap = \App\Models\Reseller::where('tenant_id', $tenantId)
             ->whereIn(DB::raw('LOWER(name)'), $uniqueLowerNames)
             ->whereIn('status', ['active', 'nda_signed'])
@@ -1052,7 +1058,7 @@ class LeadController extends Controller
 
         foreach ($byReseller as $resellerName => $deals) {
             try {
-                $reseller = $resellerMap[strtolower($resellerName)] ?? null;
+                $reseller = $resellerMap[$resellerName] ?? null;
                 if (!$reseller) continue;
                 $n = $deals->count();
                 app(NotificationDispatchService::class)->dispatchToReseller(
@@ -1079,7 +1085,7 @@ class LeadController extends Controller
                 priority:     'normal',
                 title:        $count === 1 ? "Deal archived" : "{$count} deals archived",
                 body:         $count === 1
-                    ? "\"{$affectedLeads->first()->name}\" was moved to the archive by {$actorName}."
+                    ? "\"" . ($affectedLeads->first()?->name ?? 'this deal') . "\" was moved to the archive by {$actorName}."
                     : "{$count} deals were moved to the archive by {$actorName}.",
                 actionUrl:    "/tenant/{$tenantId}/deals",
                 actionLabel:  'View Deals',

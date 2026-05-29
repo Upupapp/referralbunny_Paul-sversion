@@ -59,6 +59,20 @@ class CriticalActionService
             }
         } catch (\Throwable) {}
 
+        // 1b. Expired deals (urgent severity after commit 130c5ad) — must also trigger has_urgent
+        try {
+            $expiredCount = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'expired')
+                ->where('updated_at', '>', now()->subDays(7))
+                ->whereNull('deleted_at')
+                ->count();
+            if ($expiredCount > 0) {
+                $count    += $expiredCount;
+                $hasUrgent = true;
+            }
+        } catch (\Throwable) {}
+
         // 2. Pending archive + stage-move requests, plus clarification_requested with a referrer reply
         try {
             $count += DB::table('deal_approval_requests')
@@ -71,12 +85,13 @@ class CriticalActionService
                 ->count();
         } catch (\Throwable) {}
 
-        // 3a. Standalone pending/clarification/skipped extension requests (not batch items)
+        // 3a. Standalone pending/clarification extension requests (not batch items)
+        // 'skipped' excluded — those items are not rendered in the CA panel, so counting them here inflates the badge
         try {
             $count += DB::table('deal_assignment_extension_requests')
                 ->where('tenant_id', $tenantId)
                 ->whereNull('batch_id')
-                ->whereIn('status', ['pending_review', 'clarification_requested', 'skipped'])
+                ->whereIn('status', ['pending_review', 'clarification_requested'])
                 ->count();
         } catch (\Throwable) {}
 

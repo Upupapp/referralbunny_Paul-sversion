@@ -275,7 +275,7 @@ class BillingService
             'new_plan_id' => $subscription->plan_id,
             'old_status'  => $oldStatus,
             'new_status'  => $newStatus,
-            'changed_by'  => $userId ?: null,
+            'changed_by'  => $userId !== '' ? $userId : null,
             'reason'      => $reason,
         ]);
     }
