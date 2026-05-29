@@ -582,7 +582,7 @@ class BulkDealExtensionController extends Controller
         if (Auth::guard('reseller')->check()) {
             return [Auth::guard('reseller')->user()->id, 'referrer'];
         }
-        return ['system', 'system'];
+        return [null, 'system'];
     }
 
     private function resolveReseller(string $tenantId): ?Reseller

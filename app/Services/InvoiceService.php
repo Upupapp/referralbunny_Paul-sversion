@@ -88,7 +88,7 @@ class InvoiceService
         ]);
     }
 
-    public function waive(Invoice $invoice, string $reason, int $userId): void
+    public function waive(Invoice $invoice, string $reason, ?string $userId): void
     {
         $before = $invoice->toArray();
         $invoice->update(['status' => 'waived']);

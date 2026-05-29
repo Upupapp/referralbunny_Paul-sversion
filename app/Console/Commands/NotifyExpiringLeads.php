@@ -87,7 +87,7 @@ class NotifyExpiringLeads extends Command
                 // Look up reseller email from resellers table
                 $reseller = DB::table('resellers')
                     ->where('tenant_id', $tenantId)
-                    ->where('name', $resellerName)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($resellerName)])
                     ->whereNull('deleted_at')
                     ->select('id', 'email')
                     ->first();

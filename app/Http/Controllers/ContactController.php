@@ -124,19 +124,26 @@ class ContactController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
-        $tenantId = TenantContext::requireId();
-        DB::table('contacts')
-            ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update(array_merge($data, ['updated_at' => now()]));
+        $tenantId = TenantContext::id();
+        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
+        $q = DB::table('contacts')->where('id', $id);
+        if ($tenantId) $q->where('tenant_id', $tenantId);
+        $q->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json($this->contactWithMeta($id));
     }
 
     public function destroy(string $id): JsonResponse
     {
-        $tenantId = TenantContext::requireId();
-        DB::table('contacts')->where('id', $id)->where('tenant_id', $tenantId)->delete();
+        $tenantId = TenantContext::id();
+        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Tenant context required.');
+        }
+        $q = DB::table('contacts')->where('id', $id);
+        if ($tenantId) $q->where('tenant_id', $tenantId);
+        $q->delete();
         return response()->json(['deleted' => true]);
     }
 
@@ -144,10 +151,12 @@ class ContactController extends Controller
 
     public function forDeal(string $dealId): JsonResponse
     {
+        $tenantId = TenantContext::id();
         $contacts = DB::table('deal_contacts as dc')
             ->join('contacts as c', 'dc.contact_id', '=', 'c.id')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
             ->where('dc.deal_id', $dealId)
+            ->when($tenantId, fn($q) => $q->where('dc.tenant_id', $tenantId))
             ->select('c.*', 'o.name as org_name', 'dc.role as deal_role', 'dc.id as deal_contact_id')
             ->orderBy('c.first_name')
             ->get();
@@ -192,10 +201,12 @@ class ContactController extends Controller
 
     public function unlinkFromDeal(string $dealId, string $contactId): JsonResponse
     {
-        DB::table('deal_contacts')
+        $tenantId = TenantContext::id();
+        $q = DB::table('deal_contacts')
             ->where('deal_id', $dealId)
-            ->where('contact_id', $contactId)
-            ->delete();
+            ->where('contact_id', $contactId);
+        if ($tenantId) $q->where('tenant_id', $tenantId);
+        $q->delete();
 
         return response()->json(['unlinked' => true]);
     }

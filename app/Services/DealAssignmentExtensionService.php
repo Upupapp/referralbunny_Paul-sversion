@@ -96,7 +96,7 @@ class DealAssignmentExtensionService
     public function approve(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         int     $approvedDays,
         ?string $adminNote = null
     ): DealAssignmentExtensionRequest {
@@ -151,7 +151,7 @@ class DealAssignmentExtensionService
     public function reject(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         string  $reason
     ): DealAssignmentExtensionRequest {
         $request = $this->loadForReview($requestId, $tenantId);
@@ -176,7 +176,7 @@ class DealAssignmentExtensionService
     public function requestClarification(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         string  $note
     ): DealAssignmentExtensionRequest {
         $request = $this->loadForReview($requestId, $tenantId);

@@ -820,7 +820,7 @@ class TaskController extends Controller
             ->pluck('assigned_to_id')->unique()->filter()->values()->toArray();
 
         $assigneeNames = array_merge(
-            !empty($tuIds) ? TenantUser::whereIn('id', $tuIds)->get()->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all() : [],
+            !empty($tuIds) ? TenantUser::whereIn('id', $tuIds)->select(['id', 'first_name', 'last_name'])->get()->mapWithKeys(fn($u) => [$u->id => $u->full_name])->all() : [],
             !empty($rsIds) ? \App\Models\Reseller::whereIn('id', $rsIds)->get()->mapWithKeys(fn($r) => [$r->id => ($r->name ?: $r->email)])->all() : [],
         );
 
@@ -1002,7 +1002,7 @@ class TaskController extends Controller
         // Resolve current assignee display info
         $assigneeName = null;
         if ($task->assigned_to_id && $task->assigned_to_type === 'tenant_user') {
-            $assigneeUser = TenantUser::find($task->assigned_to_id);
+            $assigneeUser = TenantUser::where('id', $task->assigned_to_id)->select(['id', 'first_name', 'last_name'])->first();
             $assigneeName = $assigneeUser?->full_name ?? 'Unknown';
         }
 

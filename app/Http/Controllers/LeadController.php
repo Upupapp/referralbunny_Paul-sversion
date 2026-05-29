@@ -1078,7 +1078,7 @@ class LeadController extends Controller
                 $lead,
                 'Default amount confirmed',
                 ($actorName ?? 'Referrer') . ' confirmed the ₱4,000,000 default amount on "' . $lead->name . '".',
-                $lead->id . ':default_confirmed:' . now()->format('YmdH'),
+                $lead->id . ':default_confirmed:referrer',
             );
             try {
                 app(NotificationDispatchService::class)->dispatchToTenantAdmins(

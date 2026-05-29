@@ -177,7 +177,7 @@ class BulkDealExtensionService
     public function approveItem(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         int     $approvedDays,
         ?string $reviewerNote = null
     ): DealAssignmentExtensionRequest {
@@ -263,7 +263,7 @@ class BulkDealExtensionService
     public function declineItem(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         string  $reviewerNote
     ): DealAssignmentExtensionRequest {
         if (empty(trim($reviewerNote))) {
@@ -319,7 +319,7 @@ class BulkDealExtensionService
     public function skipItem(
         string  $requestId,
         string  $tenantId,
-        string  $reviewerUserId,
+        ?string $reviewerUserId,
         ?string $reviewerNote = null
     ): DealAssignmentExtensionRequest {
         $completeNotifyData = null;

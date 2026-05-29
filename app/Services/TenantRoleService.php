@@ -207,7 +207,7 @@ class TenantRoleService
                 'priority'          => 'normal',
                 'title'             => 'Referrer role added to your account',
                 'message'           => "Your account now includes the Referrer role in addition to your {$roleLabel} access.{$dealPart}",
-                'deduplication_key' => "reseller_referrer:{$tenantUserId}:role_added",
+                'deduplication_key' => "reseller_referrer:{$tenantId}:{$tenantUserId}:role_added:" . now()->format('Ymd'),
                 'is_read'           => false,
                 'is_dismissed'      => false,
                 'sent_at'           => now(),

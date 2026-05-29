@@ -117,7 +117,7 @@ class BillingService
 
     // ── Suspend ───────────────────────────────────────────────
 
-    public function suspend(Subscription $subscription, string $reason, int $userId): void
+    public function suspend(Subscription $subscription, string $reason, ?string $userId): void
     {
         $this->moveTo($subscription, 'suspended', $reason, $userId);
         $this->notifications->send(
@@ -132,7 +132,7 @@ class BillingService
 
     // ── Cancel ────────────────────────────────────────────────
 
-    public function cancel(Subscription $subscription, string $reason, int $userId): void
+    public function cancel(Subscription $subscription, string $reason, ?string $userId): void
     {
         $subscription->update(['status' => 'canceled', 'canceled_at' => now()]);
         $this->recordHistory($subscription, $subscription->getOriginal('status'), 'canceled', $userId, $reason);
@@ -149,7 +149,7 @@ class BillingService
 
     // ── Issue Credit ──────────────────────────────────────────
 
-    public function issueCredit(string $tenantId, float $amount, string $reason, int $userId): Credit
+    public function issueCredit(string $tenantId, float $amount, string $reason, ?string $userId): Credit
     {
         $credit = Credit::create([
             'tenant_id' => $tenantId,
@@ -182,7 +182,7 @@ class BillingService
 
     // ── Issue Refund ──────────────────────────────────────────
 
-    public function requestRefund(Payment $payment, float $amount, string $reason, int $userId): Refund
+    public function requestRefund(Payment $payment, float $amount, string $reason, ?string $userId): Refund
     {
         $refund = Refund::create([
             'payment_id'  => $payment->id,
