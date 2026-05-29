@@ -1025,7 +1025,7 @@ class BulkDealExtensionService
                         dealSummaries:  $dealSummaries,
                     ),
                     recipientEmail: $reseller->email,
-                    recipientType:  'referrer',
+                    recipientType:  'reseller',
                     emailKey:       $emailKey,
                     subject:        $approved > 0 && $declined === 0
                         ? "Your bulk extension request was approved — {$batch->batch_reference}"

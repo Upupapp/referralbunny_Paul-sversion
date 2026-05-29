@@ -40,8 +40,9 @@ class EmailDigestService
         string  $topic,
         string  $topicLabel,
         array   $item,
-        ?string $tenantId    = null,
-        int     $windowHours = 1,
+        ?string $tenantId      = null,
+        int     $windowHours   = 1,
+        string  $recipientType = 'reseller',
     ): void {
         $email = strtolower(trim($email));
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -66,6 +67,7 @@ class EmailDigestService
                 'tenant_id'      => $tenantId,
                 'recipient_email'=> $email,
                 'recipient_name' => $name,
+                'recipient_type' => $recipientType,
                 'topic'          => $topic,
                 'topic_label'    => $topicLabel,
                 'items'          => [$item],
@@ -90,7 +92,7 @@ class EmailDigestService
                 EmailLogger::send(
                     mailable:       new EmailDigestMail($digest),
                     recipientEmail: $digest->recipient_email,
-                    recipientType:  'reseller',
+                    recipientType:  $digest->recipient_type ?? 'reseller',
                     emailKey:       'email_digest.' . $digest->id,
                     subject:        $digest->topic_label ?? 'Your activity summary',
                     tenantId:       $digest->tenant_id,

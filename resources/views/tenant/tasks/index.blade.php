@@ -167,9 +167,16 @@
             @if(!$isAdmin) Only submissions with tasks assigned to you are shown. @endif
         </p>
 
+        @if(!empty($responsesColumns['is_capped']))
+        <div class="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Showing {{ $responsesColumns['showing_count'] }} of {{ $responsesColumns['total_count'] }} submissions. Use filters to narrow results.
+        </div>
+        @endif
+
         {{-- Responses Kanban --}}
         <div class="flex gap-4 overflow-x-auto pb-4 items-start" style="min-height:360px; scrollbar-width:thin">
-            @foreach($responsesColumns as $rcol)
+            @foreach($responsesColumns['groups'] as $rcol)
             @php
                 $rDotColor = match($rcol['key']) {
                     'new'       => '#7B61FF',

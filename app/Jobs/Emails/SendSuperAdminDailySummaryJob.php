@@ -17,6 +17,7 @@ class SendSuperAdminDailySummaryJob implements ShouldQueue
 
     public int $tries   = 3;
     public int $backoff = 30;
+    public int $timeout = 120;
 
     public function handle(): void
     {
@@ -31,7 +32,7 @@ class SendSuperAdminDailySummaryJob implements ShouldQueue
         ];
 
         // Send to all super admins
-        $superAdmins = DB::table('users')->get();
+        $superAdmins = DB::table('users')->select('id', 'name', 'email')->get();
         foreach ($superAdmins as $admin) {
             $emailKey = "super_admin_daily.{$admin->email}";
             if (EmailLogger::sentToday($emailKey)) continue;

@@ -875,7 +875,9 @@ class TaskController extends Controller
             $query->whereIn('id', $myTaskSourceIds);
         }
 
+        $totalCount  = (clone $query)->count();
         $submissions = $query->limit(150)->get();
+        $isCapped    = $totalCount > 150;
 
         $groups = ['new' => [], 'processing' => [], 'completed' => []];
 
@@ -905,9 +907,14 @@ class TaskController extends Controller
         }
 
         return [
-            ['key' => 'new',        'label' => 'New Requests',     'items' => $groups['new'],        'count' => count($groups['new'])],
-            ['key' => 'processing', 'label' => 'In Progress',       'items' => $groups['processing'], 'count' => count($groups['processing'])],
-            ['key' => 'completed',  'label' => 'Resolved',          'items' => $groups['completed'],  'count' => count($groups['completed'])],
+            'groups' => [
+                ['key' => 'new',        'label' => 'New Requests', 'items' => $groups['new'],        'count' => count($groups['new'])],
+                ['key' => 'processing', 'label' => 'In Progress',  'items' => $groups['processing'], 'count' => count($groups['processing'])],
+                ['key' => 'completed',  'label' => 'Resolved',     'items' => $groups['completed'],  'count' => count($groups['completed'])],
+            ],
+            'total_count'   => $totalCount,
+            'showing_count' => $submissions->count(),
+            'is_capped'     => $isCapped,
         ];
     }
 

@@ -1147,7 +1147,7 @@ class ResellerDealController extends Controller
                 'invited_by_id'   => (string) $reseller->id,
             ]);
 
-            $partnerInviteKey = 'partner_invite.' . $newPartner->id . '.' . now()->format('Ymd');
+            $partnerInviteKey = 'partner_invite.' . $newPartner->id;
             $inviteSent = EmailLogger::send(
                 mailable:      new \App\Mail\PartnerInviteMail(
                     recipientEmail:   $partnerEmail,
@@ -1162,6 +1162,7 @@ class ResellerDealController extends Controller
                 subject:        "You're invited as a Partner — {$tenant->name}",
                 recipientId:    (string) $newPartner->id,
                 tenantId:       $tenantId,
+                dailyDedup:     true,
             );
             if (!$inviteSent) {
                 Log::warning('PartnerInviteMail queue failed in addPartnerSplit', [
@@ -1393,7 +1394,7 @@ class ResellerDealController extends Controller
                 ]);
 
                 $setupUrl       = url("/reseller/setup?token={$inviteToken}");
-                $inviteEmailKey = 'reseller_invite.' . $newReseller->id . '.' . now()->format('Ymd');
+                $inviteEmailKey = 'reseller_invite.' . $newReseller->id;
                 $sent = EmailLogger::send(
                     mailable:      new ResellerInvitation(
                         resellerName:  $newReseller->name,
@@ -1410,6 +1411,7 @@ class ResellerDealController extends Controller
                     subject:        "You've been invited as a referrer for " . ($tenant?->name ?? 'ReferralBunny'),
                     recipientId:    (string) $newReseller->id,
                     tenantId:       $tenantId,
+                    dailyDedup:     true,
                 );
                 if (!$sent) {
                     Log::warning('addReferrer: invite email failed to queue', [
@@ -1572,7 +1574,7 @@ class ResellerDealController extends Controller
         }
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($reviewerUser?->id ?? '')); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $reviewerUser !== null ? (string) $reviewerUser->id : null); } catch (\Throwable) {}
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
         if ($approval->type === 'deal_stage_move' && $lead && $lead->tenant_id === 'lgu-ids') {
@@ -1721,7 +1723,7 @@ class ResellerDealController extends Controller
         }
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($reviewerUser?->id ?? '')); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $reviewerUser !== null ? (string) $reviewerUser->id : null); } catch (\Throwable) {}
 
         // Notify after commit — never inside transaction
         if ($approval->requested_by_type === 'reseller') {

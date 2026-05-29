@@ -382,7 +382,8 @@ class ContactRoleAssignmentController extends Controller
     {
         if (Auth::guard('tenant')->check()) {
             $user = Auth::guard('tenant')->user();
-            return [$user->id, 'manager'];
+            $role = TenantContext::role() ?? 'manager';
+            return [$user->id, $role];
         }
         if (Auth::guard('web')->check()) {
             $user = Auth::guard('web')->user();

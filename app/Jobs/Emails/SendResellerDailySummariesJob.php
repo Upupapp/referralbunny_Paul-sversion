@@ -25,6 +25,7 @@ class SendResellerDailySummariesJob implements ShouldQueue
             ->whereNotNull('email')
             ->whereNotNull('password')
             ->whereIn('status', ['active', 'nda_signed'])
+            ->whereNull('deleted_at')
             ->get();
 
         // Batch-resolve tenant names to avoid one query per reseller

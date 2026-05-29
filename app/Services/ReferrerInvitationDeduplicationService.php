@@ -188,7 +188,7 @@ class ReferrerInvitationDeduplicationService
         $subject    = $dealCount > 1
             ? "You're invited as a Referrer for {$tenantName} — {$dealCount} deal(s) assigned"
             : "You've been invited as a referrer for {$tenantName}";
-        $emailKey   = 'reseller_invite.' . $reseller->id . '.' . now()->format('Ymd');
+        $emailKey   = 'reseller_invite.' . $reseller->id;
 
         $sent = EmailLogger::send(
             mailable:      new ResellerInvitation(
@@ -205,6 +205,7 @@ class ReferrerInvitationDeduplicationService
             subject:        $subject,
             recipientId:    (string) $reseller->id,
             tenantId:       $reseller->tenant_id,
+            dailyDedup:     true,
         );
 
         if ($sent) {

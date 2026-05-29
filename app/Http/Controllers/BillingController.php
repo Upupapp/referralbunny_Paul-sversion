@@ -159,7 +159,8 @@ class BillingController extends Controller
                     ),
                     recipientEmail: $tenant->admin_email,
                     recipientType:  'tenant_admin',
-                    emailKey:       'access_extended.' . $tenant->id . '.' . now()->format('Ymd'),
+                    emailKey:       'access_extended.' . $tenant->id,
+                    dailyDedup:     true,
                     subject:        "Your {$tenant->name} access has been extended",
                     tenantId:       $tenant->id,
                 );

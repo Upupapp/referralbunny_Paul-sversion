@@ -265,7 +265,7 @@ class TenantDealLifecycleController extends Controller
 
         $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorUserId ?? '')); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorUserId !== null ? (string) $actorUserId : null); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.archive-requests', $tenantId)
@@ -380,7 +380,7 @@ class TenantDealLifecycleController extends Controller
 
         $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorUserId ?? '')); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorUserId !== null ? (string) $actorUserId : null); } catch (\Throwable) {}
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
     }
@@ -419,7 +419,7 @@ class TenantDealLifecycleController extends Controller
         }
 
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string)($actorId ?? '')); } catch (\Throwable) {}
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorId !== null ? (string) $actorId : null); } catch (\Throwable) {}
 
         return redirect()
             ->route('tenant.deals.deleted-archived', $tenantId)

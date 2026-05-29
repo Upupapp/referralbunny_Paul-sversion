@@ -18,7 +18,7 @@ class EmailDigest extends Model
     }
 
     protected $fillable = [
-        'id', 'tenant_id', 'recipient_email', 'recipient_name',
+        'id', 'tenant_id', 'recipient_email', 'recipient_name', 'recipient_type',
         'topic', 'topic_label', 'items', 'window_hours',
         'scheduled_at', 'sent_at', 'failed_at', 'retry_count',
     ];

@@ -172,18 +172,19 @@ class NotificationService
                 // Notifications of the same category for the same admin are batched
                 // into a single digest email (sent within 1 hour).
                 app(\App\Services\EmailDigestService::class)->queue(
-                    email:      $admin->email,
-                    name:       $admin->name ?? 'Admin',
-                    topic:      'platform_' . ($notification->category ?? 'general'),
-                    topicLabel: ucwords(str_replace('_', ' ', $notification->category ?? 'Platform Update')),
-                    item:       [
+                    email:         $admin->email,
+                    name:          $admin->name ?? 'Admin',
+                    topic:         'platform_' . ($notification->category ?? 'general'),
+                    topicLabel:    ucwords(str_replace('_', ' ', $notification->category ?? 'Platform Update')),
+                    item:          [
                         'title'      => $notification->message,
                         'body'       => $notification->message,
                         'priority'   => $notification->priority,
                         'action_url' => $notification->action_url,
                     ],
-                    tenantId:   $notification->tenant_id,
-                    windowHours: $notification->priority === 'critical' ? 0 : 1,
+                    tenantId:      $notification->tenant_id,
+                    windowHours:   $notification->priority === 'critical' ? 0 : 1,
+                    recipientType: 'super_admin',
                 );
             }
         } catch (\Throwable $e) {

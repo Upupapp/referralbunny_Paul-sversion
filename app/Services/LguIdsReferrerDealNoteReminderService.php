@@ -79,7 +79,7 @@ class LguIdsReferrerDealNoteReminderService
 
     public function getLguIdsTenant(): ?Tenant
     {
-        return Tenant::where('slug', 'lgu-ids')->first();
+        return Tenant::where('id', 'lgu-ids')->first();
     }
 
     // ── Referrer eligibility ───────────────────────────────────────
