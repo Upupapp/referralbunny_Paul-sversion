@@ -1065,7 +1065,7 @@ class BulkDealExtensionService
         return $request;
     }
 
-    private function auditDeal(string $tenantId, string $dealId, string $requestId, string $event, string $actorId, array $extra = []): void
+    private function auditDeal(string $tenantId, string $dealId, string $requestId, string $event, ?string $actorId, array $extra = []): void
     {
         try {
             // activity_logs.user_id is bigint (FK to users); reseller IDs are UUIDs.

@@ -273,7 +273,7 @@ class TaskController extends Controller
                 if ($assignee->email) {
                     EmailLogger::send(
                         mailable:       new ManualTaskAssignedMail(
-                            assigneeName: $assignee->name,
+                            assigneeName: $assignee->full_name,
                             senderName:   $actorName,
                             taskTitle:    $task->title,
                             taskPriority: $task->priority,
