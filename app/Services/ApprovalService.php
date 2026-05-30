@@ -47,6 +47,10 @@ class ApprovalService
 
     public function approve(ApprovalRequest $approval, int $approvedBy, ?string $notes = null): void
     {
+        if (!$approval->isPending()) {
+            throw new \LogicException("Approval request #{$approval->id} is not pending (status: {$approval->status}).");
+        }
+
         DB::transaction(function () use ($approval, $approvedBy, $notes) {
             $approval->update([
                 'status'         => 'approved',
@@ -72,6 +76,10 @@ class ApprovalService
 
     public function reject(ApprovalRequest $approval, int $rejectedBy, ?string $notes = null): void
     {
+        if (!$approval->isPending()) {
+            throw new \LogicException("Approval request #{$approval->id} is not pending (status: {$approval->status}).");
+        }
+
         DB::transaction(function () use ($approval, $rejectedBy, $notes) {
             $approval->update([
                 'status'         => 'rejected',
@@ -106,7 +114,7 @@ class ApprovalService
 
     public function getHistory(): Collection
     {
-        return ApprovalRequest::with(['requestedBy', 'approvedBy'])
+        return ApprovalRequest::with(['requestedBy', 'approvedBy', 'rejectedBy'])
             ->whereIn('status', ['approved', 'rejected'])
             ->orderByDesc(DB::raw('COALESCE(approved_at, rejected_at)'))
             ->limit(100)

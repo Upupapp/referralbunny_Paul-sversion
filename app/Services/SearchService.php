@@ -98,7 +98,8 @@ class SearchService
         if (!empty($terms)) {
             $dbQuery->where(function ($q) use ($terms) {
                 foreach ($terms as $term) {
-                    $q->orWhereRaw('searchable_text ILIKE ?', ['%' . $term . '%']);
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+                    $q->orWhereRaw('searchable_text ILIKE ?', ['%' . $escaped . '%']);
                 }
             });
         }
@@ -133,7 +134,7 @@ class SearchService
             'query'      => $query,
             'command'    => $command,
             'scoped'     => $scoped,
-            'has_index'  => \Illuminate\Support\Facades\Cache::remember('search_has_index', 60, fn() => DB::table('search_index')->count() > 0),
+            'has_index'  => \Illuminate\Support\Facades\Cache::remember('search_has_index', 300, fn() => DB::table('search_index')->exists()),
         ];
     }
 

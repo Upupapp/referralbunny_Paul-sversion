@@ -128,7 +128,7 @@ class LguIdsImportController extends Controller
     {
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
-        $batch  = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch  = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         $rows    = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -250,6 +250,7 @@ class LguIdsImportController extends Controller
             ? \App\Models\Reseller::where('id', $approverId)->value('email')
             : null;
 
+        $approvedCount = 0;
         foreach ($rows as $row) {
             // Resellers may only approve their own rows
             if ($resellerEmail !== null) {
@@ -259,9 +260,10 @@ class LguIdsImportController extends Controller
                 }
             }
             $this->service->approveRow($row, $action, $approverId);
+            $approvedCount++;
         }
 
-        return response()->json(['success' => true, 'updated' => $rows->count()]);
+        return response()->json(['success' => true, 'updated' => $approvedCount]);
     }
 
     // ── Execute import ────────────────────────────────────────────
@@ -271,7 +273,7 @@ class LguIdsImportController extends Controller
         $this->guardCheck();
         $this->resolveTenant($tenantId);
 
-        $batch = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         // Only allow execution from 'previewed' state
         if ($batch->status !== 'previewed') {
@@ -354,7 +356,7 @@ class LguIdsImportController extends Controller
     {
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
-        $batch  = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch  = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         $rows = ImportBatchRow::where('import_batch_id', $batchId)
             ->orderBy('row_number')
@@ -374,7 +376,7 @@ class LguIdsImportController extends Controller
         $this->guardCheck();
         $this->resolveTenant($tenantId);
 
-        $batch    = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch    = $this->batchQuery($tenantId)->findOrFail($batchId);
         $csv      = $this->service->generateFailedRowsCsv($batch);
         $filename = 'lgu-ids-failed-rows-' . $batchId . '-' . date('Y-m-d') . '.csv';
 

@@ -740,7 +740,7 @@ class LeadController extends Controller
         }
 
         // Fire commission status event AFTER the DB write succeeds
-        $newCommissionStatus = $lead->fresh()->commission_status;
+        $newCommissionStatus = $lead->commission_status;
         if (isset($data['commission_status']) && $newCommissionStatus !== $oldCommissionStatus) {
             CommissionStatusChanged::dispatch(
                 leadId:       $lead->id,

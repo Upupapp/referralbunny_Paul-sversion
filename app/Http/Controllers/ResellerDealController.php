@@ -164,8 +164,8 @@ class ResellerDealController extends Controller
             ])->toArray();
 
             // Legacy notes: lead_notes (old system, no attachments)
+            // No tenant subquery needed — $lead is already verified to belong to $tenantId by $this->deal()
             $legacyNotes = LeadNote::where('lead_id', $dealId)
-                ->whereIn('lead_id', Lead::where('tenant_id', $tenantId)->select('id'))
                 ->orderBy('created_at', 'asc')
                 ->get()
                 ->map(fn($n) => [
@@ -313,6 +313,7 @@ class ResellerDealController extends Controller
         // no-store: ensures every page load fetches fresh DB data.
         // This guarantees that after a referrer updates the deal amount and the
         // page reloads, the browser never serves a cached (stale) response.
+        unset($lead->days_left);
         return response()
             ->view('reseller.deals.show', compact(
                 'reseller', 'tenant', 'lead', 'tenantId',
@@ -1938,6 +1939,13 @@ class ResellerDealController extends Controller
         $oldPct = DB::transaction(function () use ($splitId, $lead, $newPct) {
             // Lock all splits for this lead to prevent concurrent percentage races
             CommissionSplit::where('lead_id', $lead->id)->lockForUpdate()->get();
+            // Re-read lead under lock to prevent race with concurrent commission_status change
+            $freshLead = Lead::where('id', $lead->id)->lockForUpdate()->first();
+            if ($freshLead && in_array($freshLead->commission_status, ['locked', 'paid'], true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'commission_status' => 'Commission was locked by another process. Splits cannot be modified.',
+                ]);
+            }
 
             $split = CommissionSplit::where('id', $splitId)->where('lead_id', $lead->id)->firstOrFail();
 
@@ -2100,6 +2108,10 @@ class ResellerDealController extends Controller
             ->where('lead_id', $lead->id)
             ->where('role', 'secondary')
             ->firstOrFail();
+
+        if (in_array($lead->commission_status, ['locked', 'paid'], true)) {
+            return response()->json(['error' => 'Commission splits cannot be modified after commission is locked or paid.'], 422);
+        }
 
         $removedName = $split->reseller_name;
         $split->delete();
