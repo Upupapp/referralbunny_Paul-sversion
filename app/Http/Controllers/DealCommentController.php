@@ -133,6 +133,11 @@ class DealCommentController extends Controller
             }
         }
 
+        // Members (non-admin tenant users) cannot post comments on deals
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to post comments.'], 403);
+        }
+
         $data = $request->validate([
             'body'              => 'nullable|string|max:10000',
             'visibility'        => 'nullable|in:shared,internal_admin',

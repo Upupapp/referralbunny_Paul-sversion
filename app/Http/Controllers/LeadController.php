@@ -1448,6 +1448,8 @@ class LeadController extends Controller
             return response()->json(['error' => 'You do not have permission to add notes.'], 403);
         }
 
+        $lead->assertBelongsToCurrentTenant();
+
         $data = $request->validate([
             'text'   => 'required|string',
             'author' => 'required|string',
@@ -1634,6 +1636,8 @@ class LeadController extends Controller
         if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
             return response()->json(['error' => 'You do not have permission to modify commission splits.'], 403);
         }
+
+        $lead->assertBelongsToCurrentTenant();
 
         $data = $request->validate([
             'splits'            => 'required|array',

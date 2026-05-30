@@ -26,13 +26,23 @@ class HandleDealCreated implements ShouldQueue
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
         $dispatcher = app(NotificationDispatchService::class);
 
-        // 1. Notify reseller (if they have an email and account)
-        $email = $event->resellerEmail
-            ?? DB::table('resellers')
-                ->where('tenant_id', $event->tenantId)
-                ->where('name', $event->resellerName)
-                ->value('email');
+        // Resolve reseller once — covers email, in-app notification, and invited guard
+        $reseller = DB::table('resellers')
+            ->where('tenant_id', $event->tenantId)
+            ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
+            ->whereNull('deleted_at')
+            ->select('id', 'email', 'status')
+            ->first();
 
+        $email = $event->resellerEmail ?? $reseller?->email;
+
+        // Do not notify invited (unactivated) resellers
+        if ($reseller && $reseller->status === 'invited') {
+            $email    = null;
+            $reseller = null;
+        }
+
+        // 1. Email: notify reseller
         if ($email) {
             EmailLogger::send(
                 mailable:       new ResellerDealCreated(
@@ -54,25 +64,18 @@ class HandleDealCreated implements ShouldQueue
         }
 
         // 2a. In-app: notify reseller
-        if ($email) {
-            $reseller = DB::table('resellers')
-                ->where('tenant_id', $event->tenantId)
-                ->where('email', $email)
-                ->select('id')
-                ->first();
-            if ($reseller) {
-                $dispatcher->dispatchToReseller(
-                    resellerId:   $reseller->id,
-                    tenantId:     $event->tenantId,
-                    category:     'deal_pipeline',
-                    priority:     'normal',
-                    title:        "Deal created: {$event->leadName}",
-                    body:         "Your deal has been created successfully.",
-                    actionUrl:    url("/reseller/{$event->tenantId}/deals"),
-                    actionLabel:  'View Deal',
-                    dedupeSuffix: $event->leadId,
-                );
-            }
+        if ($reseller) {
+            $dispatcher->dispatchToReseller(
+                resellerId:   $reseller->id,
+                tenantId:     $event->tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        "Deal created: {$event->leadName}",
+                body:         "Your deal has been created successfully.",
+                actionUrl:    url("/reseller/{$event->tenantId}/deals"),
+                actionLabel:  'View Deal',
+                dedupeSuffix: $event->leadId,
+            );
         }
 
         // 2b. In-app: notify tenant admins
