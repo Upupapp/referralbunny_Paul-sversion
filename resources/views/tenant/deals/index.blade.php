@@ -3,25 +3,27 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    {{-- Import Deals — LGU IDS uses locked import flow; other tenants use generic flow --}}
-    @if($tenant->id === 'lgu-ids')
-        <a href="{{ route('imports.lgu-ids', $tenant->id) }}"
-           class="btn-secondary"
-           title="Uses the locked LGU IDS deal import template and computation rules.">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            <span class="hidden sm:inline">Import Deals</span>
-        </a>
-    @else
-        <a href="{{ route('imports.deals', $tenant->id) }}"
-           class="btn-secondary"
-           title="Upload a standard file to create or update deals.">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            <span class="hidden sm:inline">Import Deals</span>
-        </a>
+    {{-- Import Deals — only admin-level roles; LGU IDS uses locked import flow --}}
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
+        @if($tenant->id === 'lgu-ids')
+            <a href="{{ route('imports.lgu-ids', $tenant->id) }}"
+               class="btn-secondary"
+               title="Uses the locked LGU IDS deal import template and computation rules.">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span class="hidden sm:inline">Import Deals</span>
+            </a>
+        @else
+            <a href="{{ route('imports.deals', $tenant->id) }}"
+               class="btn-secondary"
+               title="Upload a standard file to create or update deals.">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span class="hidden sm:inline">Import Deals</span>
+            </a>
+        @endif
     @endif
     @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
     <button onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
@@ -303,7 +305,9 @@
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
+                                @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
                                 <button x-show="leads.length === 0" @click="showAdd = true; resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                @endif
                             </td>
                         </tr>
                     </template>

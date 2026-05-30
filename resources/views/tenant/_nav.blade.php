@@ -157,6 +157,7 @@ if ($isAdminMgr) {
             );
             if ($_mgMembership) {
                 $_permSvc       = app(\App\Services\PermissionService::class);
+                $_canSeeBilling = $_permSvc->can($_mgMembership, 'manage_billing_and_subscription');
                 $_canSeeExports = $_permSvc->can($_mgMembership, 'approve_export_requests');
                 $_canSeeUsers   = $_permSvc->can($_mgMembership, 'invite_tenant_staff');
             }

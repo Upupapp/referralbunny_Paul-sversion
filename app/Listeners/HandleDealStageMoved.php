@@ -29,6 +29,7 @@ class HandleDealStageMoved implements ShouldQueue
     {
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
+        $reseller   = null;
 
         if (!$email && !$resellerId) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
@@ -36,9 +37,16 @@ class HandleDealStageMoved implements ShouldQueue
                 ->first();
             $email      = $email      ?? $reseller?->email;
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
+        }
 
-            // Skip email/in-app for invited Referrers — they don't have portal access yet
-            if ($reseller && $reseller->status === 'invited') {
+        // Skip notifications for invited Referrers — they don't have portal access yet.
+        // This check must run outside the lookup block so it also fires when resellerId
+        // was passed directly in the event (e.g., from LeadController::moveStage()).
+        if ($resellerId) {
+            $invitedStatus = $reseller
+                ? $reseller->status
+                : Reseller::where('id', $resellerId)->value('status');
+            if ($invitedStatus === 'invited') {
                 $email      = null;
                 $resellerId = null;
             }

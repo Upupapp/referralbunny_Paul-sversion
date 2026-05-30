@@ -23,14 +23,24 @@ class HandleCommissionStatusChanged implements ShouldQueue
 
     public function handle(CommissionStatusChanged $event): void
     {
-        $reseller = DB::table('resellers')
-            ->where('tenant_id', $event->tenantId)
-            ->where(fn($q) => $q
-                ->when($event->resellerEmail, fn($q2) => $q2->where('email', $event->resellerEmail))
-                ->orWhereRaw('LOWER(name) = ?', [strtolower($event->resellerName ?? '')]))
-            ->whereNull('deleted_at')
-            ->select('id', 'email')
-            ->first();
+        // Explicit if/else avoids the ambiguous OR that the ->when() inside orWhereRaw() generates
+        if ($event->resellerEmail) {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $event->tenantId)
+                ->where('email', $event->resellerEmail)
+                ->whereNull('deleted_at')
+                ->select('id', 'email')
+                ->first();
+        } elseif ($event->resellerName) {
+            $reseller = DB::table('resellers')
+                ->where('tenant_id', $event->tenantId)
+                ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
+                ->whereNull('deleted_at')
+                ->select('id', 'email')
+                ->first();
+        } else {
+            $reseller = null;
+        }
 
         $email = $reseller?->email ?? $event->resellerEmail;
         if (!$email) return;

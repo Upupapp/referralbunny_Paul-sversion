@@ -1587,16 +1587,21 @@ class ResellerDealController extends Controller
                     'old_values' => ['stage' => $oldStage],
                     'new_values' => ['stage' => $targetStage],
                 ]);
+                $approvalResellerId    = $approval->requested_by_type === 'reseller' ? $approval->requested_by_id : null;
+                $approvalResellerEmail = $approvalResellerId
+                    ? DB::table('resellers')->where('id', $approvalResellerId)->value('email')
+                    : null;
                 DealStageMoved::dispatch(
-                    leadId:       $lead->id,
-                    leadName:     $lead->name,
-                    tenantId:     $lead->tenant_id,
-                    resellerName: $lead->reseller_name ?? '',
-                    resellerId:   $approval->requested_by_type === 'reseller' ? $approval->requested_by_id : null,
-                    fromStage:    $oldStage,
-                    toStage:      $targetStage,
-                    dealValue:    (float) ($lead->deal_value ?? 0),
-                    movedByName:  $reviewerName,
+                    leadId:        $lead->id,
+                    leadName:      $lead->name,
+                    tenantId:      $lead->tenant_id,
+                    resellerName:  $lead->reseller_name ?? '',
+                    resellerId:    $approvalResellerId,
+                    resellerEmail: $approvalResellerEmail,
+                    fromStage:     $oldStage,
+                    toStage:       $targetStage,
+                    dealValue:     (float) ($lead->deal_value ?? 0),
+                    movedByName:   $reviewerName,
                 );
             } catch (\Throwable) {}
         } elseif ($approval->type === 'deal_archive' && $lead) {

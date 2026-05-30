@@ -198,6 +198,19 @@ class CriticalActionService
             } catch (\Throwable) {}
         }
 
+        // 11. Missing-referrer deals — panel emits exactly 1 aggregate item when any exist
+        try {
+            $hasMissingReferrer = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'expiring'])
+                ->where(fn($q) => $q->whereNull('reseller_name')->orWhere('reseller_name', ''))
+                ->whereNull('deleted_at')
+                ->exists();
+            if ($hasMissingReferrer) {
+                $count++;
+            }
+        } catch (\Throwable) {}
+
         return ['count' => $count, 'has_urgent' => $hasUrgent];
     }
 

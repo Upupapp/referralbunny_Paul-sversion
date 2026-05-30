@@ -22,7 +22,10 @@ class HandleDealDeclined implements ShouldQueue
         $resellerId = $event->resellerId;
         $skipInvited = false;
 
-        if (!$email || !$resellerId) {
+        // Only do the DB lookup when BOTH identifiers are missing — AND guard prevents
+        // overwriting a valid resellerId when only email is absent, and the resellerName
+        // guard prevents a LOWER(name)='' match on deals with no assigned reseller.
+        if (!$email && !$resellerId && $event->resellerName) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();
@@ -39,25 +42,29 @@ class HandleDealDeclined implements ShouldQueue
         // Email: only if reseller is active and has an email
         if (!$skipInvited && $email) {
             $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
-            EmailLogger::send(
-                mailable: new ResellerDealDeclined(
-                    resellerName:   $event->resellerName,
-                    resellerEmail:  $email,
-                    tenantName:     $tenantName,
-                    dealName:       $event->leadName,
-                    stage:          $event->stage,
-                    dealValue:      $event->dealValue,
-                    declinedByName: $event->declinedByName ?? 'Admin',
-                    dashboardUrl:   url("/reseller/{$event->tenantId}/deals"),
-                ),
-                recipientEmail: $email,
-                recipientType:  'reseller',
-                emailKey:       'deal_declined.' . $event->leadId,
-                subject:        "Deal update — {$event->leadName} has been declined",
-                recipientId:    $resellerId,
-                tenantId:       $event->tenantId,
-                dailyDedup:     true,
-            );
+            try {
+                EmailLogger::send(
+                    mailable: new ResellerDealDeclined(
+                        resellerName:   $event->resellerName,
+                        resellerEmail:  $email,
+                        tenantName:     $tenantName,
+                        dealName:       $event->leadName,
+                        stage:          $event->stage,
+                        dealValue:      $event->dealValue,
+                        declinedByName: $event->declinedByName ?? 'Admin',
+                        dashboardUrl:   url("/reseller/{$event->tenantId}/deals"),
+                    ),
+                    recipientEmail: $email,
+                    recipientType:  'reseller',
+                    emailKey:       'deal_declined.' . $event->leadId,
+                    subject:        "Deal update — {$event->leadName} has been declined",
+                    recipientId:    $resellerId,
+                    tenantId:       $event->tenantId,
+                    dailyDedup:     true,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[HandleDealDeclined] Email send failed', ['error' => $e->getMessage()]);
+            }
         }
 
         // In-app: Referrer — fires when reseller is active and known, regardless of email
@@ -86,7 +93,9 @@ class HandleDealDeclined implements ShouldQueue
                 category:     'deal_pipeline',
                 priority:     'normal',
                 title:        "Deal declined: {$event->leadName}",
-                body:         "\"{$event->leadName}\" (Referrer: {$event->resellerName}) was declined by " . ($event->declinedByName ?? 'Admin') . '.',
+                body:         "\"{$event->leadName}\"" .
+                    ($event->resellerName ? " (Referrer: {$event->resellerName})" : '') .
+                    ' was declined by ' . ($event->declinedByName ?? 'Admin') . '.',
                 actionUrl:    url("/tenant/{$event->tenantId}/deals/{$event->leadId}"),
                 actionLabel:  'View Deal',
                 dedupeSuffix: "{$event->leadId}:declined_admin",

@@ -101,7 +101,7 @@ class HandleDealExpired implements ShouldQueue
         $activePartners = DB::table('deal_partner_splits')
             ->where('tenant_id', $event->tenantId)
             ->where('deal_id', $event->leadId)
-            ->where('status', 'active')
+            ->where('status', '!=', 'removed')
             ->whereNotNull('partner_user_id')
             ->whereNull('deleted_at')
             ->select('partner_user_id', 'partner_name')

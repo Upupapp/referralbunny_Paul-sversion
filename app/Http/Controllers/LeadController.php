@@ -1328,12 +1328,15 @@ class LeadController extends Controller
             } catch (\Throwable) {}
         }
 
-        // Resolve reseller ID once — used for both the event dispatch and the CA cache bust
-        $caRid = null;
+        // Resolve reseller ID + email in one query — used for event dispatch and CA cache bust
+        $caRid   = null;
+        $caEmail = null;
         if ($lead->reseller_name) {
-            $caRid = Reseller::where('tenant_id', $lead->tenant_id)
+            $caReseller = Reseller::where('tenant_id', $lead->tenant_id)
                 ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
-                ->value('id');
+                ->first(['id', 'email']);
+            $caRid   = $caReseller?->id;
+            $caEmail = $caReseller?->email;
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
         }
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdStage); } catch (\Throwable) {}
@@ -1341,15 +1344,16 @@ class LeadController extends Controller
         // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
         try {
             DealStageMoved::dispatch(
-                leadId:       (string) $lead->id,
-                leadName:     $lead->name,
-                tenantId:     $lead->tenant_id,
-                resellerName: $lead->reseller_name ?? '',
-                resellerId:   $caRid ? (string) $caRid : null,
-                fromStage:    $capturedStage,
-                toStage:      $targetStage,
-                dealValue:    (float) ($lead->deal_value ?? 0),
-                movedByName:  $actorNameStage,
+                leadId:        (string) $lead->id,
+                leadName:      $lead->name,
+                tenantId:      $lead->tenant_id,
+                resellerName:  $lead->reseller_name ?? '',
+                resellerId:    $caRid ? (string) $caRid : null,
+                resellerEmail: $caEmail,
+                fromStage:     $capturedStage,
+                toStage:       $targetStage,
+                dealValue:     (float) ($lead->deal_value ?? 0),
+                movedByName:   $actorNameStage,
             );
         } catch (\Throwable) {}
 
