@@ -72,15 +72,17 @@ class ApprovalService
 
     public function reject(ApprovalRequest $approval, int $rejectedBy, ?string $notes = null): void
     {
-        $approval->update([
-            'status'         => 'rejected',
-            'rejected_by'    => $rejectedBy,
-            'rejected_at'    => now(),
-            'reviewer_notes' => $notes,
-        ]);
+        DB::transaction(function () use ($approval, $rejectedBy, $notes) {
+            $approval->update([
+                'status'         => 'rejected',
+                'rejected_by'    => $rejectedBy,
+                'rejected_at'    => now(),
+                'reviewer_notes' => $notes,
+            ]);
 
-        // Mark the reference object as inactive/rejected
-        $this->markReferenceRejected($approval);
+            // Mark the reference object as inactive/rejected
+            $this->markReferenceRejected($approval);
+        });
 
         $this->notifications->send(
             category:  'billing',

@@ -599,7 +599,7 @@ class TenantDealImportController extends Controller
             'actions.*.label'     => 'nullable|string',
         ]);
 
-        $batch = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
 
         $createdFields = [];
 
@@ -659,7 +659,7 @@ class TenantDealImportController extends Controller
             ], 403);
         }
 
-        $batch = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
         $batch->update(['template_adoption_status' => 'pending']);
 
         return response()->json([
@@ -701,7 +701,7 @@ class TenantDealImportController extends Controller
             ], 403);
         }
 
-        $batch        = ImportBatch::where('tenant_id', $tenantId)->findOrFail($batchId);
+        $batch        = $this->batchQuery($tenantId)->findOrFail($batchId);
         $template     = $this->service->getTemplate($tenantId);
         $templateName = $request->input('template_name') ?? ('Deals Template — ' . now()->format('Y-m-d'));
 

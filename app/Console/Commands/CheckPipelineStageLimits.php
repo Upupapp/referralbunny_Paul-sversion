@@ -20,6 +20,7 @@ class CheckPipelineStageLimits extends Command
     public function handle(): int
     {
         $rules = DB::table('tenant_pipeline_stage_rules')
+            ->where('tenant_id', 'lgu-ids')
             ->get()
             ->groupBy('tenant_id');
 

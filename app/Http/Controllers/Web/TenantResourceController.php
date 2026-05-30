@@ -44,7 +44,7 @@ class TenantResourceController extends Controller
         $node = $currentFolder;
         while ($node) {
             array_unshift($breadcrumbs, $node);
-            $node = $node->parent_id ? ResourceFolder::find($node->parent_id) : null;
+            $node = $node->parent_id ? ResourceFolder::where('tenant_id', $tenantId)->find($node->parent_id) : null;
         }
 
         // Folders in current level
@@ -75,6 +75,15 @@ class TenantResourceController extends Controller
             'name'      => 'required|string|max:255',
             'parent_id' => 'nullable|string',
         ]);
+
+        if (!empty($data['parent_id'])) {
+            $parentExists = ResourceFolder::where('id', $data['parent_id'])
+                ->where('tenant_id', $tenantId)
+                ->exists();
+            if (!$parentExists) {
+                return response()->json(['error' => 'Invalid parent folder.'], 422);
+            }
+        }
 
         [$actorType, $actorId, $actorName] = $this->resolveActor();
 
@@ -206,6 +215,17 @@ class TenantResourceController extends Controller
     {
         $data = $request->validate(['folder_id' => 'nullable|string']);
         $file = ResourceFile::where('tenant_id', $tenantId)->findOrFail($fileId);
+
+        if (!empty($data['folder_id'])) {
+            $folderExists = DB::table('resource_folders')
+                ->where('id', $data['folder_id'])
+                ->where('tenant_id', $tenantId)
+                ->exists();
+            if (!$folderExists) {
+                return response()->json(['error' => 'Invalid folder.'], 422);
+            }
+        }
+
         $file->update(['folder_id' => $data['folder_id'] ?: null]);
         return response()->json(['message' => 'File moved.']);
     }

@@ -20,12 +20,8 @@ class TenantCommissionController extends Controller
      */
     public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
-        if (!TenantContext::isSuperAdmin()) {
-            $ctxId = TenantContext::requireId();
-            if ($ctxId !== $tenantId) {
-                abort(403);
-            }
-        }
+        $isSA = Auth::guard('web')->check();
+        // EnsureTenantAccess middleware already verified non-SA users belong to $tenantId
 
         // Partners see only their own earnings — redirect to partner-scoped view
         if (TenantContext::isPartner()) {
@@ -33,7 +29,7 @@ class TenantCommissionController extends Controller
         }
 
         // Only owner / admin / manager may view the full commission report
-        $role = TenantContext::role();
+        $role = $isSA ? 'super_admin' : TenantContext::role();
         if (!in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             abort(403, 'You do not have permission to view the commission report.');
         }
@@ -186,14 +182,12 @@ class TenantCommissionController extends Controller
      */
     public function export(Request $request, string $tenantId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        if (!TenantContext::isSuperAdmin()) {
-            $ctxId = TenantContext::requireId();
-            if ($ctxId !== $tenantId) {
-                abort(403);
-            }
-        }
+        $isSA = Auth::guard('web')->check();
+        // EnsureTenantAccess middleware already verified non-SA users belong to $tenantId
+
         // Partners and non-admin roles cannot export the full commission report
-        if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager', 'super_admin'])) {
+        $role = $isSA ? 'super_admin' : TenantContext::role();
+        if (!in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             abort(403, 'You do not have permission to export the commission report.');
         }
 

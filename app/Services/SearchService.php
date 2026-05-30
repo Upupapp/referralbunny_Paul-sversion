@@ -141,9 +141,11 @@ class SearchService
     {
         if (strlen($query) < 2) return [];
 
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
+
         $q = DB::table('search_index')
             ->where('is_deleted', false)
-            ->where('searchable_text', 'ILIKE', '%' . $query . '%');
+            ->where('searchable_text', 'ILIKE', '%' . $escaped . '%');
 
         // Scope to tenant's own data plus platform-level records (tenant_id = null)
         if ($tenantId) {

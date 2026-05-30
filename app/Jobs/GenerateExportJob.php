@@ -460,7 +460,7 @@ class GenerateExportJob implements ShouldQueue
         if (!empty($scope['from'])) $query->where('created_at', '>=', $scope['from']);
         if (!empty($scope['to']))   $query->where('created_at', '<=', $scope['to']);
 
-        $rows = $query->get();
+        $rows = $query->limit(10000)->get();
 
         $headers = [
             'Referrer', 'Total Deals', 'Active Deals', 'Expired Deals', 'Won Deals',

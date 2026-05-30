@@ -118,17 +118,36 @@ class WebhookController extends Controller
         $invoiceId = $metadata['invoice_id'] ?? null;
         if (!$invoiceId) return;
 
-        $invoice = Invoice::find($invoiceId);
-        if (!$invoice) return;
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($invoiceId) {
+            $invoice = Invoice::where('id', $invoiceId)->lockForUpdate()->first();
+            if (!$invoice) return null;
+            if ($invoice->status === 'past_due') return 'skipped';
 
-        $invoice->update(['status' => 'past_due']);
+            $invoice->update(['status' => 'past_due']);
 
-        $subscription = Subscription::find($invoice->subscription_id);
-        if ($subscription) {
-            $subscription->update(['status' => 'past_due']);
+            $subscription = Subscription::find($invoice->subscription_id);
+            if ($subscription) {
+                $subscription->update(['status' => 'past_due']);
+            }
+
+            return $invoice->fresh();
+        });
+
+        if ($result === null) {
+            Log::warning("payment.failed: invoice {$invoiceId} not found");
+            return;
+        }
+        if ($result === 'skipped') {
+            Log::info("payment.failed: invoice {$invoiceId} already past_due — skipping");
+            return;
         }
 
-        $this->notifications->notifyPaymentFailed($invoice->tenant_id, 0);
+        $invoice       = $result;
+        $daysSinceFail = $invoice->due_date
+            ? (int) now()->diffInDays($invoice->due_date)
+            : 0;
+
+        $this->notifications->notifyPaymentFailed($invoice->tenant_id, $daysSinceFail);
 
         Log::info("Payment failed processed: invoice {$invoiceId}");
     }

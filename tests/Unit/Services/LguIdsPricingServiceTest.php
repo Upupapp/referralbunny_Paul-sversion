@@ -41,12 +41,14 @@ class LguIdsPricingServiceTest extends TestCase
 
     public function testLookupBaseCost15M(): void
     {
-        $this->assertSame(7_000_000, LguIdsPricingService::lookupBaseCost(15_000_000));
+        // 15M × 48% = 7,200,000
+        $this->assertSame(7_200_000, LguIdsPricingService::lookupBaseCost(15_000_000));
     }
 
     public function testLookupBaseCost17M(): void
     {
-        $this->assertSame(7_000_000, LguIdsPricingService::lookupBaseCost(17_000_000));
+        // 17M × 41% = 6,970,000
+        $this->assertSame(6_970_000, LguIdsPricingService::lookupBaseCost(17_000_000));
     }
 
     public function testLookupBaseCost25M(): void
@@ -65,7 +67,7 @@ class LguIdsPricingServiceTest extends TestCase
         $this->assertSame(1_600_000.0, $result['added_amount']);
         $this->assertSame('60%',       $result['display_pct']);
         $this->assertTrue($result['tier_matched']);
-        $this->assertSame('standard_tier', $result['pricing_status']);
+        $this->assertSame('range_based', $result['pricing_status']);
         $this->assertNull($result['pricing_issue']);
     }
 
@@ -102,16 +104,16 @@ class LguIdsPricingServiceTest extends TestCase
         $this->assertNull(LguIdsPricingService::normalizeAmount('not-a-number'));
     }
 
-    // ── Non-standard amount flagged for review ────────────────────
+    // ── Range-based: any positive amount gets a computed base cost ───
 
-    public function testNonStandardAmountFlaggedForReview(): void
+    public function testMidRangeAmountGetsRangeBasedResult(): void
     {
-        // 4,500,000 is not in the tier table and no base cost supplied
+        // 4,500,000 is between range boundaries — still computed as 4.5M × 60% = 2,700,000
         $result = LguIdsPricingService::compute(4_500_000.0, null, null);
-        $this->assertFalse($result['tier_matched']);
-        $this->assertSame('needs_pricing_review', $result['pricing_status']);
-        $this->assertNotNull($result['pricing_issue']);
-        $this->assertNull($result['base_cost']);
+        $this->assertTrue($result['tier_matched']);
+        $this->assertSame('range_based', $result['pricing_status']);
+        $this->assertNull($result['pricing_issue']);
+        $this->assertSame(2_700_000, $result['base_cost']);
     }
 
     // ── Base cost mismatch flagged ────────────────────────────────
@@ -122,7 +124,7 @@ class LguIdsPricingServiceTest extends TestCase
         $result = LguIdsPricingService::compute(4_000_000.0, 2_500_000.0, null);
         $this->assertSame('amount_mismatch', $result['pricing_status']);
         $this->assertNotNull($result['pricing_issue']);
-        $this->assertStringContainsString('does not match standard tier', $result['pricing_issue']);
+        $this->assertStringContainsString('differs from range-computed', $result['pricing_issue']);
     }
 
     // ── Compute from base_cost + added_amount (no deal_amount) ───
@@ -134,7 +136,7 @@ class LguIdsPricingServiceTest extends TestCase
         $this->assertSame(4_000_000.0, $result['deal_amount']);
         $this->assertSame(2_400_000,   $result['base_cost']);
         $this->assertSame('base_cost_added_amount', $result['computed_from']);
-        $this->assertSame('standard_tier', $result['pricing_status']);
+        $this->assertSame('range_based', $result['pricing_status']);
     }
 
     // ── Missing amount returns missing_amount status ──────────────
@@ -148,18 +150,17 @@ class LguIdsPricingServiceTest extends TestCase
 
     // ── isStandardTier helper ─────────────────────────────────────
 
-    public function testIsStandardTierReturnsTrueForKnownTiers(): void
+    public function testIsStandardTierReturnsTrueForPositiveAmounts(): void
     {
-        foreach (array_keys(LguIdsPricingService::TIERS) as $amount) {
-            $this->assertTrue(LguIdsPricingService::isStandardTier($amount), "Expected $amount to be a standard tier.");
+        foreach ([4_000_000, 6_000_000, 8_000_000, 12_000_000, 15_000_000, 17_000_000, 25_000_000] as $amount) {
+            $this->assertTrue(LguIdsPricingService::isStandardTier($amount), "Expected $amount to be a standard range.");
         }
     }
 
-    public function testIsStandardTierReturnsFalseForUnknownAmount(): void
+    public function testIsStandardTierReturnsFalseForNonPositiveAmount(): void
     {
-        $this->assertFalse(LguIdsPricingService::isStandardTier(3_500_000));
-        $this->assertFalse(LguIdsPricingService::isStandardTier(4_500_000));
-        $this->assertFalse(LguIdsPricingService::isStandardTier(9_999_999));
+        $this->assertFalse(LguIdsPricingService::isStandardTier(0));
+        $this->assertFalse(LguIdsPricingService::isStandardTier(-1));
     }
 
     // ── Sum mismatch when all three are supplied ──────────────────
@@ -179,7 +180,7 @@ class LguIdsPricingServiceTest extends TestCase
         $this->assertSame('60%', LguIdsPricingService::lookupDisplayPct(4_000_000));
         $this->assertSame('58%', LguIdsPricingService::lookupDisplayPct(8_000_000));
         $this->assertSame('41%', LguIdsPricingService::lookupDisplayPct(25_000_000));
-        $this->assertNull(LguIdsPricingService::lookupDisplayPct(3_000_000));
+        $this->assertSame('48%', LguIdsPricingService::lookupDisplayPct(14_000_000));
     }
 
     // ── LGU IDS isolation / non-globalisation guards ──────────────

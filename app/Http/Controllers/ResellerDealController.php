@@ -1924,32 +1924,43 @@ class ResellerDealController extends Controller
 
         $newPct = round((float) $data['percentage'], 2);
 
-        // Anchor CommissionSplit through tenant-scoped $lead->id (not raw $dealId from URL)
-        $split = CommissionSplit::where('id', $splitId)
-            ->where('lead_id', $lead->id)
-            ->firstOrFail();
+        // Block edits when commission is finalised
+        if (in_array($lead->commission_status, ['locked', 'paid'], true)) {
+            return response()->json(['error' => 'Commission splits cannot be modified after commission is locked or paid.'], 422);
+        }
 
-        // Only allow editing secondary (co-referrer) splits
+        // Quick pre-check before acquiring lock
+        $split = CommissionSplit::where('id', $splitId)->where('lead_id', $lead->id)->firstOrFail();
         if ($split->role !== 'secondary') {
             return response()->json(['error' => 'Only co-referrer splits can be adjusted here.'], 422);
         }
 
-        // Cap check: secondary splits combined must not exceed 100%
-        $otherSecondaryTotal = CommissionSplit::where('lead_id', $lead->id)
-            ->where('id', '!=', $splitId)
-            ->where('role', 'secondary')
-            ->sum('percentage');
+        $oldPct = DB::transaction(function () use ($splitId, $lead, $newPct) {
+            // Lock all splits for this lead to prevent concurrent percentage races
+            CommissionSplit::where('lead_id', $lead->id)->lockForUpdate()->get();
 
-        if ($otherSecondaryTotal + $newPct > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $otherSecondaryTotal, 2));
-            return response()->json([
-                'error'          => "Cannot exceed 100% total. Maximum available for this co-referrer: {$available}%.",
-                'max_percentage' => $available,
-            ], 422);
-        }
+            $split = CommissionSplit::where('id', $splitId)->where('lead_id', $lead->id)->firstOrFail();
 
-        $oldPct = (float) $split->percentage;
-        $split->update(['percentage' => $newPct]);
+            // Cap check: secondary splits combined must not exceed 100%
+            $otherSecondaryTotal = CommissionSplit::where('lead_id', $lead->id)
+                ->where('id', '!=', $splitId)
+                ->where('role', 'secondary')
+                ->sum('percentage');
+
+            if ($otherSecondaryTotal + $newPct > 100.005) {
+                $available = max(0.0, round(100.0 - (float) $otherSecondaryTotal, 2));
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'percentage' => "Cannot exceed 100% total. Maximum available for this co-referrer: {$available}%.",
+                ]);
+            }
+
+            $oldPct = (float) $split->percentage;
+            $split->update(['percentage' => $newPct]);
+
+            return $oldPct;
+        });
+
+        $split->refresh();
 
         // Notify the co-referrer whose share changed
         $hour = now()->format('YmdH');

@@ -142,7 +142,7 @@ class ResellerPortalAuthController extends Controller
             return redirect()->route('reseller.login')
                 ->withErrors(['reset' => 'This reset link is invalid or has already been used.']);
         }
-        if ($reseller->reset_token_created_at && $reseller->reset_token_created_at->lt(now()->subHour())) {
+        if (!$reseller->reset_token_created_at || $reseller->reset_token_created_at->lt(now()->subHour())) {
             return redirect()->route('reseller.login')
                 ->withErrors(['reset' => 'This reset link has expired. Please request a new one.']);
         }

@@ -14,13 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
-        $middleware->validateCsrfTokens(except: ['webhooks/paymongo', 'webhooks/*']);
+        $middleware->validateCsrfTokens(except: ['api/webhooks/paymongo', 'api/webhooks/*']);
         $middleware->prepend(HandleCors::class);
         $middleware->statefulApi();
         $middleware->alias([
             'feature.access'     => \App\Http\Middleware\FeatureAccessMiddleware::class,
             'tenant.access'      => \App\Http\Middleware\EnsureTenantAccess::class,
             'reseller.access'    => \App\Http\Middleware\EnsureResellerAccess::class,
+            'reseller.active'    => \App\Http\Middleware\EnsureResellerActive::class,
             'partner.access'     => \App\Http\Middleware\EnsurePartnerAccess::class,
             'password.confirm'   => \Illuminate\Auth\Middleware\RequirePassword::class,
             'tenant.subdomain'   => \App\Http\Middleware\DetectTenantSubdomain::class,

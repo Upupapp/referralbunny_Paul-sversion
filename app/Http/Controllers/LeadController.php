@@ -253,6 +253,18 @@ class LeadController extends Controller
             }
         }
 
+        // Resellers must not see days_left — it reveals internal pipeline deadline tracking
+        if (Auth::guard('reseller')->check()) {
+            $leads = $leads->map(function ($lead) {
+                if (is_array($lead)) {
+                    unset($lead['days_left']);
+                } else {
+                    unset($lead->days_left);
+                }
+                return $lead;
+            });
+        }
+
         if (isset($paginated)) {
             return response()->json([
                 'data'      => $leads->values(),
@@ -306,6 +318,9 @@ class LeadController extends Controller
             'commission_splits'  => 'nullable|array',
         ]);
 
+        $isReferrer = Auth::guard('reseller')->check();
+        $isPartner  = Auth::guard('partner')->check();
+
         $tenantId = TenantContext::id();
         // Super admin may specify tenant_id explicitly; all other callers must have context
         if (!$tenantId && TenantContext::isSuperAdmin()) {
@@ -344,9 +359,6 @@ class LeadController extends Controller
         $daysLeft = $this->resolveStageLimit($tenantId, $data['stage']) ?? ($data['days_left'] ?? 21);
 
         // Resellers and Partners cannot set financial fields — always compute server-side
-        $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
-        $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
-
         $dealValue   = (float) ($data['deal_value'] ?? 0);
         $baseCost    = (float) ($data['base_cost']   ?? 0);
         $addedAmount = (float) ($data['added_amount'] ?? 0);
@@ -616,7 +628,13 @@ class LeadController extends Controller
             }
         }
 
-        return response()->json($lead->load(['commissionSplits', 'notes', 'history', 'attachments', 'links']));
+        $lead->load(['commissionSplits', 'notes', 'history', 'attachments', 'links']);
+
+        if (Auth::guard('reseller')->check()) {
+            unset($lead->days_left);
+        }
+
+        return response()->json($lead);
     }
 
     public function update(Request $request, Lead $lead): JsonResponse
@@ -662,8 +680,8 @@ class LeadController extends Controller
             if ($currentStatus === 'paid') {
                 return response()->json(['error' => 'Cannot downgrade commission status from paid.'], 422);
             }
-            if ($currentStatus === 'locked' && $data['commission_status'] === 'pending') {
-                return response()->json(['error' => 'Cannot downgrade commission status from locked to pending.'], 422);
+            if ($currentStatus === 'locked' && in_array($data['commission_status'], ['pending', 'paid'], true)) {
+                return response()->json(['error' => 'Cannot change commission status from locked. Commission must be finalised before marking paid.'], 422);
             }
         }
 

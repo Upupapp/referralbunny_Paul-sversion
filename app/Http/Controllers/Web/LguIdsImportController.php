@@ -49,6 +49,15 @@ class LguIdsImportController extends Controller
         abort_if(Auth::guard('partner')->check(), 403, 'Partners cannot access the import centre.');
     }
 
+    private function batchQuery(string $tenantId): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = ImportBatch::where('tenant_id', $tenantId);
+        if ($this->authRole() === 'reseller') {
+            $query->where('imported_by_id', $this->authId());
+        }
+        return $query;
+    }
+
     // ── Index — Import Centre ─────────────────────────────────────
 
     public function index(string $tenantId)
@@ -56,7 +65,7 @@ class LguIdsImportController extends Controller
         $this->guardCheck();
         $tenant = $this->resolveTenant($tenantId);
 
-        $batches = ImportBatch::where('tenant_id', $tenantId)
+        $batches = $this->batchQuery($tenantId)
             ->orderByDesc('created_at')
             ->paginate(10);
 
@@ -159,6 +168,7 @@ class LguIdsImportController extends Controller
             'municipality' => 'nullable|string|max:120',
         ]);
 
+        $this->batchQuery($tenantId)->where('id', $batchId)->firstOrFail();
         $row = \App\Models\ImportBatchRow::where('import_batch_id', $batchId)->findOrFail($rowId);
 
         $normalized = is_array($row->normalized_data) ? $row->normalized_data : [];
@@ -195,6 +205,7 @@ class LguIdsImportController extends Controller
             'action' => 'required|in:create,update,skip,merge,overwrite,review,blocked',
         ]);
 
+        $this->batchQuery($tenantId)->where('id', $batchId)->firstOrFail();
         $row = ImportBatchRow::where('import_batch_id', $batchId)->findOrFail($rowId);
 
         // Resellers may only approve their own rows
@@ -226,6 +237,7 @@ class LguIdsImportController extends Controller
             'action'         => 'required|in:create,update,skip,merge,overwrite,review,blocked',
         ]);
 
+        $this->batchQuery($tenantId)->where('id', $batchId)->firstOrFail();
         $rows = ImportBatchRow::where('import_batch_id', $batchId)
             ->whereIn('id', $request->input('row_ids'))
             ->get();

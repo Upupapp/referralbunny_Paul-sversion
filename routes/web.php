@@ -105,7 +105,7 @@ Route::get('/reseller/setup',          [ResellerPortalAuthController::class, 'sh
 Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post')->middleware('throttle:10,1');
 Route::get('/reseller/forgot-password',[ResellerPortalAuthController::class, 'showForgotPassword'])->name('reseller.forgot-password');
 Route::post('/reseller/forgot-password',[ResellerPortalAuthController::class, 'forgotPassword'])->name('reseller.forgot-password.post')->middleware('throttle:5,1');
-Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'showResetPassword'])->name('reseller.reset-password')->middleware('throttle:10,1');
+Route::get('/reseller/reset-password', [ResellerPortalAuthController::class, 'showResetPassword'])->name('reseller.reset-password');
 Route::post('/reseller/reset-password',[ResellerPortalAuthController::class, 'resetPassword'])->name('reseller.reset-password.post')->middleware('throttle:5,1');
 
 // ── Reseller Portal ────────────────────────────────────────────
@@ -267,7 +267,7 @@ Route::middleware('auth:web')->prefix('platform')->name('platform.')->group(func
 });
 
 // ── Messaging thread endpoints — accessible by tenant admins AND resellers ──
-Route::middleware(['auth:tenant,reseller,web'])
+Route::middleware(['auth:tenant,reseller,web', 'reseller.active'])
     ->prefix('tenant/{tenantId}/messages')
     ->name('tenant.messages.')
     ->group(function () {

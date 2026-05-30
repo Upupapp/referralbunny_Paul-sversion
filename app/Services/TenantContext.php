@@ -81,6 +81,9 @@ class TenantContext
         // Tenant user: must own membership in the requested tenant
         if (Auth::guard('tenant')->check()) {
             $user = Auth::guard('tenant')->user();
+            if (isset($user->status) && $user->status !== 'active') {
+                abort(403, 'Your account has been suspended.');
+            }
             // Validate against requested tenant if provided, else use first active membership
             $membershipQuery = TenantMembership::where('tenant_user_id', $user->id)
                 ->where('status', 'active');

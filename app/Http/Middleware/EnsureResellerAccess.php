@@ -22,6 +22,13 @@ class EnsureResellerAccess
         }
 
         $reseller = Auth::guard('reseller')->user();
+
+        if (!in_array($reseller->status, ['active', 'nda_signed'])) {
+            Auth::guard('reseller')->logout();
+            return redirect()->route('reseller.login')
+                ->with('error', 'Your account is not active. Please contact your program administrator.');
+        }
+
         $tenantId = $request->route('tenantId');
 
         if ((string) $reseller->tenant_id !== (string) $tenantId) {

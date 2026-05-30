@@ -31,6 +31,11 @@ class ApprovalRequest extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
     public function scopeForTenant($query, string $tenantId)
     {
         return $query->where('tenant_id', $tenantId);

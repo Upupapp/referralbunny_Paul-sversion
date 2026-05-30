@@ -102,7 +102,8 @@ class DealCommentController extends Controller
 
         // Permission: Referrer must be the primary referrer or a co-referrer on the deal
         if ($role === 'referrer') {
-            $isPrimary = strcasecmp((string) ($actor->name ?? ''), (string) ($deal->reseller_name ?? '')) === 0;
+            $isPrimary = ($deal->reseller_id && (string) $deal->reseller_id === (string) $actorId)
+                || strcasecmp((string) ($actor->name ?? ''), (string) ($deal->reseller_name ?? '')) === 0;
             $isCoReferrer = !$isPrimary && DB::table('commission_splits')
                 ->where('lead_id', $dealId)
                 ->whereRaw('LOWER(reseller_name) = ?', [strtolower($actor->name ?? '')])
