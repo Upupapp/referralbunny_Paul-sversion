@@ -96,9 +96,13 @@ class ResellerDealController extends Controller
         // Primary assignment — case-insensitive to handle import name-casing differences
         if (strtolower((string) $reseller->name) === strtolower((string) $lead->reseller_name)) return true;
 
-        // Secondary: commission split (additional referrer) — also case-insensitive
+        // Secondary: commission split (additional referrer) — tenant-scoped via lead join
         return CommissionSplit::where('lead_id', $lead->id)
             ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+            ->whereExists(fn($q) => $q->from('leads')
+                ->whereColumn('leads.id', 'commission_splits.lead_id')
+                ->where('leads.tenant_id', $lead->tenant_id)
+                ->whereNull('leads.deleted_at'))
             ->exists();
     }
 
@@ -198,18 +202,19 @@ class ResellerDealController extends Controller
         $attachments = [];
         try {
             $attachments = DB::table('lead_attachments')
-                ->where('lead_id', $dealId)
+                ->where('lead_id', $lead->id)
                 ->orderBy('created_at', 'desc')
                 ->limit(50)
                 ->get()
                 ->toArray();
         } catch (\Throwable) {}
 
-        // Activity (lead_history)
+        // Activity (lead_history) — internal/admin categories hidden from referrers
         $history = [];
         try {
             $history = DB::table('lead_history')
-                ->where('lead_id', $dealId)
+                ->where('lead_id', $lead->id)
+                ->whereNotIn('category', ['internal', 'admin_note', 'admin_only'])
                 ->orderBy('created_at', 'desc')
                 ->limit(20)
                 ->get()
@@ -1569,7 +1574,14 @@ class ResellerDealController extends Controller
             if ($approval->type === 'deal_stage_move' && $lead) {
                 $targetStage = $approval->request_payload['target_stage'] ?? null;
                 if ($targetStage) {
-                    $oldStage = $lead->stage;
+                    $oldStage  = $lead->stage;
+                    $stageCfg  = $this->tenantStageConfig($tenantId);
+                    $stageKeys = $stageCfg['keys'];
+                    $oldIdx    = array_search($oldStage, $stageKeys);
+                    $newIdx    = array_search($targetStage, $stageKeys);
+                    if ($oldIdx !== false && $newIdx !== false && $newIdx <= $oldIdx) {
+                        throw new \RuntimeException('Stage move must be forward only.');
+                    }
                     $lead->update(['stage' => $targetStage]);
                 }
             } elseif ($approval->type === 'deal_archive' && $lead) {

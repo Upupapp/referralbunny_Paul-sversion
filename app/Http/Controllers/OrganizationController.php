@@ -157,6 +157,7 @@ class OrganizationController extends Controller
 
         $orgs = $query->orderByRaw("o.data->>'lgu_type' desc nulls last")
                       ->orderBy('o.name')
+                      ->limit(500)
                       ->get()
                       ->map(function ($org) use ($claimedOrgIds) {
                           $d = [];
@@ -175,6 +176,10 @@ class OrganizationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check() || \Illuminate\Support\Facades\Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to create organizations.'], 403);
+        }
+
         // Derive tenant from context — never trust request body for non-super-admins
         if (TenantContext::isSuperAdmin()) {
             $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);

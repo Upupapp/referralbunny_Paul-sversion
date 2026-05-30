@@ -131,6 +131,12 @@ class TenantResourceController extends Controller
             return response()->json(['error' => 'File exceeds 50 MB limit.'], 422);
         }
 
+        $dangerousExt = ['php', 'php3', 'php4', 'php5', 'phtml', 'exe', 'sh', 'bat', 'cmd', 'ps1', 'py', 'rb', 'pl', 'cgi', 'htaccess', 'htpasswd', 'phar'];
+        $ext = strtolower($file->getClientOriginalExtension());
+        if (in_array($ext, $dangerousExt)) {
+            return response()->json(['error' => 'File type not allowed.'], 422);
+        }
+
         [$actorType, $actorId, $actorName] = $this->resolveActor();
 
         $folderId  = $request->input('folder_id') ?: null;

@@ -76,9 +76,10 @@ class Task extends Model
     {
         if ($this->requestor_email) return $this->requestor_email;
 
-        // Fall back to source submission
         if ($this->source_type === 'request_form_submission' && $this->source_id) {
-            return RequestFormSubmission::find($this->source_id)?->submitter_email;
+            return RequestFormSubmission::where('id', $this->source_id)
+                ->where('tenant_id', $this->tenant_id)
+                ->value('submitter_email');
         }
 
         return null;
@@ -89,7 +90,9 @@ class Task extends Model
         if ($this->requestor_name) return $this->requestor_name;
 
         if ($this->source_type === 'request_form_submission' && $this->source_id) {
-            return RequestFormSubmission::find($this->source_id)?->submitter_name;
+            return RequestFormSubmission::where('id', $this->source_id)
+                ->where('tenant_id', $this->tenant_id)
+                ->value('submitter_name');
         }
 
         return null;

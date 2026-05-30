@@ -216,7 +216,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
         Route::post('/messages/mark-all-read',        [PartnerPortalController::class, 'markMessagesRead'])->name('messages.mark-all-read');
         Route::post('/actions/mark-all-read',         [PartnerPortalController::class, 'markActionsRead'])->name('actions.mark-all-read');
-        Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
+        Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread')->middleware('throttle:60,1');
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
         Route::post('/messages/send-direct',          [PartnerPortalController::class, 'sendDirectMessage'])->name('messages.send-direct')->middleware('throttle:30,1');
         Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index')->middleware('throttle:60,1');

@@ -164,12 +164,12 @@ class ContactController extends Controller
         ]);
 
         $tenantId = TenantContext::id();
-        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+        if (!$tenantId) {
             abort(403, 'Tenant context required.');
         }
 
         // Validate organization_id belongs to this tenant
-        if (!empty($data['organization_id']) && $tenantId) {
+        if (!empty($data['organization_id'])) {
             $orgExists = DB::table('organizations')
                 ->where('id', $data['organization_id'])
                 ->where('tenant_id', $tenantId)
@@ -179,8 +179,7 @@ class ContactController extends Controller
             }
         }
 
-        $q = DB::table('contacts')->where('id', $id);
-        if ($tenantId) $q->where('tenant_id', $tenantId);
+        $q = DB::table('contacts')->where('id', $id)->where('tenant_id', $tenantId);
 
         // exists() check prevents false 404 on zero-change updates
         if (!$q->exists()) {
@@ -202,11 +201,10 @@ class ContactController extends Controller
         }
 
         $tenantId = TenantContext::id();
-        if (!$tenantId && !TenantContext::isSuperAdmin()) {
+        if (!$tenantId) {
             abort(403, 'Tenant context required.');
         }
-        $q = DB::table('contacts')->where('id', $id);
-        if ($tenantId) $q->where('tenant_id', $tenantId);
+        $q = DB::table('contacts')->where('id', $id)->where('tenant_id', $tenantId);
         $deleted = $q->delete();
 
         if (!$deleted) {
@@ -322,22 +320,21 @@ class ContactController extends Controller
 
     private function contactWithMeta(string $id, ?string $tenantId = null): mixed
     {
-        $q = DB::table('contacts as c')
-            ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
-            ->where('c.id', $id);
-
-        if ($tenantId) {
-            $q->where('c.tenant_id', $tenantId);
-            $dealCountSub = DB::raw(
-                "(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts WHERE tenant_id = "
-                . DB::getPdo()->quote($tenantId)
-                . " GROUP BY contact_id) dc"
-            );
-        } else {
-            $dealCountSub = DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc');
+        if (!$tenantId) {
+            abort(403, 'Tenant context required.');
         }
 
-        return $q->leftJoin($dealCountSub, 'c.id', '=', 'dc.contact_id')
+        $dealCountSub = DB::raw(
+            "(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts WHERE tenant_id = "
+            . DB::getPdo()->quote($tenantId)
+            . " GROUP BY contact_id) dc"
+        );
+
+        return DB::table('contacts as c')
+            ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
+            ->leftJoin($dealCountSub, 'c.id', '=', 'dc.contact_id')
+            ->where('c.id', $id)
+            ->where('c.tenant_id', $tenantId)
             ->select('c.*', 'o.name as org_name', DB::raw('COALESCE(dc.deal_count, 0) as deal_count'))
             ->first();
     }

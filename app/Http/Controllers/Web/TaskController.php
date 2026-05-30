@@ -75,6 +75,25 @@ class TaskController extends Controller
             'source_id'       => 'nullable|string|uuid',
         ]);
 
+        if (!empty($data['source_type']) && !empty($data['source_id'])) {
+            $sourceTable = match($data['source_type']) {
+                'deal', 'lead' => 'leads',
+                'contact'      => 'contacts',
+                'referrer'     => 'resellers',
+                'partner'      => 'partner_users',
+                default        => null,
+            };
+            if ($sourceTable) {
+                $exists = DB::table($sourceTable)
+                    ->where('id', $data['source_id'])
+                    ->where('tenant_id', $tenantId)
+                    ->exists();
+                if (!$exists) {
+                    return response()->json(['error' => 'Invalid source reference.'], 422);
+                }
+            }
+        }
+
         [$actorType, $actorId, $actorName] = $this->resolveActorFull();
 
         // Resolve 'me' to the authenticated user's ID (server-side — never trust frontend user ID alone)
@@ -367,16 +386,19 @@ class TaskController extends Controller
             return response()->json(['error' => 'This task is no longer available for assignment.'], 422);
         }
 
-        // Verify actor is an active member of this tenant (super admin web guard is always allowed)
+        // Verify actor is an active non-viewer member of this tenant
         if (!Auth::guard('web')->check()) {
-            $isMember = DB::table('tenant_memberships')
+            $membership = DB::table('tenant_memberships')
                 ->where('tenant_id', $tenantId)
                 ->where('tenant_user_id', $actorId)
                 ->where('status', 'active')
-                ->exists();
+                ->first();
 
-            if (!$isMember) {
+            if (!$membership) {
                 return response()->json(['error' => 'You do not have access to this tenant.'], 403);
+            }
+            if ($membership->role === 'viewer') {
+                return response()->json(['error' => 'Viewers cannot be assigned tasks.'], 403);
             }
         }
 
@@ -475,7 +497,7 @@ class TaskController extends Controller
         $status         = $request->query('status');        // open|in_progress|waiting|completed
         $assigneeFilter = $request->query('assignee');      // tenant_user UUID or 'all'
         $priority       = $request->query('priority');      // urgent|high|medium|low
-        $search         = trim((string) $request->query('q', ''));
+        $search         = mb_substr(trim((string) $request->query('q', '')), 0, 100);
         $dateFilter     = $request->query('date');          // overdue|today|week
         $view           = in_array($request->query('view'), ['list','kanban']) ? $request->query('view') : 'list';
         $isAdmin        = Auth::guard('web')->check()
@@ -1160,6 +1182,9 @@ class TaskController extends Controller
     {
         // SA web guard is always allowed
         if (Auth::guard('web')->check()) return;
+
+        // Must be authenticated via the tenant guard
+        if (!Auth::guard('tenant')->check()) abort(403);
 
         // For tenant users: verify role is admin/owner/manager
         if (!in_array(TenantContext::role(), ['admin', 'owner', 'manager'])) abort(403);

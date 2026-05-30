@@ -248,6 +248,11 @@ class MessageController extends Controller
                 ->firstOrFail();
 
             $isReseller = Auth::guard('reseller')->check();
+
+            if ($isReseller && (string) $thread->reseller_id !== (string) Auth::guard('reseller')->id()) {
+                abort(403, 'You do not have access to this thread.');
+            }
+
             $senderType = $isReseller ? 'reseller' : 'admin';
             $senderId   = $isReseller
                 ? (string) Auth::guard('reseller')->id()

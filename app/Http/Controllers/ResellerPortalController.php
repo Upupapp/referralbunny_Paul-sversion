@@ -13,20 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 class ResellerPortalController extends Controller
 {
-    private function reseller(): Reseller
+    private function reseller(string $tenantId): Reseller
     {
         $reseller = Auth::guard('reseller')->user();
-        if ($reseller instanceof Reseller) {
-            return $reseller;
+        if (!$reseller instanceof Reseller) {
+            abort(403, 'Reseller portal requires reseller authentication.');
         }
-        // Super admin accessing reseller portal — not supported directly.
-        // Super admins should use the tenant admin portal instead.
-        abort(403, 'Reseller portal requires reseller authentication.');
+        if ((string) $reseller->tenant_id !== (string) $tenantId) {
+            abort(403, 'Access denied.');
+        }
+        return $reseller;
     }
 
     public function dashboard($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
         // SQL aggregate stats (cached 120s) — no full table scan
@@ -127,14 +128,14 @@ class ResellerPortalController extends Controller
 
     public function deals($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         return view('reseller.deals.index', compact('reseller', 'tenant'));
     }
 
     public function commission($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         $calc = app(\App\Services\CommissionCalculationService::class);
 
@@ -209,14 +210,14 @@ class ResellerPortalController extends Controller
 
     public function profile($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         return view('reseller.profile', compact('reseller', 'tenant'));
     }
 
     public function requestForms($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         if ($reseller->tenant_id !== $tenantId) abort(403);
         $tenant   = Tenant::findOrFail($tenantId);
 
@@ -234,7 +235,7 @@ class ResellerPortalController extends Controller
 
     public function messages($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
         try {
@@ -267,7 +268,7 @@ class ResellerPortalController extends Controller
 
     public function notifications($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
         // Auto-mark all as read when the notifications page is opened
@@ -284,7 +285,7 @@ class ResellerPortalController extends Controller
 
     public function activityLog($tenantId)
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         $filter   = request('filter', 'all');
         $perPage  = 25;
@@ -560,7 +561,7 @@ class ResellerPortalController extends Controller
      */
     public function tasks(string $tenantId): \Illuminate\View\View
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         $tab      = request('tab', 'open'); // open | completed
 
@@ -595,7 +596,7 @@ class ResellerPortalController extends Controller
      */
     public function taskStore(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
         $data = $request->validate([
@@ -658,7 +659,7 @@ class ResellerPortalController extends Controller
      */
     public function taskComplete(Request $request, string $tenantId, string $taskId): \Illuminate\Http\JsonResponse
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
 
         $task = \App\Models\Task::where('tenant_id', $tenantId)
             ->where('assigned_to_type', 'reseller')
@@ -696,7 +697,7 @@ class ResellerPortalController extends Controller
      */
     public function taskUpdateStatus(Request $request, string $tenantId, string $taskId): \Illuminate\Http\JsonResponse
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
 
         $task = \App\Models\Task::where('tenant_id', $tenantId)
             ->where('assigned_to_type', 'reseller')
@@ -744,14 +745,14 @@ class ResellerPortalController extends Controller
 
     public function calendar(string $tenantId): \Illuminate\View\View
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         return view('reseller.calendar', compact('reseller', 'tenant'));
     }
 
     public function calendarEvents(Request $request, string $tenantId): \Illuminate\Http\JsonResponse
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $tz       = config('app.timezone', 'UTC');
 
         try {
@@ -836,7 +837,7 @@ class ResellerPortalController extends Controller
 
     public function markActionsRead($tenantId): \Illuminate\Http\JsonResponse
     {
-        $reseller = $this->reseller();
+        $reseller = $this->reseller($tenantId);
         $cacheKey = "ca_reseller:{$tenantId}:" . md5($reseller->name . ':' . $reseller->id);
 
         \Illuminate\Support\Facades\Cache::forget($cacheKey);

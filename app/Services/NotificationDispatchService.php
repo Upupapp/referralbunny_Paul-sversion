@@ -34,9 +34,14 @@ class NotificationDispatchService
         // Dedup check — scoped to tenant_id when available to prevent theoretical
         // cross-tenant collisions if deal IDs are ever non-UUID (e.g., sequential ints).
         if ($deduplicationKey) {
-            $q = Notification::where('deduplication_key', $deduplicationKey);
+            $q = Notification::where('deduplication_key', $deduplicationKey)
+                             ->where('notifiable_type', $notifiableType)
+                             ->where('notifiable_id', $notifiableId);
+            // Always scope by tenant; for SA (null tenant) explicitly match NULL rows
             if ($tenantId) {
                 $q->where('tenant_id', $tenantId);
+            } else {
+                $q->whereNull('tenant_id');
             }
             if ($q->exists()) return null;
         }
@@ -91,8 +96,10 @@ class NotificationDispatchService
         // LIKE on deduplication_key: "{category}:%:{dedupeSuffix}" — the % matches
         // any admin UUID. This is an indexed prefix scan when the column is indexed.
         if ($dedupeSuffix) {
+            $escapedSuffix   = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $dedupeSuffix);
+            $escapedCategory = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $category);
             $alreadySent = Notification::where('tenant_id', $tenantId)
-                ->where('deduplication_key', 'like', "{$category}:%:{$dedupeSuffix}")
+                ->where('deduplication_key', 'like', "{$escapedCategory}:%:{$escapedSuffix}")
                 ->exists();
             if ($alreadySent) return;
         }

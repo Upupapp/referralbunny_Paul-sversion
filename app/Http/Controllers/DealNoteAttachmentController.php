@@ -27,8 +27,6 @@ class DealNoteAttachmentController extends Controller
         'application/x-excel',
         'application/x-msexcel',
         'text/csv', 'text/plain',
-        // Browsers/OS often report legacy Office files as generic binary
-        'application/octet-stream',
         // xlsx/docx are ZIP-based; some OS/browser MIME detectors report this
         'application/zip',
     ];
@@ -143,7 +141,19 @@ class DealNoteAttachmentController extends Controller
         if (Auth::guard('partner')->check()) {
             return Auth::guard('partner')->user()->tenant_id;
         }
-        if (Auth::guard('tenant')->check() || Auth::guard('web')->check()) {
+        if (Auth::guard('tenant')->check()) {
+            $tid = $request->route('tenantId');
+            if ($tid) {
+                $userId = Auth::guard('tenant')->id();
+                $isMember = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+                    ->where('tenant_id', $tid)
+                    ->where('status', 'active')
+                    ->exists();
+                if (!$isMember) abort(403, 'Access denied.');
+                return $tid;
+            }
+        }
+        if (Auth::guard('web')->check()) {
             $tid = $request->route('tenantId');
             if ($tid) return $tid;
         }

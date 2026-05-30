@@ -120,7 +120,11 @@ class TenantExportController extends Controller
         $filePath = $exportRequest->file_path;
         $fileName = $exportRequest->file_name ?? 'export.' . ($exportRequest->export_format ?? 'csv');
 
-        if (!$filePath || !Storage::disk('local')->exists($filePath)) {
+        if (!$filePath || !str_starts_with($filePath, 'exports/')) {
+            abort(422, 'Invalid export file path.');
+        }
+
+        if (!Storage::disk('local')->exists($filePath)) {
             abort(404, 'Export file not found on storage.');
         }
 

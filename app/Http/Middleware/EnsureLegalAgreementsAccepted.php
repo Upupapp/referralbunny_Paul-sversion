@@ -25,42 +25,38 @@ class EnsureLegalAgreementsAccepted
 
     public function handle(Request $request, Closure $next)
     {
-        try {
-            if ($request->routeIs(self::SKIP_ROUTES)) {
-                return $next($request);
-            }
+        if ($request->routeIs(self::SKIP_ROUTES)) {
+            return $next($request);
+        }
 
-            [$tenantId, $userType, $userId, $role] = $this->resolveContext($request);
+        [$tenantId, $userType, $userId, $role] = $this->resolveContext($request);
 
-            if (!$tenantId || !$userId) {
-                return $next($request);
-            }
+        if (!$tenantId || !$userId) {
+            return $next($request);
+        }
 
-            // Owners and admins manage agreements — never gate them
-            if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
-                return $next($request);
-            }
+        // Owners and admins manage agreements — never gate them
+        if ($userType === 'tenant_user' && in_array($role, ['owner', 'admin'])) {
+            return $next($request);
+        }
 
-            // Partners cannot access the tenant legal agreements page — skip for them
-            if ($userType === 'partner') {
-                return $next($request);
-            }
+        // Partners cannot access the tenant legal agreements page — skip for them
+        if ($userType === 'partner') {
+            return $next($request);
+        }
 
-            // Cache the result for 60 s per user — hasPending() fires two DB queries on
-            // every authenticated page load (reseller, partner, and tenant routes).
-            $cacheKey = "legal_pending:{$tenantId}:{$userType}:{$userId}";
-            $hasPending = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($tenantId, $userType, $userId, $role) {
-                return $this->hasPending($tenantId, $userType, $userId, $role);
-            });
+        // Cache the result for 60 s per user — hasPending() fires two DB queries on
+        // every authenticated page load (reseller, partner, and tenant routes).
+        $cacheKey = "legal_pending:{$tenantId}:{$userType}:{$userId}";
+        $hasPending = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($tenantId, $userType, $userId, $role) {
+            return $this->hasPending($tenantId, $userType, $userId, $role);
+        });
 
-            if ($hasPending) {
-                // Bust the cache immediately so the acceptance page can see fresh state.
-                \Illuminate\Support\Facades\Cache::forget($cacheKey);
-                session()->put('legal_agreements.intended_url', $request->fullUrl());
-                return redirect()->route('tenant.legal-agreements.accept', $tenantId);
-            }
-        } catch (\Throwable) {
-            // Never block access due to a middleware error — fail open
+        if ($hasPending) {
+            // Bust the cache immediately so the acceptance page can see fresh state.
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+            session()->put('legal_agreements.intended_url', $request->fullUrl());
+            return redirect()->route('tenant.legal-agreements.accept', $tenantId);
         }
 
         return $next($request);

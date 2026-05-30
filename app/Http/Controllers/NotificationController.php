@@ -32,7 +32,8 @@ class NotificationController extends Controller
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('category'))  $query->where('category', $request->category);
         if ($request->boolean('unread') || $request->input('is_read') === 'false') $query->unread();
-        return response()->json($query->limit((int) ($request->input('limit', 200)))->get());
+        $limit = min((int) $request->input('limit', 200), 500);
+        return response()->json($query->limit($limit)->get());
     }
 
     /**
@@ -205,7 +206,13 @@ class NotificationController extends Controller
     {
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
-        if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
+
+        // SA has no personal notifiable rows in tenant-scoped portals — block SA path here
+        if ($type === 'super_admin') {
+            return response()->json(['message' => 'Use the admin panel to manage notifications.'], 403);
+        }
+
+        if (!$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
         Notification::where('id', $notifId)
             ->where('notifiable_type', $type)

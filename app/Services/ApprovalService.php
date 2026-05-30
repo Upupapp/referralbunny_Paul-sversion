@@ -67,12 +67,12 @@ class ApprovalService
         );
     }
 
-    public function reject(ApprovalRequest $approval, int $approvedBy, ?string $notes = null): void
+    public function reject(ApprovalRequest $approval, int $rejectedBy, ?string $notes = null): void
     {
         $approval->update([
             'status'         => 'rejected',
-            'approved_by'    => $approvedBy,
-            'approved_at'    => now(),
+            'rejected_by'    => $rejectedBy,
+            'rejected_at'    => now(),
             'reviewer_notes' => $notes,
         ]);
 

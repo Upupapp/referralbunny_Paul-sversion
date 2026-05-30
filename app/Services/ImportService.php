@@ -48,11 +48,13 @@ class ImportService
         ]);
 
         if ($file) {
-            $path = $file->storeAs('imports/' . $job->id, $file->getClientOriginalName(), 'local');
+            $safeExt  = strtolower($file->getClientOriginalExtension() ?: 'csv');
+            $safeName = (string) Str::uuid() . '.' . $safeExt;
+            $path = $file->storeAs('imports/' . $job->id, $safeName, 'local');
             $job->update([
                 'file_name' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
-                'file_type' => $file->getClientOriginalExtension(),
+                'file_type' => $safeExt,
                 'raw_file_path' => $path,
             ]);
         }

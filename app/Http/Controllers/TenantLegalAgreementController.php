@@ -254,10 +254,13 @@ class TenantLegalAgreementController extends Controller
         $data = $request->validate([
             'agreement_ids'   => 'required|array|min:1',
             'agreement_ids.*' => 'required|string',
-            'user_type'       => 'required|in:tenant_user,reseller,partner',
-            'user_id'         => 'required|string',
-            'user_role'       => 'nullable|string',
         ]);
+
+        // Derive identity from session — never trust user-supplied user_type/user_id
+        [$userType, $userId, $userRole] = $this->resolveUserContext($tenantId);
+        if (!$userType || !$userId) {
+            abort(403, 'Authentication required.');
+        }
 
         foreach ($data['agreement_ids'] as $agreementId) {
             $agreement = TenantLegalAgreement::where('id', $agreementId)
@@ -268,12 +271,12 @@ class TenantLegalAgreementController extends Controller
             TenantLegalAgreementAcceptance::updateOrCreate(
                 [
                     'tenant_legal_agreement_id' => $agreement->id,
-                    'user_type'                 => $data['user_type'],
-                    'user_id'                   => $data['user_id'],
+                    'user_type'                 => $userType,
+                    'user_id'                   => $userId,
                 ],
                 [
                     'tenant_id'   => $tenantId,
-                    'user_role'   => $data['user_role'] ?? null,
+                    'user_role'   => $userRole ?: null,
                     'accepted_at' => now(),
                     'ip_address'  => $request->ip(),
                     'user_agent'  => substr($request->userAgent() ?? '', 0, 500),
@@ -281,7 +284,7 @@ class TenantLegalAgreementController extends Controller
             );
         }
 
-        return $this->afterAcceptRedirect($tenantId, $data['user_type']);
+        return $this->afterAcceptRedirect($tenantId, $userType);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

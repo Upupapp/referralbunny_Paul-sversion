@@ -160,18 +160,29 @@ class ResellerPortalAuthController extends Controller
         ]);
 
         $reseller = Reseller::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
-        if (!$reseller || !$reseller->reset_token || !Hash::check($data['token'], $reseller->reset_token)) {
+        if (!$reseller) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
-        if ($reseller->reset_token_created_at && $reseller->reset_token_created_at->lt(now()->subHour())) {
-            return back()->withErrors(['token' => 'This reset link has expired. Please request a new one.']);
-        }
 
-        DB::table('resellers')->where('id', $reseller->id)->update([
-            'password'               => Hash::make($data['password']),
-            'reset_token'            => null,
-            'reset_token_created_at' => null,
-        ]);
+        $updated = DB::transaction(function () use ($reseller, $data) {
+            $locked = Reseller::where('id', $reseller->id)->lockForUpdate()->first();
+            if (!$locked || !$locked->reset_token || !Hash::check($data['token'], $locked->reset_token)) {
+                return false;
+            }
+            if ($locked->reset_token_created_at && $locked->reset_token_created_at->lt(now()->subHour())) {
+                return false;
+            }
+            DB::table('resellers')->where('id', $locked->id)->update([
+                'password'               => Hash::make($data['password']),
+                'reset_token'            => null,
+                'reset_token_created_at' => null,
+            ]);
+            return true;
+        });
+
+        if (!$updated) {
+            return back()->withErrors(['token' => 'Invalid or expired reset link.']);
+        }
 
         try {
             Log::info('Reseller password reset completed', [
@@ -214,26 +225,24 @@ class ResellerPortalAuthController extends Controller
             'password_confirmation' => 'required|string',
         ]);
 
-        $reseller = Reseller::where('setup_token', $data['token'])->first();
+        $reseller = DB::transaction(function () use ($data) {
+            $locked = Reseller::where('setup_token', $data['token'])->lockForUpdate()->first();
+            if (!$locked) return null;
+            if ($locked->created_at && $locked->created_at->lt(now()->subDays(90))) return null;
+            DB::table('resellers')
+                ->where('id', $locked->id)
+                ->update([
+                    'password'    => Hash::make($data['password']),
+                    'status'      => 'active',
+                    'setup_token' => null,
+                    'joined_date' => now()->toDateString(),
+                ]);
+            return $locked->fresh();
+        });
+
         if (!$reseller) {
             return back()->withErrors(['token' => 'Invalid or expired setup link.']);
         }
-
-        // Block setup if the invitation is older than 90 days.
-        if ($reseller->created_at && $reseller->created_at->lt(now()->subDays(90))) {
-            return back()->withErrors(['token' => 'This setup link has expired. Please ask your workspace admin to resend the invitation.']);
-        }
-
-        DB::table('resellers')
-            ->where('id', $reseller->id)
-            ->update([
-                'password'    => Hash::make($data['password']),
-                'status'      => 'active',
-                'setup_token' => null,
-                'joined_date' => now()->toDateString(),
-            ]);
-
-        $reseller = $reseller->fresh();
         Auth::guard('reseller')->login($reseller);
         request()->session()->regenerate();
 

@@ -252,6 +252,9 @@ class BillingController extends Controller
 
     public function createPaymentIntent(Invoice $invoice): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && $invoice->tenant_id !== TenantContext::requireId()) {
+            abort(403, 'Access denied.');
+        }
         $intent = $this->paymongo->createPaymentIntent($invoice);
         return response()->json($intent);
     }
@@ -346,7 +349,7 @@ class BillingController extends Controller
             'payment_required'  => 'nullable|boolean',
             'auto_renew'        => 'nullable|boolean',
             'note'              => 'required|string|max:1000',
-            'password'          => 'required|string',
+            'password'          => 'required|string|min:8|max:128',
             'typed_confirm'     => 'nullable|string',
         ]);
 
