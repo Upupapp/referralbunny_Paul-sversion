@@ -31,7 +31,7 @@ class HandleDealStageMoved implements ShouldQueue
         $resellerId = $event->resellerId;
         $reseller   = null;
 
-        if (!$email && !$resellerId) {
+        if (!$email && !$resellerId && $event->resellerName) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();

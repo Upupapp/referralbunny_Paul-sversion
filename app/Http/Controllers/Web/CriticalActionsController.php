@@ -90,13 +90,17 @@ class CriticalActionsController extends Controller
         // Strip missing-referrer panel items for users without view_referrers permission.
         // The count is DB-accurate but would be meaningless to a user who cannot see referrer names.
         if (!$canViewReferrers && !empty($result['items'])) {
-            $result['items'] = array_values(array_filter(
+            $beforeCount           = count($result['items']);
+            $result['items']       = array_values(array_filter(
                 $result['items'],
                 fn($item) => ($item['type'] ?? '') !== 'missing_referrer'
             ));
-            $result['total']       = count($result['items']);
+            $stripped              = $beforeCount - count($result['items']);
+            // Subtract only the stripped items from the service-computed full total,
+            // not recount the page slice (which would collapse multi-page results to 1 page).
+            $result['total']       = max(0, (int) ($result['total'] ?? 0) - $stripped);
             $result['total_pages'] = max(1, (int) ceil($result['total'] / ($result['per_page'] ?? 25)));
-            $result['page']        = min($result['page'], $result['total_pages']);
+            $result['page']        = min($result['page'] ?? 1, $result['total_pages']);
         }
 
         // Track "last seen" so new items can be highlighted.

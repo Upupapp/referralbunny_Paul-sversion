@@ -8,6 +8,7 @@ use App\Models\Reseller;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -103,6 +104,27 @@ class HandleDealDeclined implements ShouldQueue
         } catch (\Throwable $e) {
             Log::warning('[HandleDealDeclined] Admin in-app failed', ['error' => $e->getMessage()]);
         }
+
+        // Cache bust — refresh reseller bell + admin CA/notification badges
+        try {
+            if ($resellerId) {
+                Cache::forget("notif_unread_reseller_{$resellerId}");
+            }
+            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+
+            $adminIds = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $event->tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->pluck('u.id');
+
+            foreach ($adminIds as $uid) {
+                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
+                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
     }
 
     public function failed(DealDeclined $event, \Throwable $exception): void

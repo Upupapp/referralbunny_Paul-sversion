@@ -7,7 +7,9 @@ use App\Mail\CommissionStatusUpdate;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class HandleCommissionStatusChanged implements ShouldQueue
 {
@@ -84,22 +86,26 @@ class HandleCommissionStatusChanged implements ShouldQueue
             'paid'    => "Commission paid for {$event->leadName}",
         ];
 
-        EmailLogger::send(
-            mailable:       new CommissionStatusUpdate(
-                resellerName:  $event->resellerName,
-                resellerEmail: $email,
-                tenantName:    $tenantName,
-                dealName:      $event->leadName,
-                status:        $event->newStatus,
-                dealValue:     $event->dealValue,
-                dashboardUrl:  url("/reseller/{$event->tenantId}/commission"),
-            ),
-            recipientEmail: $email,
-            recipientType:  'reseller',
-            emailKey:       "commission_{$event->newStatus}.{$event->leadId}",
-            subject:        $subjects[$event->newStatus] ?? "Commission update for {$event->leadName}",
-            tenantId:       $event->tenantId,
-        );
+        try {
+            EmailLogger::send(
+                mailable:       new CommissionStatusUpdate(
+                    resellerName:  $event->resellerName,
+                    resellerEmail: $email,
+                    tenantName:    $tenantName,
+                    dealName:      $event->leadName,
+                    status:        $event->newStatus,
+                    dealValue:     $event->dealValue,
+                    dashboardUrl:  url("/reseller/{$event->tenantId}/commission"),
+                ),
+                recipientEmail: $email,
+                recipientType:  'reseller',
+                emailKey:       "commission_{$event->newStatus}.{$event->leadId}",
+                subject:        $subjects[$event->newStatus] ?? "Commission update for {$event->leadName}",
+                tenantId:       $event->tenantId,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[HandleCommissionStatusChanged] Email send failed', ['error' => $e->getMessage()]);
+        }
 
         // Notify partners who have an active split on this deal
         try {
@@ -140,7 +146,28 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 }
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('HandleCommissionStatusChanged: partner notification failed: ' . $e->getMessage());
+            Log::warning('[HandleCommissionStatusChanged] Partner notification failed', ['error' => $e->getMessage()]);
         }
+
+        // Cache bust — refresh reseller bell + admin CA badge so counts update promptly
+        try {
+            if ($reseller) {
+                Cache::forget("notif_unread_reseller_{$reseller->id}");
+            }
+            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+
+            $adminIds = DB::table('tenant_memberships as tm')
+                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
+                ->where('tm.tenant_id', $event->tenantId)
+                ->where('tm.status', 'active')
+                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
+                ->pluck('u.id');
+
+            foreach ($adminIds as $uid) {
+                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
+                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
     }
 }
