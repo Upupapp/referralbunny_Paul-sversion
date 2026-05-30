@@ -573,16 +573,18 @@ class ResellerDealController extends Controller
             ]);
         } catch (\Throwable) {}
 
+        // HandleDealStageMoved listener notifies admin + reseller in-app + reseller email
         try {
-            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+            DealStageMoved::dispatch(
+                leadId:       (string) $lead->id,
+                leadName:     $lead->name,
                 tenantId:     $tenantId,
-                category:     'deal_pipeline',
-                priority:     'normal',
-                title:        'Deal stage moved by referrer',
-                body:         $reseller->name . ' moved "' . $lead->name . '" from ' . ucfirst(str_replace('_', ' ', $oldStage)) . ' to ' . ucfirst(str_replace('_', ' ', $targetStage)) . '.',
-                actionUrl:    url("/tenant/{$tenantId}/deals/{$dealId}"),
-                actionLabel:  'View Deal',
-                dedupeSuffix: $dealId . ':stage:' . $targetStage . ':' . now()->format('YmdH'),
+                resellerName: $reseller->name,
+                resellerId:   (string) $reseller->id,
+                fromStage:    $oldStage,
+                toStage:      $targetStage,
+                dealValue:    (float) ($lead->deal_value ?? 0),
+                movedByName:  $reseller->name,
             );
         } catch (\Throwable) {}
 

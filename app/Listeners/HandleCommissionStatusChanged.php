@@ -26,7 +26,8 @@ class HandleCommissionStatusChanged implements ShouldQueue
         $reseller = DB::table('resellers')
             ->where('tenant_id', $event->tenantId)
             ->where(fn($q) => $q->where('email', $event->resellerEmail ?? '')
-                                ->orWhere('name', $event->resellerName))
+                                ->orWhereRaw('LOWER(name) = ?', [strtolower($event->resellerName ?? '')]))
+            ->whereNull('deleted_at')
             ->select('id', 'email')
             ->first();
 

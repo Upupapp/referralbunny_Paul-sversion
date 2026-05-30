@@ -662,31 +662,10 @@ class LeadController extends Controller
             );
         }
 
-        // Resolve actor once — used by stage-moved and declined notifications below
-        $needsActorForNotify = (isset($data['stage']) && $data['stage'] !== $oldStageForEvent && !empty($lead->reseller_name))
-                            || (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined' && !empty($lead->reseller_name));
-
-        $actorNameForNotify = null;
-        if ($needsActorForNotify) {
-            [, , $actorNameForNotify] = $this->resolveActor();
-        }
-
-        // Stage moved by admin — notify assigned reseller
-        if (isset($data['stage']) && $data['stage'] !== $oldStageForEvent && !empty($lead->reseller_name)) {
-            DealStageMoved::dispatch(
-                leadId:       $lead->id,
-                leadName:     $lead->name,
-                tenantId:     $lead->tenant_id,
-                resellerName: $lead->reseller_name,
-                fromStage:    $oldStageForEvent,
-                toStage:      $data['stage'],
-                dealValue:    (float) ($lead->deal_value ?? 0),
-                movedByName:  $actorNameForNotify ?? 'Admin',
-            );
-        }
-
         // Deal declined by admin — notify only on the transition (not on repeat updates)
+        $actorNameForNotify = null;
         if (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined' && !empty($lead->reseller_name)) {
+            [, , $actorNameForNotify] = $this->resolveActor();
             DealDeclined::dispatch(
                 leadId:        $lead->id,
                 leadName:      $lead->name,
@@ -1356,6 +1335,7 @@ class LeadController extends Controller
                 leadName:     $lead->name,
                 tenantId:     $lead->tenant_id,
                 resellerName: $lead->reseller_name ?? '',
+                resellerId:   isset($caRid) ? (string) $caRid : null,
                 fromStage:    $capturedStage,
                 toStage:      $targetStage,
                 dealValue:    (float) ($lead->deal_value ?? 0),
@@ -1399,6 +1379,8 @@ class LeadController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: "{$lead->id}:stage:{$targetStage}:p:{$minute}",
                 );
+                Cache::forget("notif_unread_partner_{$partnerUserId}");
+                Cache::forget("partner_notif_unread:{$partnerUserId}");
             }
         } catch (\Throwable) {}
 

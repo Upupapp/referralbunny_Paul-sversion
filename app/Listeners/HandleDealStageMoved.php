@@ -37,8 +37,11 @@ class HandleDealStageMoved implements ShouldQueue
             $email      = $email      ?? $reseller?->email;
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
 
-            // Skip pending/invited Referrers — they don't have portal access yet
-            if ($reseller && $reseller->status === 'invited') return;
+            // Skip email/in-app for invited Referrers — they don't have portal access yet
+            if ($reseller && $reseller->status === 'invited') {
+                $email      = null;
+                $resellerId = null;
+            }
         }
 
         $toStageLabel = ucfirst(str_replace('_', ' ', $event->toStage));
@@ -96,7 +99,7 @@ class HandleDealStageMoved implements ShouldQueue
                 category:     'deal_pipeline',
                 priority:     $priority,
                 title:        "Deal stage moved: {$event->leadName}",
-                body:         (($event->resellerName ?: ($event->movedByName ?? 'Admin')) . " moved \"{$event->leadName}\" to {$toStageLabel}."),
+                body:         (($event->movedByName ?? $event->resellerName ?: 'Admin') . " moved \"{$event->leadName}\" to {$toStageLabel}."),
                 actionUrl:    url("/tenant/{$event->tenantId}/deals/{$event->leadId}"),
                 actionLabel:  'View Deal',
                 dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}",

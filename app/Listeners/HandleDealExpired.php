@@ -47,6 +47,7 @@ class HandleDealExpired implements ShouldQueue
             $reseller = DB::table('resellers')
                 ->where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
+                ->whereNull('deleted_at')
                 ->first(['id', 'email', 'status']);
             if ($reseller) {
                 if ($reseller->status === 'invited') {
@@ -119,6 +120,7 @@ class HandleDealExpired implements ShouldQueue
                 dedupeSuffix: "{$event->leadId}:expired:partner",
             );
             Cache::forget("notif_unread_partner_{$partnerRow->partner_user_id}");
+            Cache::forget("partner_notif_unread:{$partnerRow->partner_user_id}");
         }
 
         // ── Cache bust: refresh admin CA badges within 60s ────────────────────
