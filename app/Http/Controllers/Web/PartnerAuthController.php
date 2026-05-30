@@ -97,20 +97,27 @@ class PartnerAuthController extends Controller
             'password_confirmation' => 'required|string',
         ]);
 
-        $partner = Partner::where('setup_token', $data['token'])->first();
-        if (!$partner) {
-            // Check if already activated with this email (token was cleared after first activation)
-            return back()->withErrors(['token' => 'This setup link is no longer valid. If you already activated your account, please sign in. If not, contact the workspace administrator for a new invitation.']);
-        }
-
-        try {
-            $partner->update([
+        $partner = DB::transaction(function () use ($data) {
+            $locked = Partner::where('setup_token', $data['token'])->lockForUpdate()->first();
+            if (!$locked) return null;
+            if ($locked->created_at && $locked->created_at->lt(now()->subDays(90))) return null;
+            DB::table('partners')->where('id', $locked->id)->update([
                 'password'           => Hash::make($data['password']),
                 'status'             => 'active',
                 'setup_completed_at' => now(),
                 'setup_token'        => null,
                 'last_login_at'      => now(),
+                'updated_at'         => now(),
             ]);
+            return $locked->fresh();
+        });
+
+        if (!$partner) {
+            return back()->withErrors(['token' => 'This setup link is no longer valid. If you already activated your account, please sign in. If not, contact the workspace administrator for a new invitation.']);
+        }
+
+        try {
+            // partner already updated above — no-op catch kept for downstream hooks
         } catch (\Throwable $e) {
             Log::error('PartnerAuthController::setup — update failed', [
                 'partner_id' => $partner->id,

@@ -77,6 +77,12 @@ class WebhookController extends Controller
             return;
         }
 
+        // Idempotency: skip if already processed
+        if ($invoice->status === 'paid') {
+            Log::info("payment.paid: invoice {$invoiceId} already paid — skipping");
+            return;
+        }
+
         // Record payment
         $payment = $this->paymongo->recordPayment($invoice, $data);
 

@@ -194,6 +194,7 @@ class ResellerDealController extends Controller
                 ->where('deal_id', $dealId)
                 ->whereNull('deleted_at')
                 ->where('status', '!=', 'removed')
+                ->select(['id', 'partner_name', 'split_share_value', 'split_share_type', 'status', 'currency', 'created_at'])
                 ->get()
                 ->toArray();
         } catch (\Throwable) {}
@@ -555,6 +556,10 @@ class ResellerDealController extends Controller
 
         if ($pendingExists) {
             return response()->json(['error' => 'A stage move request is already pending approval.'], 422);
+        }
+
+        if ($lead->commission_status === 'locked' || $lead->commission_status === 'paid') {
+            return response()->json(['error' => 'Cannot move stage: commission is already locked or paid.'], 422);
         }
 
         DB::beginTransaction();

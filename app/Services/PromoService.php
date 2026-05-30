@@ -184,6 +184,12 @@ class PromoService
         $discountPhp = $this->calculateDiscount($promo, (float) $invoice->base_amount_php);
 
         DB::transaction(function () use ($promo, $subscription, $invoice, $discountPhp, $currency, $rate, $redeemedBy, $tenant) {
+            // Re-check redemption limit inside the transaction with a row lock
+            $locked = PromoCode::where('id', $promo->id)->lockForUpdate()->first();
+            if ($locked && $locked->max_redemptions !== null && $locked->redemptions_count >= $locked->max_redemptions) {
+                throw new \RuntimeException('Promo code redemption limit reached.');
+            }
+
             // Update invoice
             $newFinal = max(0, (float) $invoice->final_amount - $discountPhp);
             $lineItems = $invoice->line_items_json ?? [];
@@ -262,7 +268,7 @@ class PromoService
     public function calculateDiscount(PromoCode $promo, float $baseAmount): float
     {
         return match ($promo->discount_type) {
-            'percentage'    => round($baseAmount * ((float) $promo->discount_value / 100), 2),
+            'percentage'    => round($baseAmount * (min(100.0, (float) $promo->discount_value) / 100), 2),
             'fixed_amount'  => min((float) $promo->discount_value, $baseAmount),
             'free_months'   => $baseAmount, // full invoice discount; caller handles multi-month
             'trial_extension' => 0, // handled separately via subscription trial_end_date extension

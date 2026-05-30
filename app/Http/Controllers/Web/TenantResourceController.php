@@ -8,6 +8,7 @@ use App\Models\ResourceFolder;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -140,6 +141,15 @@ class TenantResourceController extends Controller
         [$actorType, $actorId, $actorName] = $this->resolveActor();
 
         $folderId  = $request->input('folder_id') ?: null;
+        if ($folderId) {
+            $folderExists = DB::table('resource_folders')
+                ->where('id', $folderId)
+                ->where('tenant_id', $tenantId)
+                ->exists();
+            if (!$folderExists) {
+                return response()->json(['error' => 'Invalid folder.'], 422);
+            }
+        }
         $original  = $file->getClientOriginalName();
         $safeName  = preg_replace('/[^a-zA-Z0-9._\-]/', '_', $original);
         $stored    = Str::uuid() . '_' . $safeName;

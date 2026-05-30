@@ -266,8 +266,8 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::delete('imports/mapping-profiles/{profile}',   [ImportController::class, 'deleteMappingProfile']);
 
     // Global Search
-    Route::get('search',                       [SearchController::class, 'search']);
-    Route::get('search/suggest',               [SearchController::class, 'suggest']);
+    Route::get('search',                       [SearchController::class, 'search'])->middleware('throttle:60,1');
+    Route::get('search/suggest',               [SearchController::class, 'suggest'])->middleware('throttle:60,1');
     Route::get('search/recent',                [SearchController::class, 'recent']);
     Route::get('search/saved',                 [SearchController::class, 'savedSearches']);
     Route::post('search/saved',                [SearchController::class, 'saveSearch']);

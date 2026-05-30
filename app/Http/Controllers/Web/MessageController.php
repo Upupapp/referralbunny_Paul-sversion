@@ -708,6 +708,7 @@ class MessageController extends Controller
     {
         $reseller = auth('reseller')->user();
         if (!$reseller) return response()->json(['error' => 'Unauthorized.'], 403);
+        if ((string) $reseller->tenant_id !== (string) $tenantId) abort(403, 'Access denied.');
 
         DB::table('message_threads')
             ->where('tenant_id', $tenantId)

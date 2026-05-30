@@ -24,7 +24,7 @@ class EnsureResellerAccess
         $reseller = Auth::guard('reseller')->user();
         $tenantId = $request->route('tenantId');
 
-        if ($reseller->tenant_id !== $tenantId) {
+        if ((string) $reseller->tenant_id !== (string) $tenantId) {
             abort(403, 'You do not have access to this referral program.');
         }
 

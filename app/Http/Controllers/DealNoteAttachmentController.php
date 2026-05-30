@@ -70,9 +70,20 @@ class DealNoteAttachmentController extends Controller
     private function serveAttachment(string $tenantId, string $dealId, string $commentId, string $attachmentId, string $disposition): StreamedResponse|JsonResponse
     {
         try {
-            Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
+            $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
         } catch (\Throwable) {
             abort(404, 'Deal not found.');
+        }
+
+        // Resellers may only access attachments from deals assigned to them
+        if (Auth::guard('reseller')->check()) {
+            $reseller = Auth::guard('reseller')->user();
+            $assigned = \App\Models\CommissionSplit::where('lead_id', $lead->id)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->whereExists(fn($q) => $q->from('leads')->whereColumn('leads.id', 'commission_splits.lead_id')->where('leads.tenant_id', $tenantId))
+                ->exists()
+                || strtolower($lead->reseller_name ?? '') === strtolower($reseller->name);
+            if (!$assigned) abort(403, 'You do not have access to this deal.');
         }
 
         try {

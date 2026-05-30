@@ -635,7 +635,7 @@ class RequestFormController extends Controller
     private function authorizeAdmin(string $tenantId): void
     {
         $ctxId = TenantContext::id();
-        if ($ctxId && $ctxId !== $tenantId) abort(403);
+        abort_unless(!$ctxId || $ctxId === $tenantId, 403);
         if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) abort(403);
 
         if (Auth::guard('tenant')->check()) {

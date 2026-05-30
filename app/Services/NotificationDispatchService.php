@@ -99,6 +99,7 @@ class NotificationDispatchService
             $escapedSuffix   = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $dedupeSuffix);
             $escapedCategory = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $category);
             $alreadySent = Notification::where('tenant_id', $tenantId)
+                ->where('notifiable_type', 'tenant_admin')
                 ->where('deduplication_key', 'like', "{$escapedCategory}:%:{$escapedSuffix}")
                 ->exists();
             if ($alreadySent) return;

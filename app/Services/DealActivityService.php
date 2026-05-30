@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Lead;
 use App\Models\LeadHistory;
+use App\Services\TenantContext;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -21,6 +23,16 @@ class DealActivityService
     public function record(Lead $lead, string $action, string $type, array $options = []): void
     {
         try {
+            $ctxTenant = TenantContext::id();
+            if ($ctxTenant && $ctxTenant !== (string) $lead->tenant_id) {
+                Log::warning('DealActivityService: cross-tenant record attempt blocked', [
+                    'ctx_tenant' => $ctxTenant,
+                    'lead_tenant' => $lead->tenant_id,
+                    'lead_id' => $lead->id,
+                ]);
+                return;
+            }
+
             [$actorName, $actorRole] = $this->resolveActor();
 
             LeadHistory::create([

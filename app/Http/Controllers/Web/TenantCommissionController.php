@@ -70,7 +70,8 @@ class TenantCommissionController extends Controller
             $query->where('commission_status', $filterStatus);
         }
         if ($filterReferrer) {
-            $query->where('reseller_name', 'like', '%' . $filterReferrer . '%');
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filterReferrer);
+            $query->where('reseller_name', 'like', '%' . $escaped . '%');
         }
         if ($filterDate) {
             $query->where('created_at', '>=', $filterDate);
@@ -207,7 +208,8 @@ class TenantCommissionController extends Controller
             $query->where('commission_status', $filterStatus);
         }
         if ($filterReferrer) {
-            $query->where('reseller_name', 'like', '%' . $filterReferrer . '%');
+            $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filterReferrer);
+            $query->where('reseller_name', 'like', '%' . $escaped . '%');
         }
 
         $dealIds = (clone $query)->pluck('id');

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApprovalRequest;
 use App\Models\PromoCode;
+use Illuminate\Support\Facades\DB;
 use App\Models\Promotion;
 use App\Models\Plan;
 use Illuminate\Support\Collection;
@@ -95,6 +96,7 @@ class ApprovalService
         return ApprovalRequest::with(['requestedBy', 'approvedBy'])
             ->where('status', 'pending')
             ->orderByDesc('created_at')
+            ->limit(200)
             ->get();
     }
 
@@ -102,7 +104,7 @@ class ApprovalService
     {
         return ApprovalRequest::with(['requestedBy', 'approvedBy'])
             ->whereIn('status', ['approved', 'rejected'])
-            ->orderByDesc('approved_at')
+            ->orderByDesc(DB::raw('COALESCE(approved_at, rejected_at)'))
             ->limit(100)
             ->get();
     }

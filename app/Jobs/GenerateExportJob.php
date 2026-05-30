@@ -130,15 +130,19 @@ class GenerateExportJob implements ShouldQueue
             ->where('tenant_id', $request->tenant_id)
             ->orderByDesc('created_at');
 
-        // Scope-down to only the requester's own deals when the requester is a referrer
+        // Scope-down to only the requester's own deals when the requester is a referrer.
+        // Use both reseller_id (authoritative FK) and name-match fallback for legacy rows.
         if ($request->requester_type === 'reseller') {
             $resellerName = DB::table('resellers')
                 ->where('id', $request->requester_id)
                 ->value('name');
 
-            if ($resellerName) {
-                $query->where('reseller_name', $resellerName);
-            }
+            $query->where(function ($q) use ($request, $resellerName) {
+                $q->where('reseller_id', $request->requester_id);
+                if ($resellerName) {
+                    $q->orWhere('reseller_name', $resellerName);
+                }
+            });
         }
 
         // Apply any optional scope filters stored on the request

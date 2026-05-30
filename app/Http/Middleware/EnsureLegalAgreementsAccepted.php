@@ -48,7 +48,7 @@ class EnsureLegalAgreementsAccepted
         // Cache the result for 60 s per user — hasPending() fires two DB queries on
         // every authenticated page load (reseller, partner, and tenant routes).
         $cacheKey = "legal_pending:{$tenantId}:{$userType}:{$userId}";
-        $hasPending = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($tenantId, $userType, $userId, $role) {
+        $hasPending = \Illuminate\Support\Facades\Cache::remember($cacheKey, 15, function () use ($tenantId, $userType, $userId, $role) {
             return $this->hasPending($tenantId, $userType, $userId, $role);
         });
 

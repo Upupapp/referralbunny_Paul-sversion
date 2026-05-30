@@ -29,8 +29,12 @@ class NotificationController extends Controller
             abort(403, 'Tenant context required.');
         }
 
-        if ($request->filled('priority'))  $query->where('priority', $request->priority);
-        if ($request->filled('category'))  $query->where('category', $request->category);
+        if ($request->filled('priority') && in_array($request->priority, ['low','normal','medium','high','critical','urgent'])) {
+            $query->where('priority', $request->priority);
+        }
+        if ($request->filled('category') && preg_match('/^[a-z0-9_\-]{1,50}$/', $request->category)) {
+            $query->where('category', $request->category);
+        }
         if ($request->boolean('unread') || $request->input('is_read') === 'false') $query->unread();
         $limit = min((int) $request->input('limit', 200), 500);
         return response()->json($query->limit($limit)->get());
@@ -58,11 +62,11 @@ class NotificationController extends Controller
             $q->where('is_read', false)->where('is_dismissed', false);
         }
 
-        if ($request->filled('category')) {
+        if ($request->filled('category') && preg_match('/^[a-z0-9_\-]{1,50}$/', $request->category)) {
             $q->where('category', $request->category);
         }
 
-        if ($request->filled('priority')) {
+        if ($request->filled('priority') && in_array($request->priority, ['low','normal','medium','high','critical','urgent'])) {
             $q->where('priority', $request->priority);
         }
 
@@ -116,11 +120,15 @@ class NotificationController extends Controller
         if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
-        Notification::where('notifiable_type', $type)
+        $q = Notification::where('notifiable_type', $type)
             ->where('notifiable_id', $id)
-            ->where('is_read', false)
-            ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
-            ->update(['is_read' => true]);
+            ->where('is_read', false);
+        if ($type === 'super_admin') {
+            $q->whereNull('tenant_id');
+        } else {
+            $q->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')));
+        }
+        $q->update(['is_read' => true]);
 
         Cache::forget("notif_unread_{$type}_{$id}");
         if ($type === 'partner') {
@@ -241,12 +249,16 @@ class NotificationController extends Controller
         if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
 
-        Notification::where('notifiable_type', $type)
+        $q2 = Notification::where('notifiable_type', $type)
             ->where('notifiable_id', $id)
             ->where('is_read', false)
-            ->where('is_dismissed', false)
-            ->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')))
-            ->update(['is_read' => true]);
+            ->where('is_dismissed', false);
+        if ($type === 'super_admin') {
+            $q2->whereNull('tenant_id');
+        } else {
+            $q2->when($tenantId, fn($q) => $q->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id')));
+        }
+        $q2->update(['is_read' => true]);
 
         Cache::forget("notif_unread_{$type}_{$id}");
         if ($type === 'partner') {

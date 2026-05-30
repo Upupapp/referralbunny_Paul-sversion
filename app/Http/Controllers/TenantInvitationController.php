@@ -122,7 +122,7 @@ class TenantInvitationController extends Controller
         $request->validate([
             'tenant_id' => 'required|string|exists:tenants,id',
             'email'     => 'required|email|max:255',
-            'role'      => 'nullable|in:owner,admin,member,viewer',
+            'role'      => 'nullable|in:admin,manager,member,viewer',
         ]);
 
         // Non-SA callers can only invite into their own tenant, and must be owner or admin
@@ -159,6 +159,9 @@ class TenantInvitationController extends Controller
             $tenantId = TenantContext::requireId();
             if ($invite->tenant_id !== $tenantId) {
                 abort(403, 'Forbidden.');
+            }
+            if (!in_array(TenantContext::role(), ['owner', 'admin'])) {
+                abort(403, 'Only owners and admins can revoke invitations.');
             }
         }
 

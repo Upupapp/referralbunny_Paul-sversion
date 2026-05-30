@@ -62,7 +62,10 @@ class LeadController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Derive tenant from authenticated context; fall back to query param
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
+        if (!$tenantId && TenantContext::isSuperAdmin()) {
+            $tenantId = $request->query('tenant_id');
+        }
         if ($tenantId) {
             $query->where('tenant_id', $tenantId);
         } elseif (!TenantContext::isSuperAdmin()) {
@@ -636,7 +639,7 @@ class LeadController extends Controller
             'commission_status' => 'sometimes|in:pending,locked,paid',
             'base_cost'         => 'sometimes|numeric|min:0',
             'added_amount'      => 'sometimes|numeric|min:0',
-            'deal_value'        => 'sometimes|numeric',
+            'deal_value'        => 'sometimes|numeric|min:0',
             'data'              => 'sometimes|array',
         ]);
 

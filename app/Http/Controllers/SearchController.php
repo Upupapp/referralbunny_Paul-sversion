@@ -24,7 +24,7 @@ class SearchController extends Controller
     // GET /api/search?q=...&type=...&status=...&from=...&to=...&limit=...&offset=...
     public function search(Request $request): JsonResponse
     {
-        $query   = $request->get('q', '');
+        $query   = substr((string) $request->get('q', ''), 0, 200);
         $limit   = min((int) $request->get('limit', 20), 50);
         $offset  = (int) $request->get('offset', 0);
         // tenant_id is always derived from authenticated session, never from user input

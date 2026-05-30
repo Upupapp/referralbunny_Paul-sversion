@@ -537,7 +537,8 @@ class TaskController extends Controller
             $query->where('priority', $priority);
         }
         if ($search !== '') {
-            $query->where('title', 'ilike', '%' . $search . '%');
+            $escapedSearch = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+            $query->where('title', 'ilike', '%' . $escapedSearch . '%');
         }
         if ($dateFilter === 'overdue') {
             $query->whereNotIn('status', ['completed','cancelled','archived'])->where('due_at', '<', now());

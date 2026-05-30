@@ -17,8 +17,10 @@ class TenantLegalAgreementController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        // Always derive from authenticated session; query param is a hint for SA context-switching only
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::id();
+        if (!$tenantId && TenantContext::isSuperAdmin()) {
+            $tenantId = $request->query('tenant_id');
+        }
         if (!$tenantId) return response()->json(['error' => 'tenant_id required'], 422);
 
         $agreements = TenantLegalAgreement::where('tenant_id', $tenantId)
@@ -180,6 +182,10 @@ class TenantLegalAgreementController extends Controller
             $userType = 'tenant_user';
             $userId   = (string) \Illuminate\Support\Facades\Auth::guard('tenant')->id();
             $userRole = \App\Services\TenantContext::role() ?? $request->input('user_role');
+            abort_unless(
+                (string) \App\Services\TenantContext::id() === (string) $agreement->tenant_id,
+                403, 'Forbidden.'
+            );
         } else {
             abort(401, 'Unauthenticated.');
         }
@@ -328,7 +334,8 @@ class TenantLegalAgreementController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
                 ->first();
-            return ['tenant_user', (string) $user->id, $membership?->role ?? 'member'];
+            if (!$membership) abort(403, 'You are not a member of this workspace.');
+            return ['tenant_user', (string) $user->id, $membership->role];
         }
         if ($reseller = Auth::guard('reseller')->user()) {
             return ['reseller', (string) $reseller->id, 'referrer'];
@@ -364,6 +371,9 @@ class TenantLegalAgreementController extends Controller
     private function authorizeAdminAccess(?string $tenantId): void
     {
         if (!$tenantId) abort(422, 'tenant_id required');
+        if (!Auth::guard('tenant')->check() && !TenantContext::isSuperAdmin()) {
+            abort(403, 'Only Owners and Admins can manage legal agreements.');
+        }
         if ($userId = Auth::guard('tenant')->id()) {
             $isAdmin = DB::table('tenant_memberships')
                 ->where('tenant_user_id', $userId)

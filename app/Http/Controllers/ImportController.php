@@ -111,11 +111,11 @@ class ImportController extends Controller
         $this->requireAdminAccess();
 
         $data = $request->validate([
-            'object_type'   => ['required', 'string', \Illuminate\Validation\Rule::in($this->templates->getSupportedTypes())],
+            'object_type'   => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(\App\Services\ImportTemplateService::SCHEMAS))],
             'import_name'   => 'nullable|string|max:200',
             'import_type'   => 'nullable|in:quick,advanced,migration,sandbox',
             'import_mode'   => 'nullable|in:create_only,update_only,upsert,validate_only',
-            'overwrite_mode'=> 'nullable|string',
+            'overwrite_mode'=> 'nullable|in:skip,overwrite,merge',
             'tenant_id'     => 'nullable|string|exists:tenants,id',
             'pasted_content'=> 'nullable|string|max:2097152',
             'file'          => 'nullable|file|mimes:csv,txt,xlsx,xls|max:10240',

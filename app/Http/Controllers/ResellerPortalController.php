@@ -317,7 +317,7 @@ class ResellerPortalController extends Controller
             'deals'      => ['deal_comment_created','deal_comment_edited','deal_comment_deleted',
                              'deal_extension_requested','deal_extension_approved','deal_extension_rejected','deal_extension_clarification_requested'],
             'commission' => ['partner_split_created','partner_split_removed'],
-            'system'     => ['invite_accepted','invite.accepted','referrer_deactivated','referrer_double_auth_failed'],
+            'system'     => ['invite_accepted','invite.accepted','referrer_deactivated'],
             'imports'    => ['deal_import_completed','deal_import_uploaded','contacts_import_completed','contacts_import_uploaded'],
             default      => [],
         };

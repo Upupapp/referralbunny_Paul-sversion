@@ -44,6 +44,10 @@ class EmailDigestService
         int     $windowHours   = 1,
         string  $recipientType = 'reseller',
     ): void {
+        if (!in_array($recipientType, ['reseller', 'tenant_admin', 'partner', 'super_admin', 'tenant_user'], true)) {
+            $recipientType = 'reseller';
+        }
+
         $email = strtolower(trim($email));
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return; // silently skip invalid addresses
