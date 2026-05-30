@@ -69,7 +69,11 @@ class LeadController extends Controller
             abort(403, 'Tenant context required.');
         }
 
-        if ($request->filled('reseller_name')) {
+        // Force reseller scope — resellers may only see deals assigned to them
+        if (Auth::guard('reseller')->check()) {
+            $reseller = Auth::guard('reseller')->user();
+            $query->forResellerOrSplit($reseller->name);
+        } elseif ($request->filled('reseller_name')) {
             $query->forResellerOrSplit($request->reseller_name);
         }
 
@@ -366,6 +370,11 @@ class LeadController extends Controller
             $leadData['amount_default_reason']        = 'LGU IDS default applied — no deal amount was provided.';
         }
 
+        // Resellers cannot set commission_status — always defaults to pending
+        if (Auth::guard('reseller')->check()) {
+            $data['commission_status'] = 'pending';
+        }
+
         $lead = Lead::create([
             'tenant_id'         => $tenantId,
             'name'              => $data['name'],
@@ -590,13 +599,17 @@ class LeadController extends Controller
             return response()->json(['message' => 'You do not have permission to update deals.'], 403);
         }
 
-        // Resellers and Partners cannot modify financial fields — strip them before blocking partners entirely
+        // Resellers and Partners cannot modify financial or assignment fields
         $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
         $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
         if ($isReferrer || $isPartner) {
             $request->request->remove('base_cost');
             $request->request->remove('added_amount');
             $request->request->remove('deal_value');
+        }
+        if ($isReferrer) {
+            $request->request->remove('commission_status');
+            $request->request->remove('reseller_name');
         }
 
         if ($isPartner) {
@@ -859,10 +872,7 @@ class LeadController extends Controller
             return response()->json(['error' => 'Only admins can view archived deals.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
-        if (!$tenantId) {
-            return response()->json(['error' => 'Tenant context required.'], 403);
-        }
+        $tenantId = TenantContext::requireId();
 
         // Soft-deleted leads (hard-archived by admin)
         $softDeleted = Lead::onlyTrashed()
@@ -908,7 +918,7 @@ class LeadController extends Controller
             return response()->json(['error' => 'Only admins can restore deals.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::requireId();
 
         // Check status-archived first (not soft-deleted — approved via archive request)
         $statusArchived = Lead::where('tenant_id', $tenantId)
@@ -1034,7 +1044,7 @@ class LeadController extends Controller
             return response()->json(['error' => 'Only admins can permanently delete deals.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
+        $tenantId = TenantContext::requireId();
         $lead = Lead::onlyTrashed()
             ->where('tenant_id', $tenantId)
             ->where('id', $leadId)
@@ -1067,10 +1077,7 @@ class LeadController extends Controller
             return response()->json(['error' => 'Only admins can delete deals.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
-        if (!$tenantId) {
-            return response()->json(['error' => 'Tenant context required.'], 403);
-        }
+        $tenantId = TenantContext::requireId();
 
         $data = $request->validate([
             'ids'   => 'required|array|min:1|max:200',

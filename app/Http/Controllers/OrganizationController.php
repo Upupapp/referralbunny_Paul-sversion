@@ -183,7 +183,7 @@ class OrganizationController extends Controller
             'updated_at' => now(),
         ]);
 
-        return response()->json($this->orgWithMeta($id), 201);
+        return response()->json($this->orgWithMeta($id, $tenantId), 201);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -203,12 +203,16 @@ class OrganizationController extends Controller
             'notes'    => 'nullable|string',
         ]);
 
-        DB::table('organizations')
+        $affected = DB::table('organizations')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
             ->update(array_merge($data, ['updated_at' => now()]));
 
-        return response()->json($this->orgWithMeta($id));
+        if (!$affected) {
+            return response()->json(['error' => 'Organization not found.'], 404);
+        }
+
+        return response()->json($this->orgWithMeta($id, $tenantId));
     }
 
     public function destroy(string $id): JsonResponse
@@ -218,21 +222,28 @@ class OrganizationController extends Controller
             return response()->json(['error' => 'You do not have permission to delete organizations.'], 403);
         }
 
-        DB::table('organizations')
+        $deleted = DB::table('organizations')
             ->where('id', $id)
             ->where('tenant_id', $tenantId)
             ->delete();
 
+        if (!$deleted) {
+            return response()->json(['error' => 'Organization not found.'], 404);
+        }
+
         return response()->json(['deleted' => true]);
     }
 
-    private function orgWithMeta(string $id): mixed
+    private function orgWithMeta(string $id, ?string $tenantId = null): mixed
     {
+        // Scope the contact count subquery to the same tenant as the org to prevent
+        // cross-tenant contact count leakage when two tenants share an organization.
+        $contactSubquery = $tenantId
+            ? DB::raw("(SELECT organization_id, COUNT(*) as contact_count FROM contacts WHERE tenant_id = " . DB::getPdo()->quote($tenantId) . " GROUP BY organization_id) cc")
+            : DB::raw('(SELECT organization_id, COUNT(*) as contact_count FROM contacts GROUP BY organization_id) cc');
+
         return DB::table('organizations as o')
-            ->leftJoin(
-                DB::raw('(SELECT organization_id, COUNT(*) as contact_count FROM contacts GROUP BY organization_id) cc'),
-                'o.id', '=', 'cc.organization_id'
-            )
+            ->leftJoin($contactSubquery, 'o.id', '=', 'cc.organization_id')
             ->where('o.id', $id)
             ->select('o.*', DB::raw('COALESCE(cc.contact_count, 0) as contact_count'),
                 DB::raw('0 as deal_count'), DB::raw('0 as deal_value'))

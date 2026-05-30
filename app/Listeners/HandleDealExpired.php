@@ -146,7 +146,9 @@ class HandleDealExpired implements ShouldQueue
             if ($resellerId) {
                 Cache::forget("notif_unread_reseller_{$resellerId}");
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::warning('[HandleDealExpired] Cache bust failed', ['error' => $e->getMessage()]);
+        }
     }
 
     public function failed(DealExpired $event, \Throwable $exception): void

@@ -38,8 +38,8 @@ class TenantContext
         return static::$userRole
             ?? request()->attributes->get('_tenant_role');
     }
-    public static function isReseller(): bool   { return static::$userRole === 'reseller'; }
-    public static function isPartner(): bool    { return static::$userRole === 'partner'; }
+    public static function isReseller(): bool   { return static::role() === 'reseller'; }
+    public static function isPartner(): bool    { return static::role() === 'partner'; }
 
     public static function requireId(): string
     {

@@ -15,6 +15,9 @@ class ContactController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to view contacts.'], 403);
+        }
         // Derive tenant from authenticated context, never from user input
         $tenantId = TenantContext::id();
         if (!$tenantId && !TenantContext::isSuperAdmin()) {
@@ -145,7 +148,11 @@ class ContactController extends Controller
         }
         $q = DB::table('contacts')->where('id', $id);
         if ($tenantId) $q->where('tenant_id', $tenantId);
-        $q->update(array_merge($data, ['updated_at' => now()]));
+        $affected = $q->update(array_merge($data, ['updated_at' => now()]));
+
+        if (!$affected) {
+            return response()->json(['error' => 'Contact not found.'], 404);
+        }
 
         return response()->json($this->contactWithMeta($id));
     }
@@ -165,7 +172,12 @@ class ContactController extends Controller
         }
         $q = DB::table('contacts')->where('id', $id);
         if ($tenantId) $q->where('tenant_id', $tenantId);
-        $q->delete();
+        $deleted = $q->delete();
+
+        if (!$deleted) {
+            return response()->json(['error' => 'Contact not found.'], 404);
+        }
+
         return response()->json(['deleted' => true]);
     }
 
@@ -173,9 +185,15 @@ class ContactController extends Controller
 
     public function forDeal(string $dealId): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to view contacts.'], 403);
+        }
         $tenantId = TenantContext::id();
         if (!$tenantId && !TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');
+        }
+        if ($tenantId && !DB::table('leads')->where('id', $dealId)->where('tenant_id', $tenantId)->exists()) {
+            return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
         $contacts = DB::table('deal_contacts as dc')
             ->join('contacts as c', 'dc.contact_id', '=', 'c.id')

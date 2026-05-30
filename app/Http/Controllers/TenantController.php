@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\TenantConfig;
 use App\Models\TenantSubIndustry;
 use App\Services\BillingService;
+use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -14,12 +15,14 @@ class TenantController extends Controller
 {
     public function index(): JsonResponse
     {
-        $tenants = Tenant::with(['config', 'subIndustries'])->orderBy('created_at', 'asc')->get();
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
+        $tenants = Tenant::with(['config', 'subIndustries'])->orderBy('created_at', 'asc')->paginate(25);
         return response()->json($tenants);
     }
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         $data = $request->validate([
             'name'           => 'required|string|max:255',
             'program_name'   => 'required|string|max:255',
@@ -78,11 +81,13 @@ class TenantController extends Controller
 
     public function show(Tenant $tenant): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         return response()->json($tenant->load(['config', 'subIndustries', 'resellers']));
     }
 
     public function update(Request $request, Tenant $tenant): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         $data = $request->validate([
             'name'         => 'sometimes|string|max:255',
             'program_name' => 'sometimes|string|max:255',
@@ -100,18 +105,21 @@ class TenantController extends Controller
 
     public function destroy(Tenant $tenant): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         $tenant->delete();
         return response()->json(['message' => 'Tenant deleted.']);
     }
 
     public function suspend(Tenant $tenant): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         $tenant->update(['status' => 'inactive']);
         return response()->json(['message' => 'Tenant suspended.', 'tenant' => $tenant]);
     }
 
     public function activate(Tenant $tenant): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
         $tenant->update(['status' => 'active']);
         return response()->json(['message' => 'Tenant activated.', 'tenant' => $tenant]);
     }

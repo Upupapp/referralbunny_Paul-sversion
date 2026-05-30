@@ -23,6 +23,7 @@ class TenantMetricController extends Controller
 
     public function show(string $tenantId, HealthScoreService $health, AnalyticsService $analytics): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         $tenant = Tenant::with(['config', 'resellers', 'subIndustries'])->findOrFail($tenantId);
         $metric = $health->updateMetrics($tenant);
         $detail = $analytics->tenantDetail($tenant);
@@ -37,6 +38,7 @@ class TenantMetricController extends Controller
 
     public function recalculate(string $tenantId, HealthScoreService $health): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         $tenant = Tenant::with(['config', 'resellers', 'subIndustries'])->findOrFail($tenantId);
         $metric = $health->updateMetrics($tenant);
         return response()->json($metric);

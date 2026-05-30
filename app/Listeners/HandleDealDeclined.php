@@ -146,7 +146,9 @@ class HandleDealDeclined implements ShouldQueue
                 Cache::forget("notif_unread_partner_{$pid}");
                 Cache::forget("partner_notif_unread:{$pid}");
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::warning('[HandleDealDeclined] Cache bust failed', ['error' => $e->getMessage()]);
+        }
     }
 
     public function failed(DealDeclined $event, \Throwable $exception): void

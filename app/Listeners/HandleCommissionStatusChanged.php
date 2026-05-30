@@ -191,6 +191,8 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 Cache::forget("notif_unread_partner_{$pid}");
                 Cache::forget("partner_notif_unread:{$pid}");
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::warning('[HandleCommissionStatusChanged] Cache bust failed', ['error' => $e->getMessage()]);
+        }
     }
 }

@@ -47,6 +47,9 @@ class BillingController extends Controller
     // ── Tenant Subscription ───────────────────────────────────
     public function tenantSubscription(string $tenantId): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && TenantContext::id() !== $tenantId) {
+            abort(403, 'Access denied.');
+        }
         $sub = Subscription::with('plan')
             ->where('tenant_id', $tenantId)
             ->latest()
@@ -217,6 +220,9 @@ class BillingController extends Controller
 
     public function invoice(Invoice $invoice): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && $invoice->tenant_id !== TenantContext::requireId()) {
+            abort(403, 'Access denied.');
+        }
         return response()->json($invoice->load('tenant', 'payments', 'credits'));
     }
 
@@ -450,6 +456,9 @@ class BillingController extends Controller
     // ── Super Admin: Get tenant plan usage summary ────────────────────────
     public function tenantPlanUsage(string $tenantId): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && TenantContext::id() !== $tenantId) {
+            abort(403, 'Access denied.');
+        }
         $planService = app(\App\Services\TenantPlanService::class);
         return response()->json($planService->getUsageSummary($tenantId));
     }

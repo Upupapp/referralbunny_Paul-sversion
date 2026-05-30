@@ -65,8 +65,12 @@ trait BelongsToTenant
     public function assertBelongsToCurrentTenant(): void
     {
         $tenantId = TenantContext::id();
-        if ($tenantId && (string) $this->tenant_id !== (string) $tenantId) {
-            abort(404); // 404 not 403 — do not reveal existence
+        if ($tenantId) {
+            if ((string) $this->tenant_id !== (string) $tenantId) {
+                abort(404); // 404 not 403 — do not reveal existence
+            }
+        } elseif (!TenantContext::isSuperAdmin()) {
+            abort(403, 'No tenant context established.');
         }
     }
 }

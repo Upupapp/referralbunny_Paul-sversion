@@ -168,6 +168,7 @@ class DealCommentController extends Controller
                 ->where('author_user_id', $actorId)
                 ->where('client_request_id', $clientRequestId)
                 ->where('created_at', '>=', now()->subSeconds(30))
+                ->whereNull('deleted_at')
                 ->first();
             if ($existing) {
                 try { $existing->load(['attachments', 'mentions']); } catch (\Throwable) {}
@@ -411,16 +412,18 @@ class DealCommentController extends Controller
             }
         } catch (\Throwable) {}
 
+        $isExternal = in_array($viewerRole, ['referrer', 'partner']);
+
         return [
             'id'                => $c->id,
             'body'              => $c->isDeleted() ? null : $c->body,
-            'visibility'        => $c->visibility,
+            'visibility'        => $isExternal ? null : $c->visibility,
             'author_user_id'    => $c->author_user_id,
             'author_role'       => $c->author_role,
             'author_name'       => trim($authorName) ?: 'User',
             'parent_comment_id' => $c->parent_comment_id,
             'edited_at'         => $c->edited_at?->toIso8601String(),
-            'deleted_at'        => $c->deleted_at?->toIso8601String(),
+            'deleted_at'        => $isExternal ? null : $c->deleted_at?->toIso8601String(),
             'is_deleted'        => $c->isDeleted(),
             'is_internal'       => $c->isInternal(),
             'created_at'        => $c->created_at?->toIso8601String(),

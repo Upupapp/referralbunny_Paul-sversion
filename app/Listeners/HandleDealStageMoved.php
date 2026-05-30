@@ -160,7 +160,9 @@ class HandleDealStageMoved implements ShouldQueue
                 Cache::forget("notif_unread_partner_{$pid}");
                 Cache::forget("partner_notif_unread:{$pid}");
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $e) {
+            Log::warning('[HandleDealStageMoved] Cache bust failed', ['error' => $e->getMessage()]);
+        }
     }
 
     public function failed(DealStageMoved $event, \Throwable $exception): void

@@ -68,6 +68,9 @@ class FeatureAccessController extends Controller
     // GET /api/tenant-overrides/{tenantId}
     public function listOverrides(string $tenantId): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && TenantContext::id() !== $tenantId) {
+            abort(403, 'Only super admins can view overrides for other tenants.');
+        }
         $overrides = TenantOverride::where('tenant_id', $tenantId)
             ->orderByDesc('created_at')
             ->get();

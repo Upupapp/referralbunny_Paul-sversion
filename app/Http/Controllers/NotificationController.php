@@ -15,6 +15,10 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            abort(403, 'Access restricted to platform or tenant admins.');
+        }
+
         $query = Notification::orderByDesc('created_at');
 
         // Derive tenant from authenticated context, never from user input
@@ -134,6 +138,8 @@ class NotificationController extends Controller
 
     public function store(Request $request, NotificationService $service): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can create notifications.');
+
         $data = $request->validate([
             'category'   => 'required|string',
             'type'       => 'required|in:info,warning,action_required,system_alert',
@@ -183,11 +189,12 @@ class NotificationController extends Controller
 
     private function authorizeNotificationAccess(Notification $notification): void
     {
-        [$type, $id] = $this->resolveCurrentUser();
-        // SA can access all; others can only access their own notifications
+        [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!TenantContext::isSuperAdmin()) {
-            if ((string) $notification->notifiable_id !== (string) $id
-                || $notification->notifiable_type !== $type) {
+            $ownerMatch  = (string) $notification->notifiable_id === (string) $id
+                        && $notification->notifiable_type === $type;
+            $tenantMatch = $tenantId === null || (string) $notification->tenant_id === (string) $tenantId;
+            if (!$ownerMatch || !$tenantMatch) {
                 abort(403, 'You do not have access to this notification.');
             }
         }
@@ -219,6 +226,10 @@ class NotificationController extends Controller
 
     public function markAllRead(Request $request): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            abort(403, 'Use /notifications/mine/mark-all-read for your account.');
+        }
+
         [$type, $id, $tenantId] = $this->resolveCurrentUser();
         if (!$type || !$id) return response()->json(['message' => 'Unauthenticated.'], 401);
         if ($type !== 'super_admin' && !$tenantId) return response()->json(['message' => 'Tenant context required.'], 403);
@@ -247,9 +258,12 @@ class NotificationController extends Controller
 
     public function unreadCount(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Platform-level count is restricted to super admins.');
+
         $q = Notification::unread();
         $tenantId = TenantContext::id();
-        if ($tenantId) $q->where('tenant_id', $tenantId);
+        if ($request->filled('tenant_id')) $q->where('tenant_id', $request->tenant_id);
+        elseif ($tenantId) $q->where('tenant_id', $tenantId);
         return response()->json(['count' => $q->count()]);
     }
 
@@ -261,7 +275,8 @@ class NotificationController extends Controller
         }
         if (Auth::guard('tenant')->check()) {
             $user     = Auth::guard('tenant')->user();
-            $tenantId = request()->route('tenantId')
+            $tenantId = TenantContext::id()
+                ?? request()->route('tenantId')
                 ?? Cache::remember("tenant_user_primary_tenant:{$user->id}", 300, fn() =>
                     \App\Models\TenantMembership::where('tenant_user_id', $user->id)
                         ->where('status', 'active')->value('tenant_id')

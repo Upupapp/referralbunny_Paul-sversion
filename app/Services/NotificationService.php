@@ -124,14 +124,20 @@ class NotificationService
         );
     }
 
-    public function markAsRead(string $notificationId): void
+    public function markAsRead(string $notificationId, ?string $tenantId = null, ?string $notifiableId = null): void
     {
-        Notification::where('id', $notificationId)->update(['is_read' => true]);
+        $q = Notification::where('id', $notificationId);
+        if ($tenantId)     $q->where('tenant_id', $tenantId);
+        if ($notifiableId) $q->where('notifiable_id', $notifiableId);
+        $q->update(['is_read' => true]);
     }
 
-    public function dismiss(string $notificationId): void
+    public function dismiss(string $notificationId, ?string $tenantId = null, ?string $notifiableId = null): void
     {
-        Notification::where('id', $notificationId)->update(['is_dismissed' => true]);
+        $q = Notification::where('id', $notificationId);
+        if ($tenantId)     $q->where('tenant_id', $tenantId);
+        if ($notifiableId) $q->where('notifiable_id', $notifiableId);
+        $q->update(['is_dismissed' => true]);
     }
 
     public function markAllRead(?string $tenantId = null): void

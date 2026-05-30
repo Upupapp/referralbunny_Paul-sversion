@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Services\PricingService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,7 @@ class PricingController extends Controller
     // PUT /api/pricing/plans/{plan}/price
     public function updatePrice(Request $request, Plan $plan): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage plans.');
         $data = $request->validate([
             'price_monthly' => 'sometimes|numeric|min:0',
             'price_yearly'  => 'sometimes|numeric|min:0',
@@ -47,6 +49,7 @@ class PricingController extends Controller
     // PUT /api/pricing/plans/{plan}
     public function update(Request $request, Plan $plan): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage plans.');
         $data = $request->validate([
             'name'                  => 'sometimes|string|max:100',
             'description'           => 'nullable|string',

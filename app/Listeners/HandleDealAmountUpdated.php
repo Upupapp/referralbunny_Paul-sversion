@@ -34,9 +34,9 @@ class HandleDealAmountUpdated implements ShouldQueue
             $invitedStatus = $reseller?->status
                 ?? Reseller::where('tenant_id', $event->tenantId)->where('id', $resellerId)->value('status');
             if ($invitedStatus === 'invited') {
-            $email      = null;
-            $resellerId = null;
-        }
+                $email      = null;
+                $resellerId = null;
+            }
         }
 
         if (!$email) return;
