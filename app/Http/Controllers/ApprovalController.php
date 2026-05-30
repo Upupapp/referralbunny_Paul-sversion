@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApprovalRequest;
 use App\Services\ApprovalService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,24 +15,32 @@ class ApprovalController extends Controller
     // GET /api/approvals
     public function queue(): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json($this->approvals->getQueue());
     }
 
     // GET /api/approvals/history
     public function history(): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         return response()->json($this->approvals->getHistory());
     }
 
     // GET /api/approvals/{approval}
     public function show(ApprovalRequest $approval): JsonResponse
     {
+        if (!TenantContext::isSuperAdmin()) {
+            abort_unless(TenantContext::id() === $approval->tenant_id, 403);
+            abort_unless(in_array(TenantContext::role(), ['owner', 'admin']), 403);
+        }
         return response()->json($approval->load(['requestedBy', 'approvedBy']));
     }
 
     // POST /api/approvals/{approval}/approve
     public function approve(Request $request, ApprovalRequest $approval): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can approve requests.');
+
         if (!$approval->isPending()) {
             return response()->json(['message' => 'Request is no longer pending.'], 422);
         }
@@ -46,6 +55,8 @@ class ApprovalController extends Controller
     // POST /api/approvals/{approval}/reject
     public function reject(Request $request, ApprovalRequest $approval): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can reject requests.');
+
         if (!$approval->isPending()) {
             return response()->json(['message' => 'Request is no longer pending.'], 422);
         }

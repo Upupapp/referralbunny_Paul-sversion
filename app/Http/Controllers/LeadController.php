@@ -298,14 +298,17 @@ class LeadController extends Controller
             'commission_status'  => 'nullable|in:pending,locked,paid',
             'base_cost'          => 'nullable|numeric|min:0',
             'added_amount'       => 'nullable|numeric|min:0',
-            'deal_value'         => 'nullable|numeric',
+            'deal_value'         => 'nullable|numeric|min:0',
             'data'               => 'nullable|array',
             'commission_splits'  => 'nullable|array',
         ]);
 
-        // Derive tenant from authenticated context; fall back to request body
-        // (consistent with ResellerController pattern for session-authenticated tenant admins)
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
+        $tenantId = TenantContext::id();
+        // Super admin may specify tenant_id explicitly; all other callers must have context
+        if (!$tenantId && TenantContext::isSuperAdmin()) {
+            $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);
+            $tenantId = $request->input('tenant_id');
+        }
         if (!$tenantId) {
             return response()->json(['message' => 'No tenant context established.'], 403);
         }
@@ -370,9 +373,10 @@ class LeadController extends Controller
             $leadData['amount_default_reason']        = 'LGU IDS default applied — no deal amount was provided.';
         }
 
-        // Resellers cannot set commission_status — always defaults to pending
-        if (Auth::guard('reseller')->check()) {
+        // Resellers and partners cannot set commission_status or inject commission_splits
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
             $data['commission_status'] = 'pending';
+            unset($data['commission_splits']);
         }
 
         $lead = Lead::create([
@@ -1710,12 +1714,17 @@ class LeadController extends Controller
         $lead->assertBelongsToCurrentTenant();
 
         $data = $request->validate([
-            'splits'            => 'required|array',
+            'splits'                   => 'required|array',
             'splits.*.reseller_name'   => 'required|string',
-            'splits.*.percentage'      => 'required|numeric',
+            'splits.*.percentage'      => 'required|numeric|min:0|max:100',
             'splits.*.role'            => 'required|in:primary,secondary,tertiary',
             'splits.*.activity_status' => 'nullable|string',
         ]);
+
+        $totalPercentage = array_sum(array_column($data['splits'], 'percentage'));
+        if ($totalPercentage > 100) {
+            return response()->json(['message' => 'Total commission split percentage cannot exceed 100%.'], 422);
+        }
 
         // Batch-resolve canonical reseller names + IDs in one query (avoids N+1 in cache-bust loop)
         $tenantIdForSplits = $lead->tenant_id;

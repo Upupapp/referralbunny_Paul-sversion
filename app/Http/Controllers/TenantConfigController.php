@@ -7,43 +7,21 @@ use Illuminate\Http\Request;
 
 class TenantConfigController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
+    public function index()        { abort(403, 'Not exposed.'); }
+    public function store(Request $request) { abort(403, 'Not exposed.'); }
+    public function show(TenantConfig $tenantConfig) { abort(403, 'Not exposed.'); }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(TenantConfig $tenantConfig)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, TenantConfig $tenantConfig)
     {
-        //
+        abort_unless(\App\Services\TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
+        abort_if($tenantConfig->tenant_id === 'lgu-ids', 403, 'LGU IDS config is locked and cannot be modified via this endpoint.');
+        abort(403, 'Not exposed.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(TenantConfig $tenantConfig)
     {
-        //
+        abort_unless(\App\Services\TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
+        abort_if($tenantConfig->tenant_id === 'lgu-ids', 403, 'LGU IDS config is locked.');
+        abort(403, 'Not exposed.');
     }
 }

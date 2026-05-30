@@ -111,6 +111,11 @@ class PromoCodeController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly',
         ]);
 
+        // Non-SA callers may only validate codes for their own tenant
+        if (!\App\Services\TenantContext::isSuperAdmin()) {
+            abort_unless(\App\Services\TenantContext::id() === $data['tenant_id'], 403, 'Access denied.');
+        }
+
         $result = $this->promos->validate($data['code'], $data['tenant_id'], $data['plan_id'] ?? null, $data['billing_cycle']);
         $statusCode = $result['valid'] ? 200 : 422;
         return response()->json($result, $statusCode);

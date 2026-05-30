@@ -29,7 +29,7 @@ class EnsureTenantAccess
             $userId   = Auth::guard('tenant')->id();
 
             $cacheKey = "tenant_membership:{$userId}:{$tenantId}";
-            $cached   = Cache::remember($cacheKey, 120, fn() =>
+            $cached   = Cache::remember($cacheKey, 30, fn() =>
                 TenantMembership::where('tenant_user_id', $userId)
                     ->where('tenant_id', $tenantId)
                     ->where('status', 'active')

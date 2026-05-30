@@ -39,10 +39,21 @@ class TenantCommissionController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
 
         // Filters
-        $filterStatus  = $request->query('status');   // pending|locked|paid
-        $filterDate    = $request->query('date_from');
-        $filterDateTo  = $request->query('date_to');
+        $filterStatus   = $request->query('status');   // pending|locked|paid
+        $filterDate     = $request->query('date_from');
+        $filterDateTo   = $request->query('date_to');
         $filterReferrer = $request->query('referrer');
+
+        // Validate/sanitize filters to prevent unbounded LIKE queries and type errors
+        if ($filterReferrer && strlen($filterReferrer) > 200) {
+            abort(422, 'Filter too long.');
+        }
+        if ($filterDate && !\Carbon\Carbon::canBeCreatedFromFormat($filterDate, 'Y-m-d')) {
+            $filterDate = null;
+        }
+        if ($filterDateTo && !\Carbon\Carbon::canBeCreatedFromFormat($filterDateTo, 'Y-m-d')) {
+            $filterDateTo = null;
+        }
 
         // Build base query — all deals for this tenant with financial data
         $query = DB::table('leads')

@@ -125,6 +125,17 @@ class TenantInvitationController extends Controller
             'role'      => 'nullable|in:owner,admin,member,viewer',
         ]);
 
+        // Non-SA callers can only invite into their own tenant, and must be owner or admin
+        if (!TenantContext::isSuperAdmin()) {
+            $tenantId = TenantContext::requireId();
+            if ($request->tenant_id !== $tenantId) {
+                abort(403, 'You can only invite users into your own workspace.');
+            }
+            if (!in_array(TenantContext::role(), ['owner', 'admin'])) {
+                abort(403, 'Only owners and admins can invite team members.');
+            }
+        }
+
         $invite = TenantInvitation::create([
             'tenant_id'  => $request->tenant_id,
             'email'      => strtolower($request->email),

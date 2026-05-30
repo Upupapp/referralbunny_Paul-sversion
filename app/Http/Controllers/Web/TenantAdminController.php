@@ -63,7 +63,10 @@ class TenantAdminController extends Controller
 
         if (!session()->has($seenTodayKey)) {
             // "Since" = last time the briefing was shown (default: 24h ago on first visit)
-            $since = session($lastSeenKey, now()->subHours(24));
+            $since = session($lastSeenKey);
+            if (!$since instanceof \Carbon\Carbon) {
+                $since = now()->subHours(24);
+            }
 
             // 1. Expiring deals
             $expiringDeals = DB::table('leads')
@@ -647,6 +650,9 @@ class TenantAdminController extends Controller
         ]);
 
         $tenant->update($data);
+
+        // Bust tenant config cache so UI reflects the update immediately
+        Cache::forget("tenant_config:{$tenantId}");
 
         return back()->with('settings_saved', 'Workspace settings saved successfully.');
     }

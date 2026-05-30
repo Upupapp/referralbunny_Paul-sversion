@@ -118,10 +118,28 @@ class TenantLegalAgreementController extends Controller
 
     public function pending(Request $request): JsonResponse
     {
-        $tenantId = $request->query('tenant_id');
-        $userType = $request->query('user_type', 'tenant_user');
-        $userId   = $request->query('user_id');
-        $role     = $request->query('role', '');
+        // Non-SA callers must use their own authenticated identity — no spoofing via query params
+        if (!\App\Services\TenantContext::isSuperAdmin()) {
+            if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+                $reseller = \Illuminate\Support\Facades\Auth::guard('reseller')->user();
+                $tenantId = (string) $reseller->tenant_id;
+                $userId   = (string) $reseller->id;
+                $userType = 'reseller';
+                $role     = $request->query('role', 'referrer');
+            } elseif (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
+                $tenantId = \App\Services\TenantContext::requireId();
+                $userId   = (string) \Illuminate\Support\Facades\Auth::guard('tenant')->id();
+                $userType = 'tenant_user';
+                $role     = $request->query('role', '');
+            } else {
+                return response()->json(['error' => 'Unauthenticated.'], 401);
+            }
+        } else {
+            $tenantId = $request->query('tenant_id');
+            $userType = $request->query('user_type', 'tenant_user');
+            $userId   = $request->query('user_id');
+            $role     = $request->query('role', '');
+        }
 
         if (!$tenantId || !$userId) {
             return response()->json(['error' => 'tenant_id and user_id required'], 422);
@@ -151,21 +169,30 @@ class TenantLegalAgreementController extends Controller
     {
         $agreement = TenantLegalAgreement::findOrFail($id);
 
-        $data = $request->validate([
-            'user_type' => 'required|in:tenant_user,reseller',
-            'user_id'   => 'required|string',
-            'user_role' => 'nullable|string',
-        ]);
+        // Derive identity from authenticated session — never trust request body for user_id
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+            $userType = 'reseller';
+            $userId   = (string) \Illuminate\Support\Facades\Auth::guard('reseller')->id();
+            $userRole = 'referrer';
+            $reseller = \Illuminate\Support\Facades\Auth::guard('reseller')->user();
+            abort_unless((string) $reseller->tenant_id === (string) $agreement->tenant_id, 403, 'Forbidden.');
+        } elseif (\Illuminate\Support\Facades\Auth::guard('tenant')->check()) {
+            $userType = 'tenant_user';
+            $userId   = (string) \Illuminate\Support\Facades\Auth::guard('tenant')->id();
+            $userRole = \App\Services\TenantContext::role() ?? $request->input('user_role');
+        } else {
+            abort(401, 'Unauthenticated.');
+        }
 
         TenantLegalAgreementAcceptance::updateOrCreate(
             [
                 'tenant_legal_agreement_id' => $agreement->id,
-                'user_type'                 => $data['user_type'],
-                'user_id'                   => $data['user_id'],
+                'user_type'                 => $userType,
+                'user_id'                   => $userId,
             ],
             [
                 'tenant_id'   => $agreement->tenant_id,
-                'user_role'   => $data['user_role'] ?? null,
+                'user_role'   => $userRole ?? null,
                 'accepted_at' => now(),
                 'ip_address'  => $request->ip(),
                 'user_agent'  => substr($request->userAgent() ?? '', 0, 500),

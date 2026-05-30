@@ -27,13 +27,15 @@ class TenantController extends Controller
             'name'           => 'required|string|max:255',
             'program_name'   => 'required|string|max:255',
             'description'    => 'nullable|string',
-            'accent_color'   => 'nullable|string',
+            'accent_color'   => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'admin_name'     => 'nullable|string',
             'admin_email'    => 'required|email',
             'industry'       => 'nullable|string',
             'status'         => 'nullable|in:active,trial,inactive',
             'sub_industries' => 'nullable|array',
             'config'         => 'nullable|array',
+            'config.fields'  => 'nullable|array|max:50',
+            'config.stages'  => 'nullable|array|max:20',
         ]);
 
         $slug = Str::slug($data['name']) . '-' . time();
@@ -52,13 +54,18 @@ class TenantController extends Controller
         ]);
 
         if (!empty($data['config'])) {
+            $commissionPayload = $data['config']['commission'] ?? [];
+            // LOCKED: lgu-ids commission rates must never be overridden
+            if ($tenant->id === 'lgu-ids') {
+                unset($commissionPayload['commission_pool_rate'], $commissionPayload['company_share_rate']);
+            }
             TenantConfig::create([
                 'tenant_id'                 => $tenant->id,
                 'lead_type'                 => $data['config']['leadType'] ?? 'custom',
                 'lead_label'                => $data['config']['leadLabel'] ?? 'Lead',
                 'fields'                    => $data['config']['fields'] ?? [],
                 'stages'                    => $data['config']['stages'] ?? [],
-                'commission'                => $data['config']['commission'] ?? [],
+                'commission'                => $commissionPayload,
                 'primary_identifier_fields' => $data['config']['primaryIdentifierFields'] ?? [],
             ]);
         }
@@ -92,7 +99,7 @@ class TenantController extends Controller
             'name'         => 'sometimes|string|max:255',
             'program_name' => 'sometimes|string|max:255',
             'description'  => 'nullable|string',
-            'accent_color' => 'nullable|string',
+            'accent_color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'admin_name'   => 'nullable|string',
             'admin_email'  => 'sometimes|email',
             'industry'     => 'nullable|string',

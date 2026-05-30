@@ -210,7 +210,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
     ->prefix('partner')
     ->name('partner.')
     ->group(function () {
-        Route::get('/dashboard',                      [PartnerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard',                      [PartnerPortalController::class, 'dashboard'])->name('dashboard')->middleware('throttle:60,1');
         Route::get('/deals',                          [PartnerPortalController::class, 'deals'])->name('deals');
         Route::get('/deals/{dealId}',                 [PartnerPortalController::class, 'dealShow'])->name('deals.show');
         Route::get('/messages',                       [PartnerPortalController::class, 'messages'])->name('messages');
@@ -219,11 +219,11 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/messages/thread/{threadId}',     [PartnerPortalController::class, 'threadMessages'])->name('messages.thread');
         Route::post('/messages/send',                 [PartnerPortalController::class, 'sendMessage'])->name('messages.send')->middleware('throttle:60,1');
         Route::post('/messages/send-direct',          [PartnerPortalController::class, 'sendDirectMessage'])->name('messages.send-direct')->middleware('throttle:30,1');
-        Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index');
+        Route::get('/deals/{dealId}/notes',           [PartnerPortalController::class, 'dealNotes'])->name('deals.notes.index')->middleware('throttle:60,1');
         Route::post('/deals/{dealId}/notes',          [PartnerPortalController::class, 'addNote'])->name('deals.notes')->middleware('throttle:30,1');
-        Route::get('/commissions',                    [PartnerPortalController::class, 'commissions'])->name('commissions');
+        Route::get('/commissions',                    [PartnerPortalController::class, 'commissions'])->name('commissions')->middleware('throttle:30,1');
         Route::get('/calendar',                       [PartnerPortalController::class, 'calendar'])->name('calendar');
-        Route::get('/calendar/events',                [PartnerPortalController::class, 'calendarEvents'])->name('calendar.events');
+        Route::get('/calendar/events',                [PartnerPortalController::class, 'calendarEvents'])->name('calendar.events')->middleware('throttle:60,1');
         Route::get('/forms',                          [PartnerPortalController::class, 'forms'])->name('forms');
         Route::get('/forms/{token}',                  [PartnerPortalController::class, 'formShow'])->name('forms.show');
         Route::post('/forms/{token}/submit',          [PartnerPortalController::class, 'formSubmit'])->name('forms.submit')->middleware('throttle:20,1');

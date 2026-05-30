@@ -511,7 +511,7 @@ class PartnerPortalController extends Controller
         if ($dealId && in_array($dealId, $dealIds)) {
             $hasThread = $dealThreads->contains('deal_id', $dealId);
             if (!$hasThread) {
-                $lead = Lead::find($dealId);
+                $lead = Lead::where('id', $dealId)->where('tenant_id', $partner->tenant_id)->first();
                 if ($lead) {
                     $pendingDeal = ['id' => $lead->id, 'name' => $lead->name, 'reseller_name' => $lead->reseller_name];
                 }
@@ -580,11 +580,9 @@ class PartnerPortalController extends Controller
             abort(403, 'You do not have access to this deal.');
         }
 
-        $lead = Lead::findOrFail($data['deal_id']);
-
-        if ($lead->tenant_id !== $partner->tenant_id) {
-            abort(403, 'You do not have access to this deal.');
-        }
+        $lead = Lead::where('id', $data['deal_id'])
+            ->where('tenant_id', $partner->tenant_id)
+            ->firstOrFail();
 
         // Resolve reseller_id from the lead's reseller_name
         $resellerId = null;
@@ -790,8 +788,6 @@ class PartnerPortalController extends Controller
                 'deal_stage'        => $deal->stage ?? 'introduction',
                 'deal_status'       => $deal->status ?? 'active',
                 'commission_status' => $deal->commission_status ?? 'pending',
-                'split_type'        => $s->split_share_type,
-                'split_value'       => (float) $s->split_share_value,
                 'my_amount'         => $myAmount,
                 'status'            => $s->status ?? 'provisional',
             ];

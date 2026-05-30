@@ -12,10 +12,18 @@ class FeatureAccessController extends Controller
 {
     public function __construct(private FeatureAccessService $featureAccess) {}
 
+    private function requireTenantReadAccess(string $tenantId): void
+    {
+        if (TenantContext::isSuperAdmin()) return;
+        $callerTenantId = TenantContext::requireId();
+        abort_unless($callerTenantId === $tenantId, 403, 'Access denied.');
+    }
+
     // GET /api/feature-access/usage?tenant_id=xxx
     public function usage(Request $request): JsonResponse
     {
         $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);
+        $this->requireTenantReadAccess($request->tenant_id);
         return response()->json($this->featureAccess->getUsageSummary($request->tenant_id));
     }
 
@@ -26,6 +34,7 @@ class FeatureAccessController extends Controller
             'tenant_id' => 'required|string|exists:tenants,id',
             'feature'   => 'required|string',
         ]);
+        $this->requireTenantReadAccess($request->tenant_id);
         return response()->json($this->featureAccess->checkFeature($request->tenant_id, $request->feature));
     }
 
@@ -36,6 +45,7 @@ class FeatureAccessController extends Controller
             'tenant_id' => 'required|string|exists:tenants,id',
             'resource'  => 'required|string',
         ]);
+        $this->requireTenantReadAccess($request->tenant_id);
         return response()->json($this->featureAccess->checkLimit($request->tenant_id, $request->resource));
     }
 

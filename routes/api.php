@@ -276,7 +276,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::post('search/favorites',            [SearchController::class, 'addFavorite']);
     Route::delete('search/favorites',          [SearchController::class, 'removeFavorite']);
     Route::post('search/actions',              [SearchController::class, 'executeAction']);
-    Route::post('search/reindex',              [SearchController::class, 'reindex']);
+    Route::post('search/reindex',              [SearchController::class, 'reindex'])->middleware('throttle:3,1');
 
     // Contacts
     Route::get('contacts',                                  [ContactController::class, 'index']);
@@ -368,5 +368,5 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
 });
 
 // ── PayMongo Webhook (no auth — verified by signature) ────────
-Route::post('webhooks/paymongo', [WebhookController::class, 'paymongo']);
+Route::post('webhooks/paymongo', [WebhookController::class, 'paymongo'])->middleware('throttle:60,1');
 
