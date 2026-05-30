@@ -889,7 +889,7 @@ function lguBaseCost(dv) {
     return Math.round(dv * 0.41);
 }
 
-function dealsModule(tenantId, showLocation, canViewReferrers = true) {
+function dealsModule(tenantId, showLocation, canViewReferrers = false) {
     return {
         leads: [], filtered: [], _byStage: {}, loading: true, initError: false, totalDeals: 0, _watchersInited: false,
         canViewReferrers,
@@ -907,9 +907,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         referrerQuery: '', referrerOpen: false, referrerSelected: null, referrerFocusIdx: -1, referrerLoadError: '',
         form: { name: '', stage: _rbDefaultStage, deal_value: 0, base_cost: 0, added_amount: 0, reseller_name: '', reseller_email: '', province: '', municipality: '', customOrgName: '' },
 
-        get expiringCount()       { return this.leads.filter(l => l.status === 'expiring').length; },
-        get expiredCount()        { return this.leads.filter(l => l.status === 'expired').length; },
-        get missingReferrerCount(){ return this.leads.filter(l => !l.reseller_name && ['active','expiring'].includes(l.status)).length; },
+        expiringCount: 0, expiredCount: 0, missingReferrerCount: 0, _sortedFiltered: [],
 
         stages: _rbStages,
 
@@ -1011,6 +1009,10 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 if (!this._byStage[l.stage]) this._byStage[l.stage] = [];
                 this._byStage[l.stage].push(l);
             }
+            this.expiringCount        = this.leads.filter(l => l.status === 'expiring').length;
+            this.expiredCount         = this.leads.filter(l => l.status === 'expired').length;
+            this.missingReferrerCount = this.leads.filter(l => !l.reseller_name && ['active','expiring'].includes(l.status)).length;
+            this._rebuildSorted();
         },
 
         sort(col) {
@@ -1023,14 +1025,17 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 const ascByDefault  = ['name', 'reseller', 'stage', 'commission', 'status', 'days_left'];
                 this.sortDir = descByDefault.includes(col) ? 'desc' : 'asc';
             }
+            this._rebuildSorted();
         },
 
-        sortedFiltered() {
+        sortedFiltered() { return this._sortedFiltered; },
+
+        _rebuildSorted() {
             const stageOrder   = _rbStageOrder;
             const commOrder    = { pending:0, locked:1, paid:2 };
             const statusOrder  = { active:0, expiring:1, expired:2, reassigned:3, declined:4 };
 
-            return [...this.filtered].sort((a, b) => {
+            this._sortedFiltered = [...this.filtered].sort((a, b) => {
                 let va, vb;
                 switch (this.sortCol) {
                     case 'name':
