@@ -219,7 +219,10 @@ class LeadController extends Controller
                     ->value('role') ?? 'none'
             );
 
-            if ($cachedRole === 'none' || in_array($cachedRole, ['owner', 'admin'])) {
+            if ($cachedRole === 'none') {
+                // No active membership — suspended/removed user; never allow referrer access
+                $canViewReferrers = false;
+            } elseif (in_array($cachedRole, ['owner', 'admin'])) {
                 $canViewReferrers = true;
             } else {
                 $membership = \App\Models\TenantMembership::where('tenant_user_id', $callerUid)

@@ -54,6 +54,9 @@ class CriticalActionsController extends Controller
         $canSeeExports = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
             || $this->permissions->can($membership, 'approve_export_requests');
 
+        $canViewReferrers = $isSuperAdmin || !$membership || in_array($membership->role, ['owner', 'admin'])
+            || $this->permissions->can($membership, 'view_referrers');
+
         $userId     = $actingUser?->id ?? ($isSuperAdmin ? Auth::guard('web')->id() : null);
         $userType   = $isSuperAdmin && !$actingUser ? 'web' : 'tenant_user';
 
@@ -82,6 +85,16 @@ class CriticalActionsController extends Controller
             $result = $this->service->masterList($tenantId, $filters, 25);
         } catch (\Throwable) {
             $result = ['items' => [], 'total' => 0, 'page' => 1, 'per_page' => 25, 'total_pages' => 1];
+        }
+
+        // Strip missing-referrer panel items for users without view_referrers permission.
+        // The count is DB-accurate but would be meaningless to a user who cannot see referrer names.
+        if (!$canViewReferrers && !empty($result['items'])) {
+            $result['items'] = array_values(array_filter(
+                $result['items'],
+                fn($item) => ($item['type'] ?? '') !== 'missing_referrer'
+            ));
+            $result['total'] = count($result['items']);
         }
 
         // Track "last seen" so new items can be highlighted.

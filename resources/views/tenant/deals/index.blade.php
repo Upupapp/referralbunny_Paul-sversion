@@ -60,7 +60,7 @@
     @endif
 
     {{-- Inline deal-health alerts (computed from loaded deals — click to pre-filter) --}}
-    <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || missingReferrerCount > 0)">
+    <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || (canViewReferrers && missingReferrerCount > 0))">
         <div class="flex flex-wrap gap-2">
             <template x-if="expiredCount > 0">
                 <button @click="filterStatus = 'expired'; applyFilters()"
@@ -78,7 +78,7 @@
                     <span class="text-orange-400 text-[10px]">→ filter</span>
                 </button>
             </template>
-            <template x-if="missingReferrerCount > 0">
+            <template x-if="canViewReferrers && missingReferrerCount > 0">
                 <button @click="filterStatus = ''; filterStage = ''; filterReseller = 'MISSING'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>

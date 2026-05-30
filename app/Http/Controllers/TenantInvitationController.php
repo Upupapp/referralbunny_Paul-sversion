@@ -8,6 +8,7 @@ use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -83,6 +84,9 @@ class TenantInvitationController extends Controller
                 'joined_at'                 => now(),
             ]
         );
+
+        // Bust stale tm_role cache so the new membership is visible immediately on /api/leads
+        Cache::forget("tm_role:{$user->id}:{$invite->tenant_id}");
 
         $invite->update(['status' => 'accepted', 'accepted_at' => now()]);
 

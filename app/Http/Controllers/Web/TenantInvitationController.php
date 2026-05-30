@@ -14,6 +14,7 @@ use App\Services\InvitationReminderService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -104,6 +105,7 @@ class TenantInvitationController extends Controller
                 'password_review_completed' => true,
                 'setup_completed'           => true,
             ]);
+            Cache::forget("tm_role:{$user->id}:{$invitation->tenant_id}");
         } elseif ($existingMembership->status === 'removed') {
             // User was previously removed and is being re-added via invitation.
             $existingMembership->update([
@@ -115,6 +117,7 @@ class TenantInvitationController extends Controller
                 'password_review_completed' => true,
                 'setup_completed'           => true,
             ]);
+            Cache::forget("tm_role:{$user->id}:{$invitation->tenant_id}");
         }
         // If active/suspended: leave the existing membership unchanged.
 
