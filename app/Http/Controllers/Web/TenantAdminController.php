@@ -161,16 +161,9 @@ class TenantAdminController extends Controller
         // Critical actions for dashboard widget — wrapped so any DB issue never breaks the dashboard
         try {
             $criticalActions = app(CriticalActionService::class)
-                ->dashboardSummary($tenantId, 6, $canSeeBilling, $canSeeExports, $canSeeUsers);
+                ->dashboardSummary($tenantId, 6, $canSeeBilling, $canSeeExports, $canSeeUsers, $canViewReferrers);
         } catch (\Throwable) {
             $criticalActions = [];
-        }
-
-        if (!$canViewReferrers && !empty($criticalActions)) {
-            $criticalActions = array_values(array_filter(
-                $criticalActions,
-                fn($action) => ($action['type'] ?? '') !== 'missing_referrer'
-            ));
         }
 
         // Extra dashboard counts — cached 60s; short TTL keeps the KPI badges fresh without

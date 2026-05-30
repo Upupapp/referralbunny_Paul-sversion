@@ -363,7 +363,7 @@ class ResellerController extends Controller
         }
 
         // Managers cannot permanently delete referrers — owner/admin only
-        if (request()->attributes->get('_tenant_role') === 'manager') {
+        if (TenantContext::role() === 'manager') {
             return response()->json(['error' => 'Managers cannot delete Referrers. Contact an owner or admin.'], 403);
         }
 
@@ -404,7 +404,7 @@ class ResellerController extends Controller
             return response()->json(['error' => 'Only admins can delete Referrers.'], 403);
         }
 
-        if (request()->attributes->get('_tenant_role') === 'manager') {
+        if (TenantContext::role() === 'manager') {
             return response()->json(['error' => 'Managers cannot bulk-delete Referrers.'], 403);
         }
 
@@ -445,7 +445,7 @@ class ResellerController extends Controller
         }
 
         // Managers cannot deactivate referrers — owner/admin only
-        if (request()->attributes->get('_tenant_role') === 'manager') {
+        if (TenantContext::role() === 'manager') {
             return response()->json(['error' => 'Managers cannot deactivate Referrers. Contact an owner or admin.'], 403);
         }
 

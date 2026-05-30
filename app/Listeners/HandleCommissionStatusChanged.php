@@ -44,13 +44,13 @@ class HandleCommissionStatusChanged implements ShouldQueue
             $reseller = null;
         }
 
-        // Do not send commission notifications to invited (unactivated) resellers
+        // Do not send commission notifications to invited (unactivated) resellers.
+        // Null out rather than return — partner notifications and cache busts still fire.
         if ($reseller && $reseller->status === 'invited') {
-            return;
+            $reseller = null;
         }
 
         $email = $reseller?->email ?? $event->resellerEmail;
-        if (!$email) return;
 
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
 
@@ -85,31 +85,33 @@ class HandleCommissionStatusChanged implements ShouldQueue
             );
         }
 
-        $subjects = [
-            'pending' => "Commission pending for {$event->leadName}",
-            'locked'  => "Commission locked for {$event->leadName}",
-            'paid'    => "Commission paid for {$event->leadName}",
-        ];
+        if ($email) {
+            $subjects = [
+                'pending' => "Commission pending for {$event->leadName}",
+                'locked'  => "Commission locked for {$event->leadName}",
+                'paid'    => "Commission paid for {$event->leadName}",
+            ];
 
-        try {
-            EmailLogger::send(
-                mailable:       new CommissionStatusUpdate(
-                    resellerName:  $event->resellerName,
-                    resellerEmail: $email,
-                    tenantName:    $tenantName,
-                    dealName:      $event->leadName,
-                    status:        $event->newStatus,
-                    dealValue:     $event->dealValue,
-                    dashboardUrl:  url("/reseller/{$event->tenantId}/commission"),
-                ),
-                recipientEmail: $email,
-                recipientType:  'reseller',
-                emailKey:       "commission_{$event->newStatus}.{$event->leadId}",
-                subject:        $subjects[$event->newStatus] ?? "Commission update for {$event->leadName}",
-                tenantId:       $event->tenantId,
-            );
-        } catch (\Throwable $e) {
-            Log::warning('[HandleCommissionStatusChanged] Email send failed', ['error' => $e->getMessage()]);
+            try {
+                EmailLogger::send(
+                    mailable:       new CommissionStatusUpdate(
+                        resellerName:  $event->resellerName,
+                        resellerEmail: $email,
+                        tenantName:    $tenantName,
+                        dealName:      $event->leadName,
+                        status:        $event->newStatus,
+                        dealValue:     $event->dealValue,
+                        dashboardUrl:  url("/reseller/{$event->tenantId}/commission"),
+                    ),
+                    recipientEmail: $email,
+                    recipientType:  'reseller',
+                    emailKey:       "commission_{$event->newStatus}.{$event->leadId}",
+                    subject:        $subjects[$event->newStatus] ?? "Commission update for {$event->leadName}",
+                    tenantId:       $event->tenantId,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[HandleCommissionStatusChanged] Email send failed', ['error' => $e->getMessage()]);
+            }
         }
 
         // Notify partners who have an active split on this deal

@@ -225,15 +225,20 @@ class CriticalActionService
     public function invalidateCache(string $tenantId, ?string $userId = null): void
     {
         // Bust all ca_dashboard and ca_master permutations for this tenant.
-        // Enumerate all 8 billing×exports×users combos to cover every manager permission set.
+        // Enumerate all billing×exports×users×referrers combos (16 for dashboard, 8 for master).
         $keys = [];
         foreach ([false, true] as $billing) {
             foreach ([false, true] as $exports) {
                 foreach ([false, true] as $users) {
-                    $dashOpts   = ['billing' => $billing, 'exports' => $exports, 'users' => $users, 'limit_per_source' => 5];
+                    // ca_master: does not carry referrers in its opts (masterList lacks the param)
                     $masterOpts = ['billing' => $billing, 'exports' => $exports, 'users' => $users, 'limit_per_source' => 50, 'since' => null, 'until' => null];
-                    $keys[] = "ca_dashboard:{$tenantId}:" . md5(serialize($dashOpts));
-                    $keys[] = "ca_master:{$tenantId}:"    . md5(serialize($masterOpts));
+                    $keys[] = "ca_master:{$tenantId}:" . md5(serialize($masterOpts));
+
+                    // ca_dashboard: carries referrers gate — 2× the combos vs master
+                    foreach ([false, true] as $referrers) {
+                        $dashOpts = ['billing' => $billing, 'exports' => $exports, 'users' => $users, 'referrers' => $referrers, 'limit_per_source' => 5];
+                        $keys[] = "ca_dashboard:{$tenantId}:" . md5(serialize($dashOpts));
+                    }
                 }
             }
         }
@@ -250,9 +255,9 @@ class CriticalActionService
     /**
      * Top N actions for the dashboard widget (admin/manager view).
      */
-    public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
+    public function dashboardSummary(string $tenantId, int $limit = 6, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true, bool $canViewReferrers = true): array
     {
-        $opts = ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'limit_per_source' => 5];
+        $opts = ['billing' => $canSeeBilling, 'exports' => $canSeeExports, 'users' => $canSeeUsers, 'referrers' => $canViewReferrers, 'limit_per_source' => 5];
         $all  = Cache::remember(
             "ca_dashboard:{$tenantId}:" . md5(serialize($opts)),
             90,
@@ -557,16 +562,16 @@ class CriticalActionService
 
     private function forTenant(string $tenantId, array $opts = []): array
     {
-        $limitPer   = $opts['limit_per_source'] ?? 10;
-        $since      = $opts['since'] ?? now()->subDays(30);
-        $canBilling = $opts['billing']  ?? false;
-        $canExports = $opts['exports']  ?? true;
-        $canUsers   = $opts['users']    ?? true;
+        $limitPer     = $opts['limit_per_source'] ?? 10;
+        $since        = $opts['since'] ?? now()->subDays(30);
+        $canBilling   = $opts['billing']    ?? false;
+        $canExports   = $opts['exports']    ?? true;
+        $canUsers     = $opts['users']      ?? true;
+        $canReferrers = $opts['referrers']  ?? true;
 
         $sources = [
             fn() => $this->expiringDeals($tenantId),
             fn() => $this->expiredDeals($tenantId),
-            fn() => $this->missingReferrerDeals($tenantId),
             fn() => $this->pendingArchiveRequests($tenantId),
             fn() => $this->pendingStageMoveRequests($tenantId),
             fn() => $this->pendingExtensionRequests($tenantId),
@@ -600,6 +605,10 @@ class CriticalActionService
 
         if ($canBilling) {
             $sources[] = fn() => $this->billingIssues($tenantId);
+        }
+
+        if ($canReferrers) {
+            $sources[] = fn() => $this->missingReferrerDeals($tenantId);
         }
 
         $all  = [];
