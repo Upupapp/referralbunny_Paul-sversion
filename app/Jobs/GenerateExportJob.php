@@ -73,9 +73,9 @@ class GenerateExportJob implements ShouldQueue
             $fileName = "{$request->tenant_id}-{$request->export_type}-{$date}-{$shortId}.csv";
             $storagePath = "exports/{$request->tenant_id}/{$request->id}.csv";
 
-            // Write to private local storage
+            // Write to local storage (disk('local') is never publicly accessible)
             Storage::disk('local')->makeDirectory("exports/{$request->tenant_id}");
-            Storage::disk('local')->put("private/{$storagePath}", $csvContent);
+            Storage::disk('local')->put($storagePath, $csvContent);
 
             $fileSize = strlen($csvContent);
 
@@ -85,7 +85,7 @@ class GenerateExportJob implements ShouldQueue
 
             $approvalService->markReady(
                 request:    $request,
-                filePath:   "private/{$storagePath}",
+                filePath:   $storagePath,
                 fileName:   $fileName,
                 fileSize:   $fileSize,
                 expiryDays: $expiryDays,
@@ -343,9 +343,12 @@ class GenerateExportJob implements ShouldQueue
                 ->where('id', $request->requester_id)
                 ->value('name');
 
-            if ($resellerName) {
-                $query->where('reseller_name', $resellerName);
-            }
+            $query->where(function ($q) use ($request, $resellerName) {
+                $q->where('reseller_id', $request->requester_id);
+                if ($resellerName) {
+                    $q->orWhere('reseller_name', $resellerName);
+                }
+            });
         }
 
         if (!empty($scope['commission_status'])) $query->where('commission_status', $scope['commission_status']);

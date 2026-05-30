@@ -347,6 +347,9 @@ class MessageController extends Controller
      */
     public function broadcastMessage(Request $request, $tenantId)
     {
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+            abort(403, 'Referrers cannot send broadcast messages.');
+        }
         $this->assertTenantAccess($tenantId);
         $data = $request->validate([
             'recipients'   => 'required|array|min:1|max:100',

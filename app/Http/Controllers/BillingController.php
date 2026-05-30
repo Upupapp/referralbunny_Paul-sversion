@@ -237,7 +237,10 @@ class BillingController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
-        $sub     = Subscription::findOrFail($request->subscription_id);
+        $sub = Subscription::findOrFail($request->subscription_id);
+        if ((string) $sub->tenant_id !== (string) $request->tenant_id) {
+            abort(422, 'Subscription does not belong to this tenant.');
+        }
         $invoice = $this->invoiceService->createForSubscription($sub, $request->amount_php, [], $request->notes ?? '');
         return response()->json($invoice, 201);
     }
@@ -254,6 +257,9 @@ class BillingController extends Controller
     {
         if (!TenantContext::isSuperAdmin() && $invoice->tenant_id !== TenantContext::requireId()) {
             abort(403, 'Access denied.');
+        }
+        if ($invoice->status === 'paid') {
+            return response()->json(['message' => 'Invoice is already paid.'], 422);
         }
         $intent = $this->paymongo->createPaymentIntent($invoice);
         return response()->json($intent);

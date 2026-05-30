@@ -648,7 +648,12 @@ class LeadController extends Controller
             unset($data['base_cost'], $data['added_amount'], $data['deal_value']);
         }
         if ($isReferrer) {
-            unset($data['commission_status'], $data['reseller_name'], $data['status']);
+            unset($data['commission_status'], $data['reseller_name'], $data['status'], $data['stage']);
+        }
+
+        // Prevent anyone from downgrading a paid commission_status
+        if (isset($data['commission_status']) && $lead->commission_status === 'paid') {
+            return response()->json(['error' => 'Cannot downgrade commission status from paid.'], 422);
         }
 
         // Capture old financial values before update for history log
@@ -1358,9 +1363,10 @@ class LeadController extends Controller
         [$actorIdStage, $actorRoleStage, $actorNameStage] = $this->resolveActor();
 
         DB::transaction(function () use ($lead, $updates, $targetStage, $capturedStage, $isLocking, $isPaid, $note, $actorNameStage, $actorRoleStage) {
-            $lead->update($updates);
+            $locked = Lead::where('id', $lead->id)->lockForUpdate()->firstOrFail();
+            $locked->update($updates);
             $commPool = app(\App\Services\CommissionCalculationService::class)
-                ->commissionPool((float) $lead->added_amount);
+                ->commissionPool((float) $locked->added_amount);
 
             $activity = app(\App\Services\DealActivityService::class);
 
@@ -1608,7 +1614,9 @@ class LeadController extends Controller
                 ? ($this->resolveStageLimit($lead->tenant_id, 'introduction') ?? ($lead->tenant_id === 'lgu-ids' ? 14 : 21))
                 : $lead->days_left,
             'status'            => 'active',
-            'commission_status' => 'pending',
+            'commission_status' => in_array($lead->commission_status, ['locked', 'paid'])
+                ? $lead->commission_status
+                : 'pending',
         ];
 
         // Single atomic transaction: lead update + split replacement.

@@ -63,31 +63,35 @@ class WebhookController extends Controller
 
     private function handlePaymentPaid(array $data, WebhookEvent $event): void
     {
-        $metadata   = $data['attributes']['metadata'] ?? [];
-        $invoiceId  = $metadata['invoice_id'] ?? null;
+        $metadata  = $data['attributes']['metadata'] ?? [];
+        $invoiceId = $metadata['invoice_id'] ?? null;
 
         if (!$invoiceId) {
             Log::warning('payment.paid: no invoice_id in metadata');
             return;
         }
 
-        $invoice = Invoice::find($invoiceId);
-        if (!$invoice) {
+        // Lock invoice row to prevent duplicate payment recording under concurrent webhooks
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($invoiceId, $data) {
+            $invoice = Invoice::where('id', $invoiceId)->lockForUpdate()->first();
+            if (!$invoice) return null;
+            if ($invoice->status === 'paid') return 'skipped';
+
+            $payment = $this->paymongo->recordPayment($invoice, $data);
+            $this->invoiceService->markPaid($invoice, $payment->id);
+            return [$invoice->fresh(), $payment];
+        });
+
+        if ($result === null) {
             Log::warning("payment.paid: invoice {$invoiceId} not found");
             return;
         }
-
-        // Idempotency: skip if already processed
-        if ($invoice->status === 'paid') {
+        if ($result === 'skipped') {
             Log::info("payment.paid: invoice {$invoiceId} already paid — skipping");
             return;
         }
 
-        // Record payment
-        $payment = $this->paymongo->recordPayment($invoice, $data);
-
-        // Mark invoice paid
-        $this->invoiceService->markPaid($invoice, $payment->id);
+        [$invoice, $payment] = $result;
 
         // Activate subscription
         $subscription = Subscription::find($invoice->subscription_id);

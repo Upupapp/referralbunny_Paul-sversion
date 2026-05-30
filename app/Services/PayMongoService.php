@@ -93,10 +93,25 @@ class PayMongoService
     public function verifyWebhook(string $rawBody, string $signature): bool
     {
         $webhookSecret = config('services.paymongo.webhook_secret', '');
-        if (empty($webhookSecret)) return false;
+        if (empty($webhookSecret) || empty($signature)) return false;
 
-        $computedSig = hash_hmac('sha256', $rawBody, $webhookSecret);
-        return hash_equals($computedSig, $signature);
+        // PayMongo signature header format: t=<timestamp>,li=<hmac>,te=<hmac>
+        // Signed payload is: "{timestamp}.{rawBody}"
+        // We verify against the "li" (live) component.
+        $parts = [];
+        foreach (explode(',', $signature) as $part) {
+            [$k, $v] = array_pad(explode('=', $part, 2), 2, '');
+            $parts[trim($k)] = trim($v);
+        }
+
+        if (empty($parts['t']) || empty($parts['li'])) {
+            return false;
+        }
+
+        $signedPayload = $parts['t'] . '.' . $rawBody;
+        $computedSig   = hash_hmac('sha256', $signedPayload, $webhookSecret);
+
+        return hash_equals($computedSig, $parts['li']);
     }
 
     // ── Refund ────────────────────────────────────────────────

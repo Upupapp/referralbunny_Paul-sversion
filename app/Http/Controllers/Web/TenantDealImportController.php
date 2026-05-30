@@ -265,6 +265,7 @@ class TenantDealImportController extends Controller
             'municipality' => 'nullable|string|max:120',
         ]);
 
+        $this->batchQuery($tenantId)->findOrFail($batchId);
         $row = ImportBatchRow::where('import_batch_id', $batchId)->findOrFail($rowId);
 
         $normalized = is_array($row->normalized_data) ? $row->normalized_data : [];
@@ -309,6 +310,7 @@ class TenantDealImportController extends Controller
             'action' => 'required|in:create,update,skip,merge,overwrite,review,blocked',
         ]);
 
+        $this->batchQuery($tenantId)->findOrFail($batchId);
         $row = ImportBatchRow::where('import_batch_id', $batchId)->findOrFail($rowId);
 
         // Resellers may only approve rows assigned to themselves
@@ -511,9 +513,7 @@ class TenantDealImportController extends Controller
         $this->guardCheck();
         $this->resolveTenant($tenantId);
 
-        $batch    = ImportBatch::where('tenant_id', $tenantId)
-            ->where('import_type', 'generic_deals')
-            ->findOrFail($batchId);
+        $batch = $this->batchQuery($tenantId)->findOrFail($batchId);
         $csv      = $this->service->generateFailedRowsCsv($batch);
         $filename = 'deals-failed-rows-' . $batchId . '-' . date('Y-m-d') . '.csv';
 

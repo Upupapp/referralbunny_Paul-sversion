@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+        $middleware->validateCsrfTokens(except: ['webhooks/paymongo', 'webhooks/*']);
         $middleware->prepend(HandleCors::class);
         $middleware->statefulApi();
         $middleware->alias([

@@ -467,7 +467,12 @@ class ResellerDealController extends Controller
 
         DB::beginTransaction();
         try {
-            $lead->update([
+            $locked = Lead::where('id', $lead->id)->lockForUpdate()->firstOrFail();
+            if (in_array($locked->commission_status ?? '', ['locked', 'paid'])) {
+                DB::rollBack();
+                return response()->json(['error' => 'Deal amount cannot be changed after commission has been ' . $locked->commission_status . '. Contact your admin.'], 422);
+            }
+            $locked->update([
                 'deal_value'   => $newAmount,
                 'base_cost'    => $newBaseCost,
                 'added_amount' => $newAddedAmount,

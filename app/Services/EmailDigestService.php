@@ -56,6 +56,7 @@ class EmailDigestService
         // Look for an existing pending digest for the same recipient+topic
         $existing = EmailDigest::where('recipient_email', $email)
             ->where('topic', $topic)
+            ->where('recipient_type', $recipientType)
             ->pending()
             ->where('scheduled_at', '>', now()) // still in the future
             ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
