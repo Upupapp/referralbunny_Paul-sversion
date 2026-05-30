@@ -23,6 +23,7 @@
             <span class="hidden sm:inline">Import Deals</span>
         </a>
     @endif
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
     <button onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
             class="btn-secondary" title="Select deals to delete">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,6 +35,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>
     </button>
+    @endif
 @endsection
 
 @section('content')

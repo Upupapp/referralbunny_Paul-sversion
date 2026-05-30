@@ -250,8 +250,15 @@ class TenantAdminController extends Controller
             }
         }
 
+        $actingRole = 'viewer';
+        if (Auth::guard('web')->check()) {
+            $actingRole = 'super_admin';
+        } elseif (Auth::guard('tenant')->check() && isset($membership)) {
+            $actingRole = $membership->role ?? 'viewer';
+        }
+
         return view('tenant.deals.index', array_merge(
-            ['tenant' => $tenant, 'canViewReferrers' => $canViewReferrers],
+            ['tenant' => $tenant, 'canViewReferrers' => $canViewReferrers, 'actingRole' => $actingRole],
             $this->configMeta($tenantId)
         ));
     }

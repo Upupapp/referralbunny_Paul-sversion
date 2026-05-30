@@ -23,6 +23,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -581,11 +582,44 @@ class ResellerDealController extends Controller
                 tenantId:     $tenantId,
                 resellerName: $reseller->name,
                 resellerId:   (string) $reseller->id,
+                resellerEmail: $reseller->email,
                 fromStage:    $oldStage,
                 toStage:      $targetStage,
                 dealValue:    (float) ($lead->deal_value ?? 0),
                 movedByName:  $reseller->name,
             );
+        } catch (\Throwable) {}
+
+        // Notify active partners on this deal
+        try {
+            $stageName = ucwords(str_replace('_', ' ', $targetStage));
+            $fromName  = ucwords(str_replace('_', ' ', $oldStage));
+            $priority  = in_array($targetStage, ['signed', 'paid']) ? 'high' : 'normal';
+            $minute    = now()->format('YmdH');
+
+            $partnerSplits = DB::table('deal_partner_splits')
+                ->where('deal_id', $lead->id)
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->whereNotNull('partner_user_id')
+                ->pluck('partner_user_id');
+
+            foreach ($partnerSplits as $partnerUserId) {
+                app(NotificationDispatchService::class)->dispatchToPartner(
+                    partnerId:    (string) $partnerUserId,
+                    tenantId:     $tenantId,
+                    category:     'deal_pipeline',
+                    priority:     $priority,
+                    title:        "Deal moved to {$stageName}",
+                    body:         "\"{$lead->name}\" has been moved from {$fromName} to {$stageName}.",
+                    actionUrl:    "/partner/deals/{$lead->id}",
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "{$lead->id}:stage:{$targetStage}:p:{$minute}",
+                );
+                Cache::forget("notif_unread_partner_{$partnerUserId}");
+                Cache::forget("partner_notif_unread:{$partnerUserId}");
+            }
         } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'stage' => $targetStage]);
@@ -1558,6 +1592,7 @@ class ResellerDealController extends Controller
                     leadName:     $lead->name,
                     tenantId:     $lead->tenant_id,
                     resellerName: $lead->reseller_name ?? '',
+                    resellerId:   $approval->requested_by_type === 'reseller' ? $approval->requested_by_id : null,
                     fromStage:    $oldStage,
                     toStage:      $targetStage,
                     dealValue:    (float) ($lead->deal_value ?? 0),

@@ -288,6 +288,7 @@ class CriticalActionsController extends Controller
 
         if ($navRole === 'manager' && $userId && isset($membership)) {
             $_permSvc       = app(\App\Services\PermissionService::class);
+            $_canSeeBilling = $_permSvc->can($membership, 'manage_billing_and_subscription');
             $_canSeeExports = $_permSvc->can($membership, 'approve_export_requests');
             $_canSeeUsers   = $_permSvc->can($membership, 'invite_tenant_staff');
         }

@@ -664,13 +664,13 @@ class LeadController extends Controller
 
         // Deal declined by admin — notify only on the transition (not on repeat updates)
         $actorNameForNotify = null;
-        if (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined' && !empty($lead->reseller_name)) {
+        if (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined') {
             [, , $actorNameForNotify] = $this->resolveActor();
             DealDeclined::dispatch(
                 leadId:        $lead->id,
                 leadName:      $lead->name,
                 tenantId:      $lead->tenant_id,
-                resellerName:  $lead->reseller_name,
+                resellerName:  $lead->reseller_name ?? '',
                 stage:         $lead->stage,
                 dealValue:     (float) ($lead->deal_value ?? 0),
                 declinedByName: $actorNameForNotify ?? 'Admin',
@@ -1328,22 +1328,8 @@ class LeadController extends Controller
             } catch (\Throwable) {}
         }
 
-        // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
-        try {
-            DealStageMoved::dispatch(
-                leadId:       (string) $lead->id,
-                leadName:     $lead->name,
-                tenantId:     $lead->tenant_id,
-                resellerName: $lead->reseller_name ?? '',
-                resellerId:   isset($caRid) ? (string) $caRid : null,
-                fromStage:    $capturedStage,
-                toStage:      $targetStage,
-                dealValue:    (float) ($lead->deal_value ?? 0),
-                movedByName:  $actorNameStage,
-            );
-        } catch (\Throwable) {}
-
-        // Bust CA cache before notifications — guaranteed even if dispatch throws
+        // Resolve reseller ID once — used for both the event dispatch and the CA cache bust
+        $caRid = null;
         if ($lead->reseller_name) {
             $caRid = Reseller::where('tenant_id', $lead->tenant_id)
                 ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
@@ -1351,6 +1337,21 @@ class LeadController extends Controller
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
         }
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdStage); } catch (\Throwable) {}
+
+        // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
+        try {
+            DealStageMoved::dispatch(
+                leadId:       (string) $lead->id,
+                leadName:     $lead->name,
+                tenantId:     $lead->tenant_id,
+                resellerName: $lead->reseller_name ?? '',
+                resellerId:   $caRid ? (string) $caRid : null,
+                fromStage:    $capturedStage,
+                toStage:      $targetStage,
+                dealValue:    (float) ($lead->deal_value ?? 0),
+                movedByName:  $actorNameStage,
+            );
+        } catch (\Throwable) {}
 
         // Notify active partners on this deal (admin + reseller are handled by HandleDealStageMoved listener)
         try {

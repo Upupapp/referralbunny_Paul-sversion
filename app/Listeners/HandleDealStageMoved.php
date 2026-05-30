@@ -30,7 +30,7 @@ class HandleDealStageMoved implements ShouldQueue
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
 
-        if (!$email || !$resellerId) {
+        if (!$email && !$resellerId) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();
@@ -51,26 +51,30 @@ class HandleDealStageMoved implements ShouldQueue
 
         // ── 1. Email to Referrer ──────────────────────────────────────────────
         if ($email) {
-            EmailLogger::send(
-                mailable: new ResellerDealStageMoved(
-                    resellerName:  $event->resellerName,
-                    resellerEmail: $email,
-                    tenantName:    $tenantName,
-                    dealName:      $event->leadName,
-                    fromStage:     $event->fromStage,
-                    toStage:       $event->toStage,
-                    dealValue:     $event->dealValue,
-                    movedByName:   $event->movedByName ?? 'Admin',
-                    dealUrl:       url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
-                ),
-                recipientEmail: $email,
-                recipientType:  'reseller',
-                emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage,
-                subject:        "Deal stage updated: {$event->leadName} → {$toStageLabel}",
-                recipientId:    $resellerId,
-                tenantId:       $event->tenantId,
-                dailyDedup:     true,
-            );
+            try {
+                EmailLogger::send(
+                    mailable: new ResellerDealStageMoved(
+                        resellerName:  $event->resellerName,
+                        resellerEmail: $email,
+                        tenantName:    $tenantName,
+                        dealName:      $event->leadName,
+                        fromStage:     $event->fromStage,
+                        toStage:       $event->toStage,
+                        dealValue:     $event->dealValue,
+                        movedByName:   $event->movedByName ?? 'Admin',
+                        dealUrl:       url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
+                    ),
+                    recipientEmail: $email,
+                    recipientType:  'reseller',
+                    emailKey:       'deal_stage_moved.' . $event->leadId . '.' . $event->toStage,
+                    subject:        "Deal stage updated: {$event->leadName} → {$toStageLabel}",
+                    recipientId:    $resellerId,
+                    tenantId:       $event->tenantId,
+                    dailyDedup:     true,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[HandleDealStageMoved] Email send failed', ['error' => $e->getMessage()]);
+            }
         }
 
         // ── 2. In-app to Referrer ─────────────────────────────────────────────
@@ -133,6 +137,20 @@ class HandleDealStageMoved implements ShouldQueue
 
             if ($resellerId) {
                 Cache::forget("notif_unread_reseller_{$resellerId}");
+            }
+
+            // Bust partner bell caches for all active partners on this deal
+            $partnerIds = DB::table('deal_partner_splits')
+                ->where('deal_id', $event->leadId)
+                ->where('tenant_id', $event->tenantId)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->whereNotNull('partner_user_id')
+                ->pluck('partner_user_id');
+
+            foreach ($partnerIds as $pid) {
+                Cache::forget("notif_unread_partner_{$pid}");
+                Cache::forget("partner_notif_unread:{$pid}");
             }
         } catch (\Throwable) {}
     }
