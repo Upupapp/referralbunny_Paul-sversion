@@ -159,6 +159,7 @@ class DealPartnerSplitController extends Controller
         $oldSplit = DB::table('deal_partner_splits')
             ->where('id', $splitId)
             ->where('tenant_id', $tenantId)
+            ->where('deal_id', $lead->id)
             ->first();
 
         try {
@@ -231,6 +232,7 @@ class DealPartnerSplitController extends Controller
         $oldSplit = DB::table('deal_partner_splits')
             ->where('id', $splitId)
             ->where('tenant_id', $tenantId)
+            ->where('deal_id', $lead->id)
             ->first();
 
         try {
@@ -290,6 +292,7 @@ class DealPartnerSplitController extends Controller
         return Auth::guard('tenant')->user()?->id
             ?? Auth::guard('web')->user()?->id
             ?? Auth::guard('reseller')->user()?->id
+            ?? Auth::guard('partner')->user()?->id
             ?? null;
     }
 

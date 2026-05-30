@@ -65,7 +65,7 @@ class DealCommentController extends Controller
 
         // Cursor pagination — newest first; caller passes before_id to page backward
         if ($before) {
-            $pivot = DealComment::where('id', $before)->where('tenant_id', $tenantId)->first(['created_at', 'id']);
+            $pivot = DealComment::where('id', $before)->where('tenant_id', $tenantId)->where('deal_id', $dealId)->first(['created_at', 'id']);
             if ($pivot) {
                 $query->where(function ($q) use ($pivot) {
                     $q->where('created_at', '<', $pivot->created_at)

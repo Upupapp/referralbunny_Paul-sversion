@@ -165,7 +165,7 @@ class DealNoteAttachmentController extends Controller
         [$actorId, $role] = $this->resolveActor();
 
         // Only author or admin can delete
-        if ($comment->author_user_id !== $actorId && !in_array($role, ['tenant_admin', 'super_admin'])) {
+        if ($comment->author_user_id !== $actorId && !in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             return response()->json(['error' => 'Not authorized.'], 403);
         }
 

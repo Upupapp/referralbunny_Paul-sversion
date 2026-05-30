@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TenantOverride;
 use App\Services\FeatureAccessService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -41,6 +42,7 @@ class FeatureAccessController extends Controller
     // POST /api/tenant-overrides
     public function createOverride(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage feature overrides.');
         $data = $request->validate([
             'tenant_id'             => 'required|string|exists:tenants,id',
             'feature_name'          => 'required|string',
@@ -76,6 +78,7 @@ class FeatureAccessController extends Controller
     // DELETE /api/tenant-overrides/{override}
     public function deleteOverride(TenantOverride $override): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage feature overrides.');
         $override->delete();
         return response()->json(['message' => 'Override removed.']);
     }
@@ -83,6 +86,7 @@ class FeatureAccessController extends Controller
     // POST /api/feature-access/grace-period
     public function startGracePeriod(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage feature overrides.');
         $data = $request->validate([
             'tenant_id' => 'required|string|exists:tenants,id',
             'days'      => 'nullable|integer|min:1|max:30',
@@ -95,6 +99,7 @@ class FeatureAccessController extends Controller
     // POST /api/feature-access/reset-usage
     public function resetUsage(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage feature overrides.');
         $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);
         $this->featureAccess->resetMonthlyUsage($request->tenant_id);
         return response()->json(['message' => 'Monthly usage reset.']);

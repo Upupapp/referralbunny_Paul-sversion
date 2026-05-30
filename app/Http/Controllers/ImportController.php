@@ -10,8 +10,10 @@ use App\Models\ImportRowError;
 use App\Services\ImportMappingService;
 use App\Services\ImportService;
 use App\Services\ImportTemplateService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ImportController extends Controller
 {
@@ -20,6 +22,28 @@ class ImportController extends Controller
         private ImportTemplateService $templates,
         private ImportMappingService  $mapping
     ) {}
+
+    // ── Authorization helpers ──────────────────────────────────
+
+    private function requireAdminAccess(): void
+    {
+        if (TenantContext::isSuperAdmin()) return;
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            abort(403, 'You do not have permission to perform this action.');
+        }
+        if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            abort(403, 'You do not have permission to perform this action.');
+        }
+    }
+
+    private function authorizeJob(ImportJob $job): void
+    {
+        if (TenantContext::isSuperAdmin()) return;
+        $tenantId = TenantContext::requireId();
+        if ($job->tenant_id !== $tenantId) {
+            abort(404, 'Import job not found.');
+        }
+    }
 
     // ── Templates ─────────────────────────────────────────────
 
@@ -49,12 +73,19 @@ class ImportController extends Controller
     // GET /api/imports/jobs
     public function index(Request $request): JsonResponse
     {
+        $this->requireAdminAccess();
+
         $query = ImportJob::with('uploadedBy')
             ->orderByDesc('created_at');
 
-        if ($request->filled('status'))       $query->where('status', $request->status);
-        if ($request->filled('object_type'))  $query->where('object_type', $request->object_type);
-        if ($request->filled('tenant_id'))    $query->where('tenant_id', $request->tenant_id);
+        if ($request->filled('status'))      $query->where('status', $request->status);
+        if ($request->filled('object_type')) $query->where('object_type', $request->object_type);
+
+        if (TenantContext::isSuperAdmin()) {
+            if ($request->filled('tenant_id')) $query->where('tenant_id', $request->tenant_id);
+        } else {
+            $query->where('tenant_id', TenantContext::requireId());
+        }
 
         return response()->json($query->paginate(20));
     }
@@ -62,12 +93,15 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}
     public function show(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         return response()->json($job->load('uploadedBy'));
     }
 
     // POST /api/imports/jobs
     public function create(Request $request): JsonResponse
     {
+        $this->requireAdminAccess();
+
         $data = $request->validate([
             'object_type'   => 'required|string',
             'import_name'   => 'nullable|string|max:200',
@@ -77,6 +111,11 @@ class ImportController extends Controller
             'tenant_id'     => 'nullable|string|exists:tenants,id',
             'pasted_content'=> 'nullable|string',
         ]);
+
+        // Non-super-admins can only create jobs for their own tenant
+        if (!TenantContext::isSuperAdmin()) {
+            $data['tenant_id'] = TenantContext::requireId();
+        }
 
         $file = $request->file('file');
         if (!$file && empty($data['pasted_content'])) {
@@ -95,6 +134,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/parse
     public function parse(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $result = $this->imports->parseStructure($job);
         return response()->json($result);
     }
@@ -102,6 +142,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/mapping-suggestions
     public function mappingSuggestions(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $suggestions = $this->imports->detectMapping($job);
         $completeness = $this->mapping->validateMappingCompleteness($suggestions, $job->object_type);
         return response()->json(['suggestions' => $suggestions, 'completeness' => $completeness]);
@@ -110,6 +151,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/mapping
     public function saveMapping(Request $request, ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $data = $request->validate([
             'mapping'      => 'required|array',
             'profile_name' => 'nullable|string|max:100',
@@ -132,6 +174,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/validate
     public function validate(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $summary = $this->imports->validateRows($job);
         return response()->json($summary);
     }
@@ -139,6 +182,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/preview
     public function preview(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $rows = ImportRow::where('import_job_id', $job->id)
             ->limit(100)
             ->get(['id', 'row_number', 'mapped_data_json', 'status', 'error_count', 'warning_count', 'matched_entity_id']);
@@ -153,6 +197,8 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/execute
     public function execute(Request $request, ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
+        $this->authorizeJob($job);
         if (!in_array($job->status, ['ready_for_review', 'approved'])) {
             return response()->json(['error' => 'Job is not ready for import. Current status: ' . $job->status], 422);
         }
@@ -164,6 +210,8 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/cancel
     public function cancel(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
+        $this->authorizeJob($job);
         if (!$job->canCancel()) {
             return response()->json(['error' => 'This job cannot be canceled in its current state.'], 422);
         }
@@ -174,6 +222,8 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/rollback
     public function rollback(Request $request, ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
+        $this->authorizeJob($job);
         if (!$job->canRollback()) {
             return response()->json(['error' => 'This job is not eligible for rollback.'], 422);
         }
@@ -184,6 +234,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/rows
     public function rows(Request $request, ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $query = ImportRow::where('import_job_id', $job->id);
         if ($request->filled('status')) $query->where('status', $request->status);
         return response()->json($query->orderBy('row_number')->paginate(50));
@@ -192,6 +243,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/errors
     public function errors(ImportJob $job): JsonResponse
     {
+        $this->authorizeJob($job);
         $errors = ImportRowError::where('import_job_id', $job->id)
             ->orderBy('row_number')
             ->get();
@@ -201,6 +253,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/report/download
     public function downloadReport(ImportJob $job)
     {
+        $this->authorizeJob($job);
         $errors = ImportRowError::where('import_job_id', $job->id)->get();
         $rows   = ImportRow::where('import_job_id', $job->id)->get();
 

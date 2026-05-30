@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -58,6 +59,13 @@ class ContactController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to create contacts.'], 403);
+        }
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to create contacts.'], 403);
+        }
+
         $data = $request->validate([
             'first_name'      => 'required|string|max:100',
             'last_name'       => 'nullable|string|max:100',
@@ -113,6 +121,13 @@ class ContactController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to update contacts.'], 403);
+        }
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to update contacts.'], 403);
+        }
+
         $data = $request->validate([
             'first_name'      => 'sometimes|string|max:100',
             'last_name'       => 'nullable|string|max:100',
@@ -137,6 +152,13 @@ class ContactController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to delete contacts.'], 403);
+        }
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to delete contacts.'], 403);
+        }
+
         $tenantId = TenantContext::id();
         if (!$tenantId && !TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');
@@ -169,6 +191,13 @@ class ContactController extends Controller
 
     public function linkToDeal(Request $request, string $dealId): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to link contacts.'], 403);
+        }
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to link contacts.'], 403);
+        }
+
         $data = $request->validate([
             'contact_id' => 'required|string|exists:contacts,id',
             'role'       => 'nullable|string|max:100',
@@ -176,6 +205,14 @@ class ContactController extends Controller
 
         // Derive tenant from authenticated context, never from user input
         $tenantId = TenantContext::requireId();
+
+        // Verify the contact and deal both belong to this tenant
+        if (!DB::table('contacts')->where('id', $data['contact_id'])->where('tenant_id', $tenantId)->exists()) {
+            return response()->json(['error' => 'Contact not found in this tenant.'], 404);
+        }
+        if (!DB::table('leads')->where('id', $dealId)->where('tenant_id', $tenantId)->exists()) {
+            return response()->json(['error' => 'Deal not found in this tenant.'], 404);
+        }
 
         if (DB::table('deal_contacts')->where('deal_id', $dealId)->where('contact_id', $data['contact_id'])->exists()) {
             return response()->json(['error' => 'Contact already linked to this deal'], 422);
@@ -204,6 +241,13 @@ class ContactController extends Controller
 
     public function unlinkFromDeal(string $dealId, string $contactId): JsonResponse
     {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to unlink contacts.'], 403);
+        }
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to unlink contacts.'], 403);
+        }
+
         $tenantId = TenantContext::id();
         if (!$tenantId && !TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');

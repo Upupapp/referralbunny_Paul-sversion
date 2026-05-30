@@ -57,6 +57,7 @@ class BillingController extends Controller
 
     public function activateTrial(Request $request, string $tenantId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $tenant = \App\Models\Tenant::findOrFail($tenantId);
         $sub    = $this->billing->startTrial($tenant, $request->plan_id);
         return response()->json($sub, 201);
@@ -64,6 +65,7 @@ class BillingController extends Controller
 
     public function activateSubscription(Request $request, string $subscriptionId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $sub = Subscription::findOrFail($subscriptionId);
         $this->billing->activate($sub, $request->billing_cycle ?? 'monthly');
         return response()->json($sub->fresh('plan'));
@@ -71,6 +73,7 @@ class BillingController extends Controller
 
     public function cancelSubscription(Request $request, string $subscriptionId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $request->validate(['reason' => 'required|string']);
         $sub = Subscription::findOrFail($subscriptionId);
         $this->billing->cancel($sub, $request->reason, $this->actorId());
@@ -79,6 +82,7 @@ class BillingController extends Controller
 
     public function suspendTenant(Request $request, string $tenantId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $request->validate(['reason' => 'required|string']);
         $sub = Subscription::where('tenant_id', $tenantId)->latest()->firstOrFail();
         $this->billing->suspend($sub, $request->reason, $this->actorId());
@@ -87,6 +91,7 @@ class BillingController extends Controller
 
     public function extendAccess(Request $request, string $tenantId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $data = $request->validate([
             'days'       => 'required|integer|min:1|max:365',
             'note'       => 'nullable|string|max:500',
@@ -217,6 +222,7 @@ class BillingController extends Controller
 
     public function createInvoice(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $request->validate([
             'tenant_id'       => 'required|string|exists:tenants,id',
             'subscription_id' => 'required|string|exists:subscriptions,id',
@@ -231,6 +237,7 @@ class BillingController extends Controller
 
     public function waiveInvoice(Request $request, Invoice $invoice): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $request->validate(['reason' => 'required|string']);
         $this->invoiceService->waive($invoice, $request->reason, $this->actorId());
         return response()->json(['message' => 'Invoice waived.']);
@@ -323,6 +330,7 @@ class BillingController extends Controller
     // ── Super Admin: Change Tenant Plan (requires double-auth) ───────────────
     public function changeTenantPlan(Request $request, string $tenantId): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $data = $request->validate([
             'plan_id'           => 'required|string|exists:plans,id',
             'billing_status'    => 'nullable|in:standard,comped,internal,manual,sponsored',
@@ -454,6 +462,7 @@ class BillingController extends Controller
 
     public function updateExchangeRate(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can perform billing operations.');
         $request->validate([
             'base_currency'   => 'required|string|size:3',
             'target_currency' => 'required|string|size:3',
