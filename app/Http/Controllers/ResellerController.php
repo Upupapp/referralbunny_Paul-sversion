@@ -31,10 +31,12 @@ class ResellerController extends Controller
      */
     private function callerIsTenantAdmin(): bool
     {
-        // Web session (Blade tenant admin) or super-admin sanctum token
-        return Auth::guard('web')->check()
-            || Auth::guard('tenant')->check()
-            || (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User);
+        if (Auth::guard('web')->check()) return true;
+        if (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User) return true;
+        if (Auth::guard('tenant')->check()) {
+            return in_array(TenantContext::role(), ['owner', 'admin', 'manager']);
+        }
+        return false;
     }
 
     private function applyAnonymityMask(Reseller $reseller, bool $isTenantAdmin): array

@@ -39,7 +39,7 @@ class CriticalActionService
      *
      * @return array{count: int, has_urgent: bool}
      */
-    public function badgeCount(string $tenantId, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true): array
+    public function badgeCount(string $tenantId, bool $canSeeBilling = false, bool $canSeeExports = true, bool $canSeeUsers = true, bool $canViewReferrers = true): array
     {
         $count     = 0;
         $hasUrgent = false;
@@ -198,18 +198,20 @@ class CriticalActionService
             } catch (\Throwable) {}
         }
 
-        // 11. Missing-referrer deals — panel emits exactly 1 aggregate item when any exist
-        try {
-            $hasMissingReferrer = DB::table('leads')
-                ->where('tenant_id', $tenantId)
-                ->whereIn('status', ['active', 'expiring'])
-                ->where(fn($q) => $q->whereNull('reseller_name')->orWhere('reseller_name', ''))
-                ->whereNull('deleted_at')
-                ->exists();
-            if ($hasMissingReferrer) {
-                $count++;
-            }
-        } catch (\Throwable) {}
+        // 11. Missing-referrer deals — only counted for users who can see referrer data
+        if ($canViewReferrers) {
+            try {
+                $hasMissingReferrer = DB::table('leads')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('status', ['active', 'expiring'])
+                    ->where(fn($q) => $q->whereNull('reseller_name')->orWhere('reseller_name', ''))
+                    ->whereNull('deleted_at')
+                    ->exists();
+                if ($hasMissingReferrer) {
+                    $count++;
+                }
+            } catch (\Throwable) {}
+        }
 
         return ['count' => $count, 'has_urgent' => $hasUrgent];
     }

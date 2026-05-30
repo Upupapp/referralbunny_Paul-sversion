@@ -286,15 +286,17 @@ class CriticalActionsController extends Controller
         }
 
         // Derive permission flags (mirrors _nav.blade.php logic exactly)
-        $_canSeeBilling = in_array($navRole, ['owner', 'admin', 'super_admin']);
-        $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
-        $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeBilling    = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeExports    = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeUsers      = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canViewReferrers = in_array($navRole, ['owner', 'admin', 'super_admin']);
 
         if ($navRole === 'manager' && $userId && isset($membership)) {
-            $_permSvc       = app(\App\Services\PermissionService::class);
-            $_canSeeBilling = $_permSvc->can($membership, 'manage_billing_and_subscription');
-            $_canSeeExports = $_permSvc->can($membership, 'approve_export_requests');
-            $_canSeeUsers   = $_permSvc->can($membership, 'invite_tenant_staff');
+            $_permSvc          = app(\App\Services\PermissionService::class);
+            $_canSeeBilling    = $_permSvc->can($membership, 'manage_billing_and_subscription');
+            $_canSeeExports    = $_permSvc->can($membership, 'approve_export_requests');
+            $_canSeeUsers      = $_permSvc->can($membership, 'invite_tenant_staff');
+            $_canViewReferrers = $_permSvc->can($membership, 'view_referrers');
         }
 
         try {
@@ -309,7 +311,7 @@ class CriticalActionsController extends Controller
                 $_urgentKey = "ca_badge_urgent:{$tenantId}:{$userId}";
                 $badge = Cache::remember(
                     $_urgentKey, 120,
-                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers, $_canViewReferrers)
                 );
                 $count     = ($badge['has_urgent'] ?? false) ? (int)($badge['count'] ?? 0) : 0;
                 $hasUrgent = (bool)($badge['has_urgent'] ?? false);
@@ -317,7 +319,7 @@ class CriticalActionsController extends Controller
                 // Cache the full badge array for 60 s — gives both count + has_urgent in one lookup.
                 $badge = Cache::remember(
                     $_caBadgeKey, 60,
-                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                    fn() => $this->service->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers, $_canViewReferrers)
                 );
                 $count     = (int)($badge['count']      ?? 0);
                 $hasUrgent = (bool)($badge['has_urgent'] ?? false);

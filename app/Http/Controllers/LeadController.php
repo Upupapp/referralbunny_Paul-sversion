@@ -273,6 +273,12 @@ class LeadController extends Controller
 
     private function doStore(Request $request): JsonResponse
     {
+        if (Auth::guard('tenant')->check()) {
+            if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+                return response()->json(['message' => 'You do not have permission to create deals.'], 403);
+            }
+        }
+
         $data = $request->validate([
             'name'               => 'required|string',
             'stage'              => 'required|string',
@@ -516,9 +522,12 @@ class LeadController extends Controller
 
     private function callerIsTenantAdmin(): bool
     {
-        return Auth::guard('web')->check()
-            || Auth::guard('tenant')->check()
-            || (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User);
+        if (Auth::guard('web')->check()) return true;
+        if (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User) return true;
+        if (Auth::guard('tenant')->check()) {
+            return in_array(TenantContext::role(), ['owner', 'admin', 'manager']);
+        }
+        return false;
     }
 
     private function resolveActor(): array
@@ -666,14 +675,27 @@ class LeadController extends Controller
         $actorNameForNotify = null;
         if (isset($data['status']) && $data['status'] === 'declined' && $oldStatusForEvent !== 'declined') {
             [, , $actorNameForNotify] = $this->resolveActor();
+            $declinedResellerId    = null;
+            $declinedResellerEmail = null;
+            if (!empty($lead->reseller_name)) {
+                $declinedReseller = Reseller::where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                    ->first(['id', 'email', 'status']);
+                if ($declinedReseller) {
+                    $declinedResellerId    = (string) $declinedReseller->id;
+                    $declinedResellerEmail = $declinedReseller->email;
+                }
+            }
             DealDeclined::dispatch(
-                leadId:        $lead->id,
-                leadName:      $lead->name,
-                tenantId:      $lead->tenant_id,
-                resellerName:  $lead->reseller_name ?? '',
-                stage:         $lead->stage,
-                dealValue:     (float) ($lead->deal_value ?? 0),
+                leadId:         $lead->id,
+                leadName:       $lead->name,
+                tenantId:       $lead->tenant_id,
+                resellerName:   $lead->reseller_name ?? '',
+                stage:          $lead->stage,
+                dealValue:      (float) ($lead->deal_value ?? 0),
                 declinedByName: $actorNameForNotify ?? 'Admin',
+                resellerEmail:  $declinedResellerEmail,
+                resellerId:     $declinedResellerId,
             );
         }
 

@@ -238,6 +238,7 @@ class TenantAdminController extends Controller
         // Super admin (web guard) and owner/admin always see referrer names.
         // Tenant Manager respects their view_referrers permission.
         $canViewReferrers = true;
+        $membership = null;
         if (Auth::guard('tenant')->check()) {
             $userId     = Auth::guard('tenant')->id();
             $membership = TenantMembership::where('tenant_user_id', $userId)

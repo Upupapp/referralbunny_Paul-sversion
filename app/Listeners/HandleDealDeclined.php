@@ -21,6 +21,7 @@ class HandleDealDeclined implements ShouldQueue
     {
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
+        $reseller    = null;
         $skipInvited = false;
 
         // Only do the DB lookup when BOTH identifiers are missing — AND guard prevents
@@ -32,8 +33,14 @@ class HandleDealDeclined implements ShouldQueue
                 ->first();
             $email      = $email      ?? $reseller?->email;
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
+        }
 
-            if ($reseller && $reseller->status === 'invited') {
+        // Check invited status — must fire even when resellerId was pre-resolved by the caller.
+        if ($resellerId) {
+            $invitedStatus = $reseller
+                ? $reseller->status
+                : Reseller::where('tenant_id', $event->tenantId)->where('id', $resellerId)->value('status');
+            if ($invitedStatus === 'invited') {
                 $skipInvited = true;
             }
         }
@@ -122,7 +129,21 @@ class HandleDealDeclined implements ShouldQueue
             foreach ($adminIds as $uid) {
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
                 Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
+                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+
+            $partnerIds = DB::table('deal_partner_splits')
+                ->where('deal_id', $event->leadId)
+                ->where('tenant_id', $event->tenantId)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->whereNotNull('partner_user_id')
+                ->pluck('partner_user_id');
+
+            foreach ($partnerIds as $pid) {
+                Cache::forget("notif_unread_partner_{$pid}");
+                Cache::forget("partner_notif_unread:{$pid}");
             }
         } catch (\Throwable) {}
     }

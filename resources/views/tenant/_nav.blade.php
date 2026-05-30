@@ -146,9 +146,10 @@ if ($isAdminMgr) {
         $_caBadgeKey = "ca_badge_{$tenantId}_{$_caUserId}";
         // Derive permission flags matching CriticalActionsController gates exactly.
         // Owners/admins/super_admins see everything. Managers are checked per-permission.
-        $_canSeeBilling = in_array($navRole, ['owner', 'admin', 'super_admin']);
-        $_canSeeExports = in_array($navRole, ['owner', 'admin', 'super_admin']);
-        $_canSeeUsers   = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeBilling    = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeExports    = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canSeeUsers      = in_array($navRole, ['owner', 'admin', 'super_admin']);
+        $_canViewReferrers = in_array($navRole, ['owner', 'admin', 'super_admin']);
         if ($navRole === 'manager' && $_caUserId) {
             $_mgMembership = \Illuminate\Support\Facades\Cache::remember(
                 "nav_membership:{$tenantId}:{$_caUserId}", 60,
@@ -156,10 +157,11 @@ if ($isAdminMgr) {
                     ->where('tenant_id', $tenantId)->where('status', 'active')->first()
             );
             if ($_mgMembership) {
-                $_permSvc       = app(\App\Services\PermissionService::class);
-                $_canSeeBilling = $_permSvc->can($_mgMembership, 'manage_billing_and_subscription');
-                $_canSeeExports = $_permSvc->can($_mgMembership, 'approve_export_requests');
-                $_canSeeUsers   = $_permSvc->can($_mgMembership, 'invite_tenant_staff');
+                $_permSvc          = app(\App\Services\PermissionService::class);
+                $_canSeeBilling    = $_permSvc->can($_mgMembership, 'manage_billing_and_subscription');
+                $_canSeeExports    = $_permSvc->can($_mgMembership, 'approve_export_requests');
+                $_canSeeUsers      = $_permSvc->can($_mgMembership, 'invite_tenant_staff');
+                $_canViewReferrers = $_permSvc->can($_mgMembership, 'view_referrers');
             }
         }
 
@@ -172,7 +174,7 @@ if ($isAdminMgr) {
             $_badge        = \Illuminate\Support\Facades\Cache::remember(
                 "ca_badge_urgent:{$tenantId}:{$_caUserId}", 120,
                 fn() => app(\App\Services\CriticalActionService::class)
-                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers, $_canViewReferrers)
             );
             // Show full count when urgents exist; otherwise show 0 (everything else is "seen").
             $criticalBadge = ($_badge['has_urgent'] ?? false) ? (int)($_badge['count'] ?? 0) : 0;
@@ -181,7 +183,7 @@ if ($isAdminMgr) {
             $_badge        = \Illuminate\Support\Facades\Cache::remember(
                 $_caBadgeKey, 60,
                 fn() => app(\App\Services\CriticalActionService::class)
-                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers)
+                    ->badgeCount($tenantId, $_canSeeBilling, $_canSeeExports, $_canSeeUsers, $_canViewReferrers)
             );
             $criticalBadge = (int)($_badge['count'] ?? 0);
         }

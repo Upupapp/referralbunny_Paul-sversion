@@ -18,7 +18,7 @@ class HandleCommissionStatusChanged implements ShouldQueue
 
     public function failed(CommissionStatusChanged $event, \Throwable $e): void
     {
-        \Illuminate\Support\Facades\Log::error(
+        Log::error(
             'HandleCommissionStatusChanged failed permanently for lead ' . $event->leadId . ': ' . $e->getMessage()
         );
     }
@@ -31,17 +31,22 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 ->where('tenant_id', $event->tenantId)
                 ->where('email', $event->resellerEmail)
                 ->whereNull('deleted_at')
-                ->select('id', 'email')
+                ->select('id', 'email', 'status')
                 ->first();
         } elseif ($event->resellerName) {
             $reseller = DB::table('resellers')
                 ->where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->whereNull('deleted_at')
-                ->select('id', 'email')
+                ->select('id', 'email', 'status')
                 ->first();
         } else {
             $reseller = null;
+        }
+
+        // Do not send commission notifications to invited (unactivated) resellers
+        if ($reseller && $reseller->status === 'invited') {
+            return;
         }
 
         $email = $reseller?->email ?? $event->resellerEmail;
@@ -166,7 +171,21 @@ class HandleCommissionStatusChanged implements ShouldQueue
             foreach ($adminIds as $uid) {
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
                 Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
+                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+
+            $partnerIds = DB::table('deal_partner_splits')
+                ->where('deal_id', $event->leadId)
+                ->where('tenant_id', $event->tenantId)
+                ->whereNull('deleted_at')
+                ->where('status', '!=', 'removed')
+                ->whereNotNull('partner_user_id')
+                ->pluck('partner_user_id');
+
+            foreach ($partnerIds as $pid) {
+                Cache::forget("notif_unread_partner_{$pid}");
+                Cache::forget("partner_notif_unread:{$pid}");
             }
         } catch (\Throwable) {}
     }

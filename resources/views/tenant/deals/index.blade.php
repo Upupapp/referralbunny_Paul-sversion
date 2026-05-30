@@ -461,6 +461,7 @@
          The in-page activeTab === 'archive' section has been removed — subtab links navigate away. --}}
 
     {{-- Add Record Modal --}}
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
     <div x-show="showAdd" x-cloak class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
@@ -797,8 +798,10 @@
             </div>{{-- end x-show="!showSuccessState" --}}
         </div>
     </div>
+    @endif
 
     {{-- ── Delete Instructions Modal ─────────────────────────────── --}}
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
     <div :style="showDeleteInstructions ? 'display:flex' : 'display:none'"
          style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
@@ -828,10 +831,12 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- Floating Delete Bar is rendered outside Alpine — see below --}}
 
     {{-- ── Delete Confirmation Modal ────────────────────────────────── --}}
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
     <div :style="showDeleteConfirm ? 'display:flex' : 'display:none'"
          style="display:none"
          class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
@@ -860,6 +865,7 @@
             </div>
         </div>
     </div>
+    @endif
 
 
 </div>
@@ -1366,6 +1372,7 @@ window.rbDelBarCount = rbDelBarCount;
 </script>
 
 {{-- ── Standalone Floating Delete Bar (pure HTML, no Alpine) ─────────────── --}}
+@if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
 <div id="rb-del-bar"
      style="display:none;position:fixed;bottom:24px;left:0;right:0;z-index:9001;justify-content:center;padding:0 16px;pointer-events:none">
     <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:18px;background:white;box-shadow:0 8px 40px rgba(0,0,0,0.2);border:1.5px solid #e5e7eb;pointer-events:auto">
@@ -1386,6 +1393,7 @@ window.rbDelBarCount = rbDelBarCount;
         </button>
     </div>
 </div>
+@endif
 
 @endsection
 
