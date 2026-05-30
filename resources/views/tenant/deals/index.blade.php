@@ -388,6 +388,15 @@
 
     {{-- Kanban view --}}
     <div x-show="!loading && viewMode === 'kanban' && activeTab === 'deals'" class="overflow-x-auto pb-4">
+        <template x-if="filterStatus || filterStage || filterCommission || filterProvince || filterReseller || search">
+            <div class="mb-3 flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18l-7 9.5V19l-4 2v-7.5L3 4z"/></svg>
+                <span>Kanban is showing filtered results.
+                    <button @click="filterStatus=''; filterStage=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
+                            class="underline font-semibold ml-1 hover:text-indigo-900">Clear all filters</button>
+                </span>
+            </div>
+        </template>
         <div class="flex gap-4 min-w-max">
             <template x-for="stage in stages" :key="stage.key">
                 <div class="w-64 flex-none">
@@ -434,7 +443,8 @@
                                 </div>
                             </a>
                         </template>
-                        <div x-show="leadsInStage(stage.key).length === 0" class="text-center py-6 text-gray-300 text-xs">Empty</div>
+                        <div x-show="leadsInStage(stage.key).length === 0" class="text-center py-6 text-gray-300 text-xs"
+                             x-text="(filterStatus || filterStage || filterCommission || filterProvince || filterReseller || search) ? 'No matches' : 'Empty'"></div>
                     </div>
                 </div>
             </template>
@@ -881,7 +891,7 @@ function lguBaseCost(dv) {
 
 function dealsModule(tenantId, showLocation, canViewReferrers = true) {
     return {
-        leads: [], filtered: [], loading: true, initError: false, totalDeals: 0, _watchersInited: false,
+        leads: [], filtered: [], _byStage: {}, loading: true, initError: false, totalDeals: 0, _watchersInited: false,
         canViewReferrers,
         showLocation,
         viewMode: 'table',
@@ -971,23 +981,36 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
         applyFilters() {
             const q  = this.search.toLowerCase();
             const fp = this.filterPartner.toLowerCase();
-            this.filtered = this.leads.filter(l => {
-                const matchQ  = !q || (l.name||'').toLowerCase().includes(q)
-                                   || (this.canViewReferrers && (l.reseller_name||'').toLowerCase().includes(q))
-                                   || (l.data?.province||'').toLowerCase().includes(q)
-                                   || (l.data?.municipality||'').toLowerCase().includes(q);
-                const matchSt = !this.filterStage      || l.stage             === this.filterStage;
-                const matchSx = !this.filterStatus     || l.status            === this.filterStatus;
-                const matchCo = !this.filterCommission || l.commission_status  === this.filterCommission;
-                const matchPr = !this.filterProvince   || (l.data?.province||'') === this.filterProvince;
-                const matchRs = !this.filterReseller
-                    ? true
-                    : this.filterReseller === 'MISSING'
-                        ? !l.reseller_name
-                        : (l.reseller_name||'') === this.filterReseller;
-                const matchPa = !fp || (l.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
-                return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs && matchPa;
-            });
+            // Short-circuit: no predicate evaluation needed when all filters are clear
+            const hasFilter = q || fp || this.filterStage || this.filterStatus ||
+                              this.filterCommission || this.filterProvince || this.filterReseller;
+            if (!hasFilter) {
+                this.filtered = this.leads;
+            } else {
+                this.filtered = this.leads.filter(l => {
+                    const matchQ  = !q || (l.name||'').toLowerCase().includes(q)
+                                       || (this.canViewReferrers && (l.reseller_name||'').toLowerCase().includes(q))
+                                       || (l.data?.province||'').toLowerCase().includes(q)
+                                       || (l.data?.municipality||'').toLowerCase().includes(q);
+                    const matchSt = !this.filterStage      || l.stage             === this.filterStage;
+                    const matchSx = !this.filterStatus     || l.status            === this.filterStatus;
+                    const matchCo = !this.filterCommission || l.commission_status  === this.filterCommission;
+                    const matchPr = !this.filterProvince   || (l.data?.province||'') === this.filterProvince;
+                    const matchRs = !this.filterReseller
+                        ? true
+                        : this.filterReseller === 'MISSING'
+                            ? !l.reseller_name
+                            : (l.reseller_name||'') === this.filterReseller;
+                    const matchPa = !fp || (l.partners || []).some(p => (p.display_name||p.email||'').toLowerCase() === fp);
+                    return matchQ && matchSt && matchSx && matchCo && matchPr && matchRs && matchPa;
+                });
+            }
+            // Build byStage map once so leadsInStage() is O(1) per column, not O(n) per render
+            this._byStage = {};
+            for (const l of this.filtered) {
+                if (!this._byStage[l.stage]) this._byStage[l.stage] = [];
+                this._byStage[l.stage].push(l);
+            }
         },
 
         sort(col) {
@@ -1063,7 +1086,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
             }
         },
 
-        leadsInStage(stage) { return this.filtered.filter(l => l.stage === stage); },
+        leadsInStage(stage) { return this._byStage[stage] || []; },
 
         totalValue() {
             const t = Math.round(this.filtered.reduce((s, l) => s + (Number(l.deal_value) || 0), 0));
