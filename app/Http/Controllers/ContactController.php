@@ -18,16 +18,25 @@ class ContactController extends Controller
         if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
             return response()->json(['error' => 'You do not have permission to view contacts.'], 403);
         }
-        // Derive tenant from authenticated context, never from user input
+        // Derive tenant — SA must supply tenant_id or context must be set
         $tenantId = TenantContext::id();
-        if (!$tenantId && !TenantContext::isSuperAdmin()) {
-            abort(403, 'Tenant context required.');
+        if (!$tenantId) {
+            if (TenantContext::isSuperAdmin()) {
+                $tenantId = $request->query('tenant_id');
+                if (!$tenantId) {
+                    return response()->json(['error' => 'tenant_id query parameter required.'], 422);
+                }
+            } else {
+                abort(403, 'Tenant context required.');
+            }
         }
+
+        $quotedTenantId = DB::getPdo()->quote($tenantId);
 
         $contacts = DB::table('contacts as c')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
             ->leftJoin(
-                DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc'),
+                DB::raw("(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts WHERE tenant_id = {$quotedTenantId} GROUP BY contact_id) dc"),
                 'c.id', '=', 'dc.contact_id'
             )
             ->leftJoin(
@@ -39,11 +48,12 @@ class ContactController extends Controller
                         status          AS role_invite_status,
                         associated_deal_id AS role_invite_deal_id
                     FROM contact_role_invitations
+                    WHERE tenant_id = {$quotedTenantId}
                     ORDER BY contact_id, created_at DESC
                 ) cri"),
                 'c.id', '=', 'cri.contact_id'
             )
-            ->when($tenantId, fn($q) => $q->where('c.tenant_id', $tenantId))
+            ->where('c.tenant_id', $tenantId)
             ->select(
                 'c.*',
                 'o.name as org_name',
@@ -75,7 +85,7 @@ class ContactController extends Controller
             'email'           => 'required|email|max:255',   // email is required
             'phone'           => 'nullable|string|max:50',
             'job_title'       => 'nullable|string|max:150',
-            'organization_id' => 'nullable|string|exists:organizations,id',
+            'organization_id' => 'nullable|string',
             'status'          => 'nullable|in:active,inactive,prospect',
             'notes'           => 'nullable|string',
             'intended_role'   => 'nullable|in:general_contact,referrer,partner,tenant_manager,deal_contact,organization_contact,tenant_staff',
@@ -84,6 +94,17 @@ class ContactController extends Controller
         // Derive tenant from authenticated context, never from user input
         $tenantId = TenantContext::requireId();
         $email    = strtolower(trim($data['email']));
+
+        // Validate organization_id belongs to this tenant (cross-tenant check)
+        if (!empty($data['organization_id'])) {
+            $orgExists = DB::table('organizations')
+                ->where('id', $data['organization_id'])
+                ->where('tenant_id', $tenantId)
+                ->exists();
+            if (!$orgExists) {
+                return response()->json(['error' => 'Organization not found in this tenant.'], 422);
+            }
+        }
 
         // Duplicate check within tenant
         $existing = DB::table('contacts')
@@ -119,7 +140,7 @@ class ContactController extends Controller
             'updated_at'      => now(),
         ]);
 
-        return response()->json($this->contactWithMeta($id), 201);
+        return response()->json($this->contactWithMeta($id, $tenantId), 201);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -137,7 +158,7 @@ class ContactController extends Controller
             'email'           => 'nullable|email|max:255',
             'phone'           => 'nullable|string|max:50',
             'job_title'       => 'nullable|string|max:150',
-            'organization_id' => 'nullable|string|exists:organizations,id',
+            'organization_id' => 'nullable|string',
             'status'          => 'sometimes|in:active,inactive,prospect',
             'notes'           => 'nullable|string',
         ]);
@@ -146,15 +167,29 @@ class ContactController extends Controller
         if (!$tenantId && !TenantContext::isSuperAdmin()) {
             abort(403, 'Tenant context required.');
         }
+
+        // Validate organization_id belongs to this tenant
+        if (!empty($data['organization_id']) && $tenantId) {
+            $orgExists = DB::table('organizations')
+                ->where('id', $data['organization_id'])
+                ->where('tenant_id', $tenantId)
+                ->exists();
+            if (!$orgExists) {
+                return response()->json(['error' => 'Organization not found in this tenant.'], 422);
+            }
+        }
+
         $q = DB::table('contacts')->where('id', $id);
         if ($tenantId) $q->where('tenant_id', $tenantId);
-        $affected = $q->update(array_merge($data, ['updated_at' => now()]));
 
-        if (!$affected) {
+        // exists() check prevents false 404 on zero-change updates
+        if (!$q->exists()) {
             return response()->json(['error' => 'Contact not found.'], 404);
         }
 
-        return response()->json($this->contactWithMeta($id));
+        $q->update(array_merge($data, ['updated_at' => now()]));
+
+        return response()->json($this->contactWithMeta($id, $tenantId));
     }
 
     public function destroy(string $id): JsonResponse
@@ -274,22 +309,35 @@ class ContactController extends Controller
             ->where('deal_id', $dealId)
             ->where('contact_id', $contactId);
         if ($tenantId) $q->where('tenant_id', $tenantId);
-        $q->delete();
+        $deleted = $q->delete();
+
+        if (!$deleted) {
+            return response()->json(['error' => 'Contact link not found.'], 404);
+        }
 
         return response()->json(['unlinked' => true]);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────
 
-    private function contactWithMeta(string $id): mixed
+    private function contactWithMeta(string $id, ?string $tenantId = null): mixed
     {
-        return DB::table('contacts as c')
+        $q = DB::table('contacts as c')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
-            ->leftJoin(
-                DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc'),
-                'c.id', '=', 'dc.contact_id'
-            )
-            ->where('c.id', $id)
+            ->where('c.id', $id);
+
+        if ($tenantId) {
+            $q->where('c.tenant_id', $tenantId);
+            $dealCountSub = DB::raw(
+                "(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts WHERE tenant_id = "
+                . DB::getPdo()->quote($tenantId)
+                . " GROUP BY contact_id) dc"
+            );
+        } else {
+            $dealCountSub = DB::raw('(SELECT contact_id, COUNT(*) as deal_count FROM deal_contacts GROUP BY contact_id) dc');
+        }
+
+        return $q->leftJoin($dealCountSub, 'c.id', '=', 'dc.contact_id')
             ->select('c.*', 'o.name as org_name', DB::raw('COALESCE(dc.deal_count, 0) as deal_count'))
             ->first();
     }

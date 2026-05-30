@@ -266,7 +266,7 @@ class PartnerPortalController extends Controller
         $data = $request->validate([
             'body'    => 'nullable|string|max:10000',
             'files'   => 'nullable|array|max:5',
-            'files.*' => 'nullable|file|max:10240',
+            'files.*' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv,txt,zip',
         ]);
 
         $hasBody  = !empty(trim($data['body'] ?? ''));
@@ -595,14 +595,14 @@ class PartnerPortalController extends Controller
             $resellerId = $reseller?->id;
         }
 
-        // Get or create the thread for this (deal, partner) pair
+        // Get or create the thread for this (deal, partner, tenant) tuple
         $thread = PartnerThread::firstOrCreate(
             [
                 'deal_id'    => $data['deal_id'],
                 'partner_id' => $partner->id,
+                'tenant_id'  => $partner->tenant_id,
             ],
             [
-                'tenant_id'   => $partner->tenant_id,
                 'reseller_id' => $resellerId,
             ]
         );
@@ -770,6 +770,7 @@ class PartnerPortalController extends Controller
         // Load the corresponding deals — include soft-deleted so archived deals still show
         $deals = Lead::withTrashed()
             ->whereIn('id', $splits->pluck('deal_id')->unique()->values()->toArray())
+            ->where('tenant_id', $partner->tenant_id)
             ->get(['id', 'name', 'deal_value', 'added_amount', 'stage', 'status', 'commission_status', 'reseller_name'])
             ->keyBy('id');
 
@@ -781,12 +782,11 @@ class PartnerPortalController extends Controller
             $myAmount = $s->split_share_type === 'percentage'
                 ? round($pool * (float) $s->split_share_value / 100, 2)
                 : (float) $s->split_share_value;
+            // added_amount and pool are NOT exposed — partners are entitled to my_amount only
             return [
                 'deal_id'           => $s->deal_id,
                 'deal_name'         => $deal->name,
                 'deal_value'        => (float) ($deal->deal_value ?? 0),
-                'added_amount'      => $addedAmount,
-                'pool'              => $pool,
                 'deal_stage'        => $deal->stage ?? 'introduction',
                 'deal_status'       => $deal->status ?? 'active',
                 'commission_status' => $deal->commission_status ?? 'pending',

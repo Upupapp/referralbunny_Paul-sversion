@@ -65,8 +65,8 @@ class BulkDealExtensionController extends Controller
         if (!$reseller) return response()->json(['error' => 'Referrer not found.'], 403);
 
         $data = $request->validate([
-            'deal_ids'                 => 'required|array|min:1',
-            'deal_ids.*'               => 'required|string',
+            'deal_ids'                 => 'required|array|min:1|max:50',
+            'deal_ids.*'               => 'required|string|uuid',
             'requested_extension_days' => 'required|integer|min:1|max:90',
             'shared_reason'            => 'required|string|min:10|max:2000',
             'per_deal_notes'           => 'nullable|array',
@@ -341,8 +341,8 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'request_ids'   => 'required|array|min:1',
-            'request_ids.*' => 'required|string',
+            'request_ids'   => 'required|array|min:1|max:50',
+            'request_ids.*' => 'required|string|uuid',
             'approved_days' => 'required|integer|min:1|max:90',
             'reviewer_note' => 'nullable|string|max:2000',
         ]);
@@ -364,8 +364,8 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'request_ids'   => 'required|array|min:1',
-            'request_ids.*' => 'required|string',
+            'request_ids'   => 'required|array|min:1|max:50',
+            'request_ids.*' => 'required|string|uuid',
             'reviewer_note' => 'required|string|min:5|max:2000',
         ]);
 
@@ -386,8 +386,8 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'request_ids'   => 'required|array|min:1',
-            'request_ids.*' => 'required|string',
+            'request_ids'   => 'required|array|min:1|max:50',
+            'request_ids.*' => 'required|string|uuid',
             'reviewer_note' => 'nullable|string|max:2000',
         ]);
 
@@ -409,8 +409,8 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'request_ids'     => 'required|array|min:1',
-            'request_ids.*'   => 'required|string',
+            'request_ids'     => 'required|array|min:1|max:50',
+            'request_ids.*'   => 'required|string|uuid',
             'approved_days'   => 'required|integer|min:1|max:90',
             'rejection_reason'=> 'required|string|min:5|max:2000',
             'approval_note'   => 'nullable|string|max:2000',
@@ -453,8 +453,8 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'request_ids'     => 'required|array|min:1',
-            'request_ids.*'   => 'required|string',
+            'request_ids'     => 'required|array|min:1|max:50',
+            'request_ids.*'   => 'required|string|uuid',
             'approved_days'   => 'required|integer|min:1|max:90',
             'rejection_reason'=> 'required|string|min:5|max:2000',
             'approval_note'   => 'nullable|string|max:2000',

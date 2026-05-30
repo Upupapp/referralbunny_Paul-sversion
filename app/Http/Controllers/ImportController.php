@@ -50,12 +50,14 @@ class ImportController extends Controller
     // GET /api/imports/templates
     public function listTemplates(): JsonResponse
     {
+        $this->requireAdminAccess();
         return response()->json($this->templates->getSupportedTypes());
     }
 
     // GET /api/imports/templates/{objectType}
     public function getTemplate(string $objectType): JsonResponse
     {
+        $this->requireAdminAccess();
         $schema = $this->templates->getSchema($objectType);
         if (empty($schema)) return response()->json(['error' => 'Unknown object type.'], 404);
         return response()->json($schema);
@@ -64,6 +66,11 @@ class ImportController extends Controller
     // GET /api/imports/templates/{objectType}/download?format=csv&sample=1
     public function downloadTemplate(Request $request, string $objectType)
     {
+        $this->requireAdminAccess();
+        $schema = $this->templates->getSchema($objectType);
+        if (empty($schema)) {
+            return response()->json(['error' => 'Unknown object type.'], 404);
+        }
         $withSample = $request->boolean('sample', false);
         return $this->templates->csvDownloadResponse($objectType, $withSample);
     }
@@ -93,6 +100,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}
     public function show(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         return response()->json($job->load('uploadedBy'));
     }
@@ -134,6 +142,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/parse
     public function parse(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $result = $this->imports->parseStructure($job);
         return response()->json($result);
@@ -142,6 +151,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/mapping-suggestions
     public function mappingSuggestions(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $suggestions = $this->imports->detectMapping($job);
         $completeness = $this->mapping->validateMappingCompleteness($suggestions, $job->object_type);
@@ -151,6 +161,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/mapping
     public function saveMapping(Request $request, ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $data = $request->validate([
             'mapping'      => 'required|array',
@@ -174,6 +185,7 @@ class ImportController extends Controller
     // POST /api/imports/jobs/{job}/validate
     public function validate(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $summary = $this->imports->validateRows($job);
         return response()->json($summary);
@@ -182,6 +194,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/preview
     public function preview(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $rows = ImportRow::where('import_job_id', $job->id)
             ->limit(100)
@@ -234,6 +247,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/rows
     public function rows(Request $request, ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $query = ImportRow::where('import_job_id', $job->id);
         if ($request->filled('status')) $query->where('status', $request->status);
@@ -243,6 +257,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/errors
     public function errors(ImportJob $job): JsonResponse
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $errors = ImportRowError::where('import_job_id', $job->id)
             ->orderBy('row_number')
@@ -253,6 +268,7 @@ class ImportController extends Controller
     // GET /api/imports/jobs/{job}/report/download
     public function downloadReport(ImportJob $job)
     {
+        $this->requireAdminAccess();
         $this->authorizeJob($job);
         $errors = ImportRowError::where('import_job_id', $job->id)->get();
         $rows   = ImportRow::where('import_job_id', $job->id)->get();
@@ -280,7 +296,13 @@ class ImportController extends Controller
     // GET /api/imports/duplicates
     public function duplicates(Request $request): JsonResponse
     {
+        $this->requireAdminAccess();
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
+
         $query = DuplicateReviewItem::with('job')->where('status', 'pending');
+        if ($tenantId) {
+            $query->whereHas('job', fn($q) => $q->where('tenant_id', $tenantId));
+        }
         if ($request->filled('import_job_id')) $query->where('import_job_id', $request->import_job_id);
         return response()->json($query->orderByDesc('match_score')->paginate(20));
     }
@@ -288,6 +310,14 @@ class ImportController extends Controller
     // POST /api/imports/duplicates/{item}/resolve
     public function resolveDuplicate(Request $request, DuplicateReviewItem $item): JsonResponse
     {
+        $this->requireAdminAccess();
+        if (!TenantContext::isSuperAdmin()) {
+            $tenantId = TenantContext::requireId();
+            $item->loadMissing('job');
+            if (!$item->job || $item->job->tenant_id !== $tenantId) {
+                abort(403, 'Forbidden.');
+            }
+        }
         $data = $request->validate([
             'action' => 'required|in:confirmed_duplicate,not_duplicate,merged,skipped',
         ]);
@@ -304,6 +334,7 @@ class ImportController extends Controller
     // GET /api/imports/mapping-profiles
     public function mappingProfiles(Request $request): JsonResponse
     {
+        $this->requireAdminAccess();
         $profiles = ImportMappingProfile::where('user_id', $request->user()->id)
             ->when($request->filled('object_type'), fn($q) => $q->where('object_type', $request->object_type))
             ->orderByDesc('created_at')
@@ -314,6 +345,7 @@ class ImportController extends Controller
     // DELETE /api/imports/mapping-profiles/{profile}
     public function deleteMappingProfile(Request $request, ImportMappingProfile $profile): JsonResponse
     {
+        $this->requireAdminAccess();
         if ($profile->user_id !== $request->user()->id) return response()->json(['error' => 'Not authorized.'], 403);
         $profile->delete();
         return response()->json(['message' => 'Profile deleted.']);
@@ -324,12 +356,21 @@ class ImportController extends Controller
     // GET /api/imports/stats
     public function stats(): JsonResponse
     {
+        $this->requireAdminAccess();
+
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
+        $scope = fn($q) => $tenantId ? $q->where('tenant_id', $tenantId) : $q;
+
         return response()->json([
-            'active_jobs'      => ImportJob::whereIn('status', ['importing', 'validating_rows', 'parsing'])->count(),
-            'pending_approval' => ImportJob::where('status', 'waiting_for_approval')->count(),
-            'failed_jobs'      => ImportJob::where('status', 'failed')->whereDate('created_at', '>=', now()->subDays(7))->count(),
-            'completed_today'  => ImportJob::where('status', 'completed')->whereDate('completed_at', today())->count(),
-            'pending_duplicates' => DuplicateReviewItem::where('status', 'pending')->count(),
+            'active_jobs'        => $scope(ImportJob::whereIn('status', ['importing', 'validating_rows', 'parsing']))->count(),
+            'pending_approval'   => $scope(ImportJob::where('status', 'waiting_for_approval'))->count(),
+            'failed_jobs'        => $scope(ImportJob::where('status', 'failed')->whereDate('created_at', '>=', now()->subDays(7)))->count(),
+            'completed_today'    => $scope(ImportJob::where('status', 'completed')->whereDate('completed_at', today()))->count(),
+            'pending_duplicates' => $tenantId
+                ? DuplicateReviewItem::where('status', 'pending')
+                    ->whereHas('job', fn($q) => $q->where('tenant_id', $tenantId))
+                    ->count()
+                : DuplicateReviewItem::where('status', 'pending')->count(),
         ]);
     }
 }

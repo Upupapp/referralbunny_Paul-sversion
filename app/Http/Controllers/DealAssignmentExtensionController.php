@@ -65,6 +65,14 @@ class DealAssignmentExtensionController extends Controller
             ->find($id);
         if (!$req) return response()->json(['error' => 'Not found.'], 404);
 
+        // Resellers may only view extension requests on their own deals
+        if (Auth::guard('reseller')->check()) {
+            $reseller = Auth::guard('reseller')->user();
+            if (!$reseller || strtolower($req->lead?->reseller_name ?? '') !== strtolower($reseller->name ?? '')) {
+                return response()->json(['error' => 'Not found.'], 404);
+            }
+        }
+
         return response()->json(array_merge($req->toArray(), [
             'deal_name'          => $req->lead?->name,
             'reseller_name'      => $req->lead?->reseller_name,

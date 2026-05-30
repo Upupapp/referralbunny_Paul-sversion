@@ -17,8 +17,37 @@ use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
+    /**
+     * Verify the authenticated user belongs to this tenant.
+     * Blocks cross-tenant access via URL manipulation.
+     */
+    private function assertTenantAccess(string $tenantId): void
+    {
+        if (Auth::guard('web')->check()) {
+            return; // super admin
+        }
+        if (Auth::guard('reseller')->check()) {
+            $reseller = Auth::guard('reseller')->user();
+            if (!$reseller || $reseller->tenant_id !== $tenantId) {
+                abort(403, 'You do not have access to this workspace.');
+            }
+            return;
+        }
+        if (Auth::guard('tenant')->check()) {
+            $userId = Auth::guard('tenant')->id();
+            $hasMembership = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->exists();
+            if (!$hasMembership) {
+                abort(403, 'You do not have access to this workspace.');
+            }
+        }
+    }
+
     public function threads($tenantId)
     {
+        $this->assertTenantAccess($tenantId);
         try {
             $threads = MessageThread::where('tenant_id', $tenantId)
                 ->with('reseller:id,name,email')
@@ -43,6 +72,7 @@ class MessageController extends Controller
 
     public function startThread(Request $request, $tenantId)
     {
+        $this->assertTenantAccess($tenantId);
         $request->validate([
             'reseller_id' => 'required|string',
             'body'        => 'required|string|max:5000',
@@ -140,6 +170,7 @@ class MessageController extends Controller
 
     public function threadMessages($tenantId, $threadId)
     {
+        $this->assertTenantAccess($tenantId);
         try {
             $q = MessageThread::where('tenant_id', $tenantId)->where('id', $threadId);
 
@@ -186,10 +217,13 @@ class MessageController extends Controller
 
     public function fetchMessages($tenantId, $threadId)
     {
+        $this->assertTenantAccess($tenantId);
         try {
-            $thread = MessageThread::where('tenant_id', $tenantId)
-                ->where('id', $threadId)
-                ->firstOrFail();
+            $q = MessageThread::where('tenant_id', $tenantId)->where('id', $threadId);
+            if (Auth::guard('reseller')->check()) {
+                $q->where('reseller_id', Auth::guard('reseller')->id());
+            }
+            $thread = $q->firstOrFail();
 
             $messages = ThreadMessage::where('thread_id', $threadId)
                 ->orderBy('created_at')
@@ -205,6 +239,7 @@ class MessageController extends Controller
 
     public function sendMessage(Request $request, $tenantId, $threadId)
     {
+        $this->assertTenantAccess($tenantId);
         $request->validate(['body' => 'required|string|max:5000']);
 
         try {
@@ -307,6 +342,7 @@ class MessageController extends Controller
      */
     public function broadcastMessage(Request $request, $tenantId)
     {
+        $this->assertTenantAccess($tenantId);
         $data = $request->validate([
             'recipients'   => 'required|array|min:1|max:100',
             'recipients.*' => 'required|string',  // "type:id" format e.g. "reseller:uuid"
@@ -357,8 +393,8 @@ class MessageController extends Controller
 
     public function partnerThreads(string $tenantId): \Illuminate\Http\JsonResponse
     {
-        // Referrers (reseller guard) must not access partner thread data
         if (Auth::guard('reseller')->check()) abort(403);
+        $this->assertTenantAccess($tenantId);
 
         $threads = PartnerThread::where('tenant_id', $tenantId)
             ->with('partner:id,first_name,last_name,email')
@@ -385,6 +421,7 @@ class MessageController extends Controller
     public function partnerThreadMessages(string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
     {
         if (Auth::guard('reseller')->check()) abort(403);
+        $this->assertTenantAccess($tenantId);
 
         $thread = PartnerThread::where('tenant_id', $tenantId)->findOrFail($threadId);
 
@@ -430,6 +467,7 @@ class MessageController extends Controller
     public function replyToPartnerThread(Request $request, string $tenantId, string $threadId): \Illuminate\Http\JsonResponse
     {
         if (Auth::guard('reseller')->check()) abort(403);
+        $this->assertTenantAccess($tenantId);
 
         $request->validate(['body' => 'required|string|max:5000']);
 
@@ -571,6 +609,12 @@ class MessageController extends Controller
 
     private function notifyTenantUser(string $tenantId, string $userId, string $body, string $senderName): void
     {
+        $exists = \App\Models\TenantMembership::where('tenant_user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->exists();
+        if (!$exists) throw new \RuntimeException('User not found in tenant.');
+
         app(\App\Services\NotificationDispatchService::class)->dispatch(
             category:         'tenant_workspace',
             priority:         'normal',
@@ -585,7 +629,11 @@ class MessageController extends Controller
 
     private function notifyContact(string $tenantId, string $contactId, string $body, string $senderName): void
     {
-        // Contacts receive in-app notifications (they may also be referrers with platform access)
+        $exists = \App\Models\Contact::where('id', $contactId)
+            ->where('tenant_id', $tenantId)
+            ->exists();
+        if (!$exists) throw new \RuntimeException('Contact not found in tenant.');
+
         app(\App\Services\NotificationDispatchService::class)->dispatch(
             category:         'tenant_workspace',
             priority:         'normal',
@@ -633,6 +681,8 @@ class MessageController extends Controller
         if (auth('reseller')->check()) {
             return response()->json(['error' => 'Admin access required.'], 403);
         }
+        // Verify the tenant-guard user actually belongs to this tenant
+        $this->assertTenantAccess($tenantId);
 
         DB::table('message_threads')
             ->where('tenant_id', $tenantId)

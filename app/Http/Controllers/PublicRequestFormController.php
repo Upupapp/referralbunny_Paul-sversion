@@ -7,6 +7,7 @@ use App\Services\RequestFormSubmissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PublicRequestFormController extends Controller
 {
@@ -71,9 +72,10 @@ class PublicRequestFormController extends Controller
             $messages[$key . '.required'] = $field->label . ' is required.';
         }
 
-        // Request To field
+        // Request To field — only allow IDs from this form's published recipient options
+        $allowedIds = $form->recipientOptions->pluck('id')->map(fn($id) => (string) $id)->all();
         $rules['request_to']   = 'required|array|min:1|max:' . $form->max_recipients;
-        $rules['request_to.*'] = 'required|uuid';
+        $rules['request_to.*'] = ['required', 'uuid', Rule::in($allowedIds)];
 
         $validated = $request->validate($rules, $messages);
 

@@ -96,8 +96,8 @@ class BulkDealExtensionWebController extends Controller
         $reseller = $this->resolveReseller($tenantId);
 
         $data = $request->validate([
-            'deal_ids'                 => 'required|array|min:1',
-            'deal_ids.*'               => 'required|string',
+            'deal_ids'                 => 'required|array|min:1|max:50',
+            'deal_ids.*'               => 'required|string|uuid',
             'requested_extension_days' => 'required|integer|min:1|max:90',
             'shared_reason'            => 'required|string|min:10|max:2000',
             'per_deal_notes'           => 'nullable|array',
@@ -189,15 +189,22 @@ class BulkDealExtensionWebController extends Controller
 
     private function assertTenantContext(string $tenantId): void
     {
-        // Referrer routes: tenant isolation is enforced via reseller.access middleware
-        // which already validates tenantId matches the authenticated reseller's tenant.
+        // Belt-and-suspenders check: reseller.access middleware enforces this, but re-check here.
+        if (Auth::guard('reseller')->check()) {
+            $reseller = Auth::guard('reseller')->user();
+            if (!$reseller || $reseller->tenant_id !== $tenantId) {
+                abort(403, 'You do not have access to this workspace.');
+            }
+        }
     }
 
     private function assertAdminContext(string $tenantId): void
     {
+        if (Auth::guard('web')->check()) return; // SA: allowed through
+
         $contextId = TenantContext::id();
-        if ($contextId && $contextId !== $tenantId) {
-            abort(403, 'Tenant mismatch.');
+        if (!$contextId || $contextId !== $tenantId) {
+            abort(403, 'Tenant context mismatch.');
         }
     }
 

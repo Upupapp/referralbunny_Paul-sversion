@@ -14,6 +14,7 @@ use App\Services\NotificationDispatchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReferrerPartnerController extends Controller
@@ -63,7 +64,7 @@ class ReferrerPartnerController extends Controller
                 ->whereIn('deal_id', $leadIds ?: ['__none__'])
                 ->whereNull('deleted_at')
                 ->where('status', '!=', 'removed')
-                ->with('lead:id,name,stage,deal_value,base_cost,added_amount,commission_status')
+                ->with('lead:id,name,stage,deal_value,commission_status')
                 ->orderByDesc('created_at')
                 ->get();
         } catch (\Throwable) {
@@ -158,7 +159,7 @@ class ReferrerPartnerController extends Controller
                 ->whereIn('deal_id', $leadIds ?: ['__none__'])
                 ->whereNull('deleted_at')
                 ->where('status', '!=', 'removed')
-                ->with('lead:id,name,stage,deal_value,base_cost,added_amount,commission_status,data')
+                ->with('lead:id,name,stage,deal_value,commission_status,data')
                 ->orderByDesc('created_at')
                 ->get();
         } catch (\Throwable) {}
@@ -214,7 +215,7 @@ class ReferrerPartnerController extends Controller
                 ->where(function ($q) use ($email, $first) {
                     $q->where('type', 'partner')
                       ->orWhere('action', 'like', '%partner%')
-                      ->orWhereRaw("metadata::text ILIKE ?", ['%' . $first->partner_name . '%']);
+                      ->orWhereRaw("metadata::text ILIKE ?", ['%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $first->partner_name) . '%']);
                 })
                 ->orderByDesc('created_at')
                 ->limit(30)

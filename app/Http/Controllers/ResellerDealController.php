@@ -180,8 +180,8 @@ class ResellerDealController extends Controller
             Log::warning('ResellerDealController: notes load failed', ['error' => $e->getMessage()]);
         }
 
-        // Commission splits
-        $splits = CommissionSplit::where('lead_id', $dealId)->get();
+        // Commission splits — anchor through tenant-scoped $lead to prevent IDOR
+        $splits = CommissionSplit::where('lead_id', $lead->id)->get();
 
         // Partner splits
         $partnerSplits = [];
@@ -1880,8 +1880,15 @@ class ResellerDealController extends Controller
             }
         }
 
+        if (!\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+            $ctxId = \App\Services\TenantContext::requireId();
+            if ($ctxId !== $tenantId) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
+        }
+
         $lead      = \App\Models\Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
-        $actorName = $actor->full_name ?? $actor->name ?? $actor->email ?? 'Admin';
+        $actorName = $actor->full_name ?: $actor->email ?? 'Admin';
 
         return $this->doUpdateSplit($request, $tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
     }
@@ -1895,8 +1902,9 @@ class ResellerDealController extends Controller
 
         $newPct = round((float) $data['percentage'], 2);
 
+        // Anchor CommissionSplit through tenant-scoped $lead->id (not raw $dealId from URL)
         $split = CommissionSplit::where('id', $splitId)
-            ->where('lead_id', $dealId)
+            ->where('lead_id', $lead->id)
             ->firstOrFail();
 
         // Only allow editing secondary (co-referrer) splits
@@ -1905,7 +1913,7 @@ class ResellerDealController extends Controller
         }
 
         // Cap check: secondary splits combined must not exceed 100%
-        $otherSecondaryTotal = CommissionSplit::where('lead_id', $dealId)
+        $otherSecondaryTotal = CommissionSplit::where('lead_id', $lead->id)
             ->where('id', '!=', $splitId)
             ->where('role', 'secondary')
             ->sum('percentage');
@@ -2039,16 +2047,24 @@ class ResellerDealController extends Controller
             }
         }
 
+        if (!Auth::guard('web')->check()) {
+            $ctxId = \App\Services\TenantContext::requireId();
+            if ($ctxId !== $tenantId) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
+        }
+
         $lead      = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
-        $actorName = $actor->full_name ?? $actor->name ?? $actor->email ?? 'Admin';
+        $actorName = $actor->full_name ?: $actor->email ?? 'Admin';
 
         return $this->doRemoveSplit($tenantId, $dealId, $splitId, $actorName, 'admin', $lead);
     }
 
     private function doRemoveSplit(string $tenantId, string $dealId, string $splitId, string $actorName, string $actorRole, Lead $lead): JsonResponse
     {
+        // Anchor through tenant-scoped $lead->id to prevent cross-tenant CommissionSplit access
         $split = CommissionSplit::where('id', $splitId)
-            ->where('lead_id', $dealId)
+            ->where('lead_id', $lead->id)
             ->where('role', 'secondary')
             ->firstOrFail();
 

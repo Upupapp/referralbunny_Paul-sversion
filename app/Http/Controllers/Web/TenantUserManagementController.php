@@ -36,15 +36,15 @@ class TenantUserManagementController extends Controller
      */
     private function actingMembership(string $tenantId): TenantMembership
     {
-        $userId = Auth::guard('tenant')->id();
-
         // Super admin: synthesise a virtual owner membership (no DB row needed)
         if (Auth::guard('web')->check()) {
-            $m           = new TenantMembership();
-            $m->role     = 'owner';
+            $m            = new TenantMembership();
+            $m->role      = 'owner';
             $m->tenant_id = $tenantId;
             return $m;
         }
+
+        $userId = Auth::guard('tenant')->id();
 
         $membership = TenantMembership::where('tenant_user_id', $userId)
             ->where('tenant_id', $tenantId)
@@ -175,7 +175,7 @@ class TenantUserManagementController extends Controller
             return back()->withErrors(['email' => 'A pending invitation already exists for this email.'])->withInput();
         }
 
-        $invitedById    = Auth::guard('tenant')->id();
+        $invitedById    = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
         $permPreset     = $request->input('permissions_preset');
 
         $invitation = TenantInvitation::create([
@@ -346,6 +346,18 @@ class TenantUserManagementController extends Controller
         $this->permissionService->updateManagerPermissions($membership, $incoming['permissions']);
         Cache::forget("tm_role:{$userId}:{$tenantId}");
 
+        try {
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+                'action'    => 'manager_permissions_updated',
+                'entity'    => 'tenant_membership',
+                'entity_id' => $membership->id,
+                'metadata'  => ['target_user_id' => $userId, 'permissions' => $incoming['permissions']],
+            ]);
+        } catch (\Throwable) {}
+
         return back()->with('success', 'Permissions updated successfully.');
     }
 
@@ -371,6 +383,18 @@ class TenantUserManagementController extends Controller
         ]);
         Cache::forget("tm_role:{$userId}:{$tenantId}");
 
+        try {
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => Auth::guard('tenant')->id() ?? Auth::guard('web')->id(),
+                'action'    => 'manager_billing_access_toggled',
+                'entity'    => 'tenant_membership',
+                'entity_id' => $membership->id,
+                'metadata'  => ['target_user_id' => $userId, 'billing_enabled' => $enable],
+            ]);
+        } catch (\Throwable) {}
+
         $label = $enable ? 'enabled' : 'disabled';
         return back()->with('success', "Billing access {$label} for this manager.");
     }
@@ -381,6 +405,12 @@ class TenantUserManagementController extends Controller
     {
         $acting = $this->actingMembership($tenantId);
         $this->requireAdminAccess($acting);
+
+        // Explicit self-action guard
+        $actingUserId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+        if ($actingUserId && (string) $userId === (string) $actingUserId) {
+            return back()->withErrors(['error' => 'You cannot deactivate your own account.']);
+        }
 
         $membership = TenantMembership::where('tenant_user_id', $userId)
             ->where('tenant_id', $tenantId)
@@ -468,6 +498,12 @@ class TenantUserManagementController extends Controller
     {
         $acting = $this->actingMembership($tenantId);
         $this->requireAdminAccess($acting);
+
+        // Explicit self-action guard
+        $actingUserId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+        if ($actingUserId && (string) $userId === (string) $actingUserId) {
+            return back()->withErrors(['error' => 'You cannot remove yourself from the workspace.']);
+        }
 
         $membership = TenantMembership::where('tenant_user_id', $userId)
             ->where('tenant_id', $tenantId)
@@ -584,5 +620,78 @@ class TenantUserManagementController extends Controller
         }
 
         return back()->withErrors(['reminder' => 'Could not send the reminder at this time. Please try again later.']);
+    }
+
+    // ── Change Role ───────────────────────────────────────────────
+
+    public function changeRole(string $tenantId, string $userId, Request $request)
+    {
+        $acting = $this->actingMembership($tenantId);
+
+        // Only owners may change roles
+        if ($acting->role !== 'owner') {
+            abort(403, 'Only Tenant Owners can change user roles.');
+        }
+
+        // Cannot change your own role
+        $actingUserId = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+        if ($actingUserId && (string) $userId === (string) $actingUserId) {
+            return back()->withErrors(['error' => 'You cannot change your own role.']);
+        }
+
+        $request->validate([
+            'role' => ['required', Rule::in(['admin', 'manager', 'member', 'viewer'])],
+        ]);
+
+        $newRole = $request->input('role');
+
+        $membership = TenantMembership::where('tenant_user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        // Cannot demote or change another owner
+        if ($membership->role === 'owner') {
+            return back()->withErrors(['error' => 'The Tenant Owner role cannot be changed.']);
+        }
+
+        // Last-owner check: ensure at least one owner always remains
+        if ($membership->role === 'owner' || $newRole === 'owner') {
+            $ownerCount = TenantMembership::where('tenant_id', $tenantId)
+                ->where('role', 'owner')
+                ->where('status', 'active')
+                ->count();
+            if ($ownerCount <= 1 && $membership->role === 'owner') {
+                return back()->withErrors(['error' => 'Cannot remove the last Owner. Assign another Owner first.']);
+            }
+        }
+
+        $oldRole = $membership->role;
+        $membership->role = $newRole;
+        $membership->save();
+
+        Cache::forget("nav_role:{$tenantId}:{$userId}");
+        Cache::forget("tm_role:{$userId}:{$tenantId}");
+        Cache::forget("tenant_membership:{$userId}:{$tenantId}");
+
+        try {
+            $actorId  = Auth::guard('tenant')->id() ?? Auth::guard('web')->id();
+            ActivityLog::create([
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => $actorId,
+                'action'    => 'team_member_role_changed',
+                'entity'    => 'tenant_membership',
+                'entity_id' => $membership->id,
+                'metadata'  => [
+                    'target_user_id' => $userId,
+                    'old_role'       => $oldRole,
+                    'new_role'       => $newRole,
+                    'timestamp'      => now()->toIso8601String(),
+                ],
+            ]);
+        } catch (\Throwable) {}
+
+        return back()->with('success', 'User role updated successfully.');
     }
 }

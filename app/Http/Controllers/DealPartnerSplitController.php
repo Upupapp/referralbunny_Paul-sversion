@@ -25,7 +25,7 @@ class DealPartnerSplitController extends Controller
      */
     public function index(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -44,7 +44,7 @@ class DealPartnerSplitController extends Controller
      */
     public function store(Request $request, Lead $lead): JsonResponse
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -134,7 +134,7 @@ class DealPartnerSplitController extends Controller
      */
     public function update(Request $request, Lead $lead, string $splitId): JsonResponse
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -215,7 +215,7 @@ class DealPartnerSplitController extends Controller
      */
     public function destroy(Request $request, Lead $lead, string $splitId): JsonResponse
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::isSuperAdmin() ? TenantContext::id() : TenantContext::requireId();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
@@ -291,8 +291,6 @@ class DealPartnerSplitController extends Controller
     {
         return Auth::guard('tenant')->user()?->id
             ?? Auth::guard('web')->user()?->id
-            ?? Auth::guard('reseller')->user()?->id
-            ?? Auth::guard('partner')->user()?->id
             ?? null;
     }
 

@@ -123,8 +123,9 @@ class TenantCalendarController extends Controller
         $user = Auth::guard('tenant')->user();
         if (!$user) return [false, 'guest', ''];
 
-        // Read from request attributes set by EnsureTenantAccess — avoids an extra DB query per calendar load
-        $role = request()->attributes->get('_tenant_role')
+        // Prefer middleware-set context, then request attributes, then DB lookup
+        $role = \App\Services\TenantContext::role()
+            ?? request()->attributes->get('_tenant_role')
             ?? TenantMembership::where('tenant_user_id', $user->id)
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')

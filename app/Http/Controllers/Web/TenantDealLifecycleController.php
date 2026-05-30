@@ -10,6 +10,7 @@ use App\Models\TenantConfig;
 use App\Models\TenantMembership;
 use App\Services\DealActivityService;
 use App\Services\NotificationDispatchService;
+use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,12 +29,13 @@ class TenantDealLifecycleController extends Controller
         $userId = Auth::guard('tenant')->id();
         if (!$userId) return 'viewer';
 
-        return Cache::remember("nav_role:{$tenantId}:{$userId}", 60, function () use ($tenantId, $userId) {
-            return TenantMembership::where('tenant_user_id', $userId)
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->value('role') ?? 'viewer';
-        });
+        $role = TenantContext::role() ?? request()->attributes->get('_tenant_role');
+        if ($role) return $role;
+
+        return TenantMembership::where('tenant_user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role') ?? 'viewer';
     }
 
     private function isAdminMgr(string $role): bool

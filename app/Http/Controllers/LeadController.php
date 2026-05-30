@@ -588,6 +588,22 @@ class LeadController extends Controller
     public function show(Lead $lead): JsonResponse
     {
         $lead->assertBelongsToCurrentTenant();
+
+        // Resellers may only view their own deals (assigned or co-referrer split)
+        if (Auth::guard('reseller')->check()) {
+            $referrer = Auth::guard('reseller')->user();
+            $ownsDeal = ((string) $lead->reseller_id === (string) $referrer->id)
+                     || (strtolower((string) $lead->reseller_name) === strtolower((string) $referrer->name));
+            if (!$ownsDeal) {
+                $hasSplit = \App\Models\CommissionSplit::where('lead_id', $lead->id)
+                    ->whereRaw('LOWER(reseller_name) = ?', [strtolower($referrer->name)])
+                    ->exists();
+                if (!$hasSplit) {
+                    return response()->json(['error' => 'You do not have access to this deal.'], 403);
+                }
+            }
+        }
+
         return response()->json($lead->load(['commissionSplits', 'notes', 'history', 'attachments', 'links']));
     }
 
@@ -602,15 +618,6 @@ class LeadController extends Controller
         // Resellers and Partners cannot modify financial or assignment fields
         $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
         $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
-        if ($isReferrer || $isPartner) {
-            $request->request->remove('base_cost');
-            $request->request->remove('added_amount');
-            $request->request->remove('deal_value');
-        }
-        if ($isReferrer) {
-            $request->request->remove('commission_status');
-            $request->request->remove('reseller_name');
-        }
 
         if ($isPartner) {
             return response()->json(['message' => 'Partners cannot update deals.'], 403);
@@ -628,6 +635,14 @@ class LeadController extends Controller
             'deal_value'        => 'sometimes|numeric',
             'data'              => 'sometimes|array',
         ]);
+
+        // Strip fields resellers and partners cannot set — done post-validation so JSON body is also covered
+        if ($isReferrer || $isPartner) {
+            unset($data['base_cost'], $data['added_amount'], $data['deal_value']);
+        }
+        if ($isReferrer) {
+            unset($data['commission_status'], $data['reseller_name'], $data['status']);
+        }
 
         // Capture old financial values before update for history log
         $oldDealValue   = (float) ($lead->deal_value   ?? 0);
@@ -1172,6 +1187,16 @@ class LeadController extends Controller
             return response()->json(['message' => 'You do not have permission to confirm deal amounts.'], 403);
         }
 
+        // Resellers may only confirm amounts on their own deals
+        if (Auth::guard('reseller')->check()) {
+            $referrer = Auth::guard('reseller')->user();
+            $ownsDeal = ((string) $lead->reseller_id === (string) $referrer->id)
+                     || (strtolower((string) $lead->reseller_name) === strtolower((string) $referrer->name));
+            if (!$ownsDeal) {
+                return response()->json(['error' => 'You do not have access to this deal.'], 403);
+            }
+        }
+
         $currentData = $lead->data ?? [];
         if (!($currentData['amount_defaulted'] ?? false)) {
             return response()->json(['message' => 'This deal does not have a pending default amount.'], 422);
@@ -1243,9 +1268,18 @@ class LeadController extends Controller
         // referrers can only move stages for deals assigned to them.
         if (Auth::guard('reseller')->check()) {
             $referrer = Auth::guard('reseller')->user();
-            if ((string) $lead->reseller_id !== (string) $referrer->id
-                && $lead->reseller_name !== $referrer->name) {
+            $ownsDeal = ((string) $lead->reseller_id === (string) $referrer->id)
+                     || (strtolower((string) $lead->reseller_name) === strtolower((string) $referrer->name));
+            if (!$ownsDeal) {
                 return response()->json(['error' => 'You can only advance stages on deals assigned to you.'], 403);
+            }
+        }
+
+        // Referrers cannot self-lock (signed) or self-pay (paid) commission
+        if (Auth::guard('reseller')->check()) {
+            $reqStage = $request->input('stage');
+            if ($reqStage && in_array($reqStage, ['signed', 'paid'], true)) {
+                return response()->json(['error' => 'Referrers cannot advance deals to Signed or Paid stages.'], 403);
             }
         }
 
@@ -1469,10 +1503,23 @@ class LeadController extends Controller
 
         $lead->assertBelongsToCurrentTenant();
 
+        // Resellers may only add notes to their own deals
+        if (Auth::guard('reseller')->check()) {
+            $referrer = Auth::guard('reseller')->user();
+            $ownsDeal = ((string) $lead->reseller_id === (string) $referrer->id)
+                     || (strtolower((string) $lead->reseller_name) === strtolower((string) $referrer->name));
+            if (!$ownsDeal) {
+                return response()->json(['error' => 'You do not have access to this deal.'], 403);
+            }
+        }
+
         $data = $request->validate([
-            'text'   => 'required|string',
-            'author' => 'required|string',
+            'text' => 'required|string',
         ]);
+
+        // Derive author from the authenticated user — never accept from client input
+        [$actorId, $actorRole, $actorName] = $this->resolveActor();
+        $data['author'] = $actorName ?? 'Unknown';
 
         $note = LeadNote::create(['lead_id' => $lead->id, ...$data]);
 

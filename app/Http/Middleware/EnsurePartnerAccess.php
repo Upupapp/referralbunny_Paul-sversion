@@ -16,7 +16,7 @@ class EnsurePartnerAccess
         if (Auth::guard('partner')->check()) {
             $partner = Auth::guard('partner')->user();
 
-            if ($partner->status !== 'active') {
+            if (!$partner->tenant_id || $partner->status !== 'active') {
                 Auth::guard('partner')->logout();
                 return redirect()->route('partner.login')
                     ->withErrors(['email' => 'Account is not active. Please contact the workspace administrator.']);

@@ -8,6 +8,7 @@ use App\Models\TenantConfig;
 use App\Models\TenantMembership;
 use App\Services\ExportApprovalService;
 use App\Services\ExportPermissionService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,34 +26,17 @@ class ExportController extends Controller
     // ── Auth resolution helpers ───────────────────────────────────────────────
 
     /**
-     * Resolve the tenant ID from the request or from the authenticated user.
+     * Resolve tenant ID exclusively from TenantContext (set by SetApiTenantContext middleware).
+     * Never trusts user-supplied input directly — SA tenant-switching is handled by the middleware.
      */
     private function resolveTenantId(Request $request): ?string
     {
-        if ($request->filled('tenant_id')) {
-            return $request->query('tenant_id');
+        // Partners may not use exports
+        if (Auth::guard('partner')->check()) {
+            abort(403, 'Partners may not access exports.');
         }
 
-        try {
-            return app('tenant.context');
-        } catch (\Throwable) {
-            // context not bound
-        }
-
-        if (Auth::guard('tenant')->check()) {
-            $user = Auth::guard('tenant')->user();
-            $membership = TenantMembership::where('tenant_user_id', $user->id)
-                ->where('status', 'active')
-                ->first();
-            return $membership?->tenant_id;
-        }
-
-        if (Auth::guard('reseller')->check()) {
-            $reseller = Auth::guard('reseller')->user();
-            return $reseller->tenant_id ?? null;
-        }
-
-        return null;
+        return TenantContext::id();
     }
 
     /**

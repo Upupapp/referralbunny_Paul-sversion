@@ -19,9 +19,23 @@ class OrganizationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check() || \Illuminate\Support\Facades\Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to view organizations.'], 403);
+        }
+
         $perPage  = min(50, max(10, (int) $request->get('per_page', 25)));
         $page     = max(1, (int) $request->get('page', 1));
-        $tenantId = TenantContext::id() ?? TenantContext::resolveFromAuth($request->tenant_id);
+        $tenantId = TenantContext::id();
+        if (!$tenantId) {
+            if (TenantContext::isSuperAdmin()) {
+                $tenantId = $request->query('tenant_id');
+                if (!$tenantId) {
+                    return response()->json(['error' => 'tenant_id query parameter required.'], 422);
+                }
+            } else {
+                abort(403, 'Tenant context required.');
+            }
+        }
 
         $base = DB::table('organizations as o')
             ->where('o.tenant_id', $tenantId);
@@ -104,7 +118,21 @@ class OrganizationController extends Controller
 
     public function available(Request $request): JsonResponse
     {
-        $tenantId = TenantContext::id() ?? TenantContext::resolveFromAuth($request->tenant_id);
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check() || \Illuminate\Support\Facades\Auth::guard('partner')->check()) {
+            return response()->json(['error' => 'You do not have permission to view organizations.'], 403);
+        }
+
+        $tenantId = TenantContext::id();
+        if (!$tenantId) {
+            if (TenantContext::isSuperAdmin()) {
+                $tenantId = $request->query('tenant_id');
+                if (!$tenantId) {
+                    return response()->json(['error' => 'tenant_id query parameter required.'], 422);
+                }
+            } else {
+                abort(403, 'Tenant context required.');
+            }
+        }
         $province = $request->province;
 
         // Org IDs that already have a non-expired, non-declined active deal
@@ -203,14 +231,15 @@ class OrganizationController extends Controller
             'notes'    => 'nullable|string',
         ]);
 
-        $affected = DB::table('organizations')
+        $q = DB::table('organizations')
             ->where('id', $id)
-            ->where('tenant_id', $tenantId)
-            ->update(array_merge($data, ['updated_at' => now()]));
+            ->where('tenant_id', $tenantId);
 
-        if (!$affected) {
+        if (!$q->exists()) {
             return response()->json(['error' => 'Organization not found.'], 404);
         }
+
+        $q->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json($this->orgWithMeta($id, $tenantId));
     }

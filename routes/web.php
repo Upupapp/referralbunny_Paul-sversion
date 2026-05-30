@@ -152,7 +152,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         // ── My Partners ──────────────────────────────────────────────
         Route::get('/partners',                    [\App\Http\Controllers\ReferrerPartnerController::class, 'index'])->name('partners');
         Route::get('/partners/{partnerSlug}',      [\App\Http\Controllers\ReferrerPartnerController::class, 'show'])->name('partners.show')->where('partnerSlug', '.+');
-        Route::post('/partners',                   [\App\Http\Controllers\ReferrerPartnerController::class, 'store'])->name('partners.store');
+        Route::post('/partners',                   [\App\Http\Controllers\ReferrerPartnerController::class, 'store'])->name('partners.store')->middleware('throttle:10,1');
         Route::delete('/partners/splits/{splitId}',[\App\Http\Controllers\ReferrerPartnerController::class, 'removeFromDeal'])->name('partners.remove');
         Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
@@ -271,10 +271,10 @@ Route::middleware(['auth:tenant,reseller,web'])
     ->prefix('tenant/{tenantId}/messages')
     ->name('tenant.messages.')
     ->group(function () {
-        Route::get('/threads',             [MessageController::class, 'threads'])->name('threads');
+        Route::get('/threads',             [MessageController::class, 'threads'])->name('threads')->middleware('throttle:120,1');
         Route::post('/threads',            [MessageController::class, 'startThread'])->name('start')->middleware('throttle:60,1');
-        Route::get('/threads/{threadId}',          [MessageController::class, 'threadMessages'])->name('thread');
-        Route::get('/threads/{threadId}/messages', [MessageController::class, 'fetchMessages'])->name('thread.messages');
+        Route::get('/threads/{threadId}',          [MessageController::class, 'threadMessages'])->name('thread')->middleware('throttle:120,1');
+        Route::get('/threads/{threadId}/messages', [MessageController::class, 'fetchMessages'])->name('thread.messages')->middleware('throttle:120,1');
         Route::post('/threads/{threadId}',         [MessageController::class, 'sendMessage'])->name('send')->middleware('throttle:60,1');
         Route::post('/broadcast',                  [MessageController::class, 'broadcastMessage'])->name('broadcast')->middleware('throttle:10,1');
         // Partner inbox — admin reads and replies to partner threads
@@ -372,6 +372,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::post('/users/{userId}/permissions',         [TenantUserManagementController::class, 'updatePermissions'])->name('users.permissions');
     Route::post('/users/{userId}/billing-toggle',      [TenantUserManagementController::class, 'toggleBilling'])->name('users.billing-toggle');
     Route::post('/users/{userId}/deactivate',          [TenantUserManagementController::class, 'deactivateUser'])->name('users.deactivate');
+    Route::patch('/users/{userId}/role',               [TenantUserManagementController::class, 'changeRole'])->name('users.change-role');
     Route::delete('/users/{userId}',                   [TenantUserManagementController::class, 'removeUser'])->name('users.remove');
     Route::post('/invitations/{inviteId}/resend',        [TenantUserManagementController::class, 'resendInvite'])->name('invitations.resend');
     Route::post('/invitations/{inviteId}/remind-now',    [TenantUserManagementController::class, 'sendReminderNow'])->name('invitations.remind-now');

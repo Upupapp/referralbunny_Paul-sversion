@@ -22,9 +22,10 @@ class CriticalActionsController extends Controller
 
     public function index(string $tenantId, Request $request)
     {
-        $tenant     = Tenant::findOrFail($tenantId);
-        $actingUser = Auth::guard('tenant')->user();
-        $membership = null;
+        $tenant       = Tenant::findOrFail($tenantId);
+        $isSuperAdmin = Auth::guard('web')->check();
+        $actingUser   = Auth::guard('tenant')->user();
+        $membership   = null;
 
         if ($actingUser) {
             $membership = TenantMembership::where('tenant_user_id', $actingUser->id)
@@ -33,12 +34,17 @@ class CriticalActionsController extends Controller
                 ->first();
         }
 
-        // Manager permission check — must have view_dashboard at minimum
-        if ($membership && $membership->role === 'member') {
-            abort(403, 'Access to the critical actions list requires Admin or Manager access.');
+        if (!$isSuperAdmin) {
+            if (!$actingUser) {
+                abort(403, 'Access denied.');
+            }
+            if (!$membership) {
+                abort(403, 'You do not have access to this workspace.');
+            }
+            if (!in_array($membership->role, ['owner', 'admin', 'manager'])) {
+                abort(403, 'Access to the critical actions list requires Admin or Manager access.');
+            }
         }
-
-        $isSuperAdmin = Auth::guard('web')->check();
 
         $canSeeBilling = $membership
             ? $this->permissions->can($membership, 'manage_billing_and_subscription')

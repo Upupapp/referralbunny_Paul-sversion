@@ -468,8 +468,9 @@ class RequestFormController extends Controller
         $submissionsError = null;
 
         try {
-            // Build base query scoped to this form (form already verified to belong to tenant above).
+            // Build base query scoped to this form and tenant.
             $submissionsQuery = RequestFormSubmission::where('request_form_id', $formId)
+                ->where('tenant_id', $tenantId)
                 ->with(['submissionRecipients']);
 
             // Use a raw subquery with explicit CAST to avoid PostgreSQL's
@@ -636,6 +637,16 @@ class RequestFormController extends Controller
         $ctxId = TenantContext::id();
         if ($ctxId && $ctxId !== $tenantId) abort(403);
         if (!Auth::guard('tenant')->check() && !Auth::guard('web')->check()) abort(403);
+
+        if (Auth::guard('tenant')->check()) {
+            $role = \App\Models\TenantMembership::where('tenant_user_id', Auth::guard('tenant')->id())
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->value('role');
+            if (!in_array($role, ['owner', 'admin', 'manager'])) {
+                abort(403, 'Only Owners, Admins, and Managers can manage request forms.');
+            }
+        }
     }
 
     private function resolveActor(): array

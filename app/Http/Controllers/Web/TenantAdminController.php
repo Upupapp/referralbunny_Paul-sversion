@@ -288,7 +288,15 @@ class TenantAdminController extends Controller
         } catch (\Throwable) {}
 
         $viewerUserId = auth('web')->id() ?? auth('tenant')->id() ?? '';
-        $viewerRole   = auth('web')->check() ? 'super_admin' : 'tenant_admin';
+        $viewerRole   = 'viewer';
+        if (auth('web')->check()) {
+            $viewerRole = 'super_admin';
+        } elseif (auth('tenant')->check()) {
+            $viewerRole = \App\Models\TenantMembership::where('tenant_user_id', auth('tenant')->id())
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->value('role') ?? 'viewer';
+        }
 
         return view('tenant.deals.show', array_merge(
             ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals, 'referrers' => $referrers, 'viewerUserId' => $viewerUserId, 'viewerRole' => $viewerRole],
@@ -627,6 +635,8 @@ class TenantAdminController extends Controller
             if (!$membership || !in_array($membership->role, ['owner', 'admin'])) {
                 abort(403, 'Only Owners and Admins can update workspace settings.');
             }
+        } elseif (!Auth::guard('web')->check()) {
+            abort(403, 'Only Owners and Admins can update workspace settings.');
         }
 
         $data = $request->validate([
