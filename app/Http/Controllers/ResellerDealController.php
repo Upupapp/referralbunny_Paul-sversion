@@ -1585,22 +1585,11 @@ class ResellerDealController extends Controller
         }
 
         // Notify after commit — never inside transaction
+        // deal_stage_move: HandleDealStageMoved listener already notifies the referrer via DealStageMoved::dispatch above
         if ($approval->requested_by_type === 'reseller') {
             try {
                 $dealName = $lead?->name ?? ($approval->request_payload['deal_name'] ?? 'a deal');
-                if ($approval->type === 'deal_stage_move') {
-                    app(NotificationDispatchService::class)->dispatchToReseller(
-                        resellerId:   $approval->requested_by_id,
-                        tenantId:     $tenantId,
-                        category:     'deal_pipeline',
-                        priority:     'high',
-                        title:        'Stage move approved — ' . $dealName,
-                        body:         '"' . $dealName . '" has been moved to ' . ucfirst(str_replace('_', ' ', $targetStage ?? '')) . '. Great progress!',
-                        actionUrl:    url("/reseller/{$tenantId}/deals/{$approval->deal_id}"),
-                        actionLabel:  'View Deal',
-                        dedupeSuffix: $approvalId . ':stage_approved',
-                    );
-                } else {
+                if ($approval->type === 'deal_archive') {
                     app(NotificationDispatchService::class)->dispatchToReseller(
                         resellerId:   $approval->requested_by_id,
                         tenantId:     $tenantId,

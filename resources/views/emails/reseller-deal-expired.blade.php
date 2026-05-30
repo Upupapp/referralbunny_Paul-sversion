@@ -1,7 +1,7 @@
 @extends('emails.layouts.base', ['headerLabel' => 'Deal Expired'])
 @section('content')
 <p class="greeting">Deal expired</p>
-<p class="text">Hi <strong>{{ $resellerName }}</strong>, your deal <strong>{{ $dealName }}</strong> has expired in the <em>{{ ucfirst(str_replace('_', ' ', $stage)) }}</em> stage.</p>
+<p class="text">Hi <strong>{{ $resellerName }}</strong>, your deal <strong>{{ $dealName }}</strong> with <strong>{{ $tenantName }}</strong> has expired in the <em>{{ ucfirst(str_replace('_', ' ', $stage)) }}</em> stage.</p>
 <div class="highlight-box highlight-red">
     <div class="highlight-title" style="color:#DC2626">What this means</div>
     <div class="highlight-text">

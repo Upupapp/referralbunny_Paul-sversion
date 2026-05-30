@@ -42,6 +42,7 @@ class HandleDealStageMoved implements ShouldQueue
         }
 
         $toStageLabel = ucfirst(str_replace('_', ' ', $event->toStage));
+        $priority     = in_array($event->toStage, ['signed', 'paid']) ? 'high' : 'normal';
         $dispatcher   = app(NotificationDispatchService::class);
         $tenantName   = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
 
@@ -76,7 +77,7 @@ class HandleDealStageMoved implements ShouldQueue
                     resellerId:   $resellerId,
                     tenantId:     $event->tenantId,
                     category:     'deal_pipeline',
-                    priority:     'normal',
+                    priority:     $priority,
                     title:        "Deal stage updated: {$event->leadName}",
                     body:         "Your deal moved to {$toStageLabel}.",
                     actionUrl:    url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
@@ -93,9 +94,9 @@ class HandleDealStageMoved implements ShouldQueue
             $dispatcher->dispatchToTenantAdmins(
                 tenantId:     $event->tenantId,
                 category:     'deal_pipeline',
-                priority:     'normal',
+                priority:     $priority,
                 title:        "Deal stage moved: {$event->leadName}",
-                body:         "{$event->resellerName} moved \"{$event->leadName}\" to {$toStageLabel}.",
+                body:         (($event->resellerName ?: ($event->movedByName ?? 'Admin')) . " moved \"{$event->leadName}\" to {$toStageLabel}."),
                 actionUrl:    url("/tenant/{$event->tenantId}/deals/{$event->leadId}"),
                 actionLabel:  'View Deal',
                 dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}",
@@ -124,6 +125,11 @@ class HandleDealStageMoved implements ShouldQueue
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
                 Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
                 Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+
+            if ($resellerId) {
+                Cache::forget("notif_unread_reseller_{$resellerId}");
             }
         } catch (\Throwable) {}
     }

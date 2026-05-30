@@ -63,7 +63,7 @@
     <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || (canViewReferrers && missingReferrerCount > 0))">
         <div class="flex flex-wrap gap-2">
             <template x-if="expiredCount > 0">
-                <button @click="filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expired'; applyFilters()"
+                <button @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expired'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
                     <span x-text="expiredCount + ' deal' + (expiredCount > 1 ? 's' : '') + ' expired'"></span>
@@ -71,7 +71,7 @@
                 </button>
             </template>
             <template x-if="expiringCount > 0">
-                <button @click="filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expiring'; applyFilters()"
+                <button @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expiring'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0"></span>
                     <span x-text="expiringCount + ' deal' + (expiringCount > 1 ? 's' : '') + ' expiring soon'"></span>
@@ -79,7 +79,7 @@
                 </button>
             </template>
             <template x-if="canViewReferrers && missingReferrerCount > 0">
-                <button @click="filterStatus = ''; filterStage = ''; filterCommission = ''; filterProvince = ''; filterPartner = ''; filterReseller = 'MISSING'; applyFilters()"
+                <button @click="search = ''; filterStatus = ''; filterStage = ''; filterCommission = ''; filterProvince = ''; filterPartner = ''; filterReseller = 'MISSING'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>
                     <span x-text="missingReferrerCount + ' deal' + (missingReferrerCount > 1 ? 's' : '') + ' missing Referrer'"></span>

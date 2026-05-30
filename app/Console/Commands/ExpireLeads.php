@@ -35,7 +35,7 @@ class ExpireLeads extends Command
                     (string) $lead->id,
                     (string) $lead->name,
                     (string) $lead->tenant_id,
-                    (string) ($lead->reseller_name ?? ''),
+                    $lead->reseller_name ?: null,
                     (string) ($lead->stage ?? ''),
                 );
             } catch (\Throwable $e) {

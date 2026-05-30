@@ -1349,6 +1349,20 @@ class LeadController extends Controller
             } catch (\Throwable) {}
         }
 
+        // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
+        try {
+            DealStageMoved::dispatch(
+                leadId:       (string) $lead->id,
+                leadName:     $lead->name,
+                tenantId:     $lead->tenant_id,
+                resellerName: $lead->reseller_name ?? '',
+                fromStage:    $capturedStage,
+                toStage:      $targetStage,
+                dealValue:    (float) ($lead->deal_value ?? 0),
+                movedByName:  $actorNameStage,
+            );
+        } catch (\Throwable) {}
+
         // Bust CA cache before notifications — guaranteed even if dispatch throws
         if ($lead->reseller_name) {
             $caRid = Reseller::where('tenant_id', $lead->tenant_id)

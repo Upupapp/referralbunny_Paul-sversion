@@ -13,7 +13,7 @@ class DealExpired
         public readonly string  $leadId,
         public readonly string  $leadName,
         public readonly string  $tenantId,
-        public readonly string  $resellerName,
+        public readonly ?string $resellerName,
         public readonly string  $stage,
     ) {}
 }
