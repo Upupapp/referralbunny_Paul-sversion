@@ -49,6 +49,10 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
+        }
+
         $data = $request->validate([
             'partner_name'      => 'required|string|max:255',
             'partner_email'     => 'nullable|email|max:255', // optional — triggers invite when provided
@@ -131,6 +135,10 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
+        }
+
         $data = $request->validate([
             'partner_name'      => 'required|string|max:255',
             'partner_email'     => 'required|email|max:255',
@@ -201,6 +209,10 @@ class DealPartnerSplitController extends Controller
         $tenantId = TenantContext::id();
         if (!$tenantId || $lead->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
+        }
+
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
         }
 
         // Capture split data BEFORE removal for activity recording

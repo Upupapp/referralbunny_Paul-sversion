@@ -582,6 +582,10 @@ class LeadController extends Controller
     {
         $lead->assertBelongsToCurrentTenant();
 
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['message' => 'You do not have permission to update deals.'], 403);
+        }
+
         // Resellers and Partners cannot modify financial fields — strip them from the request
         $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
         $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
@@ -1145,6 +1149,10 @@ class LeadController extends Controller
     {
         $lead->assertBelongsToCurrentTenant();
 
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['message' => 'You do not have permission to confirm deal amounts.'], 403);
+        }
+
         $currentData = $lead->data ?? [];
         if (!($currentData['amount_defaulted'] ?? false)) {
             return response()->json(['message' => 'This deal does not have a pending default amount.'], 422);
@@ -1204,6 +1212,10 @@ class LeadController extends Controller
         // Partners are read-only — they cannot advance pipeline stages
         if (Auth::guard('partner')->check()) {
             return response()->json(['error' => 'Partners cannot modify deal stages.'], 403);
+        }
+
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to move deal stages.'], 403);
         }
 
         $lead->assertBelongsToCurrentTenant();
@@ -1432,6 +1444,10 @@ class LeadController extends Controller
             return response()->json(['error' => 'Partners cannot add notes via this endpoint.'], 403);
         }
 
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to add notes.'], 403);
+        }
+
         $data = $request->validate([
             'text'   => 'required|string',
             'author' => 'required|string',
@@ -1613,6 +1629,10 @@ class LeadController extends Controller
         // Partners are read-only — they cannot modify commission splits
         if (Auth::guard('partner')->check()) {
             return response()->json(['error' => 'Partners cannot modify commission splits.'], 403);
+        }
+
+        if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to modify commission splits.'], 403);
         }
 
         $data = $request->validate([

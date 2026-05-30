@@ -19,6 +19,7 @@ class HandleDealAmountUpdated implements ShouldQueue
     {
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
+        $reseller   = null;
 
         if (!$email || !$resellerId) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
@@ -26,8 +27,13 @@ class HandleDealAmountUpdated implements ShouldQueue
                 ->first();
             $email      = $email      ?? $reseller?->email;
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
+        }
 
-            if ($reseller && $reseller->status === 'invited') return;
+        // Guard invited resellers even when caller pre-resolved both email and resellerId
+        if ($resellerId) {
+            $invitedStatus = $reseller?->status
+                ?? Reseller::where('tenant_id', $event->tenantId)->where('id', $resellerId)->value('status');
+            if ($invitedStatus === 'invited') return;
         }
 
         if (!$email) return;

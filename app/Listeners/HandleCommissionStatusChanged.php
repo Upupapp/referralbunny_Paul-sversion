@@ -44,13 +44,15 @@ class HandleCommissionStatusChanged implements ShouldQueue
             $reseller = null;
         }
 
+        $email = $reseller?->email ?? $event->resellerEmail;
+
         // Do not send commission notifications to invited (unactivated) resellers.
-        // Null out rather than return — partner notifications and cache busts still fire.
+        // Null out both reseller and email so neither in-app nor email fires.
+        // We do NOT return — partner notifications and cache busts still fire below.
         if ($reseller && $reseller->status === 'invited') {
             $reseller = null;
+            $email    = null;
         }
-
-        $email = $reseller?->email ?? $event->resellerEmail;
 
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
 
