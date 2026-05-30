@@ -222,8 +222,8 @@ class PromoService
             // Increment counter
             $promo->increment('redemptions_count');
 
-            // Mark fully redeemed if limit hit
-            if ($promo->max_redemptions !== null && $promo->redemptions_count + 1 >= $promo->max_redemptions) {
+            // Mark fully redeemed if limit hit (increment() already updated in-memory count)
+            if ($promo->max_redemptions !== null && $promo->redemptions_count >= $promo->max_redemptions) {
                 $promo->update(['status' => 'fully_redeemed']);
                 $this->notifications->send(
                     category:  'billing',

@@ -227,6 +227,10 @@ class PartnerAuthController extends Controller
                 ->with('info', 'This invite link has already been used or has expired. If you already set up your account, please sign in below.');
         }
 
+        if ($partner->created_at && $partner->created_at->lt(now()->subDays(90))) {
+            return view('auth.partner-invite-expired', ['invitation' => null]);
+        }
+
         return view('auth.partner-setup', compact('partner', 'token'));
     }
 
@@ -308,6 +312,10 @@ class PartnerAuthController extends Controller
         $partner = Partner::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first();
         if (!$partner || !$partner->reset_token || !Hash::check($data['token'], $partner->reset_token)
             || !$partner->reset_token_expires_at || $partner->reset_token_expires_at->lt(now())) {
+            return back()->withErrors(['token' => 'Invalid or expired reset link.']);
+        }
+
+        if (!in_array($partner->status, ['active', 'nda_signed'])) {
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
 

@@ -169,7 +169,7 @@ class ResellerPortalAuthController extends Controller
             if (!$locked || !$locked->reset_token || !Hash::check($data['token'], $locked->reset_token)) {
                 return false;
             }
-            if ($locked->reset_token_created_at && $locked->reset_token_created_at->lt(now()->subHour())) {
+            if (!$locked->reset_token_created_at || $locked->reset_token_created_at->lt(now()->subHour())) {
                 return false;
             }
             DB::table('resellers')->where('id', $locked->id)->update([

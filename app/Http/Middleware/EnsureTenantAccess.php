@@ -25,6 +25,11 @@ class EnsureTenantAccess
 
         // Tenant user — must belong to the requested tenant
         if (Auth::guard('tenant')->check()) {
+            $tenantUser = Auth::guard('tenant')->user();
+            if ($tenantUser->status !== 'active') {
+                abort(403, 'Your account has been suspended.');
+            }
+
             $tenantId = $request->route('tenantId');
             $userId   = Auth::guard('tenant')->id();
 

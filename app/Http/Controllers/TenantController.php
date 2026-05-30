@@ -113,6 +113,7 @@ class TenantController extends Controller
     public function destroy(Tenant $tenant): JsonResponse
     {
         abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can manage tenants.');
+        abort_if($tenant->id === 'lgu-ids', 403, 'The LGU IDS tenant is protected and cannot be deleted.');
         $tenant->delete();
         return response()->json(['message' => 'Tenant deleted.']);
     }

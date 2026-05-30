@@ -20,9 +20,11 @@ class TenantCommissionController extends Controller
      */
     public function index(Request $request, string $tenantId): \Illuminate\View\View
     {
-        $ctxId = TenantContext::id();
-        if ($ctxId && $ctxId !== $tenantId) {
-            abort(403);
+        if (!TenantContext::isSuperAdmin()) {
+            $ctxId = TenantContext::requireId();
+            if ($ctxId !== $tenantId) {
+                abort(403);
+            }
         }
 
         // Partners see only their own earnings — redirect to partner-scoped view
@@ -102,12 +104,12 @@ class TenantCommissionController extends Controller
 
         // Partner splits
         $partnerSplits = DB::table('deal_partner_splits')
-            ->whereIn('lead_id', $dealIds)
+            ->whereIn('deal_id', $dealIds)
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
             ->where('status', '!=', 'removed')
             ->get()
-            ->groupBy('lead_id');
+            ->groupBy('deal_id');
 
         // Summary totals (all deals, no page filter)
         $totals = DB::table('leads')
@@ -184,9 +186,11 @@ class TenantCommissionController extends Controller
      */
     public function export(Request $request, string $tenantId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $ctxId = TenantContext::id();
-        if ($ctxId && $ctxId !== $tenantId) {
-            abort(403);
+        if (!TenantContext::isSuperAdmin()) {
+            $ctxId = TenantContext::requireId();
+            if ($ctxId !== $tenantId) {
+                abort(403);
+            }
         }
         // Partners and non-admin roles cannot export the full commission report
         if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager', 'super_admin'])) {
@@ -214,7 +218,7 @@ class TenantCommissionController extends Controller
 
         $dealIds = (clone $query)->pluck('id');
         $splits  = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->get()->groupBy('lead_id');
-        $pSplits = DB::table('deal_partner_splits')->whereIn('lead_id', $dealIds)->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', '!=', 'removed')->get()->groupBy('lead_id');
+        $pSplits = DB::table('deal_partner_splits')->whereIn('deal_id', $dealIds)->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', '!=', 'removed')->get()->groupBy('deal_id');
         $deals   = $query->orderByDesc('created_at')->cursor();
 
         $filename = 'commission-' . $tenant->slug . '-' . now()->format('Y-m-d') . '.csv';
@@ -240,8 +244,9 @@ class TenantCommissionController extends Controller
                     ? $this->calc->referrerShare($b['commission_pool'], (float)($sp->percentage ?? 100))
                     : 0;
 
-                // Sanitize: prefix text fields that could be formula injections
-                $safeName = preg_match('/^[=+\-@]/', $deal->name) ? "\t" . $deal->name : $deal->name;
+                // Sanitize user-controlled text fields to prevent CSV formula injection
+                $csvSafe = fn(?string $v) => ($v && preg_match('/^[=+\-@\t\r]/', $v)) ? "\t{$v}" : ($v ?? '');
+                $safeName = $csvSafe($deal->name);
 
                 fputcsv($out, [
                     $safeName,
@@ -251,10 +256,10 @@ class TenantCommissionController extends Controller
                     number_format($b['added_amount'], 2),
                     number_format($b['company_share'], 2),
                     number_format($b['commission_pool'], 2),
-                    $deal->reseller_name ?? '',
+                    $csvSafe($deal->reseller_name ?? null),
                     $sp ? ($sp->percentage . '%') : '',
                     number_format($referrerAmount, 2),
-                    $pp ? $pp->partner_name : '',
+                    $pp ? $csvSafe($pp->partner_name ?? null) : '',
                     $pp ? number_format($pp->split_share_value, 2) : '',
                     $pp ? ($pp->split_share_type === 'percentage' ? 'Percentage' : 'Fixed Amount') : '',
                     ucfirst($deal->commission_status ?? 'pending'),

@@ -11,12 +11,14 @@ class ApprovalRequest extends Model
         'request_type', 'reference_id', 'reference_type',
         'requested_by', 'required_permission', 'status', 'notes',
         'request_data', 'reviewer_notes', 'approved_by', 'approved_at',
+        'rejected_by', 'rejected_at',
         'tenant_id',
     ];
 
     protected $casts = [
         'request_data' => 'array',
         'approved_at'  => 'datetime',
+        'rejected_at'  => 'datetime',
     ];
 
     public function requestedBy(): BelongsTo

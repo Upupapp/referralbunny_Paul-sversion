@@ -132,11 +132,22 @@ class PromoCodeController extends Controller
             'invoice_id'      => 'required|string|exists:invoices,id',
         ]);
 
+        $subscription = Subscription::find($data['subscription_id']);
+        $invoice      = Invoice::find($data['invoice_id']);
+
+        // Cross-tenant ownership verification — prevent applying a code to another tenant's subscription/invoice
+        if ((string) $subscription->tenant_id !== (string) $data['tenant_id']) {
+            return response()->json(['error' => 'Subscription does not belong to the specified tenant.'], 422);
+        }
+        if ((string) $invoice->tenant_id !== (string) $data['tenant_id']) {
+            return response()->json(['error' => 'Invoice does not belong to the specified tenant.'], 422);
+        }
+
         $validResult = $this->promos->validate(
             $data['code'],
             $data['tenant_id'],
             null,
-            Subscription::find($data['subscription_id'])->billing_cycle
+            $subscription->billing_cycle
         );
 
         if (!$validResult['valid']) {
@@ -145,8 +156,8 @@ class PromoCodeController extends Controller
 
         $redemption = $this->promos->apply(
             $validResult['promo_code'],
-            Subscription::find($data['subscription_id']),
-            Invoice::find($data['invoice_id']),
+            $subscription,
+            $invoice,
             $request->user()->id
         );
 

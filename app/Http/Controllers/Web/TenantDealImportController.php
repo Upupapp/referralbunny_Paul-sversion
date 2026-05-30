@@ -345,6 +345,8 @@ class TenantDealImportController extends Controller
             'action'    => 'required|in:create,update,skip,merge,overwrite,review,blocked',
         ]);
 
+        $this->batchQuery($tenantId)->findOrFail($batchId);
+
         $rows       = ImportBatchRow::where('import_batch_id', $batchId)
             ->whereIn('id', $request->input('row_ids'))
             ->get();

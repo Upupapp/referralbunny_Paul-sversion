@@ -73,6 +73,12 @@ class TenantInvitationController extends Controller
                 'password'   => Hash::make($request->password),
                 'status'     => 'active',
             ]);
+        } else {
+            // Existing account: require current password to prevent invitation link hijacking
+            $request->validate(['current_password' => 'required|string']);
+            if (!Hash::check($request->input('current_password'), $user->password)) {
+                return response()->json(['message' => 'Current password is incorrect.'], 422);
+            }
         }
 
         $membership = TenantMembership::updateOrCreate(

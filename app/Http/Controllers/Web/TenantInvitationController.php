@@ -65,10 +65,14 @@ class TenantInvitationController extends Controller
         $user = TenantUser::whereRaw('lower(email) = ?', [$email])->first();
 
         if ($user) {
-            // Existing user — just add membership and log them in
+            // Existing user — verify they own the account before granting membership
             if ($user->status !== 'active') {
                 return redirect()->route('tenant.login')
                     ->withErrors(['email' => 'Your account is currently suspended.']);
+            }
+            $request->validate(['password' => ['required', 'string']]);
+            if (!Hash::check($request->input('password'), $user->password)) {
+                return back()->withErrors(['password' => 'Incorrect password. Please enter your existing account password to accept this invitation.']);
             }
         } else {
             // New user — validate password fields

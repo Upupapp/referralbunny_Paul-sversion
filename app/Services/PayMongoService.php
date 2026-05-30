@@ -108,6 +108,11 @@ class PayMongoService
             return false;
         }
 
+        // Reject replayed webhooks with a timestamp older than 5 minutes
+        if (abs(time() - (int) $parts['t']) > 300) {
+            return false;
+        }
+
         $signedPayload = $parts['t'] . '.' . $rawBody;
         $computedSig   = hash_hmac('sha256', $signedPayload, $webhookSecret);
 

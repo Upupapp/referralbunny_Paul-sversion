@@ -243,7 +243,7 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
     });
 
 // ── Super Admin Profile ───────────────────────────────────────
-Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
+Route::middleware('auth:web')->prefix('platform')->name('platform.')->group(function () {
     Route::get('/profile',            [PlatformProfileController::class, 'show'])->name('profile');
     Route::post('/profile',           [PlatformProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/photo',     [PlatformProfileController::class, 'updatePhoto'])->name('profile.photo');
@@ -252,7 +252,7 @@ Route::middleware('auth')->prefix('platform')->name('platform.')->group(function
 });
 
 // ── Platform (Super Admin) ────────────────────────────────────
-Route::middleware('auth')->prefix('platform')->name('platform.')->group(function () {
+Route::middleware('auth:web')->prefix('platform')->name('platform.')->group(function () {
     Route::get('/dashboard',           [PlatformController::class, 'dashboard'])->name('dashboard');
     Route::get('/tenants',             [PlatformController::class, 'tenants'])->name('tenants');
     Route::get('/tenants/create',      [PlatformController::class, 'createTenant'])->name('tenants.create');

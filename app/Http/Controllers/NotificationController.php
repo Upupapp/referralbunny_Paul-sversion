@@ -150,7 +150,7 @@ class NotificationController extends Controller
         abort_unless(TenantContext::isSuperAdmin(), 403, 'Only platform admins can create notifications.');
 
         $data = $request->validate([
-            'category'   => 'required|string',
+            'category'   => 'required|string|in:billing,deal_pipeline,account_profile,system,commission,import,task,approval,general',
             'type'       => 'required|in:info,warning,action_required,system_alert',
             'priority'   => 'required|in:low,normal,medium,high,critical,urgent',
             'message'    => 'required|string',

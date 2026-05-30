@@ -78,6 +78,9 @@ class InvoiceService
 
     public function markPaid(Invoice $invoice, string $paymentId): void
     {
+        if ($invoice->status === 'paid') {
+            return; // idempotent — already paid, skip to prevent duplicate audit entries
+        }
         $invoice->update(['status' => 'paid', 'paid_at' => now()]);
 
         BillingAuditLog::log('invoice_paid', [

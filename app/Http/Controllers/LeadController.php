@@ -316,6 +316,11 @@ class LeadController extends Controller
             return response()->json(['message' => 'No tenant context established.'], 403);
         }
 
+        // Referrers cannot create deals at financial-close stages
+        if ($isReferrer && in_array($data['stage'] ?? '', ['signed', 'paid'], true)) {
+            return response()->json(['error' => 'Referrers cannot create deals at Signed or Paid stages.'], 403);
+        }
+
         // ── LGU IDS: one active deal per organization ─────────────────
         // LOCKED RULE — do not remove or generalise (LGU IDS pipeline protection)
         if (!empty($data['organization_id']) && $tenantId === 'lgu-ids') {
@@ -648,12 +653,18 @@ class LeadController extends Controller
             unset($data['base_cost'], $data['added_amount'], $data['deal_value']);
         }
         if ($isReferrer) {
-            unset($data['commission_status'], $data['reseller_name'], $data['status'], $data['stage']);
+            unset($data['commission_status'], $data['reseller_name'], $data['status'], $data['stage'], $data['days_left']);
         }
 
-        // Prevent anyone from downgrading a paid commission_status
-        if (isset($data['commission_status']) && $lead->commission_status === 'paid') {
-            return response()->json(['error' => 'Cannot downgrade commission status from paid.'], 422);
+        // Prevent anyone from downgrading a paid or locked commission_status
+        if (isset($data['commission_status'])) {
+            $currentStatus = $lead->commission_status;
+            if ($currentStatus === 'paid') {
+                return response()->json(['error' => 'Cannot downgrade commission status from paid.'], 422);
+            }
+            if ($currentStatus === 'locked' && $data['commission_status'] === 'pending') {
+                return response()->json(['error' => 'Cannot downgrade commission status from locked to pending.'], 422);
+            }
         }
 
         // Capture old financial values before update for history log
@@ -1287,14 +1298,6 @@ class LeadController extends Controller
             }
         }
 
-        // Referrers cannot self-lock (signed) or self-pay (paid) commission
-        if (Auth::guard('reseller')->check()) {
-            $reqStage = $request->input('stage');
-            if ($reqStage && in_array($reqStage, ['signed', 'paid'], true)) {
-                return response()->json(['error' => 'Referrers cannot advance deals to Signed or Paid stages.'], 403);
-            }
-        }
-
         $stages       = ['introduction', 'presentation', 'contract_sent', 'signed', 'paid'];
         $currentIndex = (int) array_search($lead->stage, $stages, true);
 
@@ -1311,6 +1314,12 @@ class LeadController extends Controller
                 return response()->json(['error' => 'Already at final stage.'], 422);
             }
             $targetStage = $stages[$currentIndex + 1];
+        }
+
+        // Referrers cannot self-lock (signed) or self-pay (paid) commission
+        // Guard is placed AFTER targetStage is computed to catch both explicit and auto-advanced stages
+        if (Auth::guard('reseller')->check() && in_array($targetStage, ['signed', 'paid'], true)) {
+            return response()->json(['error' => 'Referrers cannot advance deals to Signed or Paid stages.'], 403);
         }
 
         $targetIndex = (int) array_search($targetStage, $stages, true);
@@ -1371,7 +1380,7 @@ class LeadController extends Controller
             $activity = app(\App\Services\DealActivityService::class);
 
             // Stage moved
-            $activity->record($lead,
+            $activity->record($locked,
                 'Stage moved: ' . ucwords(str_replace('_', ' ', $capturedStage))
                     . ' \u{2192} ' . ucwords(str_replace('_', ' ', $targetStage))
                     . ($note !== '' ? ' \u{2014} ' . $note : ''),
@@ -1387,7 +1396,7 @@ class LeadController extends Controller
 
             // Commission locked (Signed)
             if ($isLocking) {
-                $activity->record($lead,
+                $activity->record($locked,
                     'Commission locked at \u{20b1}' . number_format($commPool, 2) . ' (deal moved to Signed)',
                     'commission',
                     [
@@ -1401,7 +1410,7 @@ class LeadController extends Controller
 
             // Commission paid (Paid)
             if ($isPaid) {
-                $activity->record($lead,
+                $activity->record($locked,
                     'Commission marked as paid \u{2014} pool \u{20b1}' . number_format($commPool, 2),
                     'commission',
                     [
@@ -1604,6 +1613,13 @@ class LeadController extends Controller
 
         if (strtolower($canonicalName) === strtolower($oldReferrerName)) {
             return response()->json(['error' => 'This referrer is already assigned to this deal.'], 422);
+        }
+
+        // Block stage reset when commission is already locked or paid — would create contradictory state
+        if (($data['reset_stage'] ?? true) && in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json([
+                'error' => 'Cannot reset deal stage when commission is ' . $lead->commission_status . '. Reassign without stage reset.',
+            ], 422);
         }
 
         // Compute new values before transaction so we capture pre-update model state

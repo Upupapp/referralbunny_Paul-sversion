@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\ApprovalRequest;
 use App\Models\PromoCode;
-use Illuminate\Support\Facades\DB;
 use App\Models\Promotion;
+use Illuminate\Support\Facades\DB;
 use App\Models\Plan;
 use Illuminate\Support\Collection;
 
@@ -47,15 +47,17 @@ class ApprovalService
 
     public function approve(ApprovalRequest $approval, int $approvedBy, ?string $notes = null): void
     {
-        $approval->update([
-            'status'         => 'approved',
-            'approved_by'    => $approvedBy,
-            'approved_at'    => now(),
-            'reviewer_notes' => $notes,
-        ]);
+        DB::transaction(function () use ($approval, $approvedBy, $notes) {
+            $approval->update([
+                'status'         => 'approved',
+                'approved_by'    => $approvedBy,
+                'approved_at'    => now(),
+                'reviewer_notes' => $notes,
+            ]);
 
-        // Execute the pending change
-        $this->executeApprovedChange($approval);
+            // Execute the pending change atomically with the status update
+            $this->executeApprovedChange($approval);
+        });
 
         $this->notifications->send(
             category:  'billing',
