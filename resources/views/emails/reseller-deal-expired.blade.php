@@ -9,7 +9,7 @@
         It will no longer appear as your active deal unless re-claimed.
     </div>
 </div>
-<p class="text">Don't let this slow you down — there are still available municipalities waiting to be claimed. Head to your dashboard to browse opportunities.</p>
+<p class="text">Don't let this slow you down — there are still available deals waiting to be claimed. Head to your dashboard to browse opportunities.</p>
 <div class="cta-wrap">
     <a href="{{ $dashboardUrl }}" class="cta cta-teal">Browse Available Deals →</a>
 </div>

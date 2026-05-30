@@ -15,6 +15,5 @@ class DealExpired
         public readonly string  $tenantId,
         public readonly string  $resellerName,
         public readonly string  $stage,
-        public readonly ?string $resellerEmail = null,
     ) {}
 }

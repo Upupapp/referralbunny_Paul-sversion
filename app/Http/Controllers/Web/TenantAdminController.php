@@ -145,7 +145,7 @@ class TenantAdminController extends Controller
         // were undefined, causing can() to always return false for managers.
         $canSeeExports = true;
         $canSeeUsers   = true;
-        if (isset($actingMembership) && $actingMembership && $actingMembership->role === 'manager') {
+        if ($actingMembership && $actingMembership->role === 'manager') {
             $permSvc       = app(\App\Services\PermissionService::class);
             $canSeeExports = $permSvc->can($actingMembership, 'approve_export_requests');
             $canSeeUsers   = $permSvc->can($actingMembership, 'invite_tenant_staff');
@@ -153,7 +153,7 @@ class TenantAdminController extends Controller
 
         // Gate 'missing_referrer' items to users with view_referrers permission (mirrors deals() logic).
         $canViewReferrers = true;
-        if (isset($actingMembership) && $actingMembership
+        if ($actingMembership
             && !in_array($actingMembership->role, ['owner', 'admin'])) {
             $canViewReferrers = app(PermissionService::class)->can($actingMembership, 'view_referrers');
         }

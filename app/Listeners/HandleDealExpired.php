@@ -40,19 +40,18 @@ class HandleDealExpired implements ShouldQueue
             metadata:     ['deal_id' => $event->leadId, 'stage' => $event->stage],
         );
 
-        // Notify reseller if known
-        $resellerId = null;
-        if ($event->resellerEmail) {
-            $resellerId = DB::table('resellers')
-                ->where('tenant_id', $event->tenantId)
-                ->where('email', $event->resellerEmail)
-                ->value('id');
-        }
-        if (!$resellerId && $event->resellerName) {
-            $resellerId = DB::table('resellers')
+        // Notify reseller if known — look up by name from resellers table to get email
+        $resellerId    = null;
+        $resellerEmail = null;
+        if ($event->resellerName) {
+            $reseller = DB::table('resellers')
                 ->where('tenant_id', $event->tenantId)
                 ->where('name', $event->resellerName)
-                ->value('id');
+                ->first(['id', 'email']);
+            if ($reseller) {
+                $resellerId    = $reseller->id;
+                $resellerEmail = $reseller->email;
+            }
         }
 
         if ($resellerId) {
@@ -69,22 +68,22 @@ class HandleDealExpired implements ShouldQueue
             );
 
             // Send email to reseller
-            if ($event->resellerEmail) {
+            if ($resellerEmail) {
                 try {
                     $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? 'Referral Bunny';
                     EmailLogger::send(
                         mailable: new ResellerDealExpired(
                             resellerName:  $event->resellerName ?? '',
-                            resellerEmail: $event->resellerEmail,
+                            resellerEmail: $resellerEmail,
                             tenantName:    $tenantName,
                             dealName:      $event->leadName,
                             stage:         $event->stage,
                             dashboardUrl:  url("/reseller/{$event->tenantId}/deals"),
                         ),
-                        recipientEmail: $event->resellerEmail,
+                        recipientEmail: $resellerEmail,
                         recipientType:  'reseller',
-                        recipientId:    $resellerId ? (string) $resellerId : null,
-                        emailKey:       'deal_expired.' . $event->leadId . '.' . ($resellerId ?? md5($event->resellerEmail)),
+                        recipientId:    (string) $resellerId,
+                        emailKey:       'deal_expired.' . $event->leadId . '.' . $resellerId,
                         subject:        "Deal expired: {$event->leadName}",
                         tenantId:       $event->tenantId,
                     );
@@ -95,7 +94,7 @@ class HandleDealExpired implements ShouldQueue
         // Notify active Partners associated with this deal
         $activePartners = DB::table('deal_partner_splits')
             ->where('tenant_id', $event->tenantId)
-            ->whereRaw('deal_id = ?', [$event->leadId])
+            ->where('deal_id', $event->leadId)
             ->where('status', 'active')
             ->whereNotNull('partner_user_id')
             ->whereNull('deleted_at')
@@ -133,6 +132,11 @@ class HandleDealExpired implements ShouldQueue
                 Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
                 Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
                 Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+
+            if ($resellerId) {
+                Cache::forget("notif_unread_reseller_{$resellerId}");
             }
         } catch (\Throwable) {}
     }

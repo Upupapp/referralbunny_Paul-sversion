@@ -33,7 +33,7 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 @section('content')
-<div x-data="tenantDashboard('{{ $tenant->id }}', {{ Js::from($currentResellerName) }})"
+<div x-data="tenantDashboard('{{ $tenant->id }}', {{ Js::from($currentResellerName) }}, {{ $canViewReferrers ? 'true' : 'false' }})"
      x-init="init()"
      @open-add-deal.window="showAdd = true"
      class="space-y-5">
@@ -233,7 +233,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 transition-colors">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                        <p class="text-[11px] text-gray-400 truncate">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'Unassigned') : 'Referrer hidden' }} · {{ $dealAge }}</p>
+                        <p class="text-[11px] text-gray-400 truncate">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'Unassigned') : __('Referrer hidden') }} · {{ $dealAge }}</p>
                     </div>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 {{ $sb }}">
                         {{ $stageLabel }}
@@ -631,7 +631,7 @@ document.addEventListener('alpine:init', () => {
                                 <p class="text-sm font-semibold text-[#1E1B4B] truncate" x-text="deal.name"></p>
                                 <p class="text-[11px] text-gray-400 truncate mt-0.5 flex items-center gap-1">
                                     <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    <span x-text="deal.reseller_name || '—'"></span>
+                                    <span x-text="canViewReferrers ? (deal.reseller_name || '—') : '—'"></span>
                                 </p>
                             </div>
                         </div>
@@ -802,7 +802,7 @@ document.addEventListener('alpine:init', () => {
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <h3 class="text-sm font-semibold text-[#1E1B4B] mb-4">Deal Health</h3>
                 <div class="space-y-3">
-                    @foreach([['Active', "leads.filter(l=>l.status==='active').length", '#10B981'],['Expiring (≤7d)', "leads.filter(l=>(l.days_left??21)<=7&&l.status==='active').length", '#F59E0B'],['Expired', "leads.filter(l=>l.status==='expired').length", '#EF4444'],['No Referrer', "leads.filter(l=>!l.reseller_name).length", '#9CA3AF']] as [$label, $expr, $color])
+                    @foreach([['Active', "leads.filter(l=>l.status==='active').length", '#10B981'],['Expiring (≤7d)', "leads.filter(l=>(l.days_left??21)<=7&&l.status==='active').length", '#F59E0B'],['Expired', "leads.filter(l=>l.status==='expired').length", '#EF4444']] as [$label, $expr, $color])
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-gray-500 flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full shrink-0" style="background:{{ $color }}"></span>{{ $label }}
@@ -810,6 +810,14 @@ document.addEventListener('alpine:init', () => {
                         <span class="text-xs font-semibold text-[#1E1B4B] tabular-nums" x-text="{{ $expr }}"></span>
                     </div>
                     @endforeach
+                    @if ($canViewReferrers ?? false)
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:#9CA3AF"></span>No Referrer
+                        </span>
+                        <span class="text-xs font-semibold text-[#1E1B4B] tabular-nums" x-text="leads.filter(l=>!l.reseller_name).length"></span>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -920,7 +928,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : 'Referrer hidden' }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : __('Referrer hidden') }}</p>
                             </div>
                             <div class="text-right shrink-0">
                                 <span class="inline-block text-xs font-bold px-2 py-0.5 rounded-full"
@@ -954,7 +962,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : 'Referrer hidden' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : __('Referrer hidden') }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
                             </div>
                             @if($deal->deal_value)
                             <p class="text-sm font-bold text-[#1E1B4B] shrink-0">₱{{ number_format($deal->deal_value) }}</p>
@@ -1174,13 +1182,14 @@ document.addEventListener('alpine:init', () => {
 </div>
 
 <script>
-function tenantDashboard(tenantId, currentResellerName) {
+function tenantDashboard(tenantId, currentResellerName, canViewReferrers = false) {
     return {
         leads: [], resellers: [], stats: {}, metric: {},
         maxLeadCount: 1, subscription: null,
         dataLoaded: false, dataError: false,
         showAdd: false, saving: false, dealSearch: '', addError: '',
         pipelinePeriod: 'All Time', trendPeriod: 'Monthly', referrerPeriod: 'This Month',
+        canViewReferrers: canViewReferrers,
 
         // LGU search
         lguQuery: '', lguResults: [], lguDropdown: false, lguSearching: false,
@@ -1421,7 +1430,7 @@ function tenantDashboard(tenantId, currentResellerName) {
                 .map(l=>({
                     initials: (l.name||'??').slice(0,2).toUpperCase(),
                     name:     l.name || 'Unknown',
-                    action:   (l.stage||'').replace('_',' ') + (l.reseller_name ? ' · '+l.reseller_name : ''),
+                    action:   (l.stage||'').replace('_',' ') + (this.canViewReferrers && l.reseller_name ? ' · '+l.reseller_name : ''),
                     time:     this.timeAgo(l.created_at),
                 }));
         },

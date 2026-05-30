@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Events\DealExpired;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ExpireLeads extends Command
 {
@@ -17,12 +18,14 @@ class ExpireLeads extends Command
         $aboutToExpire = DB::table('leads')
             ->whereIn('status', ['active', 'expiring'])
             ->where('days_left', '<=', 0)
-            ->get(['id', 'name', 'tenant_id', 'reseller_name', 'stage', 'reseller_email']);
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'tenant_id', 'reseller_name', 'stage']);
 
         // Expire: days_left has hit 0 or below
         $expired = DB::table('leads')
             ->whereIn('status', ['active', 'expiring'])
             ->where('days_left', '<=', 0)
+            ->whereNull('deleted_at')
             ->update(['status' => 'expired']);
 
         // Dispatch per-deal events so listeners (admin/reseller notifications) fire correctly.
@@ -34,21 +37,28 @@ class ExpireLeads extends Command
                     (string) $lead->tenant_id,
                     (string) ($lead->reseller_name ?? ''),
                     (string) ($lead->stage ?? ''),
-                    $lead->reseller_email ?? null,
                 );
-            } catch (\Throwable) {}
+            } catch (\Throwable $e) {
+                Log::warning('[ExpireLeads] DealExpired dispatch failed', [
+                    'lead_id'   => $lead->id,
+                    'tenant_id' => $lead->tenant_id,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
         }
 
         // Warn: days_left is 1–7 and still active
         $expiring = DB::table('leads')
             ->where('status', 'active')
             ->whereBetween('days_left', [1, 7])
+            ->whereNull('deleted_at')
             ->update(['status' => 'expiring']);
 
         // Decrement days_left for all still-active/expiring deals
         $decremented = DB::table('leads')
             ->whereIn('status', ['active', 'expiring'])
             ->where('days_left', '>', 0)
+            ->whereNull('deleted_at')
             ->decrement('days_left');
 
         $this->info("Expired: {$expired} | Expiring: {$expiring} | Decremented: {$decremented}");

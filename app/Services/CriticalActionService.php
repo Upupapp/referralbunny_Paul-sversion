@@ -634,6 +634,7 @@ class CriticalActionService
             'related_id'    => $r->id,
             'occurred_at'   => $r->updated_at ?? now(),
             'action_url'    => "/tenant/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'View Deal',
             'action_needed' => true,
             'source'        => 'leads',
             'meta'          => ['days_left' => $r->days_left],
@@ -668,6 +669,7 @@ class CriticalActionService
             'related_id'    => $r->id,
             'occurred_at'   => $r->updated_at ?? now(),
             'action_url'    => "/tenant/{$tenantId}/deals/{$r->id}",
+            'action_label'  => 'View Deal',
             'action_needed' => true,
             'source'        => 'leads',
         ]))->toArray();
@@ -677,7 +679,7 @@ class CriticalActionService
     {
         $count = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->whereNull('reseller_name')
+            ->where(fn($q) => $q->whereNull('reseller_name')->orWhere('reseller_name', ''))
             ->whereIn('status', ['active', 'expiring'])
             ->whereNull('deleted_at')
             ->count();

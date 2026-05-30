@@ -1358,44 +1358,13 @@ class LeadController extends Controller
         }
         try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdStage); } catch (\Throwable) {}
 
-        // Notify tenant admins and assigned referrer about stage movement
+        // Notify active partners on this deal (admin + reseller are handled by HandleDealStageMoved listener)
         try {
-            $stageName  = ucwords(str_replace('_', ' ', $targetStage));
-            $fromName   = ucwords(str_replace('_', ' ', $capturedStage));
-            $priority   = ($isPaid || $isLocking) ? 'high' : 'normal';
-            $minute     = now()->format('YmdH');
+            $stageName = ucwords(str_replace('_', ' ', $targetStage));
+            $fromName  = ucwords(str_replace('_', ' ', $capturedStage));
+            $priority  = ($isPaid || $isLocking) ? 'high' : 'normal';
+            $minute    = now()->format('YmdH');
 
-            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
-                tenantId:     $lead->tenant_id,
-                category:     'deal_pipeline',
-                priority:     $priority,
-                title:        "Deal moved to {$stageName}",
-                body:         "\"{$lead->name}\" was moved from {$fromName} to {$stageName}.",
-                actionUrl:    "/tenant/{$lead->tenant_id}/deals/{$lead->id}",
-                actionLabel:  'View Deal',
-                dedupeSuffix: "{$lead->id}:stage:{$targetStage}:{$minute}",
-            );
-
-            if ($lead->reseller_name) {
-                $reseller = Reseller::where('tenant_id', $lead->tenant_id)
-                    ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
-                    ->first();
-                if ($reseller) {
-                    app(NotificationDispatchService::class)->dispatchToReseller(
-                        resellerId:   (string) $reseller->id,
-                        tenantId:     $lead->tenant_id,
-                        category:     'deal_pipeline',
-                        priority:     $priority,
-                        title:        "Your deal moved to {$stageName}",
-                        body:         "\"{$lead->name}\" has been moved to {$stageName}.",
-                        actionUrl:    "/reseller/{$lead->tenant_id}/deals/{$lead->id}",
-                        actionLabel:  'View Deal',
-                        dedupeSuffix: "{$lead->id}:stage:{$targetStage}:r:{$minute}",
-                    );
-                }
-            }
-
-            // Notify active partners on this deal
             $partnerSplits = DB::table('deal_partner_splits')
                 ->where('deal_id', $lead->id)
                 ->where('tenant_id', $lead->tenant_id)
