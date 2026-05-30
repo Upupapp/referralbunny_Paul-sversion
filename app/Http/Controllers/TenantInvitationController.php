@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -142,6 +143,14 @@ class TenantInvitationController extends Controller
     public function revoke(string $id): JsonResponse
     {
         $invite = TenantInvitation::findOrFail($id);
+
+        if (!TenantContext::isSuperAdmin()) {
+            $tenantId = TenantContext::requireId();
+            if ($invite->tenant_id !== $tenantId) {
+                abort(403, 'Forbidden.');
+            }
+        }
+
         $invite->update(['status' => 'revoked']);
 
         return response()->json(['message' => 'Invitation revoked.']);

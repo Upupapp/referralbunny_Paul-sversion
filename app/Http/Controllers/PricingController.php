@@ -67,6 +67,7 @@ class PricingController extends Controller
     // GET /api/pricing/history?plan_id=xxx
     public function history(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can view pricing history.');
         return response()->json($this->pricing->getPricingHistory($request->plan_id));
     }
 }

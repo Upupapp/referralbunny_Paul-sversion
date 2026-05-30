@@ -50,6 +50,11 @@ class ResellerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Resellers cannot list peer resellers
+        if (TenantContext::isReseller() || TenantContext::isPartner()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
         $query = Reseller::orderByRaw("CASE
                 WHEN status IN ('active','nda_signed') THEN 0
                 WHEN status = 'invited'               THEN 1
@@ -322,10 +327,22 @@ class ResellerController extends Controller
 
     public function show(Request $request, Reseller $reseller): JsonResponse
     {
+        // Resellers may only view their own record
+        if (TenantContext::isReseller()) {
+            $authed = Auth::guard('reseller')->user();
+            if (!$authed || $authed->id !== $reseller->id) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
+        } elseif (TenantContext::isPartner()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
         // Tenant isolation — reseller must belong to the caller's tenant
-        $tenantId = TenantContext::id() ?? $request->query('tenant_id');
-        if ($tenantId && $reseller->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Not found.'], 404);
+        if (!TenantContext::isSuperAdmin()) {
+            $tenantId = TenantContext::requireId();
+            if ($reseller->tenant_id !== $tenantId) {
+                return response()->json(['error' => 'Not found.'], 404);
+            }
         }
         $data = $this->applyAnonymityMask($reseller, $this->callerIsTenantAdmin());
         return response()->json($data);
@@ -338,9 +355,11 @@ class ResellerController extends Controller
         }
 
         // Tenant isolation — reseller must belong to the caller's tenant
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
-        if ($tenantId && $reseller->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Not found.'], 404);
+        if (!TenantContext::isSuperAdmin()) {
+            $tenantId = TenantContext::requireId();
+            if ($reseller->tenant_id !== $tenantId) {
+                return response()->json(['error' => 'Not found.'], 404);
+            }
         }
 
         // Anonymity toggle is admin-only
@@ -361,7 +380,7 @@ class ResellerController extends Controller
         ]);
 
         $reseller->update($data);
-        return response()->json($reseller);
+        return response()->json($this->applyAnonymityMask($reseller->fresh(), $this->callerIsTenantAdmin()));
     }
 
     public function destroy(Request $request, Reseller $reseller): JsonResponse
@@ -375,8 +394,10 @@ class ResellerController extends Controller
             return response()->json(['error' => 'Managers cannot delete Referrers. Contact an owner or admin.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
-        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+        $tenantId = TenantContext::isSuperAdmin()
+            ? ($request->input('tenant_id') ?? $reseller->tenant_id)
+            : TenantContext::requireId();
+        if ($reseller->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
         }
 
@@ -458,8 +479,10 @@ class ResellerController extends Controller
         }
 
         // Resolve tenant from auth context
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
-        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+        $tenantId = TenantContext::isSuperAdmin()
+            ? ($request->input('tenant_id') ?? $reseller->tenant_id)
+            : TenantContext::requireId();
+        if ($reseller->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
         }
 
@@ -560,8 +583,10 @@ class ResellerController extends Controller
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
-        $tenantId = TenantContext::id() ?? $request->input('tenant_id');
-        if (!$tenantId || $reseller->tenant_id !== $tenantId) {
+        $tenantId = TenantContext::isSuperAdmin()
+            ? ($request->input('tenant_id') ?? $reseller->tenant_id)
+            : TenantContext::requireId();
+        if ($reseller->tenant_id !== $tenantId) {
             return response()->json(['error' => 'Referrer not found in this tenant.'], 404);
         }
 
@@ -632,6 +657,10 @@ class ResellerController extends Controller
      */
     public function activatedOptions(Request $request): JsonResponse
     {
+        if (TenantContext::isReseller() || TenantContext::isPartner()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if (!$tenantId) {
             return response()->json([]);
@@ -655,6 +684,10 @@ class ResellerController extends Controller
      */
     public function checkEmail(Request $request): JsonResponse
     {
+        if (TenantContext::isReseller() || TenantContext::isPartner()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         $email    = $request->query('email', '');
 
@@ -731,6 +764,10 @@ class ResellerController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
         $tenantId = TenantContext::id() ?? $request->query('tenant_id');
         if (!$tenantId) {
             return response()->json(['error' => 'tenant_id required'], 400);

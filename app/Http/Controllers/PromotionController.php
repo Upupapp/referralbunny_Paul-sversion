@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BillingAuditLog;
 use App\Models\Promotion;
 use App\Services\PromoService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ class PromotionController extends Controller
     // GET /api/promotions
     public function index(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promotions.');
         $query = Promotion::with('createdBy')->orderByDesc('created_at');
 
         if ($request->filled('status')) {
@@ -30,12 +32,14 @@ class PromotionController extends Controller
     // GET /api/promotions/{promotion}
     public function show(Promotion $promotion): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promotions.');
         return response()->json($promotion->load(['createdBy', 'promoCode']));
     }
 
     // POST /api/promotions
     public function store(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promotions.');
         $data = $request->validate([
             'name'                       => 'required|string|max:200',
             'description'                => 'nullable|string',
@@ -65,6 +69,7 @@ class PromotionController extends Controller
     // PUT /api/promotions/{promotion}
     public function update(Request $request, Promotion $promotion): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promotions.');
         $data = $request->validate([
             'name'            => 'sometimes|string|max:200',
             'description'     => 'nullable|string',
@@ -90,6 +95,7 @@ class PromotionController extends Controller
     // DELETE /api/promotions/{promotion}
     public function destroy(Request $request, Promotion $promotion): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promotions.');
         $promotion->update(['status' => 'ended']);
 
         BillingAuditLog::log('promotion_ended', [

@@ -28,15 +28,15 @@ use App\Http\Controllers\TenantLegalAgreementController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ─────────────────────────────────────────────
-Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
 // ── Tenant Admin Auth (public) ────────────────────────────────
-Route::post('/auth/tenant/login',    [TenantAuthController::class, 'login']);
-Route::post('/auth/tenant/register', [TenantAuthController::class, 'register']);
-Route::get('/auth/tenant/invite/{token}',          [TenantInvitationController::class, 'validate']);
-Route::post('/auth/tenant/invite/{token}/accept',  [TenantInvitationController::class, 'accept']);
-Route::post('/auth/tenant/join-request',           [TenantAuthController::class, 'joinRequest']);
-Route::get('/auth/tenant/lookup-tenant',           [TenantAuthController::class, 'lookupTenant']);
+Route::post('/auth/tenant/login',    [TenantAuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/auth/tenant/register', [TenantAuthController::class, 'register'])->middleware('throttle:5,1');
+Route::get('/auth/tenant/invite/{token}',          [TenantInvitationController::class, 'validate'])->middleware('throttle:10,1');
+Route::post('/auth/tenant/invite/{token}/accept',  [TenantInvitationController::class, 'accept'])->middleware('throttle:10,1');
+Route::post('/auth/tenant/join-request',           [TenantAuthController::class, 'joinRequest'])->middleware('throttle:5,1');
+Route::get('/auth/tenant/lookup-tenant',           [TenantAuthController::class, 'lookupTenant'])->middleware('throttle:30,1');
 
 // ── Protected routes ──────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {

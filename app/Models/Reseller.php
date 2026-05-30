@@ -63,7 +63,11 @@ class Reseller extends Authenticatable
         'invite_sent_at',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'setup_token', 'reset_token'];
+    protected $hidden = [
+        'password', 'remember_token',
+        'setup_token', 'setup_token_created_at',
+        'reset_token', 'reset_token_created_at',
+    ];
 
     protected $casts = [
         'joined_date'              => 'date',

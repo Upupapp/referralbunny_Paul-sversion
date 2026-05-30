@@ -35,6 +35,7 @@ class BillingController extends Controller
     // ── Dashboard ─────────────────────────────────────────────
     public function dashboard(): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can access the billing dashboard.');
         return response()->json($this->billing->dashboardSummary());
     }
 
@@ -466,6 +467,7 @@ class BillingController extends Controller
     // ── Exchange Rates ────────────────────────────────────────
     public function exchangeRates(): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can view exchange rates.');
         return response()->json(\App\Models\ExchangeRate::all());
     }
 

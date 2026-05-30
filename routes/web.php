@@ -499,7 +499,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
 // These mirror the /tenant/{tenantId}/* routes above.
 // DetectTenantSubdomain injects tenantId from subdomain lookup.
 Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
-    ->middleware(['tenant.subdomain', 'auth:tenant,web', 'tenant.access'])
+    ->middleware(['tenant.subdomain', 'auth:tenant,web', 'tenant.access', 'legal.agreements'])
     ->group(function () {
         Route::get('/',            [TenantAdminController::class, 'dashboard'])->name('tenant.sub.home');
         Route::get('/dashboard',   [TenantAdminController::class, 'dashboard'])->name('tenant.sub.dashboard');

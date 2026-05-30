@@ -16,6 +16,7 @@ class TenantMetricController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Super admin access required.');
         $query = TenantMetric::with('tenant')->orderBy('health_score');
         if ($request->filled('health_level')) $query->where('health_level', $request->health_level);
         return response()->json($query->get());

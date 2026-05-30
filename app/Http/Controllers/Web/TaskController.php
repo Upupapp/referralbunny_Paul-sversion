@@ -1158,11 +1158,15 @@ class TaskController extends Controller
 
     private function authorizeAdmin(string $tenantId): void
     {
+        // SA web guard is always allowed
+        if (Auth::guard('web')->check()) return;
+
+        // For tenant users: verify role is admin/owner/manager
+        if (!in_array(TenantContext::role(), ['admin', 'owner', 'manager'])) abort(403);
+
+        // Belt-and-suspenders: if context is set, it must match the route tenantId
         $ctxId = TenantContext::id();
-        if ($ctxId && $ctxId !== $tenantId) abort(403);
-        $isAdmin = Auth::guard('web')->check()
-            || in_array(TenantContext::role(), ['admin', 'owner', 'manager']);
-        if (!$isAdmin) abort(403);
+        if ($ctxId !== null && $ctxId !== $tenantId) abort(403);
     }
 
     private function resolveActor(): array

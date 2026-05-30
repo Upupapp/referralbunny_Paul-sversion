@@ -945,6 +945,20 @@ class ResellerDealController extends Controller
 
     public function adminAddReferrer(Request $request, string $tenantId, string $dealId): JsonResponse
     {
+        // Only tenant owners, admins, and managers (plus SA) may add co-referrers
+        $role = \App\Services\TenantContext::role();
+        if (!\App\Services\TenantContext::isSuperAdmin() && !in_array($role, ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
+        // Enforce tenant context — prevents supplying a tenantId belonging to another tenant
+        if (!\App\Services\TenantContext::isSuperAdmin()) {
+            $ctxId = \App\Services\TenantContext::requireId();
+            if ($ctxId !== $tenantId) {
+                return response()->json(['error' => 'Forbidden.'], 403);
+            }
+        }
+
         $actor     = Auth::guard('tenant')->user() ?? Auth::guard('web')->user();
         $actorName = $actor ? ($actor->full_name ?: $actor->email) : 'Admin';
 

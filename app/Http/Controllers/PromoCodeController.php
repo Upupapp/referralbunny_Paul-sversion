@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\PromoCode;
 use App\Models\Subscription;
 use App\Services\PromoService;
+use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class PromoCodeController extends Controller
     // GET /api/promo-codes
     public function index(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         $query = PromoCode::withCount('redemptions')->orderByDesc('created_at');
 
         if ($request->filled('status')) {
@@ -28,12 +30,14 @@ class PromoCodeController extends Controller
     // GET /api/promo-codes/{promoCode}
     public function show(PromoCode $promoCode): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         return response()->json($promoCode->load(['redemptions.tenant', 'attempts']));
     }
 
     // POST /api/promo-codes
     public function store(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         $data = $request->validate([
             'code'                      => 'nullable|string|max:50|unique:promo_codes,code',
             'name'                      => 'required|string|max:200',
@@ -57,6 +61,7 @@ class PromoCodeController extends Controller
     // PUT /api/promo-codes/{promoCode}
     public function update(Request $request, PromoCode $promoCode): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         $data = $request->validate([
             'name'                      => 'sometimes|string|max:200',
             'description'               => 'nullable|string',
@@ -84,6 +89,7 @@ class PromoCodeController extends Controller
     // DELETE /api/promo-codes/{promoCode}
     public function destroy(Request $request, PromoCode $promoCode): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         $promoCode->update(['status' => 'inactive']);
 
         \App\Models\BillingAuditLog::log('promo_code_disabled', [
@@ -113,6 +119,7 @@ class PromoCodeController extends Controller
     // POST /api/promo-codes/apply
     public function apply(Request $request): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can apply promo codes.');
         $data = $request->validate([
             'code'            => 'required|string',
             'tenant_id'       => 'required|string|exists:tenants,id',
@@ -144,6 +151,7 @@ class PromoCodeController extends Controller
     // GET /api/promo-codes/performance
     public function performance(): JsonResponse
     {
+        abort_unless(TenantContext::isSuperAdmin(), 403, 'Only super admins can manage promo codes.');
         return response()->json($this->promos->getPerformance());
     }
 }
