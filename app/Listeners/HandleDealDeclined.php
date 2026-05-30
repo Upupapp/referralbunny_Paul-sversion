@@ -21,8 +21,7 @@ class HandleDealDeclined implements ShouldQueue
     {
         $email      = $event->resellerEmail;
         $resellerId = $event->resellerId;
-        $reseller    = null;
-        $skipInvited = false;
+        $reseller = null;
 
         // Only do the DB lookup when BOTH identifiers are missing — AND guard prevents
         // overwriting a valid resellerId when only email is absent, and the resellerName
@@ -35,20 +34,22 @@ class HandleDealDeclined implements ShouldQueue
             $resellerId = $resellerId ?? ($reseller ? (string) $reseller->id : null);
         }
 
-        // Check invited status — must fire even when resellerId was pre-resolved by the caller.
+        // Null-out both identifiers for invited (unactivated) resellers so neither email
+        // nor in-app fires for them. Admin and cache-bust paths still fire below.
         if ($resellerId) {
             $invitedStatus = $reseller
                 ? $reseller->status
                 : Reseller::where('tenant_id', $event->tenantId)->where('id', $resellerId)->value('status');
             if ($invitedStatus === 'invited') {
-                $skipInvited = true;
+                $email      = null;
+                $resellerId = null;
             }
         }
 
         $dispatcher = app(NotificationDispatchService::class);
 
         // Email: only if reseller is active and has an email
-        if (!$skipInvited && $email) {
+        if ($email) {
             $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
             try {
                 EmailLogger::send(
@@ -76,7 +77,7 @@ class HandleDealDeclined implements ShouldQueue
         }
 
         // In-app: Referrer — fires when reseller is active and known, regardless of email
-        if (!$skipInvited && $resellerId) {
+        if ($resellerId) {
             try {
                 $dispatcher->dispatchToReseller(
                     resellerId:   $resellerId,

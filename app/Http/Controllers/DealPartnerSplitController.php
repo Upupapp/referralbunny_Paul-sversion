@@ -49,7 +49,7 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
-        if (Auth::guard('reseller')->check()) {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
         }
 
@@ -139,7 +139,7 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
-        if (Auth::guard('reseller')->check()) {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
         }
 
@@ -219,7 +219,7 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'Deal not found in this tenant.'], 404);
         }
 
-        if (Auth::guard('reseller')->check()) {
+        if (Auth::guard('reseller')->check() || Auth::guard('partner')->check()) {
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
         }
 
@@ -234,7 +234,7 @@ class DealPartnerSplitController extends Controller
             ->first();
 
         try {
-            $this->service->remove($tenantId, $splitId, $this->resolveActorId());
+            $this->service->remove($tenantId, $splitId, $this->resolveActorId(), $lead->id);
 
             // Record removal activity
             if ($oldSplit) {

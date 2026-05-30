@@ -273,6 +273,10 @@ class LeadController extends Controller
 
     private function doStore(Request $request): JsonResponse
     {
+        if (Auth::guard('partner')->check()) {
+            return response()->json(['message' => 'Partners cannot create deals.'], 403);
+        }
+
         if (Auth::guard('tenant')->check()) {
             if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
                 return response()->json(['message' => 'You do not have permission to create deals.'], 403);
@@ -586,13 +590,17 @@ class LeadController extends Controller
             return response()->json(['message' => 'You do not have permission to update deals.'], 403);
         }
 
-        // Resellers and Partners cannot modify financial fields — strip them from the request
+        // Resellers and Partners cannot modify financial fields — strip them before blocking partners entirely
         $isReferrer = \Illuminate\Support\Facades\Auth::guard('reseller')->check();
         $isPartner  = \Illuminate\Support\Facades\Auth::guard('partner')->check();
         if ($isReferrer || $isPartner) {
             $request->request->remove('base_cost');
             $request->request->remove('added_amount');
             $request->request->remove('deal_value');
+        }
+
+        if ($isPartner) {
+            return response()->json(['message' => 'Partners cannot update deals.'], 403);
         }
 
         $data = $request->validate([
@@ -1149,6 +1157,10 @@ class LeadController extends Controller
     {
         $lead->assertBelongsToCurrentTenant();
 
+        if (Auth::guard('partner')->check()) {
+            return response()->json(['message' => 'Partners cannot confirm deal amounts.'], 403);
+        }
+
         if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
             return response()->json(['message' => 'You do not have permission to confirm deal amounts.'], 403);
         }
@@ -1628,9 +1640,13 @@ class LeadController extends Controller
 
     public function updateCommissionSplits(Request $request, Lead $lead): JsonResponse
     {
-        // Partners are read-only — they cannot modify commission splits
+        // Partners and Referrers cannot modify commission splits
         if (Auth::guard('partner')->check()) {
             return response()->json(['error' => 'Partners cannot modify commission splits.'], 403);
+        }
+
+        if (Auth::guard('reseller')->check()) {
+            return response()->json(['error' => 'Referrers cannot modify commission splits.'], 403);
         }
 
         if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
@@ -1647,17 +1663,18 @@ class LeadController extends Controller
             'splits.*.activity_status' => 'nullable|string',
         ]);
 
-        // Batch-resolve canonical reseller names in one query (avoids N+1)
+        // Batch-resolve canonical reseller names + IDs in one query (avoids N+1 in cache-bust loop)
         $tenantIdForSplits = $lead->tenant_id;
         $lowerNames = array_unique(array_map(fn($s) => strtolower(trim($s['reseller_name'])), $data['splits']));
-        $canonicalMap = Reseller::where('tenant_id', $tenantIdForSplits)
+        $canonicalRows = Reseller::where('tenant_id', $tenantIdForSplits)
             ->whereIn(DB::raw('LOWER(name)'), $lowerNames)
-            ->pluck('name', DB::raw('LOWER(name)'))
-            ->toArray();
+            ->select('id', 'name')
+            ->get()
+            ->keyBy(fn($r) => strtolower($r->name));
 
-        $canonicalSplits = array_map(function (array $split) use ($canonicalMap) {
+        $canonicalSplits = array_map(function (array $split) use ($canonicalRows) {
             $key = strtolower(trim($split['reseller_name']));
-            $split['reseller_name'] = $canonicalMap[$key] ?? $split['reseller_name'];
+            $split['reseller_name'] = $canonicalRows[$key]?->name ?? $split['reseller_name'];
             return $split;
         }, $data['splits']);
 
@@ -1675,11 +1692,10 @@ class LeadController extends Controller
             'date'    => now()->toDateString(),
         ]);
 
-        // Bust critical-actions cache for all affected referrers
+        // Bust critical-actions cache — reuse batch result, no per-split DB query
         foreach ($canonicalSplits as $split) {
-            $rid = Reseller::where('tenant_id', $lead->tenant_id)
-                ->where('name', $split['reseller_name'])
-                ->value('id');
+            $row = $canonicalRows[strtolower($split['reseller_name'])] ?? null;
+            $rid = $row?->id;
             if ($rid) {
                 Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($split['reseller_name'] . ':' . $rid));
                 Cache::forget("referrer_perf:{$lead->tenant_id}:{$rid}");

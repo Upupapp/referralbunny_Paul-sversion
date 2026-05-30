@@ -95,7 +95,7 @@ class TenantContext
             if (!$tenant) abort(404, 'Tenant not found.');
             static::$tenantId = $membership->tenant_id;
             static::$tenant   = $tenant;
-            static::$userRole = $membership->role ?? 'admin';
+            static::$userRole = $membership->role ?? 'viewer';
             return static::$tenantId;
         }
 

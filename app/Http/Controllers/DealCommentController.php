@@ -25,7 +25,7 @@ class DealCommentController extends Controller
             if (Auth::guard($guard)->check()) {
                 $user = Auth::guard($guard)->user();
                 $role = match ($guard) {
-                    'tenant'   => 'tenant_admin',
+                    'tenant'   => TenantContext::role() ?? 'member',
                     'web'      => 'super_admin',
                     'reseller' => 'referrer',
                     'partner'  => 'partner',
@@ -141,7 +141,12 @@ class DealCommentController extends Controller
         $data = $request->validate([
             'body'              => 'nullable|string|max:10000',
             'visibility'        => 'nullable|in:shared,internal_admin',
-            'parent_comment_id' => 'nullable|string|exists:deal_comments,id',
+            'parent_comment_id' => [
+                'nullable', 'string',
+                \Illuminate\Validation\Rule::exists('deal_comments', 'id')
+                    ->where('tenant_id', $tenantId)
+                    ->where('deal_id', $dealId),
+            ],
             'mentions'          => 'nullable|string', // JSON-encoded array
             'files'             => 'nullable|array|max:5',
             'files.*'           => 'nullable|file|max:10240', // 10MB each
@@ -172,7 +177,7 @@ class DealCommentController extends Controller
 
         // Only admins/managers can post internal notes
         $visibility = $data['visibility'] ?? 'shared';
-        if ($visibility === 'internal_admin' && !in_array($role, ['tenant_admin', 'super_admin'])) {
+        if ($visibility === 'internal_admin' && !in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             $visibility = 'shared';
         }
 
@@ -312,8 +317,9 @@ class DealCommentController extends Controller
             ->firstOrFail();
 
         [$actorId, $role] = $this->resolveActor();
+        if (!$actorId) return response()->json(['error' => 'Unauthenticated.'], 401);
 
-        if ($comment->author_user_id !== $actorId && !in_array($role, ['tenant_admin', 'super_admin'])) {
+        if ($comment->author_user_id !== $actorId && !in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             return response()->json(['error' => 'You cannot edit this note.'], 403);
         }
 
@@ -344,8 +350,9 @@ class DealCommentController extends Controller
             ->firstOrFail();
 
         [$actorId, $role] = $this->resolveActor();
+        if (!$actorId) return response()->json(['error' => 'Unauthenticated.'], 401);
 
-        if ($comment->author_user_id !== $actorId && !in_array($role, ['tenant_admin', 'super_admin'])) {
+        if ($comment->author_user_id !== $actorId && !in_array($role, ['owner', 'admin', 'manager', 'super_admin'])) {
             return response()->json(['error' => 'You cannot delete this note.'], 403);
         }
 

@@ -116,11 +116,15 @@ class DealPartnerSplitService
     public function remove(
         string $tenantId,
         string $splitId,
-        string $actorId = 'system'
+        string $actorId = 'system',
+        ?string $dealId = null
     ): void {
-        $split = DealPartnerSplit::where('id', $splitId)
-            ->where('tenant_id', $tenantId)
-            ->firstOrFail();
+        $query = DealPartnerSplit::where('id', $splitId)
+            ->where('tenant_id', $tenantId);
+        if ($dealId) {
+            $query->where('deal_id', $dealId);
+        }
+        $split = $query->firstOrFail();
 
         $split->update([
             'status'             => 'removed',

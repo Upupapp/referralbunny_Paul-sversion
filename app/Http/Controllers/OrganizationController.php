@@ -147,8 +147,18 @@ class OrganizationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Derive tenant from context — never trust request body for non-super-admins
+        if (TenantContext::isSuperAdmin()) {
+            $request->validate(['tenant_id' => 'required|string|exists:tenants,id']);
+            $tenantId = $request->input('tenant_id');
+        } else {
+            $tenantId = TenantContext::requireId();
+            if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+                return response()->json(['error' => 'You do not have permission to create organizations.'], 403);
+            }
+        }
+
         $data = $request->validate([
-            'tenant_id' => 'required|string|exists:tenants,id',
             'name'      => 'required|string|max:255',
             'industry'  => 'nullable|string|max:150',
             'website'   => 'nullable|string|max:500',
@@ -161,7 +171,7 @@ class OrganizationController extends Controller
         $id = (string) Str::uuid();
         DB::table('organizations')->insert([
             'id'        => $id,
-            'tenant_id' => $data['tenant_id'],
+            'tenant_id' => $tenantId,
             'name'      => $data['name'],
             'industry'  => $data['industry'] ?? null,
             'website'   => $data['website'] ?? null,
@@ -178,6 +188,11 @@ class OrganizationController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
+        $tenantId = TenantContext::requireId();
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to update organizations.'], 403);
+        }
+
         $data = $request->validate([
             'name'     => 'sometimes|string|max:255',
             'industry' => 'nullable|string|max:150',
@@ -190,6 +205,7 @@ class OrganizationController extends Controller
 
         DB::table('organizations')
             ->where('id', $id)
+            ->where('tenant_id', $tenantId)
             ->update(array_merge($data, ['updated_at' => now()]));
 
         return response()->json($this->orgWithMeta($id));
@@ -197,7 +213,16 @@ class OrganizationController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        DB::table('organizations')->where('id', $id)->delete();
+        $tenantId = TenantContext::requireId();
+        if (!TenantContext::isSuperAdmin() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
+            return response()->json(['error' => 'You do not have permission to delete organizations.'], 403);
+        }
+
+        DB::table('organizations')
+            ->where('id', $id)
+            ->where('tenant_id', $tenantId)
+            ->delete();
+
         return response()->json(['deleted' => true]);
     }
 

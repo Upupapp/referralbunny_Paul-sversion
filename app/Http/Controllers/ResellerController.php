@@ -151,6 +151,10 @@ class ResellerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can invite referrers.'], 403);
+        }
+
         // Derive tenant from authenticated context; never trust request body for tenant admins
         $tenantId = TenantContext::id();
         if (!$tenantId) {
@@ -329,6 +333,10 @@ class ResellerController extends Controller
 
     public function update(Request $request, Reseller $reseller): JsonResponse
     {
+        if (!$this->callerIsTenantAdmin()) {
+            return response()->json(['error' => 'Only admins can update referrer profiles.'], 403);
+        }
+
         // Tenant isolation — reseller must belong to the caller's tenant
         $tenantId = TenantContext::id() ?? $request->input('tenant_id');
         if ($tenantId && $reseller->tenant_id !== $tenantId) {

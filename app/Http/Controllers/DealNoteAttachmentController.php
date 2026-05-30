@@ -256,7 +256,7 @@ class DealNoteAttachmentController extends Controller
             if (Auth::guard($guard)->check()) {
                 $user = Auth::guard($guard)->user();
                 $role = match ($guard) {
-                    'tenant'   => 'tenant_admin',
+                    'tenant'   => TenantContext::role() ?? 'member',
                     'web'      => 'super_admin',
                     'reseller' => 'referrer',
                     'partner'  => 'partner',

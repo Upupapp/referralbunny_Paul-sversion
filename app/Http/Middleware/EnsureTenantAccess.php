@@ -45,7 +45,7 @@ class EnsureTenantAccess
 
             // Bind membership to request for downstream use (nav + controllers)
             $request->merge(['_tenant_membership' => $cached]);
-            $request->attributes->set('_tenant_role', $cached['role'] ?? 'admin');
+            $request->attributes->set('_tenant_role', $cached['role'] ?? 'viewer');
 
             return $next($request);
         }
