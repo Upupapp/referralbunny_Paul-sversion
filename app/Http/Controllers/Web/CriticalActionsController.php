@@ -94,7 +94,8 @@ class CriticalActionsController extends Controller
                 $result['items'],
                 fn($item) => ($item['type'] ?? '') !== 'missing_referrer'
             ));
-            $result['total'] = count($result['items']);
+            $result['total']       = count($result['items']);
+            $result['total_pages'] = max(1, (int) ceil($result['total'] / ($result['per_page'] ?? 25)));
         }
 
         // Track "last seen" so new items can be highlighted.

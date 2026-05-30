@@ -388,7 +388,7 @@
 
     {{-- Kanban view --}}
     <div x-show="!loading && viewMode === 'kanban' && activeTab === 'deals'" class="overflow-x-auto pb-4">
-        <template x-if="filterStatus || filterStage || filterCommission || filterProvince || filterReseller || search">
+        <template x-if="filterStatus || filterStage || filterCommission || filterProvince || filterReseller || filterPartner || search">
             <div class="mb-3 flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18l-7 9.5V19l-4 2v-7.5L3 4z"/></svg>
                 <span>Kanban is showing filtered results.
@@ -444,7 +444,7 @@
                             </a>
                         </template>
                         <div x-show="leadsInStage(stage.key).length === 0" class="text-center py-6 text-gray-300 text-xs"
-                             x-text="(filterStatus || filterStage || filterCommission || filterProvince || filterReseller || search) ? 'No matches' : 'Empty'"></div>
+                             x-text="(filterStatus || filterStage || filterCommission || filterProvince || filterReseller || filterPartner || search) ? 'No matches' : 'Empty'"></div>
                     </div>
                 </div>
             </template>

@@ -150,12 +150,26 @@ class TenantAdminController extends Controller
             $canSeeUsers   = $permSvc->can($actingMembership, 'invite_tenant_staff');
         }
 
+        // Gate 'missing_referrer' items to users with view_referrers permission (mirrors deals() logic).
+        $canViewReferrers = true;
+        if (isset($actingMembership) && $actingMembership
+            && !in_array($actingMembership->role, ['owner', 'admin'])) {
+            $canViewReferrers = app(PermissionService::class)->can($actingMembership, 'view_referrers');
+        }
+
         // Critical actions for dashboard widget — wrapped so any DB issue never breaks the dashboard
         try {
             $criticalActions = app(CriticalActionService::class)
                 ->dashboardSummary($tenantId, 6, $canSeeBilling, $canSeeExports, $canSeeUsers);
         } catch (\Throwable) {
             $criticalActions = [];
+        }
+
+        if (!$canViewReferrers && !empty($criticalActions)) {
+            $criticalActions = array_values(array_filter(
+                $criticalActions,
+                fn($action) => ($action['type'] ?? '') !== 'missing_referrer'
+            ));
         }
 
         // Extra dashboard counts — cached 60s; short TTL keeps the KPI badges fresh without
@@ -210,7 +224,7 @@ class TenantAdminController extends Controller
         return view('tenant.dashboard', array_merge(
             compact('tenant', 'metric', 'accessExtendedNotif', 'dailyBriefing',
                     'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling',
-                    'pendingTasks', 'newDealsSinceLastSession'),
+                    'canViewReferrers', 'pendingTasks', 'newDealsSinceLastSession'),
             $this->configMeta($tenantId)
         ));
     }
