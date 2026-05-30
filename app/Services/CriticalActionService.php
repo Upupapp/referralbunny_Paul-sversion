@@ -695,7 +695,7 @@ class CriticalActionService
             'related_type'  => 'deal',
             'related_id'    => null,
             'occurred_at'   => now(),
-            'action_url'    => "/tenant/{$tenantId}/deals",
+            'action_url'    => "/tenant/{$tenantId}/deals?reseller_name=MISSING",
             'action_needed' => true,
             'source'        => 'leads',
         ])];

@@ -126,6 +126,7 @@ class TenantAdminController extends Controller
         }
 
         // Permission check for billing metrics in critical actions
+        $actingMembership = null;
         $canSeeBilling = false;
         if (auth('tenant')->check()) {
             $actingMembership = TenantMembership::where('tenant_user_id', auth('tenant')->id())

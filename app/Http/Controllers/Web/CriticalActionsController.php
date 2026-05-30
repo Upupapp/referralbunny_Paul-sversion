@@ -96,6 +96,7 @@ class CriticalActionsController extends Controller
             ));
             $result['total']       = count($result['items']);
             $result['total_pages'] = max(1, (int) ceil($result['total'] / ($result['per_page'] ?? 25)));
+            $result['page']        = 1;
         }
 
         // Track "last seen" so new items can be highlighted.

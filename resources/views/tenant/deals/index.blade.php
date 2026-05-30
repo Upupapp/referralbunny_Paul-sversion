@@ -79,7 +79,7 @@
                 </button>
             </template>
             <template x-if="canViewReferrers && missingReferrerCount > 0">
-                <button @click="filterStatus = ''; filterStage = ''; filterReseller = 'MISSING'; applyFilters()"
+                <button @click="filterStatus = ''; filterStage = ''; filterCommission = ''; filterProvince = ''; filterPartner = ''; filterReseller = 'MISSING'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>
                     <span x-text="missingReferrerCount + ' deal' + (missingReferrerCount > 1 ? 's' : '') + ' missing Referrer'"></span>
@@ -935,7 +935,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = true) {
                 this.filterStatus = preStatus;
             }
             if (preReseller) {
-                this.filterReseller = decodeURIComponent(preReseller);
+                try { this.filterReseller = decodeURIComponent(preReseller); } catch (e) {}
             }
 
             try {

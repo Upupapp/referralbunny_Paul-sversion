@@ -233,7 +233,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 transition-colors">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                        <p class="text-[11px] text-gray-400 truncate">{{ $deal->reseller_name ?? 'Unassigned' }} · {{ $dealAge }}</p>
+                        <p class="text-[11px] text-gray-400 truncate">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'Unassigned') : 'Referrer hidden' }} · {{ $dealAge }}</p>
                     </div>
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 {{ $sb }}">
                         {{ $stageLabel }}
@@ -381,7 +381,7 @@ document.addEventListener('alpine:init', () => {
                 'url'    => route('tenant.deals', $tenant->id),
                 'tip'    => 'Active deals with no Referrer assigned.',
                 'icon'   => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                'show'   => $dashIsAdmin && ($canViewReferrers ?? true),
+                'show'   => $dashIsAdmin && ($canViewReferrers ?? false),
             ],
         ], fn($qc) => $qc['show']);
         @endphp
@@ -920,7 +920,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $deal->reseller_name ?? 'No referrer' }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : 'Referrer hidden' }}</p>
                             </div>
                             <div class="text-right shrink-0">
                                 <span class="inline-block text-xs font-bold px-2 py-0.5 rounded-full"
@@ -954,7 +954,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-semibold text-[#1E1B4B] truncate">{{ $deal->name }}</p>
-                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ $deal->reseller_name ?? 'No referrer' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
+                                <p class="text-xs text-gray-400 truncate mt-0.5">{{ ($canViewReferrers ?? false) ? ($deal->reseller_name ?? 'No referrer') : 'Referrer hidden' }} · {{ ucfirst(str_replace('_', ' ', $deal->stage)) }}</p>
                             </div>
                             @if($deal->deal_value)
                             <p class="text-sm font-bold text-[#1E1B4B] shrink-0">₱{{ number_format($deal->deal_value) }}</p>

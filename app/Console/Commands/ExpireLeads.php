@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\DealExpired;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -12,11 +13,31 @@ class ExpireLeads extends Command
 
     public function handle(): int
     {
+        // Collect leads about to expire BEFORE the bulk update so we can dispatch events.
+        $aboutToExpire = DB::table('leads')
+            ->whereIn('status', ['active', 'expiring'])
+            ->where('days_left', '<=', 0)
+            ->get(['id', 'name', 'tenant_id', 'reseller_name', 'stage', 'reseller_email']);
+
         // Expire: days_left has hit 0 or below
         $expired = DB::table('leads')
             ->whereIn('status', ['active', 'expiring'])
             ->where('days_left', '<=', 0)
             ->update(['status' => 'expired']);
+
+        // Dispatch per-deal events so listeners (admin/reseller notifications) fire correctly.
+        foreach ($aboutToExpire as $lead) {
+            try {
+                DealExpired::dispatch(
+                    (string) $lead->id,
+                    (string) $lead->name,
+                    (string) $lead->tenant_id,
+                    (string) ($lead->reseller_name ?? ''),
+                    (string) ($lead->stage ?? ''),
+                    $lead->reseller_email ?? null,
+                );
+            } catch (\Throwable) {}
+        }
 
         // Warn: days_left is 1–7 and still active
         $expiring = DB::table('leads')
