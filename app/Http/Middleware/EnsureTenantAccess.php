@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use App\Models\TenantMembership;
 use Closure;
 use Illuminate\Http\Request;
@@ -31,6 +32,14 @@ class EnsureTenantAccess
             }
 
             $tenantId = $request->route('tenantId');
+
+            // Verify the tenant itself is not suspended/cancelled
+            $tenantStatus = Cache::remember("tenant_status:{$tenantId}", 60, fn() =>
+                Tenant::where('id', $tenantId)->value('status')
+            );
+            if ($tenantStatus && in_array($tenantStatus, ['inactive', 'suspended', 'cancelled'], true)) {
+                abort(403, 'This workspace is no longer active. Please contact support.');
+            }
             $userId   = Auth::guard('tenant')->id();
 
             $cacheKey = "tenant_membership:{$userId}:{$tenantId}";

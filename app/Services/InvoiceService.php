@@ -8,6 +8,7 @@ use App\Models\Credit;
 use App\Models\ExchangeRate;
 use App\Models\Tenant;
 use App\Models\BillingAuditLog;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
@@ -29,42 +30,50 @@ class InvoiceService
 
         $displayAmount = round($baseAmountPhp * $rate, 2);
 
-        // Apply pending credits
-        $availableCredits = Credit::where('tenant_id', $tenant->id)
-            ->whereNull('applied_to_invoice_id')
-            ->sum('amount');
-        $creditsApplied = min($availableCredits, $baseAmountPhp);
-        $finalAmount    = max(0, $baseAmountPhp - $creditsApplied);
-
-        $invoice = Invoice::create([
-            'tenant_id'          => $tenant->id,
-            'subscription_id'    => $subscription->id,
-            'invoice_number'     => Invoice::generateNumber(),
-            'base_amount_php'    => $baseAmountPhp,
-            'display_amount'     => $displayAmount,
-            'display_currency'   => $currency,
-            'exchange_rate_used' => $rate,
-            'credits_applied'    => $creditsApplied,
-            'final_amount'       => $finalAmount,
-            'status'             => 'open',
-            'due_date'           => now()->addDays(7)->toDateString(),
-            'line_items_json'    => $lineItems ?: [[
-                'description' => ($subscription->plan?->name ?? 'Subscription') . ' — ' . ucfirst($subscription->billing_cycle),
-                'amount_php'  => $baseAmountPhp,
-                'amount_display' => $displayAmount,
-                'currency'    => $currency,
-            ]],
-            'notes' => $notes,
-        ]);
-
-        // Mark credits as applied
-        if ($creditsApplied > 0) {
+        $invoice = DB::transaction(function () use ($tenant, $subscription, $baseAmountPhp, $displayAmount, $currency, $rate, $lineItems, $notes) {
+            // Lock credits for this tenant to prevent concurrent double-application
             Credit::where('tenant_id', $tenant->id)
                 ->whereNull('applied_to_invoice_id')
-                ->take(10)
-                ->get()
-                ->each(fn($c) => $c->update(['applied_to_invoice_id' => $invoice->id]));
-        }
+                ->lockForUpdate()
+                ->get();
+
+            $availableCredits = Credit::where('tenant_id', $tenant->id)
+                ->whereNull('applied_to_invoice_id')
+                ->sum('amount');
+            $creditsApplied = min($availableCredits, $baseAmountPhp);
+            $finalAmount    = max(0, $baseAmountPhp - $creditsApplied);
+
+            $inv = Invoice::create([
+                'tenant_id'          => $tenant->id,
+                'subscription_id'    => $subscription->id,
+                'invoice_number'     => Invoice::generateNumber(),
+                'base_amount_php'    => $baseAmountPhp,
+                'display_amount'     => $displayAmount,
+                'display_currency'   => $currency,
+                'exchange_rate_used' => $rate,
+                'credits_applied'    => $creditsApplied,
+                'final_amount'       => $finalAmount,
+                'status'             => 'open',
+                'due_date'           => now()->addDays(7)->toDateString(),
+                'line_items_json'    => $lineItems ?: [[
+                    'description'    => ($subscription->plan?->name ?? 'Subscription') . ' — ' . ucfirst($subscription->billing_cycle),
+                    'amount_php'     => $baseAmountPhp,
+                    'amount_display' => $displayAmount,
+                    'currency'       => $currency,
+                ]],
+                'notes' => $notes,
+            ]);
+
+            if ($creditsApplied > 0) {
+                Credit::where('tenant_id', $tenant->id)
+                    ->whereNull('applied_to_invoice_id')
+                    ->take(10)
+                    ->get()
+                    ->each(fn($c) => $c->update(['applied_to_invoice_id' => $inv->id]));
+            }
+
+            return $inv;
+        });
 
         BillingAuditLog::log('invoice_created', [
             'tenant_id'   => $tenant->id,

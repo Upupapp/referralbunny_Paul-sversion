@@ -560,7 +560,9 @@ class LeadController extends Controller
     private function callerIsTenantAdmin(): bool
     {
         if (Auth::guard('web')->check()) return true;
-        if (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User) return true;
+        // Sanctum User tokens are only granted to super-admins (platform/web users)
+        if (Auth::guard('sanctum')->check() && Auth::guard('sanctum')->user() instanceof \App\Models\User
+            && TenantContext::isSuperAdmin()) return true;
         if (Auth::guard('tenant')->check()) {
             return in_array(TenantContext::role(), ['owner', 'admin', 'manager']);
         }
@@ -1151,7 +1153,10 @@ class LeadController extends Controller
 
         Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $data['ids'])
-            ->update(['deleted_by' => $actorName, 'deleted_at' => now()]);
+            ->each(function ($lead) use ($actorName) {
+                $lead->deleted_by = $actorName;
+                $lead->delete();
+            });
 
         Log::info('Bulk deal archive (soft-delete)', [
             'tenant_id'  => $tenantId,

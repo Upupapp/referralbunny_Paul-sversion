@@ -5,13 +5,19 @@ namespace App\Services;
 use App\Models\ApprovalRequest;
 use App\Models\PromoCode;
 use App\Models\Promotion;
+use App\Models\TenantMembership;
+use App\Models\TenantUser;
 use Illuminate\Support\Facades\DB;
 use App\Models\Plan;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ApprovalService
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private NotificationDispatchService $dispatcher,
+    ) {}
 
     public function request(
         string $type,
@@ -72,6 +78,9 @@ class ApprovalService
             channel:   'in_app',
             metadata:  ['approval_id' => $approval->id],
         );
+
+        // Notify the requester (tenant admin) directly
+        $this->notifyRequester($approval, 'approved');
     }
 
     public function reject(ApprovalRequest $approval, int $rejectedBy, ?string $notes = null): void
@@ -101,6 +110,9 @@ class ApprovalService
             channel:   'in_app',
             metadata:  ['approval_id' => $approval->id],
         );
+
+        // Notify the requester (tenant admin) directly
+        $this->notifyRequester($approval, 'rejected');
     }
 
     public function getQueue(): Collection
@@ -165,6 +177,44 @@ class ApprovalService
             'changed_by'          => $approval->approved_by,
             'approval_request_id' => $approval->id,
         ]);
+    }
+
+    private function notifyRequester(ApprovalRequest $approval, string $decision): void
+    {
+        try {
+            $requester = TenantUser::find($approval->requested_by);
+            if (!$requester) return;
+
+            // Find the tenant the requester belongs to for a scoped URL
+            $tenantId = TenantMembership::where('tenant_user_id', $requester->id)
+                ->where('status', 'active')
+                ->value('tenant_id');
+
+            $actionUrl = $tenantId
+                ? "/tenant/{$tenantId}/billing"
+                : "/platform/billing/approvals/{$approval->id}";
+
+            $label      = $this->describeType($approval->request_type);
+            $title      = $decision === 'approved' ? "Request approved: {$label}" : "Request rejected: {$label}";
+            $body       = $decision === 'approved'
+                ? "Your {$label} request has been approved."
+                : "Your {$label} request has been rejected. Please contact your platform admin for details.";
+
+            $this->dispatcher->dispatch(
+                category:         'billing',
+                priority:         $decision === 'approved' ? 'normal' : 'high',
+                title:            $title,
+                body:             $body,
+                notifiableType:   'tenant_user',
+                notifiableId:     (string) $requester->id,
+                tenantId:         $tenantId,
+                actionUrl:        $actionUrl,
+                actionLabel:      'View Billing',
+                deduplicationKey: "billing:{$requester->id}:approval_{$decision}.{$approval->id}",
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[ApprovalService] Failed to notify requester', ['approval_id' => $approval->id, 'error' => $e->getMessage()]);
+        }
     }
 
     private function describeType(string $type): string

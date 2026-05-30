@@ -207,9 +207,23 @@ class TenantAuthWebController extends Controller
             return back()->withErrors(['email' => 'No account found with that email address.']);
         }
 
-        $user->update(['password' => Hash::make($data['password'])]);
+        DB::transaction(function () use ($data, $user) {
+            // Lock the token row to prevent concurrent reuse of the same token
+            $locked = DB::table('password_reset_tokens')
+                ->where('email', $data['email'])
+                ->lockForUpdate()
+                ->first();
 
-        DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+            if (!$locked || !Hash::check($data['token'], $locked->token)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'token' => ['This reset link has already been used or has expired.'],
+                ]);
+            }
+
+            $user->update(['password' => Hash::make($data['password'])]);
+
+            DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
+        });
 
         return redirect()->route('tenant.login')
             ->with('success', 'Password updated successfully. You can now sign in with your new password.');

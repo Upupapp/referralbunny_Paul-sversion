@@ -186,7 +186,7 @@ class CriticalActionService
                     ->orderByDesc('created_at')
                     ->select('status', 'trial_end_date')
                     ->first();
-                if ($sub && $sub->status === 'suspended') {
+                if ($sub && in_array($sub->status, ['suspended', 'past_due'], true)) {
                     $count++;
                     $hasUrgent = true;
                 } elseif ($sub && $sub->status === 'trial' && !empty($sub->trial_end_date)) {
@@ -1750,6 +1750,23 @@ class CriticalActionService
                     'occurred_at'   => $sub->updated_at ?? now(),
                     'action_url'    => "/tenant/{$tenantId}/billing",
                     'action_label'  => 'Review Billing',
+                    'action_needed' => true,
+                    'source'        => 'subscriptions',
+                ]);
+            } elseif ($sub->status === 'past_due') {
+                $actions[] = $this->make([
+                    'type'          => 'payment_overdue',
+                    'category'      => 'billing',
+                    'severity'      => 'urgent',
+                    'summary'       => 'Payment overdue — subscription at risk of suspension',
+                    'actor_name'    => 'System',
+                    'actor_role'    => 'System',
+                    'related_label' => 'Subscription',
+                    'related_type'  => 'billing',
+                    'related_id'    => $sub->id ?? null,
+                    'occurred_at'   => $sub->updated_at ?? now(),
+                    'action_url'    => "/tenant/{$tenantId}/billing",
+                    'action_label'  => 'Update Payment',
                     'action_needed' => true,
                     'source'        => 'subscriptions',
                 ]);

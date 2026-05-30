@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Payment;
+use App\Models\Subscription;
+use App\Services\BillingService;
 use App\Services\NotificationService;
 use Illuminate\Console\Command;
 
@@ -11,7 +13,7 @@ class RetryFailedPayments extends Command
     protected $signature   = 'billing:retry-payments';
     protected $description = 'Retry failed payments on schedule (Day 1, 3, 7)';
 
-    public function handle(NotificationService $notifications): void
+    public function handle(NotificationService $notifications, BillingService $billing): void
     {
         $retryDays = [1, 3, 7];
 
@@ -34,17 +36,30 @@ class RetryFailedPayments extends Command
         }
 
         // Suspend tenants with 3+ failed retries (day 7+)
-        $suspended = Payment::where('status', 'failed')
+        $toSuspend = Payment::where('status', 'failed')
             ->where('retry_count', '>=', 3)
             ->whereDate('updated_at', today())
             ->get();
 
-        foreach ($suspended as $payment) {
+        foreach ($toSuspend as $payment) {
+            try {
+                $subscription = Subscription::where('tenant_id', $payment->tenant_id)
+                    ->whereIn('status', ['active', 'trial', 'past_due'])
+                    ->latest()
+                    ->first();
+
+                if ($subscription) {
+                    $billing->suspend($subscription);
+                }
+            } catch (\Throwable $e) {
+                $this->error("Failed to suspend tenant {$payment->tenant_id}: {$e->getMessage()}");
+            }
+
             $notifications->send(
                 category:  'billing',
                 type:      'action_required',
                 priority:  'critical',
-                message:   "Payment failed after 3 retries. Account may be suspended.",
+                message:   "Payment failed after 3 retries. Account suspended.",
                 tenantId:  $payment->tenant_id,
                 channel:   'all',
             );

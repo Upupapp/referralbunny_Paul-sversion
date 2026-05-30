@@ -9,6 +9,7 @@ use App\Services\BillingService;
 use App\Services\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TenantController extends Controller
@@ -40,43 +41,47 @@ class TenantController extends Controller
 
         $slug = Str::slug($data['name']) . '-' . time();
 
-        $tenant = Tenant::create([
-            'id'           => $slug,
-            'name'         => $data['name'],
-            'slug'         => $slug,
-            'program_name' => $data['program_name'],
-            'description'  => $data['description'] ?? null,
-            'accent_color' => $data['accent_color'] ?? '#FF8A3D',
-            'admin_name'   => $data['admin_name'] ?? null,
-            'admin_email'  => $data['admin_email'],
-            'industry'     => $data['industry'] ?? null,
-            'status'       => $data['status'] ?? 'trial',
-        ]);
-
-        if (!empty($data['config'])) {
-            $commissionPayload = $data['config']['commission'] ?? [];
-            // LOCKED: lgu-ids commission rates must never be overridden
-            if ($tenant->id === 'lgu-ids') {
-                unset($commissionPayload['commission_pool_rate'], $commissionPayload['company_share_rate']);
-            }
-            TenantConfig::create([
-                'tenant_id'                 => $tenant->id,
-                'lead_type'                 => $data['config']['leadType'] ?? 'custom',
-                'lead_label'                => $data['config']['leadLabel'] ?? 'Lead',
-                'fields'                    => $data['config']['fields'] ?? [],
-                'stages'                    => $data['config']['stages'] ?? [],
-                'commission'                => $commissionPayload,
-                'primary_identifier_fields' => $data['config']['primaryIdentifierFields'] ?? [],
+        $tenant = DB::transaction(function () use ($data, $slug) {
+            $t = Tenant::create([
+                'id'           => $slug,
+                'name'         => $data['name'],
+                'slug'         => $slug,
+                'program_name' => $data['program_name'],
+                'description'  => $data['description'] ?? null,
+                'accent_color' => $data['accent_color'] ?? '#FF8A3D',
+                'admin_name'   => $data['admin_name'] ?? null,
+                'admin_email'  => $data['admin_email'],
+                'industry'     => $data['industry'] ?? null,
+                'status'       => $data['status'] ?? 'trial',
             ]);
-        }
 
-        if (!empty($data['sub_industries'])) {
-            foreach ($data['sub_industries'] as $sub) {
-                TenantSubIndustry::create(['tenant_id' => $tenant->id, 'sub_industry' => $sub]);
+            if (!empty($data['config'])) {
+                $commissionPayload = $data['config']['commission'] ?? [];
+                // LOCKED: lgu-ids commission rates must never be overridden
+                if ($t->id === 'lgu-ids') {
+                    unset($commissionPayload['commission_pool_rate'], $commissionPayload['company_share_rate']);
+                }
+                TenantConfig::create([
+                    'tenant_id'                 => $t->id,
+                    'lead_type'                 => $data['config']['leadType'] ?? 'custom',
+                    'lead_label'                => $data['config']['leadLabel'] ?? 'Lead',
+                    'fields'                    => $data['config']['fields'] ?? [],
+                    'stages'                    => $data['config']['stages'] ?? [],
+                    'commission'                => $commissionPayload,
+                    'primary_identifier_fields' => $data['config']['primaryIdentifierFields'] ?? [],
+                ]);
             }
-        }
 
-        // Auto-start 15-day trial
+            if (!empty($data['sub_industries'])) {
+                foreach ($data['sub_industries'] as $sub) {
+                    TenantSubIndustry::create(['tenant_id' => $t->id, 'sub_industry' => $sub]);
+                }
+            }
+
+            return $t;
+        });
+
+        // Auto-start 15-day trial (outside transaction — non-fatal if it fails)
         try {
             app(BillingService::class)->startTrial($tenant);
         } catch (\Throwable $e) {

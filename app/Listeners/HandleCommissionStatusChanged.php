@@ -116,6 +116,32 @@ class HandleCommissionStatusChanged implements ShouldQueue
             }
         }
 
+        // Notify tenant admins when commission is locked or paid
+        if (in_array($event->newStatus, ['locked', 'paid'], true)) {
+            try {
+                $adminTitles = [
+                    'locked' => "Commission locked — {$event->leadName}",
+                    'paid'   => "Commission paid — {$event->leadName}",
+                ];
+                $adminBodies = [
+                    'locked' => "The commission for deal \"{$event->leadName}\" has been locked. Referrer: " . ($event->resellerName ?: 'N/A') . ".",
+                    'paid'   => "The commission for deal \"{$event->leadName}\" has been marked as paid.",
+                ];
+                $dispatcher->dispatchToTenantAdmins(
+                    tenantId:     $event->tenantId,
+                    category:     'commission',
+                    priority:     'high',
+                    title:        $adminTitles[$event->newStatus],
+                    body:         $adminBodies[$event->newStatus],
+                    actionUrl:    url("/tenant/{$event->tenantId}/deals/{$event->leadId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "admin_commission_{$event->newStatus}.{$event->leadId}",
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[HandleCommissionStatusChanged] Admin notification failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         // Notify partners who have an active split on this deal
         try {
             $partnerSplits = DB::table('deal_partner_splits')

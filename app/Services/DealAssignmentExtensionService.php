@@ -111,20 +111,24 @@ class DealAssignmentExtensionService
         $newDaysLeft      = max(0, ($deal->days_left ?? 0)) + $approvedDays;
         $approvedExpiryAt = now()->addDays($newDaysLeft);
 
-        DB::table('leads')->where('id', $deal->id)->update([
-            'days_left'  => $newDaysLeft,
-            'status'     => 'active', // reactivate if expired
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $deal, $newDaysLeft, $approvedExpiryAt, $approvedDays, $adminNote, $reviewerUserId) {
+            DB::table('leads')->where('id', $deal->id)->lockForUpdate()->first();
 
-        $request->update([
-            'status'                 => 'approved',
-            'approved_days'          => $approvedDays,
-            'approved_new_expiry_at' => $approvedExpiryAt,
-            'admin_note'             => $adminNote,
-            'reviewed_by_user_id'    => $reviewerUserId,
-            'reviewed_at'            => now(),
-        ]);
+            DB::table('leads')->where('id', $deal->id)->update([
+                'days_left'  => $newDaysLeft,
+                'status'     => 'active',
+                'updated_at' => now(),
+            ]);
+
+            $request->update([
+                'status'                 => 'approved',
+                'approved_days'          => $approvedDays,
+                'approved_new_expiry_at' => $approvedExpiryAt,
+                'admin_note'             => $adminNote,
+                'reviewed_by_user_id'    => $reviewerUserId,
+                'reviewed_at'            => now(),
+            ]);
+        });
 
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'approved');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_approved', $reviewerUserId, [

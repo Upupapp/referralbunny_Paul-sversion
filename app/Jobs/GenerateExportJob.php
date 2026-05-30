@@ -18,13 +18,24 @@ class GenerateExportJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 2;
-    public int $timeout = 300;
-    public int $backoff = 60;
+    public int    $tries   = 2;
+    public int    $timeout = 300;
+    public int    $backoff = 60;
+    public string $queue   = 'exports';
 
     public function __construct(
         private string $exportRequestId,
     ) {}
+
+    public function failed(Throwable $e): void
+    {
+        try {
+            $request = ExportRequest::find($this->exportRequestId);
+            if ($request && in_array($request->status, ['processing', 'approved', 'pending', 'direct_pending'], true)) {
+                app(ExportApprovalService::class)->markFailed($request, 'Job failed permanently: ' . $e->getMessage());
+            }
+        } catch (\Throwable) {}
+    }
 
     // ── Entry point ───────────────────────────────────────────────────────────
 

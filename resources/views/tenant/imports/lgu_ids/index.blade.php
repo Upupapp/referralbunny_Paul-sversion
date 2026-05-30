@@ -73,7 +73,7 @@
                 Go to the Referrers tab to send their invitation emails.
             </p>
         </div>
-        <a href="{{ route('tenant.resellers', $tenant->id) }}"
+        <a href="{{ route('tenant.referrers', $tenant->id) }}"
            class="shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
            style="background: #FDE68A; color: #92400E;" onmouseover="this.style.background='#FCD34D'" onmouseout="this.style.background='#FDE68A'">
             Go to Referrers

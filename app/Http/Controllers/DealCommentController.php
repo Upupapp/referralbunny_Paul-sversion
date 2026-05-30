@@ -45,7 +45,36 @@ class DealCommentController extends Controller
 
         $deal = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
 
-        [, $role] = $this->resolveActor();
+        [$actorId, $role, $actor] = $this->resolveActor();
+
+        // Referrers and partners may only read comments on deals they are assigned to
+        if ($role === 'referrer' && $actorId) {
+            $isPrimary = ($deal->reseller_id && (string) $deal->reseller_id === (string) $actorId)
+                || strcasecmp((string) ($actor->name ?? ''), (string) ($deal->reseller_name ?? '')) === 0;
+            $isCoReferrer = !$isPrimary && DB::table('commission_splits')
+                ->where('lead_id', $dealId)
+                ->whereRaw('LOWER(reseller_name) = ?', [strtolower($actor->name ?? '')])
+                ->exists();
+            if (!$isPrimary && !$isCoReferrer) {
+                return response()->json(['error' => 'You are not assigned to this deal.'], 403);
+            }
+        }
+
+        if ($role === 'partner' && $actorId) {
+            $inDealPartners = DB::table('deal_partners')
+                ->where('deal_id', $dealId)
+                ->where('partner_user_id', $actorId)
+                ->whereNull('deleted_at')
+                ->exists();
+            $inPartnerSplits = !$inDealPartners && DB::table('deal_partner_splits')
+                ->where('deal_id', $dealId)
+                ->where('partner_user_id', $actorId)
+                ->whereNull('deleted_at')
+                ->exists();
+            if (!$inDealPartners && !$inPartnerSplits) {
+                return response()->json(['error' => 'You are not associated with this deal.'], 403);
+            }
+        }
 
         $limit  = min((int) $request->get('limit', 50), 100);
         $before = $request->get('before_id');

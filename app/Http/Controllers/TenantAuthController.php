@@ -8,6 +8,7 @@ use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -90,38 +91,42 @@ class TenantAuthController extends Controller
         $slug     = Str::slug($request->tenant_name);
         $tenantId = $slug . '-' . Str::random(6);
 
-        $tenant = Tenant::create([
-            'id'                 => $tenantId,
-            'name'               => $request->tenant_name,
-            'slug'               => $tenantId,
-            'program_name'       => $request->tenant_name . ' Referral Program',
-            'industry'           => $request->industry,
-            'status'             => 'trial',
-            'country'            => $request->country,
-            'timezone'           => $request->timezone,
-            'preferred_currency' => $request->preferred_currency,
-            'website'            => $request->website,
-            'admin_name'         => $request->first_name . ' ' . $request->last_name,
-            'admin_email'        => $email,
-        ]);
+        [$tenant, $user, $membership] = DB::transaction(function () use ($request, $tenantId, $email) {
+            $t = Tenant::create([
+                'id'                 => $tenantId,
+                'name'               => $request->tenant_name,
+                'slug'               => $tenantId,
+                'program_name'       => $request->tenant_name . ' Referral Program',
+                'industry'           => $request->industry,
+                'status'             => 'trial',
+                'country'            => $request->country,
+                'timezone'           => $request->timezone,
+                'preferred_currency' => $request->preferred_currency,
+                'website'            => $request->website,
+                'admin_name'         => $request->first_name . ' ' . $request->last_name,
+                'admin_email'        => $email,
+            ]);
 
-        $user = TenantUser::create([
-            'first_name' => $request->first_name,
-            'last_name'  => $request->last_name,
-            'email'      => $email,
-            'password'   => Hash::make($request->password),
-            'status'     => 'active',
-        ]);
+            $u = TenantUser::create([
+                'first_name' => $request->first_name,
+                'last_name'  => $request->last_name,
+                'email'      => $email,
+                'password'   => Hash::make($request->password),
+                'status'     => 'active',
+            ]);
 
-        $membership = TenantMembership::create([
-            'tenant_id'                 => $tenant->id,
-            'tenant_user_id'            => $user->id,
-            'role'                      => 'owner',
-            'status'                    => 'active',
-            'joined_by_invitation'      => false,
-            'password_review_completed' => true,
-            'setup_completed'           => false,
-        ]);
+            $m = TenantMembership::create([
+                'tenant_id'                 => $t->id,
+                'tenant_user_id'            => $u->id,
+                'role'                      => 'owner',
+                'status'                    => 'active',
+                'joined_by_invitation'      => false,
+                'password_review_completed' => true,
+                'setup_completed'           => false,
+            ]);
+
+            return [$t, $u, $m];
+        });
 
         $token = $user->createToken('tenant-api-token')->plainTextToken;
 

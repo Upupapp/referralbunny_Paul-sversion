@@ -24,7 +24,11 @@ class TenantUser extends Authenticatable
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['id' => 'string'];
+    protected $casts = [
+        'id'                => 'string',
+        'password'          => 'hashed',
+        'email_verified_at' => 'datetime',
+    ];
 
     protected static function boot(): void
     {
