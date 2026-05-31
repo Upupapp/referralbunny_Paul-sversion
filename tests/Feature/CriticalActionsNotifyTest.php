@@ -5,14 +5,18 @@ namespace Tests\Feature;
 use App\Events\DealExpired;
 use App\Events\ImportFailed;
 use App\Events\DealStageMoved;
+use App\Jobs\ProcessImportRollbackJob;
 use App\Listeners\HandleImportFailed;
 use App\Listeners\HandleDealExpired;
 use App\Listeners\HandleDealStageMoved;
+use App\Models\ImportBatch;
+use App\Models\ImportRollback;
 use App\Models\Notification;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use App\Models\Reseller;
+use App\Services\CriticalActionService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -521,5 +525,146 @@ class CriticalActionsNotifyTest extends TestCase
             Cache::has("ca_badge_{$tenant->id}_{$admin->id}"),
             'Deal expiry should clear the admin CA badge'
         );
+    }
+
+    // ── Phase 9: invalidateAllAdminBadges — all 3 key formats ─────
+
+    /** @test */
+    public function invalidate_all_admin_badges_clears_all_three_key_formats_per_user(): void
+    {
+        $tenant = $this->createTenant();
+        $admin1 = $this->createAdmin($tenant, 'admin');
+        $admin2 = $this->createAdmin($tenant, 'manager');
+
+        // Plant all 3 key formats for each admin
+        foreach ([$admin1, $admin2] as $admin) {
+            Cache::put("ca_badge_{$tenant->id}_{$admin->id}", 5, 300);
+            Cache::put("ca_badge_urgent:{$tenant->id}:{$admin->id}", true, 300);
+            Cache::put("ca_badge_suppressed:{$tenant->id}:{$admin->id}", true, 300);
+        }
+
+        app(CriticalActionService::class)->invalidateAllAdminBadges($tenant->id);
+
+        foreach ([$admin1, $admin2] as $admin) {
+            $this->assertFalse(Cache::has("ca_badge_{$tenant->id}_{$admin->id}"), 'Count key must be cleared');
+            $this->assertFalse(Cache::has("ca_badge_urgent:{$tenant->id}:{$admin->id}"), 'Urgent key must be cleared');
+            $this->assertFalse(Cache::has("ca_badge_suppressed:{$tenant->id}:{$admin->id}"), 'Suppressed key must be cleared');
+        }
+    }
+
+    /** @test */
+    public function invalidate_all_admin_badges_does_not_clear_keys_of_other_tenant(): void
+    {
+        $tenantA = $this->createTenant();
+        $tenantB = $this->createTenant();
+        $adminA  = $this->createAdmin($tenantA, 'admin');
+        $adminB  = $this->createAdmin($tenantB, 'admin');
+
+        Cache::put("ca_badge_{$tenantB->id}_{$adminB->id}", 3, 300);
+        Cache::put("ca_badge_urgent:{$tenantB->id}:{$adminB->id}", true, 300);
+        Cache::put("ca_badge_suppressed:{$tenantB->id}:{$adminB->id}", true, 300);
+
+        // Bust only tenant A's badges
+        app(CriticalActionService::class)->invalidateAllAdminBadges($tenantA->id);
+
+        // Tenant B's keys must be untouched
+        $this->assertTrue(Cache::has("ca_badge_{$tenantB->id}_{$adminB->id}"), 'Cross-tenant count key must survive');
+        $this->assertTrue(Cache::has("ca_badge_urgent:{$tenantB->id}:{$adminB->id}"), 'Cross-tenant urgent key must survive');
+        $this->assertTrue(Cache::has("ca_badge_suppressed:{$tenantB->id}:{$adminB->id}"), 'Cross-tenant suppressed key must survive');
+    }
+
+    // ── Phase 10: ProcessImportRollbackJob::failed() handler ─────
+
+    /** @test */
+    public function rollback_job_failed_handler_marks_rollback_failed_and_clears_badge(): void
+    {
+        $tenant   = $this->createTenant();
+        $admin    = $this->createAdmin($tenant, 'admin');
+        $batchId  = (string) Str::uuid();
+        $rollbackId = (string) Str::uuid();
+
+        DB::table('import_batches')->insert([
+            'id'          => $batchId,
+            'tenant_id'   => $tenant->id,
+            'import_type' => 'deals',
+            'file_name'   => 'test.csv',
+            'status'      => 'completed',
+            'rollback_status' => 'processing',
+            'total_rows'  => 1,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        DB::table('import_rollbacks')->insert([
+            'id'              => $rollbackId,
+            'import_batch_id' => $batchId,
+            'tenant_id'       => $tenant->id,
+            'status'          => 'processing',
+            'mode'            => 'full',
+            'requested_by'    => null,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        Cache::put("ca_badge_{$tenant->id}_{$admin->id}", 2, 300);
+
+        $job = new ProcessImportRollbackJob($rollbackId, $batchId, $tenant->id);
+        $job->failed(new \RuntimeException('Timed out'));
+
+        $this->assertDatabaseHas('import_rollbacks', [
+            'id'     => $rollbackId,
+            'status' => 'failed',
+        ]);
+        $this->assertDatabaseHas('import_batches', [
+            'id'              => $batchId,
+            'rollback_status' => 'failed',
+        ]);
+        $this->assertFalse(Cache::has("ca_badge_{$tenant->id}_{$admin->id}"), 'Badge must be cleared on job failure');
+    }
+
+    /** @test */
+    public function rollback_job_failed_handler_does_not_affect_different_tenant(): void
+    {
+        $tenantA    = $this->createTenant();
+        $tenantB    = $this->createTenant();
+        $batchId    = (string) Str::uuid();
+        $rollbackId = (string) Str::uuid();
+
+        // Rollback belongs to Tenant A
+        DB::table('import_batches')->insert([
+            'id'          => $batchId,
+            'tenant_id'   => $tenantA->id,
+            'import_type' => 'deals',
+            'file_name'   => 'test.csv',
+            'status'      => 'completed',
+            'rollback_status' => 'processing',
+            'total_rows'  => 1,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+        DB::table('import_rollbacks')->insert([
+            'id'              => $rollbackId,
+            'import_batch_id' => $batchId,
+            'tenant_id'       => $tenantA->id,
+            'status'          => 'processing',
+            'mode'            => 'full',
+            'requested_by'    => null,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        // Job dispatched with Tenant B's ID — must be a no-op
+        $job = new ProcessImportRollbackJob($rollbackId, $batchId, $tenantB->id);
+        $job->failed(new \RuntimeException('Timed out'));
+
+        // Tenant A's rollback must be untouched
+        $this->assertDatabaseHas('import_rollbacks', [
+            'id'     => $rollbackId,
+            'status' => 'processing',
+        ]);
+        $this->assertDatabaseHas('import_batches', [
+            'id'              => $batchId,
+            'rollback_status' => 'processing',
+        ]);
     }
 }

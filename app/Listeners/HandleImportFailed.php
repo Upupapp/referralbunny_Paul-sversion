@@ -3,12 +3,12 @@
 namespace App\Listeners;
 
 use App\Events\ImportFailed;
+use App\Services\CriticalActionService;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\EmailLogger;
 
 /**
  * Handles notifications when an import fails or completes with warnings.
@@ -128,24 +128,7 @@ class HandleImportFailed implements ShouldQueue
 
         // ── 3. Cache bust: refresh CA badge within 60s ────────────────────────
         try {
-            // Bust the generic ca_dashboard and ca_master caches (pattern-based keys)
-            // so the badge and master list pick up this import's new status immediately.
-            // We cannot pattern-delete from Redis without SCAN, so we rely on the natural
-            // 45–90s TTL expiry. For the badge specifically we bust user-level keys.
-            $adminsForBust = DB::table('tenant_memberships as tm')
-                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
-                ->where('tm.tenant_id', $event->tenantId)
-                ->where('tm.status', 'active')
-                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-                ->pluck('u.id');
-
-            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
-
-            foreach ($adminsForBust as $uid) {
-                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
-                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
-                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
-            }
+            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
         } catch (\Throwable $e) {
             Log::warning('[HandleImportFailed] cache bust failed', ['error' => $e->getMessage()]);
         }

@@ -4,12 +4,13 @@ namespace App\Listeners;
 
 use App\Events\DealExpired;
 use App\Mail\ResellerDealExpired;
+use App\Services\CriticalActionService;
+use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\EmailLogger;
 
 /**
  * Queued so expiry notifications don't block the expiry job.
@@ -124,10 +125,8 @@ class HandleDealExpired implements ShouldQueue
         }
 
         // ── Cache bust: refresh admin CA badges within 60s ────────────────────
-        // The in-app notification to admins already fires above. This ensures the
-        // nav badge counter also clears so it recalculates on the next page load.
         try {
-            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
 
             $adminIds = DB::table('tenant_memberships as tm')
                 ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
@@ -137,9 +136,6 @@ class HandleDealExpired implements ShouldQueue
                 ->pluck('u.id');
 
             foreach ($adminIds as $uid) {
-                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
-                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
-                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
 

@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\CommissionStatusChanged;
 use App\Mail\CommissionStatusUpdate;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -189,7 +190,7 @@ class HandleCommissionStatusChanged implements ShouldQueue
             if ($reseller) {
                 Cache::forget("notif_unread_reseller_{$reseller->id}");
             }
-            app(\App\Services\CriticalActionService::class)->invalidateCache($event->tenantId);
+            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
 
             $adminIds = DB::table('tenant_memberships as tm')
                 ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
@@ -199,9 +200,6 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 ->pluck('u.id');
 
             foreach ($adminIds as $uid) {
-                Cache::forget("ca_badge_{$event->tenantId}_{$uid}");
-                Cache::forget("ca_badge_urgent:{$event->tenantId}:{$uid}");
-                Cache::forget("ca_badge_suppressed:{$event->tenantId}:{$uid}");
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
 
