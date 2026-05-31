@@ -341,6 +341,10 @@ class PartnerPortalController extends Controller
                 dedupeSuffix: 'partner_note:' . $note->id,
             );
         } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($partner->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         // Notify the assigned referrer
         try {
@@ -667,6 +671,10 @@ class PartnerPortalController extends Controller
                 metadata:     ['sender_name' => $partnerName, 'deal_name' => $lead->name],
             );
         } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json([
             'thread_id' => $thread->id,
@@ -739,6 +747,10 @@ class PartnerPortalController extends Controller
                 dedupeSuffix: 'partner_direct:' . $thread->id . ':' . now()->format('YmdH'),
                 metadata:     ['sender_name' => $partnerName, 'thread_id' => $thread->id],
             );
+        } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return response()->json([

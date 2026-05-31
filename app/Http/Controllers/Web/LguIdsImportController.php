@@ -247,7 +247,7 @@ class LguIdsImportController extends Controller
 
         // Resolve reseller email once before the loop — not inside it
         $resellerEmail = ($this->authRole() === 'reseller')
-            ? \App\Models\Reseller::where('id', $approverId)->value('email')
+            ? \Illuminate\Support\Facades\Auth::guard('reseller')->user()?->email
             : null;
 
         $approvedCount = 0;

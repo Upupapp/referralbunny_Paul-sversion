@@ -134,6 +134,9 @@ class NotificationDispatchService
         if (!empty($bellKeys)) {
             \Illuminate\Support\Facades\Cache::deleteMultiple($bellKeys);
         }
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
     }
 
     /**

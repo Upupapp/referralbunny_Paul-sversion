@@ -830,11 +830,6 @@ class LeadController extends Controller
                 $freshData['amount_confirmed_at']        = now()->toIso8601String();
                 $freshData['amount_confirmed_by']        = $actorName ?? 'Admin';
                 $lead->update(['data' => $freshData]);
-                try {
-                    $cs = app(\App\Services\CriticalActionService::class);
-                    $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-                    \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-                } catch (\Throwable) {}
 
                 try {
                     app(\App\Services\DealActivityService::class)->record(
@@ -1263,6 +1258,11 @@ class LeadController extends Controller
                 dedupeSuffix: "bulk_archive_admin:{$tenantId}:" . now()->format('YmdH'),
             );
         } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'deleted_count' => $count]);
     }
@@ -1348,12 +1348,6 @@ class LeadController extends Controller
                 );
             } catch (\Throwable) {}
         }
-
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'message' => 'Default amount confirmed.']);
     }

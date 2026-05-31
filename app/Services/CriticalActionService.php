@@ -320,7 +320,6 @@ class CriticalActionService
      * Bust panel caches AND per-user badge caches for every active admin/manager/owner.
      * Returns the plucked UID collection so callers can reuse it (e.g. for notif_unread_ busts)
      * without issuing a second DB query.
-     * Use this from queue jobs and services where no single actor ID is available.
      * Use this from controllers, queue jobs, and services — all external bust callsites should prefer this method.
      * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
@@ -1992,11 +1991,10 @@ class CriticalActionService
                 'related_type'  => 'export',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->updated_at ?? now(),
-                'action_url'      => "/reseller/{$tenantId}/deals/imports",
-                'action_label'    => 'View Imports',
-                'action_needed'   => true,
-                'role_visibility' => ['referrer'],
-                'source'          => 'export_requests',
+                'action_url'    => null,
+                'action_label'  => null,
+                'action_needed' => false,
+                'source'        => 'export_requests',
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] resellerFailedExports failed', ['error' => $e->getMessage()]);

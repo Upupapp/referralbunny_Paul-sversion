@@ -273,8 +273,8 @@ class ReferrerPartnerController extends Controller
             return response()->json(['error' => 'You can only add Partners to deals assigned to you.'], 403);
         }
 
-        if ($lead->commission_status === 'paid') {
-            return response()->json(['error' => 'Commission on this deal is already paid. Contact your admin to add a Partner.'], 422);
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Commission on this deal is locked or paid. Contact your admin to add a Partner.'], 422);
         }
 
         // ── Partner invite (email provided) ──────────────────────────────────

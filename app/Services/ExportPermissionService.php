@@ -49,22 +49,24 @@ class ExportPermissionService
      */
     public function getSettings(string $tenantId): array
     {
-        $config = TenantConfig::where('tenant_id', $tenantId)->first();
+        return \Illuminate\Support\Facades\Cache::remember("tenant_export_settings:{$tenantId}", 120, function () use ($tenantId) {
+            $config = TenantConfig::where('tenant_id', $tenantId)->first();
 
-        $stored = [];
-        if ($config) {
-            // export_settings may not yet be a recognised cast on older model versions;
-            // retrieve directly from the raw attributes to be safe.
-            $raw = $config->getAttributes()['export_settings'] ?? null;
-            if (is_string($raw)) {
-                $decoded = json_decode($raw, true);
-                $stored  = is_array($decoded) ? $decoded : [];
-            } elseif (is_array($raw)) {
-                $stored = $raw;
+            $stored = [];
+            if ($config) {
+                // export_settings may not yet be a recognised cast on older model versions;
+                // retrieve directly from the raw attributes to be safe.
+                $raw = $config->getAttributes()['export_settings'] ?? null;
+                if (is_string($raw)) {
+                    $decoded = json_decode($raw, true);
+                    $stored  = is_array($decoded) ? $decoded : [];
+                } elseif (is_array($raw)) {
+                    $stored = $raw;
+                }
             }
-        }
 
-        return array_merge($this->defaultSettings(), $stored);
+            return array_merge($this->defaultSettings(), $stored);
+        });
     }
 
     /**
