@@ -7,8 +7,10 @@ use App\Models\ActivityLog;
 use App\Models\DealAssignmentExtensionRequest;
 use App\Models\Lead;
 use App\Models\Notification;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -148,6 +150,14 @@ class DealAssignmentExtensionService
             adminNote:    $adminNote,
         );
 
+        // Synchronous bust for the reviewing admin — async listener covers all admins
+        try {
+            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
+            if ($reviewerUserId) {
+                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            }
+        } catch (\Throwable) {}
+
         return $request->fresh();
     }
 
@@ -172,6 +182,14 @@ class DealAssignmentExtensionService
 
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'rejected');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_rejected', $reviewerUserId);
+
+        // Synchronous bust for the reviewing admin
+        try {
+            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
+            if ($reviewerUserId) {
+                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            }
+        } catch (\Throwable) {}
 
         return $request->fresh();
     }

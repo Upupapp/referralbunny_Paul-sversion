@@ -12,6 +12,7 @@ use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -207,6 +208,8 @@ class PartnerAuthController extends Controller
                 actionLabel:  'Open Dashboard',
                 dedupeSuffix: $partner->id,
             );
+            Cache::forget("notif_unread_partner_{$partner->id}");
+            Cache::forget("partner_notif_unread:{$partner->id}");
         } catch (\Throwable) {}
 
         // Check for pending required legal agreements (partner role)

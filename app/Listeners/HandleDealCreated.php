@@ -121,7 +121,6 @@ class HandleDealCreated implements ShouldQueue
                 tenantId:       $event->tenantId,
             );
         }
-    }
 
         // Cache bust — refresh admin CA badge + notification bell
         try {

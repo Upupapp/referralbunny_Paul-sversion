@@ -108,6 +108,7 @@ class HandleDealExpired implements ShouldQueue
             ->select('partner_user_id', 'partner_name')
             ->get();
 
+        $pKeys = [];
         foreach ($activePartners as $partnerRow) {
             $dispatcher->dispatchToPartner(
                 partnerId:    (string) $partnerRow->partner_user_id,
@@ -120,8 +121,11 @@ class HandleDealExpired implements ShouldQueue
                 actionLabel:  'View Deal',
                 dedupeSuffix: "{$event->leadId}:expired:partner",
             );
-            Cache::forget("notif_unread_partner_{$partnerRow->partner_user_id}");
-            Cache::forget("partner_notif_unread:{$partnerRow->partner_user_id}");
+            $pKeys[] = "notif_unread_partner_{$partnerRow->partner_user_id}";
+            $pKeys[] = "partner_notif_unread:{$partnerRow->partner_user_id}";
+        }
+        if (!empty($pKeys)) {
+            Cache::deleteMultiple($pKeys);
         }
 
         // ── Cache bust: refresh admin CA badges within 60s ────────────────────

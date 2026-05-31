@@ -148,6 +148,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
                     actionLabel:  'View My Deals',
                     dedupeSuffix: $event->leadId . ':removed:' . (string) $oldReseller->id,
                 );
+                Cache::forget("notif_unread_reseller_{$oldReseller->id}");
 
                 if ($oldReseller->email) {
                     EmailLogger::send(
@@ -170,7 +171,6 @@ class HandleDealReferrerAssigned implements ShouldQueue
                 }
             }
         }
-    }
 
         // Cache bust — refresh admin CA badge + notification bells
         try {

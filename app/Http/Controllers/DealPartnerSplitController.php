@@ -11,6 +11,7 @@ use App\Services\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DealPartnerSplitController extends Controller
@@ -118,6 +119,8 @@ class DealPartnerSplitController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: "{$lead->id}:partner_added_self:{$partnerUserId}",
                     );
+                    Cache::forget("notif_unread_partner_{$partnerUserId}");
+                    Cache::forget("partner_notif_unread:{$partnerUserId}");
                 }
             } catch (\Throwable) {}
 
@@ -275,6 +278,8 @@ class DealPartnerSplitController extends Controller
                             actionLabel:  null,
                             dedupeSuffix: $lead->id . ':partner_removed:' . $splitId,
                         );
+                        Cache::forget("notif_unread_partner_{$oldSplit->partner_user_id}");
+                        Cache::forget("partner_notif_unread:{$oldSplit->partner_user_id}");
                     } catch (\Throwable) {}
                 }
             }

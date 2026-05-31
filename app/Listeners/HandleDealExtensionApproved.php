@@ -42,12 +42,19 @@ class HandleDealExtensionApproved implements ShouldQueue
             }
         }
 
-        if (!$email && !$resellerId) return;
+        // Cache bust — fires unconditionally; admin badge/bell must clear even for invited referrers
+        try {
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
 
-        $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
+        if (!$email && !$resellerId) return;
 
         // Email to Referrer
         if ($email) {
+            $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
             EmailLogger::send(
                 mailable: new ResellerDealExtensionApproved(
                     resellerName:  $event->resellerName,
@@ -86,18 +93,8 @@ class HandleDealExtensionApproved implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::warning('[HandleDealExtensionApproved] in-app failed', ['error' => $e->getMessage()]);
             }
+            Cache::forget("notif_unread_reseller_{$resellerId}");
         }
-
-        // Cache bust
-        try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
-            if ($resellerId) {
-                Cache::forget("notif_unread_reseller_{$resellerId}");
-            }
-        } catch (\Throwable) {}
     }
 
     public function failed(DealExtensionApproved $event, \Throwable $exception): void
