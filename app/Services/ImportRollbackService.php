@@ -24,8 +24,7 @@ use Illuminate\Support\Str;
 class ImportRollbackService
 {
     public function __construct(
-        private ImportRollbackPreviewService $preview,
-        private NotificationDispatchService  $notifications,
+        private NotificationDispatchService $notifications,
     ) {}
 
     /**
@@ -36,7 +35,7 @@ class ImportRollbackService
     {
         // Lock inside a transaction — lockForUpdate() requires an active transaction
         $acquired = false;
-        \Illuminate\Support\Facades\DB::transaction(function () use ($rollback, $batch, &$acquired) {
+        DB::transaction(function () use ($rollback, $batch, &$acquired) {
             $locked = ImportRollback::where('id', $rollback->id)
                 ->where('status', 'pending')
                 ->lockForUpdate()
@@ -284,7 +283,7 @@ class ImportRollbackService
 
     // ── Audit & Notifications ──────────────────────────────────────────
 
-    private function auditLog(string $tenantId, string $batchId, string $actorId, string $action, array $summary): void
+    private function auditLog(string $tenantId, string $batchId, ?string $actorId, string $action, array $summary): void
     {
         try {
             ActivityLog::create([
@@ -301,22 +300,37 @@ class ImportRollbackService
 
     private function notifyRequester(ImportRollback $rollback, ImportBatch $batch, string $tenantId, array $result): void
     {
+        $removed  = $result['removed']  ?? 0;
+        $restored = $result['restored'] ?? 0;
+        $conflict = $result['conflict'] ?? 0;
+        $status   = $rollback->status === 'completed' ? 'complete' : 'complete with warnings';
+
         if (!$rollback->requested_by) {
+            // No individual requester — broadcast completion to all tenant admins instead
+            try {
+                $this->notifications->dispatchToTenantAdmins(
+                    tenantId:     $tenantId,
+                    category:     'import_export',
+                    priority:     $conflict > 0 ? 'high' : 'normal',
+                    title:        'Import rollback ' . $status,
+                    body:         "Import rollback for \"{$batch->file_name}\" is {$status}. {$removed} records removed, {$restored} records restored, {$conflict} items need review.",
+                    actionUrl:    "/tenant/{$tenantId}/imports",
+                    actionLabel:  'View Imports',
+                    dedupeSuffix: "rollback_done:{$rollback->id}",
+                    metadata:     $result,
+                );
+            } catch (\Throwable) {}
             return;
         }
-        try {
-            $removed  = $result['removed']  ?? 0;
-            $restored = $result['restored'] ?? 0;
-            $conflict = $result['conflict'] ?? 0;
-            $status   = $rollback->status === 'completed' ? 'complete' : 'complete with warnings';
 
+        try {
             $this->notifications->dispatch(
                 category:         'import_export',
                 priority:         $conflict > 0 ? 'high' : 'normal',
                 title:            'Import rollback ' . $status,
                 body:             "Your import rollback for \"{$batch->file_name}\" is {$status}. {$removed} records removed, {$restored} records restored, {$conflict} items need review.",
                 notifiableType:   $rollback->requested_by_type ?? 'tenant_admin',
-                notifiableId:     $rollback->requested_by ?? null,
+                notifiableId:     $rollback->requested_by,
                 tenantId:         $tenantId,
                 actionUrl:        "/tenant/{$tenantId}/imports/{$batch->import_type === 'lgu_ids_deals' ? 'lgu-ids' : ($batch->import_type === 'contacts' ? 'contacts' : 'deals')}/{$batch->id}/rollback/{$rollback->id}",
                 actionLabel:      'View rollback report',
