@@ -472,6 +472,9 @@ class TaskController extends Controller
                     deduplicationKey: "task_reassigned_{$task->id}_" . now()->format('YmdH'),
                 );
             } catch (\Throwable) {}
+            if ($oldAssigneeType === 'reseller') {
+                \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$oldAssigneeId}");
+            }
         }
 
         $msg = $actionType === 'task_claimed'
@@ -791,7 +794,7 @@ class TaskController extends Controller
                     tenantId:         $tenantId,
                     actionUrl:        "/tenant/{$tenantId}/tasks/{$task->id}",
                     actionLabel:      'View Task',
-                    deduplicationKey: "task_status_{$task->id}_" . now()->format('YmdH'),
+                    deduplicationKey: "task_status_{$task->id}_{$newStatus}_" . now()->format('YmdH'),
                 );
             } catch (\Throwable) {}
         }
@@ -806,7 +809,7 @@ class TaskController extends Controller
                     body:         "{$actorName} moved this task to {$statusLabel}.",
                     actionUrl:    "/reseller/{$tenantId}/tasks",
                     actionLabel:  'View Task',
-                    dedupeSuffix: "task_status_{$task->id}_" . now()->format('YmdH'),
+                    dedupeSuffix: "task_status_{$task->id}_{$newStatus}_" . now()->format('YmdH'),
                 );
             } catch (\Throwable) {}
             \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$task->assigned_to_id}");
