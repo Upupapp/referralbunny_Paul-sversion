@@ -107,12 +107,14 @@ class DealAssignmentExtensionService
             throw new \InvalidArgumentException('Approved days must be at least 1.');
         }
 
-        // Update deal days_left — extends the current remaining time
-        $newDaysLeft      = max(0, ($deal->days_left ?? 0)) + $approvedDays;
-        $approvedExpiryAt = now()->addDays($newDaysLeft);
+        // Computed inside transaction from the locked row to prevent stale reads
+        $newDaysLeft      = 0;
+        $approvedExpiryAt = now();
 
-        DB::transaction(function () use ($request, $deal, $newDaysLeft, $approvedExpiryAt, $approvedDays, $adminNote, $reviewerUserId) {
-            DB::table('leads')->where('id', $deal->id)->lockForUpdate()->first();
+        DB::transaction(function () use ($request, $deal, $approvedDays, $adminNote, $reviewerUserId, &$newDaysLeft, &$approvedExpiryAt) {
+            $lockedLead       = DB::table('leads')->where('id', $deal->id)->lockForUpdate()->first();
+            $newDaysLeft      = max(0, ($lockedLead->days_left ?? 0)) + $approvedDays;
+            $approvedExpiryAt = now()->addDays($newDaysLeft);
 
             DB::table('leads')->where('id', $deal->id)->update([
                 'days_left'  => $newDaysLeft,

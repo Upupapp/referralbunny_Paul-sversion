@@ -31,17 +31,15 @@ class InvoiceService
         $displayAmount = round($baseAmountPhp * $rate, 2);
 
         $invoice = DB::transaction(function () use ($tenant, $subscription, $baseAmountPhp, $displayAmount, $currency, $rate, $lineItems, $notes) {
-            // Lock credits for this tenant to prevent concurrent double-application
-            Credit::where('tenant_id', $tenant->id)
+            // Lock and fetch unapplied credits in one query to prevent concurrent double-application
+            $lockedCredits    = Credit::where('tenant_id', $tenant->id)
                 ->whereNull('applied_to_invoice_id')
                 ->lockForUpdate()
                 ->get();
 
-            $availableCredits = Credit::where('tenant_id', $tenant->id)
-                ->whereNull('applied_to_invoice_id')
-                ->sum('amount');
-            $creditsApplied = min($availableCredits, $baseAmountPhp);
-            $finalAmount    = max(0, $baseAmountPhp - $creditsApplied);
+            $availableCredits = $lockedCredits->sum('amount');
+            $creditsApplied   = min($availableCredits, $baseAmountPhp);
+            $finalAmount      = max(0, $baseAmountPhp - $creditsApplied);
 
             $inv = Invoice::create([
                 'tenant_id'          => $tenant->id,
@@ -65,11 +63,8 @@ class InvoiceService
             ]);
 
             if ($creditsApplied > 0) {
-                Credit::where('tenant_id', $tenant->id)
-                    ->whereNull('applied_to_invoice_id')
-                    ->take(10)
-                    ->get()
-                    ->each(fn($c) => $c->update(['applied_to_invoice_id' => $inv->id]));
+                $creditIds = $lockedCredits->take(10)->pluck('id');
+                Credit::whereIn('id', $creditIds)->update(['applied_to_invoice_id' => $inv->id]);
             }
 
             return $inv;

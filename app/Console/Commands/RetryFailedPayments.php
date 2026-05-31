@@ -24,14 +24,14 @@ class RetryFailedPayments extends Command
                 ->get();
 
             foreach ($payments as $payment) {
-                // Increment retry count and set next retry
-                $payment->increment('retry_count');
-                $payment->update(['next_retry_at' => now()->addDay()]);
-
-                // Notify based on retry day
-                $notifications->notifyPaymentFailed($payment->tenant_id, $day);
-
-                $this->line("Retry #{$payment->retry_count} triggered for payment {$payment->id} (day {$day})");
+                try {
+                    $payment->increment('retry_count');
+                    $payment->update(['next_retry_at' => now()->addDay()]);
+                    $notifications->notifyPaymentFailed($payment->tenant_id, $day);
+                    $this->line("Retry #{$payment->retry_count} triggered for payment {$payment->id} (day {$day})");
+                } catch (\Throwable $e) {
+                    $this->error("Failed to process retry for payment {$payment->id}: {$e->getMessage()}");
+                }
             }
         }
 

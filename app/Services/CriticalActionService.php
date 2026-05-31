@@ -2002,7 +2002,7 @@ class CriticalActionService
 
     private function pendingDefaultAmounts(string $tenantId): array
     {
-        if ($tenantId !== 'lgu-ids') return [];
+        if (! $this->isLguIdsTenant($tenantId)) return [];
 
         try {
             $rows = DB::table('leads')
@@ -2368,7 +2368,7 @@ class CriticalActionService
         // NOT dismissible: payment/billing failure, expired deal, required update
         // overdue, import failure, security issue.
         $notDismissibleTypes = [
-            'subscription_suspended', 'payment_failed', 'deal_expired',
+            'subscription_suspended', 'payment_failed', 'payment_overdue', 'deal_expired',
             'import_failed', 'rollback_failed', 'overdue_task',
             'archive_request_pending', 'extension_request_pending',
             'bulk_extension_request_pending',

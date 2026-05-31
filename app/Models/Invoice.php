@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Invoice extends Model
 {
@@ -31,9 +32,15 @@ class Invoice extends Model
         'tax_amount'        => 'decimal:2',
         'discount_amount'   => 'decimal:2',
         'credits_applied'   => 'decimal:2',
-        'exchange_rate_used'=> 'float',
-        'tax_rate'          => 'float',
+        'exchange_rate_used' => 'decimal:6',
+        'tax_rate'           => 'decimal:4',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(fn($m) => $m->id ??= (string) Str::uuid());
+    }
 
     public function tenant(): BelongsTo       { return $this->belongsTo(Tenant::class, 'tenant_id'); }
     public function subscription(): BelongsTo { return $this->belongsTo(Subscription::class, 'subscription_id'); }

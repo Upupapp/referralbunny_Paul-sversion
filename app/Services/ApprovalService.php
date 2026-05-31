@@ -205,7 +205,7 @@ class ApprovalService
                 priority:         $decision === 'approved' ? 'normal' : 'high',
                 title:            $title,
                 body:             $body,
-                notifiableType:   'tenant_user',
+                notifiableType:   'tenant_admin',
                 notifiableId:     (string) $requester->id,
                 tenantId:         $tenantId,
                 actionUrl:        $actionUrl,

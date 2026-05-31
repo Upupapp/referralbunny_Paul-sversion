@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Subscription extends Model
 {
@@ -33,6 +34,12 @@ class Subscription extends Model
         'payment_required'      => 'boolean',
         'auto_renew'            => 'boolean',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(fn($m) => $m->id ??= (string) Str::uuid());
+    }
 
     public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class, 'tenant_id'); }
     public function plan(): BelongsTo   { return $this->belongsTo(Plan::class, 'plan_id'); }

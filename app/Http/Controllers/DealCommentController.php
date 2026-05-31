@@ -387,7 +387,7 @@ class DealCommentController extends Controller
             return response()->json(['error' => 'You cannot delete this note.'], 403);
         }
 
-        $comment->update(['deleted_at' => now()]);
+        $comment->delete();
 
         $this->auditLog($tenantId, $dealId, $actorId, 'deal_comment_deleted');
 

@@ -26,7 +26,6 @@ class TenantUser extends Authenticatable
 
     protected $casts = [
         'id'                => 'string',
-        'password'          => 'hashed',
         'email_verified_at' => 'datetime',
     ];
 

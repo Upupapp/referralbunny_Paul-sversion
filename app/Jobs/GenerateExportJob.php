@@ -205,6 +205,7 @@ class GenerateExportJob implements ShouldQueue
 
         $query = DB::table('contacts')
             ->where('tenant_id', $request->tenant_id)
+            ->whereNull('deleted_at')
             ->orderByDesc('created_at');
 
         if ($request->requester_type === 'reseller') {
@@ -290,10 +291,17 @@ class GenerateExportJob implements ShouldQueue
 
     /**
      * Referrers (Resellers) export.
-     * Only available to tenant_user requesters.
+     * Only available to tenant_user requesters — resellers cannot export other resellers.
      */
     private function generateReferrers(ExportRequest $request): array
     {
+        if ($request->requester_type === 'reseller') {
+            return [
+                ['Export Type', 'Status', 'Note'],
+                ['referrers', 'Not available', 'Referrers export is not available for referrer accounts.'],
+            ];
+        }
+
         $scope = $request->export_scope ?? [];
 
         $query = DB::table('resellers')
