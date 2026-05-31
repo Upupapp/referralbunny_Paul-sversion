@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\ImportBatch;
 use App\Models\ImportRollback;
 use App\Models\ImportSnapshot;
+use App\Services\CriticalActionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -111,7 +112,7 @@ class ImportRollbackService
 
         // Notify requester
         $this->notifyRequester($rollback, $batch, $tenantId, $result);
-        try { app(CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
+        try { app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId); } catch (\Throwable) {}
     }
 
     // ── Restore updated record ─────────────────────────────────────────

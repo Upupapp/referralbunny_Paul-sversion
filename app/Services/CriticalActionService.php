@@ -262,6 +262,7 @@ class CriticalActionService
                     $hasAdvancedStagePending = DB::table('leads')
                         ->where('tenant_id', $tenantId)
                         ->whereIn('stage', ['contract_sent', 'signed', 'paid'])
+                        ->whereNotIn('status', ['expired', 'declined', 'archived'])
                         ->whereNull('deleted_at')
                         ->whereRaw("data->>'amount_defaulted' = 'true'")
                         ->whereRaw("data->>'amount_confirmation_status' = 'pending'")
@@ -315,6 +316,28 @@ class CriticalActionService
         }
 
         Cache::deleteMultiple($keys);
+    }
+
+    /**
+     * Bust panel caches AND per-user badge caches for every active admin/manager/owner.
+     * Use this from queue jobs and services where no single actor ID is available.
+     * Controller actions should use invalidateCache($tenantId, $actorId) instead.
+     */
+    public function invalidateAllAdminBadges(string $tenantId): void
+    {
+        $this->invalidateCache($tenantId);
+        try {
+            $uids = DB::table('tenant_memberships')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->whereIn('role', ['owner', 'admin', 'manager'])
+                ->pluck('tenant_user_id');
+            foreach ($uids as $uid) {
+                Cache::forget("ca_badge_{$tenantId}_{$uid}");
+                Cache::forget("ca_badge_urgent:{$tenantId}:{$uid}");
+                Cache::forget("ca_badge_suppressed:{$tenantId}_{$uid}");
+            }
+        } catch (\Throwable) {}
     }
 
     /**

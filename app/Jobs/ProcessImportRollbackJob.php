@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Queued job that executes an import batch rollback.
@@ -58,7 +59,7 @@ class ProcessImportRollbackJob implements ShouldQueue
             $rollback->markFailed($e->getMessage());
             $batch->update(['rollback_status' => 'failed']);
             $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
-            try { app(CriticalActionService::class)->invalidateCache($this->tenantId); } catch (\Throwable) {}
+            try { app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId); } catch (\Throwable) {}
         }
     }
 
@@ -74,9 +75,14 @@ class ProcessImportRollbackJob implements ShouldQueue
                     $batch->update(['rollback_status' => 'failed']);
                     $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
                 }
-                try { app(CriticalActionService::class)->invalidateCache($this->tenantId); } catch (\Throwable) {}
+                try { app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId); } catch (\Throwable) {}
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable $fe) {
+            Log::error('[ProcessImportRollbackJob] failed() handler itself threw', [
+                'rollback_id' => $this->rollbackId,
+                'error'       => $fe->getMessage(),
+            ]);
+        }
     }
 
     private function notifyAdminsOfFailure(string $fileName, string $errorMessage): void
