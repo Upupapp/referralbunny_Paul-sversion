@@ -23,9 +23,9 @@ class InvoiceService
         $rate     = 1.0;
 
         if ($currency !== 'PHP') {
-            $rate = (float) ExchangeRate::where('base_currency', 'PHP')
+            $rate = (float) (ExchangeRate::where('base_currency', 'PHP')
                 ->where('target_currency', $currency)
-                ->value('rate') ?? 1.0;
+                ->value('rate') ?? 1.0);
         }
 
         $displayAmount = round($baseAmountPhp * $rate, 2);
@@ -63,8 +63,15 @@ class InvoiceService
             ]);
 
             if ($creditsApplied > 0) {
-                $creditIds = $lockedCredits->pluck('id');
-                Credit::whereIn('id', $creditIds)->update(['applied_to_invoice_id' => $inv->id]);
+                // Only mark the credits actually consumed — stop once we've covered the invoice amount
+                $remaining       = $creditsApplied;
+                $creditIdsToMark = [];
+                foreach ($lockedCredits as $credit) {
+                    if ($remaining <= 0) break;
+                    $creditIdsToMark[] = $credit->id;
+                    $remaining        -= $credit->amount;
+                }
+                Credit::whereIn('id', $creditIdsToMark)->update(['applied_to_invoice_id' => $inv->id]);
             }
 
             return $inv;

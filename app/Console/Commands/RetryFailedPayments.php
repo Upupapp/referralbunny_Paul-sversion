@@ -49,17 +49,9 @@ class RetryFailedPayments extends Command
                     ->first();
 
                 if ($subscription) {
-                    $billing->suspend($subscription);
+                    // suspend() internally fires the tenant-facing suspension notification
+                    $billing->suspend($subscription, 'Payment failed after 3 retries', null);
                 }
-
-                $notifications->send(
-                    category:  'billing',
-                    type:      'action_required',
-                    priority:  'critical',
-                    message:   "Payment failed after 3 retries. Account suspended.",
-                    tenantId:  $payment->tenant_id,
-                    channel:   'all',
-                );
             } catch (\Throwable $e) {
                 $this->error("Failed to suspend tenant {$payment->tenant_id}: {$e->getMessage()}");
             }

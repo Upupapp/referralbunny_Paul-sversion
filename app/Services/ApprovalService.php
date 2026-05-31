@@ -77,7 +77,7 @@ class ApprovalService
             metadata:  ['approval_id' => $approval->id],
         );
 
-        // Notify the requester (tenant admin) directly
+        // Notify the super-admin requester directly
         $this->notifyRequester($approval, 'approved');
     }
 
@@ -109,7 +109,7 @@ class ApprovalService
             metadata:  ['approval_id' => $approval->id],
         );
 
-        // Notify the requester (tenant admin) directly
+        // Notify the super-admin requester directly
         $this->notifyRequester($approval, 'rejected');
     }
 
@@ -191,7 +191,7 @@ class ApprovalService
 
             $this->dispatcher->dispatch(
                 category:         'billing',
-                priority:         $decision === 'approved' ? 'normal' : 'high',
+                priority:         $decision === 'approved' ? 'medium' : 'high',
                 title:            $title,
                 body:             $body,
                 notifiableType:   'super_admin',
