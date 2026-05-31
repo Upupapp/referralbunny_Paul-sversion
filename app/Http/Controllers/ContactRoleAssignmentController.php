@@ -97,7 +97,7 @@ class ContactRoleAssignmentController extends Controller
             // Referrer can only assign partner to their own deals
             if ($actorRole === 'referrer') {
                 $reseller = Auth::guard('reseller')->user();
-                if (!$reseller || $deal->reseller_name !== $reseller->name) {
+                if (!$reseller || strtolower($deal->reseller_name) !== strtolower($reseller->name)) {
                     return response()->json(['error' => 'You can only add Partners to your own deals.'], 403);
                 }
             }
@@ -394,7 +394,7 @@ class ContactRoleAssignmentController extends Controller
             $reseller = Auth::guard('reseller')->user();
             return [$reseller->id, 'referrer'];
         }
-        return ['unknown', 'viewer'];
+        return [null, 'viewer'];
     }
 
     private function checkPermission(string $actorRole, string $targetRole, string $tenantId, ?string $dealId, string $actorUserId): bool|string
@@ -463,6 +463,10 @@ class ContactRoleAssignmentController extends Controller
                 actionLabel:  'View Contacts',
                 dedupeSuffix: $invitationId . ':partner_invited',
             );
+        } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
     }
 }

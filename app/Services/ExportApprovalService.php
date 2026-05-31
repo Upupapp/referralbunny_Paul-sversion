@@ -116,6 +116,10 @@ class ExportApprovalService
                         'requester_id'      => $requesterId,
                     ],
                 );
+                try {
+                    $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+                    \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                } catch (\Throwable) {}
             }
 
             // Send "submitted" confirmation email to the requester
@@ -584,6 +588,10 @@ class ExportApprovalService
                 'error_message'     => $request->error_message,
             ],
         );
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($request->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
     }
 
     /**

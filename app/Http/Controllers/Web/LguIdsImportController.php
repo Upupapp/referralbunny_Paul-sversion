@@ -211,7 +211,7 @@ class LguIdsImportController extends Controller
         // Resellers may only approve their own rows
         if ($this->authRole() === 'reseller') {
             $norm  = $row->normalized_data;
-            $email = \App\Models\Reseller::where('id', $this->authId())->value('email');
+            $email = Auth::guard('reseller')->user()?->email;
             abort_unless(
                 strtolower($norm['referrer_email'] ?? '') === strtolower($email ?? ''),
                 403,

@@ -321,7 +321,7 @@ class CriticalActionService
      * Returns the plucked UID collection so callers can reuse it (e.g. for notif_unread_ busts)
      * without issuing a second DB query.
      * Use this from queue jobs and services where no single actor ID is available.
-     * Controller actions should use invalidateCache($tenantId, $actorId) instead.
+     * Use this from controllers, queue jobs, and services — all external bust callsites should prefer this method.
      * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
     public function invalidateAllAdminBadges(string $tenantId): Collection
@@ -1992,10 +1992,11 @@ class CriticalActionService
                 'related_type'  => 'export',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->updated_at ?? now(),
-                'action_url'    => "/reseller/{$tenantId}/dashboard",
-                'action_label'  => 'Go to Dashboard',
-                'action_needed' => true,
-                'source'        => 'export_requests',
+                'action_url'      => "/reseller/{$tenantId}/deals/imports",
+                'action_label'    => 'View Imports',
+                'action_needed'   => true,
+                'role_visibility' => ['referrer'],
+                'source'          => 'export_requests',
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] resellerFailedExports failed', ['error' => $e->getMessage()]);
@@ -2513,7 +2514,7 @@ class CriticalActionService
         // ── Priority score — map from severity + type bonus ───────────────────
         // Scores align with phase-6 spec:
         //   urgent=100, high≈85-95, medium≈70-80, low≈50-60, info=30
-        $severityScores = ['urgent' => 100, 'high' => 85, 'medium' => 70, 'low' => 50, 'info' => 30];
+        $severityScores = ['urgent' => 100, 'high' => 85, 'medium' => 70, 'low' => 50, 'normal' => 50, 'info' => 30];
         $typeBonus = match ($data['type'] ?? '') {
             'subscription_suspended'     => 10,
             'deal_expiring'              => 10,
@@ -2541,7 +2542,7 @@ class CriticalActionService
             'stage_move_request_pending', 'trial_ending',
         ];
         $dismissible = ! in_array($data['type'] ?? '', $notDismissibleTypes, true)
-            && in_array($data['severity'] ?? 'info', ['info', 'low'], true);
+            && in_array($data['severity'] ?? 'info', ['info', 'low', 'normal'], true);
 
         // ── Fingerprint for deduplication (phase 7) ──────────────────────────
         $fingerprint = md5(implode(':', [

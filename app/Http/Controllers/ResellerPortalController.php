@@ -646,6 +646,10 @@ class ResellerPortalController extends Controller
                 dedupeSuffix: "task_referrer_created_{$task->id}",
             );
         } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json([
             'message' => 'Task created.',
@@ -685,6 +689,10 @@ class ResellerPortalController extends Controller
                 actionLabel:  'View Task',
                 dedupeSuffix: "task_referrer_done_{$task->id}",
             );
+        } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return response()->json(['status' => 'completed', 'message' => 'Task marked as complete.']);

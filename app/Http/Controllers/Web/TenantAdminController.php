@@ -515,6 +515,10 @@ class TenantAdminController extends Controller
                 dedupeSuffix: $referrerId . ':invite_resent:' . now()->format('YmdH'),
             );
         } catch (\Throwable) {}
+        try {
+            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return back()->with('success', 'Invite resent to ' . $reseller->email . '.');
     }

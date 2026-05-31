@@ -374,6 +374,10 @@ class ReferrerPartnerController extends Controller
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':partner:' . md5($partnerEmail ?? $data['partner_name']),
             );
+            try {
+                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
         } catch (\Throwable $e) {
             Log::error('ReferrerPartnerController::store failed', [
                 'tenant_id' => $tenantId,
@@ -458,6 +462,10 @@ class ReferrerPartnerController extends Controller
                 actionLabel:  'Review Deal',
                 dedupeSuffix: $lead->id . ':partner_removed:' . $reseller->id . ':' . $dedupWindow,
             );
+            try {
+                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
         } catch (\Throwable $e) {
             Log::error('ReferrerPartnerController::removeFromDeal failed', [
                 'split_id' => $splitId,

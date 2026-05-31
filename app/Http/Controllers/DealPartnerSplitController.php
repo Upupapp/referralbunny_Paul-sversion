@@ -58,6 +58,10 @@ class DealPartnerSplitController extends Controller
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
         }
 
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Cannot modify partner splits when commission is locked or paid.'], 422);
+        }
+
         $data = $request->validate([
             'partner_name'      => 'required|string|max:255',
             'partner_email'     => 'nullable|email|max:255', // optional — triggers invite when provided
@@ -151,6 +155,10 @@ class DealPartnerSplitController extends Controller
 
         if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
+        }
+
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Cannot modify partner splits when commission is locked or paid.'], 422);
         }
 
         $data = $request->validate([
@@ -259,6 +267,10 @@ class DealPartnerSplitController extends Controller
 
         if (Auth::guard('tenant')->check() && !in_array(TenantContext::role(), ['owner', 'admin', 'manager'])) {
             return response()->json(['error' => 'You do not have permission to modify partner splits.'], 403);
+        }
+
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Cannot modify partner splits when commission is locked or paid.'], 422);
         }
 
         // Capture split data BEFORE removal for activity recording

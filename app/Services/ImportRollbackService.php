@@ -184,7 +184,7 @@ class ImportRollbackService
         }
 
         // Conflict: modified after snapshot
-        if ($snap->created_at && isset($contact->updated_at) && $contact->updated_at > $snap->created_at) {
+        if ($snap->created_at && isset($contact->updated_at) && $contact->updated_at >= $snap->created_at) {
             $snap->markConflict('Contact was modified after the import.');
             return 'conflict';
         }
