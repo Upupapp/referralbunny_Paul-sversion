@@ -31,6 +31,10 @@ class NotificationsController extends Controller
     public function markRead(Request $request, string $tenantId, string $notificationId)
     {
         $this->findUserNotification($notificationId)->update(['is_read' => true]);
+        [$type, $id] = $this->resolveCurrentUser();
+        if ($type && $id) {
+            $this->bustBadgeCaches($type, $id, $tenantId);
+        }
         return response()->json(['ok' => true]);
     }
 

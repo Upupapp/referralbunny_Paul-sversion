@@ -321,8 +321,8 @@ class TaskController extends Controller
                         actionLabel:      'View Task',
                         deduplicationKey: "task_assigned_{$task->id}",
                     );
-                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$assignee->id}");
                 } catch (\Throwable) {}
+                \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$assignee->id}");
 
                 // Email to referrer
                 if ($assignee->email) {
@@ -720,9 +720,11 @@ class TaskController extends Controller
                             actionLabel:  'View Task',
                             dedupeSuffix: "task_completed_{$freshTask->id}",
                         );
-                        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$freshTask->assigned_to_id}");
                     }
                 } catch (\Throwable) {}
+                if ($freshTask->assigned_to_type === 'reseller' && $freshTask->assigned_to_id) {
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$freshTask->assigned_to_id}");
+                }
             }
 
             if (!$isAdmin) {
@@ -792,6 +794,22 @@ class TaskController extends Controller
                     deduplicationKey: "task_status_{$task->id}_" . now()->format('YmdH'),
                 );
             } catch (\Throwable) {}
+        }
+        if (!$isAssignee && $task->assigned_to_type === 'reseller' && $task->assigned_to_id) {
+            try {
+                app(\App\Services\NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   (string) $task->assigned_to_id,
+                    tenantId:     $tenantId,
+                    category:     'task_approval',
+                    priority:     'normal',
+                    title:        "Task status updated: {$task->title}",
+                    body:         "{$actorName} moved this task to {$statusLabel}.",
+                    actionUrl:    "/reseller/{$tenantId}/tasks",
+                    actionLabel:  'View Task',
+                    dedupeSuffix: "task_status_{$task->id}_" . now()->format('YmdH'),
+                );
+            } catch (\Throwable) {}
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$task->assigned_to_id}");
         }
 
         return response()->json([

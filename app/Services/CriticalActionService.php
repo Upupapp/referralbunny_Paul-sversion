@@ -227,20 +227,16 @@ class CriticalActionService
         //     tableExists() cached 300s separately — block skipped on servers without the table
         if (self::tableExists('import_rollbacks')) {
             try {
-                $hasFailedRollback = DB::table('import_rollbacks')
+                $rb = DB::table('import_rollbacks')
                     ->where('tenant_id', $tenantId)
                     ->whereIn('status', ['failed', 'completed_with_warnings'])
                     ->where('created_at', '>', now()->subDays(14))
-                    ->exists();
-                if ($hasFailedRollback) {
+                    ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_ct")
+                    ->first();
+                if ($rb && (int) $rb->total > 0) {
                     $count++;
                     // Only a hard failure is urgent — completed_with_warnings is medium severity
-                    $hasActualFailure = DB::table('import_rollbacks')
-                        ->where('tenant_id', $tenantId)
-                        ->where('status', 'failed')
-                        ->where('created_at', '>', now()->subDays(14))
-                        ->exists();
-                    if ($hasActualFailure) {
+                    if ((int) $rb->failed_ct > 0) {
                         $hasUrgent = true;
                     }
                 }
