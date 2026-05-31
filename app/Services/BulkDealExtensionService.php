@@ -163,7 +163,12 @@ class BulkDealExtensionService
         // Post-commit side effects — outside the transaction so they cannot abort the batch creation
         if ($createdBatch) {
             try { $this->notifyAdminsBulkRequest($tenantId, $reseller, $createdBatch); } catch (\Throwable) {}
-            try { $this->criticalActions->invalidateCache($tenantId, (string) $reseller->id); } catch (\Throwable) {}
+            try {
+                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+                foreach ($adminIds as $uid) {
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_tenant_admin_{$uid}");
+                }
+            } catch (\Throwable) {}
             \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         }
 
@@ -229,6 +234,7 @@ class BulkDealExtensionService
         // as aborted (SQLSTATE[25P02]). Any subsequent unguarded DB statement — including the
         // DealExtensionApproved::dispatch() jobs insert — then surfaces the 25P02 error.
         // Running everything here keeps the transaction clean and prevents silent rollbacks.
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         if ($completeNotifyData) {
             $this->notifyResellerBatchComplete(
                 $tenantId,
@@ -236,8 +242,9 @@ class BulkDealExtensionService
                 $completeNotifyData['approved'],
                 $completeNotifyData['declined'],
             );
+        } else {
+            $this->notifyResellerOfDecision($tenantId, $deal, $request, 'approved');
         }
-        $this->notifyResellerOfDecision($tenantId, $deal, $request, 'approved');
         $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_approved', $reviewerUserId, [
             'approved_days' => $approvedDays,
             'new_days_left' => $newDaysLeft,
@@ -301,6 +308,7 @@ class BulkDealExtensionService
         });
 
         // Side effects after transaction commits — same 25P02 guard as approveItem.
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         if ($completeNotifyData) {
             $this->notifyResellerBatchComplete(
                 $tenantId,
@@ -356,6 +364,7 @@ class BulkDealExtensionService
         });
 
         // Side effects after transaction commits — same 25P02 guard as approveItem.
+        \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         if ($completeNotifyData) {
             $this->notifyResellerBatchComplete(
                 $tenantId,
@@ -735,9 +744,6 @@ class BulkDealExtensionService
             'updated_at'        => now(),
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget("bulk_ext_metrics:{$tenantId}");
-        \Illuminate\Support\Facades\Cache::forget("nav_ext_req_badge:{$tenantId}");
-
         if ($justResolved && $wasUnresolved) {
             $batch = DealExtensionRequestBatch::where('id', $batchId)->first();
             if ($batch?->requested_by_reseller_id) {
@@ -960,7 +966,7 @@ class BulkDealExtensionService
                 body:         "Your bulk extension request was reviewed: {$summary}.",
                 actionUrl:    url("/reseller/{$tenantId}/extension-requests/{$batch->id}"),
                 actionLabel:  'View My Request',
-                dedupeSuffix: "bulk_ext_result_partial:{$batch->id}",
+                dedupeSuffix: "bulk_ext_result_partial:{$batch->id}:" . (int) floor(time() / 3600),
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount],
             );
             Cache::forget("notif_unread_reseller_{$batch->requested_by_reseller_id}");

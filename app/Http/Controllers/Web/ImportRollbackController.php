@@ -42,6 +42,7 @@ class ImportRollbackController extends Controller
                 ->where('status', 'active')
                 ->first();
             abort_if(!$member, 403, 'You do not have access to this tenant.');
+            abort_if(!in_array($member->role, ['owner', 'admin']), 403, 'Only Tenant Owners or Admins can undo imports.');
             return;
         }
         if (Auth::guard('web')->check()) {

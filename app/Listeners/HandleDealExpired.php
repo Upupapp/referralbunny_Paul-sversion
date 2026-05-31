@@ -133,16 +133,14 @@ class HandleDealExpired implements ShouldQueue
         // ── Cache bust: refresh admin CA badges within 60s ────────────────────
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-
             foreach ($adminIds as $uid) {
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
-
-            if ($resellerId) {
-                Cache::forget("notif_unread_reseller_{$resellerId}");
-            }
         } catch (\Throwable $e) {
             Log::warning('[HandleDealExpired] Cache bust failed', ['error' => $e->getMessage()]);
+        }
+        if ($resellerId) {
+            try { Cache::forget("notif_unread_reseller_{$resellerId}"); } catch (\Throwable) {}
         }
     }
 

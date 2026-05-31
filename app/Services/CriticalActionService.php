@@ -142,6 +142,7 @@ class CriticalActionService
                     ->where('tenant_id', $tenantId)
                     ->whereNull('deleted_at')
                     ->whereNotIn('status', ['completed', 'cancelled', 'archived'])
+                    ->where('category', '!=', 'request_form')
                     ->where('due_at', '<', now())
                     ->count();
             } catch (\Throwable) {}

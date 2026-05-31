@@ -919,6 +919,7 @@ class LeadController extends Controller
                         actionLabel:  'View My Deals',
                         dedupeSuffix: "deal_archived_rs:{$leadId}",
                     );
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
                 }
             }
         } catch (\Throwable) {}
@@ -1019,6 +1020,7 @@ class LeadController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: $statusArchived->id . ':reactivated:' . now()->format('Ymd'),
                     );
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
                 }
             } catch (\Throwable) {}
 
@@ -1091,6 +1093,7 @@ class LeadController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: "deal_restored_rs:{$lead->id}",
                     );
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
                 }
             }
         } catch (\Throwable) {}
@@ -1197,6 +1200,7 @@ class LeadController extends Controller
                     actionLabel:  'View Deals',
                     dedupeSuffix: "bulk_archive:{$tenantId}:{$reseller->id}:" . now()->format('YmdH'),
                 );
+                \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
             } catch (\Throwable) {}
         }
 

@@ -78,6 +78,7 @@ class NotificationsController extends Controller
         } elseif (in_array($type, ['tenant_admin', 'super_admin'])) {
             Cache::forget("ca_badge_{$tenantId}_{$id}");
             Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$id}");
         }
     }
 

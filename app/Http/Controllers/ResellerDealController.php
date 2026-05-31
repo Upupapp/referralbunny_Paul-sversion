@@ -1256,6 +1256,8 @@ class ResellerDealController extends Controller
                     actionLabel:      'View Deal',
                     deduplicationKey: $dealId . ':partner_added:' . (string) $existingPartner->id,
                 );
+                \Illuminate\Support\Facades\Cache::forget("notif_unread_partner_{$existingPartner->id}");
+                \Illuminate\Support\Facades\Cache::forget("partner_notif_unread:{$existingPartner->id}");
             } catch (\Throwable) {}
         }
 

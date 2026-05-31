@@ -150,11 +150,10 @@ class DealAssignmentExtensionService
             adminNote:    $adminNote,
         );
 
-        // Synchronous bust for the reviewing admin — async listener covers all admins
         try {
-            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
-            if ($reviewerUserId) {
-                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
         } catch (\Throwable) {}
 
@@ -183,11 +182,10 @@ class DealAssignmentExtensionService
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'rejected');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_rejected', $reviewerUserId);
 
-        // Synchronous bust for the reviewing admin
         try {
-            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
-            if ($reviewerUserId) {
-                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
         } catch (\Throwable) {}
 
@@ -216,11 +214,10 @@ class DealAssignmentExtensionService
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'clarification_requested');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_clarification_requested', $reviewerUserId);
 
-        // Synchronous bust for the reviewing admin
         try {
-            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
-            if ($reviewerUserId) {
-                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
         } catch (\Throwable) {}
 
@@ -341,7 +338,11 @@ class DealAssignmentExtensionService
                         recipientType:  'reseller',
                         recipientId:    $reseller->id,
                         emailKey:       'deal_ext_decision.' . $request->id . '.' . $decision,
-                        subject:        ($decision === 'approved' ? 'Extension approved' : 'Extension request update') . ': ' . $deal->name,
+                        subject:        match($decision) {
+                            'approved'                => 'Extension approved',
+                            'clarification_requested' => 'Clarification needed',
+                            default                   => 'Extension request update',
+                        } . ': ' . $deal->name,
                         tenantId:       $tenantId,
                     );
                 }
