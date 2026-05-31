@@ -220,6 +220,37 @@ class CriticalActionService
             } catch (\Throwable) {}
         }
 
+        // 12. Failed/conflicted rollbacks — 14-day window mirrors failedRollbacks() source
+        if (self::tableExists('import_rollbacks')) {
+            try {
+                $hasFailedRollback = DB::table('import_rollbacks')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('status', ['failed', 'completed_with_warnings'])
+                    ->where('created_at', '>', now()->subDays(14))
+                    ->exists();
+                if ($hasFailedRollback) {
+                    $count++;
+                    $hasUrgent = true;
+                }
+            } catch (\Throwable) {}
+        }
+
+        // 13. LGU IDS — pending default amount confirmations
+        if ($this->isLguIdsTenant($tenantId)) {
+            try {
+                $hasPendingDefaults = DB::table('leads')
+                    ->where('tenant_id', $tenantId)
+                    ->whereNotIn('status', ['expired', 'declined', 'archived'])
+                    ->whereNull('deleted_at')
+                    ->whereRaw("data->>'amount_defaulted' = 'true'")
+                    ->whereRaw("data->>'amount_confirmation_status' = 'pending'")
+                    ->exists();
+                if ($hasPendingDefaults) {
+                    $count++;
+                }
+            } catch (\Throwable) {}
+        }
+
         return ['count' => $count, 'has_urgent' => $hasUrgent];
     }
 

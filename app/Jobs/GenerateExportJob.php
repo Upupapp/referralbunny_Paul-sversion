@@ -154,6 +154,7 @@ class GenerateExportJob implements ShouldQueue
     {
         $query = DB::table('leads')
             ->where('tenant_id', $request->tenant_id)
+            ->whereNull('deleted_at')
             ->orderByDesc('created_at');
 
         // Scope-down to only the requester's own deals when the requester is a referrer.
@@ -321,6 +322,7 @@ class GenerateExportJob implements ShouldQueue
 
         $query = DB::table('resellers')
             ->where('tenant_id', $request->tenant_id)
+            ->whereNull('deleted_at')
             ->orderByDesc('created_at');
 
         if (!empty($scope['status'])) $query->where('status', $scope['status']);
@@ -369,6 +371,7 @@ class GenerateExportJob implements ShouldQueue
         $query = DB::table('leads')
             ->where('tenant_id', $request->tenant_id)
             ->whereNotNull('commission_status')
+            ->whereNull('deleted_at')
             ->orderByDesc('created_at');
 
         // Referrers only see their own commission data
@@ -477,6 +480,7 @@ class GenerateExportJob implements ShouldQueue
 
         $query = DB::table('leads')
             ->where('tenant_id', $request->tenant_id)
+            ->whereNull('deleted_at')
             ->select([
                 'reseller_name',
                 DB::raw('COUNT(*) as total_leads'),
