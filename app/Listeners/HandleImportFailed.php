@@ -3,11 +3,9 @@
 namespace App\Listeners;
 
 use App\Events\ImportFailed;
-use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 

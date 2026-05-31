@@ -5,7 +5,6 @@ namespace App\Listeners;
 use App\Events\InviteAcceptedEvent;
 use App\Mail\InviterActivationMail;
 use App\Models\ActivityLog;
-use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;

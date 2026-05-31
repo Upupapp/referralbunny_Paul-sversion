@@ -63,9 +63,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(DealDeclined::class,             HandleDealDeclined::class);
         Event::listen(ImportFailed::class,             HandleImportFailed::class);
 
-        // Reset per-request memoization before each queue job so long-lived workers
-        // do not serve stale admin UID collections across job boundaries.
+        // Reset per-request memoization at both job boundaries so long-lived workers
+        // do not serve stale admin UID collections across job executions.
         Queue::before(fn() => CriticalActionService::resetRequestMemo());
+        Queue::after(fn() => CriticalActionService::resetRequestMemo());
 
         // Google Calendar sync observers
         Task::observe(TaskGoogleCalendarObserver::class);

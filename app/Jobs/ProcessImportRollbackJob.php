@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\ImportBatch;
 use App\Models\ImportRollback;
-use App\Services\CriticalActionService;
 use App\Services\ImportRollbackService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Bus\Queueable;
@@ -12,7 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -60,10 +58,6 @@ class ProcessImportRollbackJob implements ShouldQueue
             $rollback->markFailed($e->getMessage());
             $batch->update(['rollback_status' => 'failed']);
             $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
-            try {
-                $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId);
-                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-            } catch (\Throwable) {}
         }
     }
 
@@ -80,10 +74,6 @@ class ProcessImportRollbackJob implements ShouldQueue
                     $batch->update(['rollback_status' => 'failed']);
                 }
                 $this->notifyAdminsOfFailure($fileName, $e->getMessage());
-                try {
-                    $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId);
-                    Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-                } catch (\Throwable) {}
             }
         } catch (\Throwable $fe) {
             Log::error('[ProcessImportRollbackJob] failed() handler itself threw', [

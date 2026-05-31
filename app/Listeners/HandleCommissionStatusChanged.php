@@ -4,7 +4,6 @@ namespace App\Listeners;
 
 use App\Events\CommissionStatusChanged;
 use App\Mail\CommissionStatusUpdate;
-use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -188,13 +187,12 @@ class HandleCommissionStatusChanged implements ShouldQueue
             }
         }
 
-        // Cache bust — refresh reseller bell + admin CA badge so counts update promptly
+        // Cache bust — refresh reseller + partner bells
+        // Admin bells + CA badges busted internally by dispatchToTenantAdmins (line 131).
         try {
             if ($reseller) {
                 Cache::forget("notif_unread_reseller_{$reseller->id}");
             }
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
 
             if ($partnerIds->isNotEmpty()) {
                 $pKeys = [];

@@ -1113,12 +1113,6 @@ class LeadController extends Controller
             }
         } catch (\Throwable) {}
 
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
-
         return response()->json(['success' => true, 'lead' => $lead->fresh(['commissionSplits'])]);
     }
 

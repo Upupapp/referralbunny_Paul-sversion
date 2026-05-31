@@ -323,17 +323,30 @@ class CriticalActionService
     }
 
     /**
-     * Bust panel caches AND per-user badge caches for every active admin/manager/owner.
-     * Returns the plucked UID collection so callers can reuse it (e.g. for notif_unread_ busts)
-     * without issuing a second DB query.
-     * Use this from controllers, queue jobs, and services — all external bust callsites should prefer this method.
-     * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
+     * Reset the per-request memoization map. Must be called at job-start in queue workers
+     * (handled automatically via Queue::before in AppServiceProvider) and in tests that
+     * run multiple bust operations across simulated tenants in the same process.
      */
     public static function resetRequestMemo(): void
     {
         self::$bustedThisRequest = [];
     }
 
+    /**
+     * Bust panel caches, per-user CA badge caches, AND admin notification bell keys for every
+     * active admin/manager/owner in the tenant. Returns the plucked UID collection so callers
+     * can reuse it without issuing a second DB query.
+     *
+     * Side-effects (all atomic, no additional calls needed by the caller):
+     *   - ca_badge_{tenantId}_{uid}           — per-user badge count
+     *   - ca_badge_urgent:{tenantId}:{uid}    — per-user urgent count
+     *   - ca_badge_suppressed:{tenantId}:{uid}— per-user suppressed count
+     *   - notif_unread_tenant_admin_{uid}     — admin notification bell
+     *   - ca_master:{tenantId}                — panel master cache (via invalidateCache)
+     *   - ca_dashboard:{tenantId}:*           — dashboard widget cache (via invalidateCache)
+     *
+     * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
+     */
     public function invalidateAllAdminBadges(string $tenantId): Collection
     {
         if (isset(self::$bustedThisRequest[$tenantId])) {
@@ -341,7 +354,6 @@ class CriticalActionService
         }
 
         // Busts panel/dashboard cache keys only (no userId = no badge keys added inside invalidateCache).
-        // Per-user badge keys are cleared separately in the foreach below.
         $this->invalidateCache($tenantId);
         $uids = collect();
         try {
@@ -356,6 +368,7 @@ class CriticalActionService
                 $keys[] = "ca_badge_{$tenantId}_{$uid}";
                 $keys[] = "ca_badge_urgent:{$tenantId}:{$uid}";
                 $keys[] = "ca_badge_suppressed:{$tenantId}:{$uid}";
+                $keys[] = "notif_unread_tenant_admin_{$uid}";
             }
             if (!empty($keys)) {
                 Cache::deleteMultiple($keys);

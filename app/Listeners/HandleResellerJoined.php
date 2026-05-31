@@ -5,7 +5,6 @@ namespace App\Listeners;
 use App\Events\ResellerJoined;
 use App\Mail\ResellerWelcome;
 use App\Mail\TenantAdminNewReseller;
-use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -91,12 +90,9 @@ class HandleResellerJoined implements ShouldQueue
             );
         }
 
-        // Cache bust — refresh admin CA badge + notification bell
-        try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-            Cache::forget("notif_unread_reseller_{$event->resellerId}");
-        } catch (\Throwable) {}
+        // Cache bust — refresh referrer bell
+        // Admin bells + CA badges busted internally by dispatchToTenantAdmins (step 0b above).
+        try { Cache::forget("notif_unread_reseller_{$event->resellerId}"); } catch (\Throwable) {}
     }
 
     public function failed(ResellerJoined $event, \Throwable $exception): void

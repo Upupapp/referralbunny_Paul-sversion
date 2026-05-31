@@ -5,7 +5,6 @@ namespace App\Listeners;
 use App\Events\DealDeclined;
 use App\Mail\ResellerDealDeclined;
 use App\Models\Reseller;
-use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
