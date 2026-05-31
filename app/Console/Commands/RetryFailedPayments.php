@@ -51,18 +51,18 @@ class RetryFailedPayments extends Command
                 if ($subscription) {
                     $billing->suspend($subscription);
                 }
+
+                $notifications->send(
+                    category:  'billing',
+                    type:      'action_required',
+                    priority:  'critical',
+                    message:   "Payment failed after 3 retries. Account suspended.",
+                    tenantId:  $payment->tenant_id,
+                    channel:   'all',
+                );
             } catch (\Throwable $e) {
                 $this->error("Failed to suspend tenant {$payment->tenant_id}: {$e->getMessage()}");
             }
-
-            $notifications->send(
-                category:  'billing',
-                type:      'action_required',
-                priority:  'critical',
-                message:   "Payment failed after 3 retries. Account suspended.",
-                tenantId:  $payment->tenant_id,
-                channel:   'all',
-            );
         }
 
         $this->info('Payment retry cycle complete.');

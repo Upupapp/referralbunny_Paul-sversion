@@ -60,6 +60,12 @@ class GenerateExportJob implements ShouldQueue
             $approvalService->markProcessing($request);
             $request->refresh();
 
+            // Referrers export is restricted to tenant admins only
+            if ($request->requester_type === 'reseller' && $request->export_type === 'referrers') {
+                $approvalService->markFailed($request, 'Referrers export is not available for referrer accounts.');
+                return;
+            }
+
             // Generate row data based on export type
             $rows = match ($request->export_type) {
                 'deals'          => $this->generateDeals($request),

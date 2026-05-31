@@ -63,7 +63,7 @@ class InvoiceService
             ]);
 
             if ($creditsApplied > 0) {
-                $creditIds = $lockedCredits->take(10)->pluck('id');
+                $creditIds = $lockedCredits->pluck('id');
                 Credit::whereIn('id', $creditIds)->update(['applied_to_invoice_id' => $inv->id]);
             }
 
