@@ -67,7 +67,7 @@ class ProcessImportRollbackJob implements ShouldQueue
     {
         // Mark rollback as failed if the job itself fails (e.g. timeout)
         try {
-            $rollback = ImportRollback::find($this->rollbackId);
+            $rollback = ImportRollback::where('id', $this->rollbackId)->where('tenant_id', $this->tenantId)->first();
             if ($rollback && !$rollback->isCompleted()) {
                 $rollback->markFailed('Job failed: ' . $e->getMessage());
                 $batch = ImportBatch::where('id', $this->batchId)->first();

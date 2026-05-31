@@ -322,6 +322,7 @@ class CriticalActionService
      * Bust panel caches AND per-user badge caches for every active admin/manager/owner.
      * Use this from queue jobs and services where no single actor ID is available.
      * Controller actions should use invalidateCache($tenantId, $actorId) instead.
+     * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
     public function invalidateAllAdminBadges(string $tenantId): void
     {
@@ -332,10 +333,15 @@ class CriticalActionService
                 ->where('status', 'active')
                 ->whereIn('role', ['owner', 'admin', 'manager'])
                 ->pluck('tenant_user_id');
+
+            $keys = [];
             foreach ($uids as $uid) {
-                Cache::forget("ca_badge_{$tenantId}_{$uid}");
-                Cache::forget("ca_badge_urgent:{$tenantId}:{$uid}");
-                Cache::forget("ca_badge_suppressed:{$tenantId}_{$uid}");
+                $keys[] = "ca_badge_{$tenantId}_{$uid}";
+                $keys[] = "ca_badge_urgent:{$tenantId}:{$uid}";
+                $keys[] = "ca_badge_suppressed:{$tenantId}:{$uid}";
+            }
+            if (!empty($keys)) {
+                Cache::deleteMultiple($keys);
             }
         } catch (\Throwable) {}
     }

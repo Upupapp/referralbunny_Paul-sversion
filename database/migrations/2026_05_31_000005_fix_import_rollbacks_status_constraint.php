@@ -21,8 +21,8 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'pgsql') {
-            // Restore the pre-cycle-23 constraint. Includes processing/completed_with_warnings/cancelled
-            // so down() is safe to run on a live DB where cycle-23 code may still be writing those values.
+            // Restores the same extended constraint as up() — safe for live DBs where cycle-23+
+            // code may still be writing processing/completed_with_warnings/cancelled values.
             DB::statement('ALTER TABLE import_rollbacks DROP CONSTRAINT IF EXISTS import_rollbacks_status_check');
             DB::statement("ALTER TABLE import_rollbacks ADD CONSTRAINT import_rollbacks_status_check
                 CHECK (status IN ('pending','running','processing','completed','completed_with_warnings','failed','partial','cancelled'))");
