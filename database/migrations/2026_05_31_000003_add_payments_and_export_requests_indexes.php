@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    public bool $withinTransaction = false;
+
     public function up(): void
     {
         if (DB::getDriverName() === 'pgsql') {
