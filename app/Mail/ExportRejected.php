@@ -23,7 +23,9 @@ class ExportRejected extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your export request was not approved — ReferralBunny.ai',
+            subject: $this->isSystemFailure
+                ? 'Your export could not be generated — ReferralBunny.ai'
+                : 'Your export request was not approved — ReferralBunny.ai',
         );
     }
 

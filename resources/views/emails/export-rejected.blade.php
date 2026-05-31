@@ -1,5 +1,5 @@
 @php $isFailure = $isSystemFailure ?? false; @endphp
-@extends('emails.layouts.base', ['headerLabel' => 'Export Request Update', 'subject' => $isFailure ? 'Your export could not be generated' : 'Your export request was not approved'])
+@extends('emails.layouts.base', ['headerLabel' => 'Export Request Update', 'subject' => ($isSystemFailure ?? false) ? 'Your export could not be generated' : 'Your export request was not approved'])
 
 @section('content')
 <div style="text-align:center;margin-bottom:24px">

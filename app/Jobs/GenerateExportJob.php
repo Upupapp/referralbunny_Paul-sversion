@@ -32,7 +32,11 @@ class GenerateExportJob implements ShouldQueue
         try {
             $request = ExportRequest::find($this->exportRequestId);
             if ($request && in_array($request->status, ['processing', 'approved', 'pending', 'direct_pending'], true)) {
-                app(ExportApprovalService::class)->markFailed($request, 'Job failed permanently: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('[GenerateExportJob] Job failed permanently', [
+                    'export_request_id' => $this->exportRequestId,
+                    'error'             => $e->getMessage(),
+                ]);
+                app(ExportApprovalService::class)->markFailed($request, 'Export generation failed. Please try again or contact support.');
             }
         } catch (\Throwable) {}
     }
@@ -108,7 +112,11 @@ class GenerateExportJob implements ShouldQueue
                 expiryDays: $expiryDays,
             );
         } catch (Throwable $e) {
-            $approvalService->markFailed($request, $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('[GenerateExportJob] Export generation error', [
+                'export_request_id' => $this->exportRequestId,
+                'error'             => $e->getMessage(),
+            ]);
+            $approvalService->markFailed($request, 'Export generation failed. Please try again or contact support.');
             throw $e; // re-throw so the queue marks the attempt as failed
         }
     }

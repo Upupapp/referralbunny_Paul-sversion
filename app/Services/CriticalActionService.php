@@ -186,6 +186,16 @@ class CriticalActionService
                 if ($sub && in_array($sub->status, ['suspended', 'past_due'], true)) {
                     $count++;
                     $hasUrgent = true;
+                } elseif ($sub && $sub->status === 'active') {
+                    $hasFailedPayment = DB::table('payments')
+                        ->where('tenant_id', $tenantId)
+                        ->where('status', 'failed')
+                        ->where('retry_count', '<', 3)
+                        ->exists();
+                    if ($hasFailedPayment) {
+                        $count++;
+                        $hasUrgent = true;
+                    }
                 } elseif ($sub && $sub->status === 'trial' && !empty($sub->trial_end_date)) {
                     $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($sub->trial_end_date), false);
                     if ($daysLeft >= 0 && $daysLeft <= 7) {
@@ -1781,7 +1791,7 @@ class CriticalActionService
                     $actions[] = $this->make([
                         'type'          => 'payment_failed',
                         'category'      => 'billing',
-                        'severity'      => 'high',
+                        'severity'      => 'urgent',
                         'summary'       => 'Payment failed — retrying automatically. Update your payment method to avoid suspension.',
                         'actor_name'    => 'System',
                         'actor_role'    => 'System',
@@ -1874,9 +1884,10 @@ class CriticalActionService
                 ->where('requester_type', 'reseller')
                 ->where('requester_id', $resellerId)
                 ->where('status', 'failed')
+                ->where('updated_at', '>', now()->subDays(30))
                 ->orderByDesc('updated_at')
                 ->limit(5)
-                ->get(['id', 'export_type', 'error_message', 'updated_at']);
+                ->get(['id', 'export_type', 'updated_at']);
 
             return $rows->map(fn($r) => $this->make([
                 'type'          => 'export_failed',
@@ -1889,8 +1900,8 @@ class CriticalActionService
                 'related_type'  => 'export',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->updated_at ?? now(),
-                'action_url'    => "/reseller/{$tenantId}/exports/{$r->id}",
-                'action_label'  => 'View Details',
+                'action_url'    => "/reseller/{$tenantId}/dashboard",
+                'action_label'  => 'Go to Dashboard',
                 'action_needed' => true,
                 'source'        => 'export_requests',
             ]))->toArray();
@@ -2430,7 +2441,7 @@ class CriticalActionService
         // overdue, import failure, security issue.
         $notDismissibleTypes = [
             'subscription_suspended', 'payment_failed', 'payment_overdue', 'deal_expired',
-            'import_failed', 'rollback_failed', 'overdue_task',
+            'import_failed', 'rollback_failed', 'overdue_task', 'export_failed',
             'archive_request_pending', 'extension_request_pending',
             'bulk_extension_request_pending',
             'stage_move_request_pending', 'trial_ending',
