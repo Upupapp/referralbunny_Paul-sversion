@@ -360,6 +360,7 @@ class PartnerPortalController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: 'partner_note_rs:' . $note->id,
                     );
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
                 }
             }
         } catch (\Throwable) {}

@@ -321,6 +321,7 @@ class TaskController extends Controller
                         actionLabel:      'View Task',
                         deduplicationKey: "task_assigned_{$task->id}",
                     );
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$assignee->id}");
                 } catch (\Throwable) {}
 
                 // Email to referrer
@@ -719,6 +720,7 @@ class TaskController extends Controller
                             actionLabel:  'View Task',
                             dedupeSuffix: "task_completed_{$freshTask->id}",
                         );
+                        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$freshTask->assigned_to_id}");
                     }
                 } catch (\Throwable) {}
             }

@@ -316,8 +316,9 @@ class BulkDealExtensionService
                 $completeNotifyData['approved'],
                 $completeNotifyData['declined'],
             );
+        } else {
+            $this->notifyResellerOfDecision($tenantId, $deal, $request, 'rejected');
         }
-        $this->notifyResellerOfDecision($tenantId, $deal, $request, 'rejected');
         $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_rejected', $reviewerUserId, [
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,

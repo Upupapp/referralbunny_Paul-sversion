@@ -236,6 +236,11 @@ class NotificationController extends Controller
         if ($type === 'reseller') {
             Cache::forget("ca_rs_suppressed:{$id}");
         }
+        if ($type === 'tenant_admin' && $tenantId) {
+            Cache::forget("ca_badge_{$tenantId}_{$id}");
+            Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$id}");
+        }
 
         return response()->json(['ok' => true]);
     }
@@ -269,6 +274,7 @@ class NotificationController extends Controller
         if (in_array($type, ['tenant_admin', 'super_admin']) && $tenantId) {
             Cache::forget("ca_badge_{$tenantId}_{$id}");
             Cache::forget("ca_badge_suppressed:{$tenantId}:{$id}");
+            Cache::forget("ca_badge_urgent:{$tenantId}:{$id}");
         } elseif ($type === 'reseller') {
             Cache::forget("ca_rs_suppressed:{$id}");
         }

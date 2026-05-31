@@ -172,6 +172,7 @@ class ImportRollbackController extends Controller
 
         $rollback = ImportRollback::where('id', $rollbackId)
             ->where('import_batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
             ->firstOrFail();
 
         // Fetch snapshots for report
@@ -191,10 +192,8 @@ class ImportRollbackController extends Controller
 
         $rollback = ImportRollback::where('id', $rollbackId)
             ->where('import_batch_id', $batchId)
+            ->where('tenant_id', $tenantId)
             ->firstOrFail();
-
-        // Verify batch belongs to tenant
-        ImportBatch::where('id', $batchId)->where('tenant_id', $tenantId)->firstOrFail();
 
         return response()->json([
             'rollback_id'      => $rollback->id,
