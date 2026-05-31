@@ -127,10 +127,8 @@ class HandleDealStageMoved implements ShouldQueue
         }
 
         // ── 4. Cache bust ─────────────────────────────────────────────────────
+        // Admin bells + CA badges are busted inside dispatchToTenantAdmins (step 3 above).
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-
             if ($resellerId) {
                 Cache::forget("notif_unread_reseller_{$resellerId}");
             }

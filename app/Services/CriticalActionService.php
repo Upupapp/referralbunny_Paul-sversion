@@ -18,6 +18,10 @@ class CriticalActionService
     // Severity ordering for sorting — 'normal' treated as alias for 'low'
     private const SEVERITY_ORDER = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'normal' => 3, 'info' => 4];
 
+    // Per-request memoization: prevents redundant DB+cache round-trips when multiple
+    // callsites bust the same tenant in the same HTTP request (e.g. moveStage path).
+    private static array $bustedThisRequest = [];
+
     private static function tableExists(string $table): bool
     {
         return Cache::remember("schema_table_exists:{$table}", 300, fn() => Schema::hasTable($table));
@@ -325,6 +329,10 @@ class CriticalActionService
      */
     public function invalidateAllAdminBadges(string $tenantId): Collection
     {
+        if (isset(self::$bustedThisRequest[$tenantId])) {
+            return self::$bustedThisRequest[$tenantId];
+        }
+
         // Busts panel/dashboard cache keys only (no userId = no badge keys added inside invalidateCache).
         // Per-user badge keys are cleared separately in the foreach below.
         $this->invalidateCache($tenantId);
@@ -346,6 +354,8 @@ class CriticalActionService
                 Cache::deleteMultiple($keys);
             }
         } catch (\Throwable) {}
+
+        self::$bustedThisRequest[$tenantId] = $uids;
         return $uids;
     }
 

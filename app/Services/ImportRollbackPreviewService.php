@@ -93,6 +93,7 @@ class ImportRollbackPreviewService
 
     /**
      * Build a detailed summary of what will be rolled back.
+     * Uses 2 batch queries instead of N per-snapshot queries.
      */
     public function buildSummary(ImportBatch $batch, string $tenantId): array
     {
@@ -100,13 +101,25 @@ class ImportRollbackPreviewService
             ->whereIn('rollback_status', ['pending'])
             ->get();
 
+        // Pre-load all referenced entities in 2 queries to avoid N+1
+        $leadIds    = $snapshots->where('entity_type', 'lead')->pluck('entity_id');
+        $contactIds = $snapshots->where('entity_type', 'contact')->pluck('entity_id');
+
+        $leadsMap = $leadIds->isNotEmpty()
+            ? DB::table('leads')->where('tenant_id', $tenantId)->whereIn('id', $leadIds)->get()->keyBy('id')
+            : collect();
+
+        $contactsMap = $contactIds->isNotEmpty()
+            ? DB::table('contacts')->where('tenant_id', $tenantId)->whereIn('id', $contactIds)->get()->keyBy('id')
+            : collect();
+
         $toRemove  = [];
         $toRestore = [];
         $conflicts = [];
 
         foreach ($snapshots as $snap) {
             if ($snap->operation_type === 'created') {
-                $conflict = $this->detectCreatedConflict($snap, $tenantId);
+                $conflict = $this->detectCreatedConflict($snap, $leadsMap, $contactsMap);
                 if ($conflict) {
                     $conflicts[] = [
                         'entity_type' => $snap->entity_type,
@@ -122,7 +135,7 @@ class ImportRollbackPreviewService
                     ];
                 }
             } elseif (in_array($snap->operation_type, ['updated', 'merged', 'overwritten'])) {
-                $conflict = $this->detectUpdatedConflict($snap, $tenantId);
+                $conflict = $this->detectUpdatedConflict($snap, $leadsMap, $contactsMap);
                 if ($conflict) {
                     $conflicts[] = [
                         'entity_type' => $snap->entity_type,
@@ -158,31 +171,31 @@ class ImportRollbackPreviewService
 
     // ── Conflict Detection ─────────────────────────────────────────
 
-    private function detectCreatedConflict(ImportSnapshot $snap, string $tenantId): ?string
+    private function detectCreatedConflict(ImportSnapshot $snap, $leadsMap, $contactsMap): ?string
     {
         return match ($snap->entity_type) {
-            'lead'    => $this->detectDealConflict($snap->entity_id, $tenantId, $snap->created_at),
-            'contact' => $this->detectContactConflict($snap->entity_id, $tenantId, $snap->created_at),
+            'lead'    => $this->detectDealConflict($snap->entity_id, $snap->created_at, $leadsMap),
+            'contact' => $this->detectContactConflict($snap->entity_id, $snap->created_at, $contactsMap),
             default   => null,
         };
     }
 
-    private function detectUpdatedConflict(ImportSnapshot $snap, string $tenantId): ?string
+    private function detectUpdatedConflict(ImportSnapshot $snap, $leadsMap, $contactsMap): ?string
     {
         if (!$snap->before_data) {
             return 'Rollback data is incomplete (no before-state recorded).';
         }
 
         return match ($snap->entity_type) {
-            'lead'    => $this->detectDealModifiedAfterImport($snap->entity_id, $tenantId, $snap->created_at),
-            'contact' => $this->detectContactModifiedAfterImport($snap->entity_id, $tenantId, $snap->created_at),
+            'lead'    => $this->detectDealModifiedAfterImport($snap->entity_id, $snap->created_at, $leadsMap),
+            'contact' => $this->detectContactModifiedAfterImport($snap->entity_id, $snap->created_at, $contactsMap),
             default   => null,
         };
     }
 
-    private function detectDealConflict(string $dealId, string $tenantId, $importedAt): ?string
+    private function detectDealConflict(string $dealId, $importedAt, $leadsMap): ?string
     {
-        $deal = DB::table('leads')->where('id', $dealId)->where('tenant_id', $tenantId)->first();
+        $deal = $leadsMap->get($dealId);
         if (!$deal) return null; // Already deleted — will be skipped
 
         if (in_array($deal->commission_status, ['locked', 'paid'])) {
@@ -194,9 +207,9 @@ class ImportRollbackPreviewService
         return null;
     }
 
-    private function detectDealModifiedAfterImport(string $dealId, string $tenantId, $importedAt): ?string
+    private function detectDealModifiedAfterImport(string $dealId, $importedAt, $leadsMap): ?string
     {
-        $deal = DB::table('leads')->where('id', $dealId)->where('tenant_id', $tenantId)->first();
+        $deal = $leadsMap->get($dealId);
         if (!$deal) return 'Record no longer exists.';
 
         if ($importedAt && isset($deal->updated_at) && $deal->updated_at >= $importedAt) {
@@ -205,9 +218,9 @@ class ImportRollbackPreviewService
         return null;
     }
 
-    private function detectContactConflict(string $contactId, string $tenantId, $importedAt): ?string
+    private function detectContactConflict(string $contactId, $importedAt, $contactsMap): ?string
     {
-        $contact = DB::table('contacts')->where('id', $contactId)->where('tenant_id', $tenantId)->first();
+        $contact = $contactsMap->get($contactId);
         if (!$contact) return null;
 
         // If contact was manually modified after import
@@ -217,9 +230,9 @@ class ImportRollbackPreviewService
         return null;
     }
 
-    private function detectContactModifiedAfterImport(string $contactId, string $tenantId, $importedAt): ?string
+    private function detectContactModifiedAfterImport(string $contactId, $importedAt, $contactsMap): ?string
     {
-        $contact = DB::table('contacts')->where('id', $contactId)->where('tenant_id', $tenantId)->first();
+        $contact = $contactsMap->get($contactId);
         if (!$contact) return 'Contact no longer exists.';
 
         if ($importedAt && isset($contact->updated_at) && $contact->updated_at >= $importedAt) {

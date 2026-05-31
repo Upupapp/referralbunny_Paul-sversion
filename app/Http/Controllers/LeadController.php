@@ -1258,11 +1258,6 @@ class LeadController extends Controller
                 dedupeSuffix: "bulk_archive_admin:{$tenantId}:" . now()->format('YmdH'),
             );
         } catch (\Throwable) {}
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'deleted_count' => $count]);
     }
@@ -1526,11 +1521,6 @@ class LeadController extends Controller
             $caEmail = $caReseller?->email;
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
         }
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
         try {

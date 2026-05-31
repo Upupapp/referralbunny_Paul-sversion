@@ -116,10 +116,6 @@ class ExportApprovalService
                         'requester_id'      => $requesterId,
                     ],
                 );
-                try {
-                    $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-                    \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-                } catch (\Throwable) {}
             }
 
             // Send "submitted" confirmation email to the requester
@@ -409,6 +405,8 @@ class ExportApprovalService
 
         $config->update(['export_settings' => $merged]);
 
+        \Illuminate\Support\Facades\Cache::forget("tenant_export_settings:{$tenantId}");
+
         return array_merge($this->permissions->defaultSettings(), $merged);
     }
 
@@ -588,10 +586,6 @@ class ExportApprovalService
                 'error_message'     => $request->error_message,
             ],
         );
-        try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($request->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
     }
 
     /**

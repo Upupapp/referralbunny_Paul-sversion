@@ -78,6 +78,11 @@ class NotificationDispatchService
      *
      * Key pattern checked: "{category}:%:{dedupeSuffix}" — matches any per-admin key
      * written by a previous successful dispatch with the same suffix.
+     *
+     * Side-effects: after a successful dispatch (non-dedup-hit), internally busts
+     * admin bell keys (notif_unread_tenant_admin_{uid}) and all CA badge cache keys
+     * via CriticalActionService::invalidateAllAdminBadges. Callsites do NOT need to
+     * perform these busts manually after calling this method.
      */
     public function dispatchToTenantAdmins(
         string  $tenantId,

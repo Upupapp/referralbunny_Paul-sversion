@@ -250,6 +250,10 @@ class LguIdsImportController extends Controller
             ? \Illuminate\Support\Facades\Auth::guard('reseller')->user()?->email
             : null;
 
+        if ($this->authRole() === 'reseller' && $resellerEmail === null) {
+            return response()->json(['error' => 'Reseller identity could not be verified.'], 403);
+        }
+
         $approvedCount = 0;
         foreach ($rows as $row) {
             // Resellers may only approve their own rows

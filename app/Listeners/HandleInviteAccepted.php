@@ -55,14 +55,6 @@ class HandleInviteAccepted implements ShouldQueue
             $this->notifyAdmins($event, $dedupBase);
         }
 
-        // ── 5. Cache bust — refresh admin CA badge + notification bell ───────
-        // Only when admins were notified (not reseller type — HandleResellerJoined handles that).
-        if ($event->inviteType !== 'reseller') {
-            try {
-                $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-            } catch (\Throwable) {}
-        }
     }
 
     // ── Activity Log ─────────────────────────────────────────────────────────
