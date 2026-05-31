@@ -220,7 +220,9 @@ class CriticalActionService
             } catch (\Throwable) {}
         }
 
-        // 12. Failed/conflicted rollbacks — 14-day window mirrors failedRollbacks() source
+        // 12. Failed/conflicted rollbacks — presence indicator (+1); 14-day window mirrors failedRollbacks()
+        //     'failed' = urgent (job crashed); 'completed_with_warnings' = medium (conflicts only)
+        //     tableExists() cached 300s separately — block skipped on servers without the table
         if (self::tableExists('import_rollbacks')) {
             try {
                 $hasFailedRollback = DB::table('import_rollbacks')
@@ -230,12 +232,21 @@ class CriticalActionService
                     ->exists();
                 if ($hasFailedRollback) {
                     $count++;
-                    $hasUrgent = true;
+                    // Only a hard failure is urgent — completed_with_warnings is medium severity
+                    $hasActualFailure = DB::table('import_rollbacks')
+                        ->where('tenant_id', $tenantId)
+                        ->where('status', 'failed')
+                        ->where('created_at', '>', now()->subDays(14))
+                        ->exists();
+                    if ($hasActualFailure) {
+                        $hasUrgent = true;
+                    }
                 }
             } catch (\Throwable) {}
         }
 
-        // 13. LGU IDS — pending default amount confirmations
+        // 13. LGU IDS — pending default amount confirmations — presence indicator (+1)
+        //     Urgent when any pending deal is already at contract_sent/signed/paid (money-on-the-line stages)
         if ($this->isLguIdsTenant($tenantId)) {
             try {
                 $hasPendingDefaults = DB::table('leads')
@@ -247,9 +258,25 @@ class CriticalActionService
                     ->exists();
                 if ($hasPendingDefaults) {
                     $count++;
+                    // Deals past contract_sent are money-on-the-line — unconfirmed amount is urgent
+                    $hasAdvancedStagePending = DB::table('leads')
+                        ->where('tenant_id', $tenantId)
+                        ->whereIn('stage', ['contract_sent', 'signed', 'paid'])
+                        ->whereNull('deleted_at')
+                        ->whereRaw("data->>'amount_defaulted' = 'true'")
+                        ->whereRaw("data->>'amount_confirmation_status' = 'pending'")
+                        ->exists();
+                    if ($hasAdvancedStagePending) {
+                        $hasUrgent = true;
+                    }
                 }
             } catch (\Throwable) {}
         }
+
+        // stalledDeals() and staleGoogleCalendarIntegrations() are intentionally excluded from
+        // badge counting: each surfaces up to 10 individual CAs in the panel. Adding a presence
+        // indicator would create a permanent badge for routine medium-severity maintenance items,
+        // burying the urgent signal. They remain fully visible in the panel and dashboard widget.
 
         return ['count' => $count, 'has_urgent' => $hasUrgent];
     }

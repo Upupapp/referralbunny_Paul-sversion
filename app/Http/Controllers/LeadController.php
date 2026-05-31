@@ -821,6 +821,7 @@ class LeadController extends Controller
                 $freshData['amount_confirmed_at']        = now()->toIso8601String();
                 $freshData['amount_confirmed_by']        = $actorName ?? 'Admin';
                 $lead->update(['data' => $freshData]);
+                try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorId); } catch (\Throwable) {}
 
                 try {
                     app(\App\Services\DealActivityService::class)->record(
@@ -1257,6 +1258,7 @@ class LeadController extends Controller
         $currentData['amount_confirmed_at']         = now()->toIso8601String();
         $currentData['amount_confirmed_by']         = $actorName ?? 'Admin';
         $lead->update(['data' => $currentData]);
+        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorId); } catch (\Throwable) {}
 
         try {
             app(\App\Services\DealActivityService::class)->record(

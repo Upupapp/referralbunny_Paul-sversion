@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ImportBatch;
 use App\Models\ImportRollback;
+use App\Services\CriticalActionService;
 use App\Services\ImportRollbackService;
 use App\Services\NotificationDispatchService;
 use Illuminate\Bus\Queueable;
@@ -57,6 +58,7 @@ class ProcessImportRollbackJob implements ShouldQueue
             $rollback->markFailed($e->getMessage());
             $batch->update(['rollback_status' => 'failed']);
             $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
+            try { app(CriticalActionService::class)->invalidateCache($this->tenantId); } catch (\Throwable) {}
         }
     }
 
@@ -72,6 +74,7 @@ class ProcessImportRollbackJob implements ShouldQueue
                     $batch->update(['rollback_status' => 'failed']);
                     $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
                 }
+                try { app(CriticalActionService::class)->invalidateCache($this->tenantId); } catch (\Throwable) {}
             }
         } catch (\Throwable) {}
     }

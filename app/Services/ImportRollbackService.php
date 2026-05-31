@@ -111,6 +111,7 @@ class ImportRollbackService
 
         // Notify requester
         $this->notifyRequester($rollback, $batch, $tenantId, $result);
+        try { app(CriticalActionService::class)->invalidateCache($tenantId); } catch (\Throwable) {}
     }
 
     // ── Restore updated record ─────────────────────────────────────────
