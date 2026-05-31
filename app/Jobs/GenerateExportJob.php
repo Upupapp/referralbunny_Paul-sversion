@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -32,7 +33,7 @@ class GenerateExportJob implements ShouldQueue
         try {
             $request = ExportRequest::find($this->exportRequestId);
             if ($request && in_array($request->status, ['processing', 'approved', 'pending', 'direct_pending'], true)) {
-                \Illuminate\Support\Facades\Log::error('[GenerateExportJob] Job failed permanently', [
+                Log::error('[GenerateExportJob] Job failed permanently', [
                     'export_request_id' => $this->exportRequestId,
                     'error'             => $e->getMessage(),
                 ]);
@@ -112,7 +113,7 @@ class GenerateExportJob implements ShouldQueue
                 expiryDays: $expiryDays,
             );
         } catch (Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[GenerateExportJob] Export generation error', [
+            Log::error('[GenerateExportJob] Export generation error', [
                 'export_request_id' => $this->exportRequestId,
                 'error'             => $e->getMessage(),
             ]);

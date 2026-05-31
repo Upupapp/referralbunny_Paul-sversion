@@ -2428,6 +2428,7 @@ class CriticalActionService
             'payment_failed'             => 10,
             'import_failed'              => 5,
             'rollback_failed'            => 5,
+            'export_failed'              => 5,
             'archive_request_pending'    => 3,
             'extension_request_pending'  => 3,
             'stage_move_request_pending' => 3,

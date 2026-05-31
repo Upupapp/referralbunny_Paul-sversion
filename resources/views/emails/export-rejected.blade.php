@@ -1,4 +1,3 @@
-@php $isFailure = $isSystemFailure ?? false; @endphp
 @extends('emails.layouts.base', ['headerLabel' => 'Export Request Update', 'subject' => ($isSystemFailure ?? false) ? 'Your export could not be generated' : 'Your export request was not approved'])
 
 @section('content')
@@ -10,7 +9,7 @@
 
 <p class="greeting">Hi {{ $requesterName }}! 👋</p>
 
-@if($isFailure)
+@if($isSystemFailure ?? false)
 <p class="text">
     Unfortunately, your export request for <strong>{{ ucfirst(str_replace('_', ' ', $exportType)) }}</strong> data
     at <strong>{{ $tenantName }}</strong> could not be generated due to a system error.

@@ -558,8 +558,7 @@ class ExportApprovalService
         $this->notifyRequester(
             request:     $request,
             title:       'Export Generation Failed',
-            body:        'Your ' . $request->export_type . ' export could not be generated.'
-                . ($request->error_message ? ' Details: ' . $request->error_message : ' Please try again or contact support.'),
+            body:        'Your ' . $request->export_type . ' export could not be generated. Please try again or contact support.',
             actionUrl:   "/tenant/{$request->tenant_id}/exports/{$request->id}",
             actionLabel: 'View Details',
             dedupeSuffix: 'export_failed:' . $request->id,
