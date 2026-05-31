@@ -190,14 +190,7 @@ class HandleCommissionStatusChanged implements ShouldQueue
             if ($reseller) {
                 Cache::forget("notif_unread_reseller_{$reseller->id}");
             }
-            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-
-            $adminIds = DB::table('tenant_memberships as tm')
-                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
-                ->where('tm.tenant_id', $event->tenantId)
-                ->where('tm.status', 'active')
-                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-                ->pluck('u.id');
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
 
             foreach ($adminIds as $uid) {
                 Cache::forget("notif_unread_tenant_admin_{$uid}");

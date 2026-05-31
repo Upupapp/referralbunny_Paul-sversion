@@ -7,6 +7,7 @@ use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -126,9 +127,13 @@ class HandleImportFailed implements ShouldQueue
             }
         }
 
-        // ── 3. Cache bust: refresh CA badge within 60s ────────────────────────
+        // ── 3. Cache bust: refresh CA badge + notification bell within 60s ──────
         try {
-            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
         } catch (\Throwable $e) {
             Log::warning('[HandleImportFailed] cache bust failed', ['error' => $e->getMessage()]);
         }

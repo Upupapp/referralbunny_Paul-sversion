@@ -310,12 +310,11 @@ class CriticalActionsNotifyTest extends TestCase
         $reseller = $this->createReseller($tenant);
 
         $event = new DealExpired(
-            leadId:        (string) Str::uuid(),
-            leadName:      'Test Deal',
-            tenantId:      $tenant->id,
-            resellerName:  $reseller->name,
-            stage:         'introduction',
-            resellerEmail: $reseller->email,
+            leadId:       (string) Str::uuid(),
+            leadName:     'Test Deal',
+            tenantId:     $tenant->id,
+            resellerName: $reseller->name,
+            stage:        'introduction',
         );
 
         $this->dispatchNotificationsFor($event, HandleDealExpired::class);
@@ -337,12 +336,11 @@ class CriticalActionsNotifyTest extends TestCase
         $leadId   = (string) Str::uuid();
 
         $event = new DealExpired(
-            leadId:        $leadId,
-            leadName:      'Test Deal',
-            tenantId:      $tenant->id,
-            resellerName:  $reseller->name,
-            stage:         'introduction',
-            resellerEmail: $reseller->email,
+            leadId:       $leadId,
+            leadName:     'Test Deal',
+            tenantId:     $tenant->id,
+            resellerName: $reseller->name,
+            stage:        'introduction',
         );
 
         $this->dispatchNotificationsFor($event, HandleDealExpired::class);
@@ -560,12 +558,22 @@ class CriticalActionsNotifyTest extends TestCase
         $adminA  = $this->createAdmin($tenantA, 'admin');
         $adminB  = $this->createAdmin($tenantB, 'admin');
 
+        // Plant keys for BOTH tenants so we can verify targeted bust
+        Cache::put("ca_badge_{$tenantA->id}_{$adminA->id}", 5, 300);
+        Cache::put("ca_badge_urgent:{$tenantA->id}:{$adminA->id}", true, 300);
+        Cache::put("ca_badge_suppressed:{$tenantA->id}:{$adminA->id}", true, 300);
+
         Cache::put("ca_badge_{$tenantB->id}_{$adminB->id}", 3, 300);
         Cache::put("ca_badge_urgent:{$tenantB->id}:{$adminB->id}", true, 300);
         Cache::put("ca_badge_suppressed:{$tenantB->id}:{$adminB->id}", true, 300);
 
         // Bust only tenant A's badges
         app(CriticalActionService::class)->invalidateAllAdminBadges($tenantA->id);
+
+        // Tenant A's keys must be cleared
+        $this->assertFalse(Cache::has("ca_badge_{$tenantA->id}_{$adminA->id}"), 'TenantA count key must be cleared');
+        $this->assertFalse(Cache::has("ca_badge_urgent:{$tenantA->id}:{$adminA->id}"), 'TenantA urgent key must be cleared');
+        $this->assertFalse(Cache::has("ca_badge_suppressed:{$tenantA->id}:{$adminA->id}"), 'TenantA suppressed key must be cleared');
 
         // Tenant B's keys must be untouched
         $this->assertTrue(Cache::has("ca_badge_{$tenantB->id}_{$adminB->id}"), 'Cross-tenant count key must survive');

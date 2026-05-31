@@ -320,15 +320,18 @@ class CriticalActionService
 
     /**
      * Bust panel caches AND per-user badge caches for every active admin/manager/owner.
+     * Returns the plucked UID collection so callers can reuse it (e.g. for notif_unread_ busts)
+     * without issuing a second DB query.
      * Use this from queue jobs and services where no single actor ID is available.
      * Controller actions should use invalidateCache($tenantId, $actorId) instead.
      * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
-    public function invalidateAllAdminBadges(string $tenantId): void
+    public function invalidateAllAdminBadges(string $tenantId): \Illuminate\Support\Collection
     {
         // Busts panel/dashboard cache keys only (no userId = no badge keys added inside invalidateCache).
         // Per-user badge keys are cleared separately in the foreach below.
         $this->invalidateCache($tenantId);
+        $uids = collect();
         try {
             $uids = DB::table('tenant_memberships')
                 ->where('tenant_id', $tenantId)
@@ -346,6 +349,7 @@ class CriticalActionService
                 Cache::deleteMultiple($keys);
             }
         } catch (\Throwable) {}
+        return $uids;
     }
 
     /**

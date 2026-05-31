@@ -46,7 +46,7 @@ class HandleDealStageMoved implements ShouldQueue
         if ($resellerId) {
             $invitedStatus = $reseller
                 ? $reseller->status
-                : Reseller::where('id', $resellerId)->value('status');
+                : Reseller::where('tenant_id', $event->tenantId)->where('id', $resellerId)->value('status');
             if ($invitedStatus === 'invited') {
                 $email      = null;
                 $resellerId = null;
@@ -115,7 +115,7 @@ class HandleDealStageMoved implements ShouldQueue
                 body:         (($event->movedByName ?? $event->resellerName ?: 'Admin') . " moved \"{$event->leadName}\" to {$toStageLabel}."),
                 actionUrl:    url("/tenant/{$event->tenantId}/deals/{$event->leadId}"),
                 actionLabel:  'View Deal',
-                dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}",
+                dedupeSuffix: "{$event->leadId}:stage:{$event->toStage}:admin",
                 metadata:     [
                     'deal_id'    => $event->leadId,
                     'from_stage' => $event->fromStage,
@@ -128,14 +128,7 @@ class HandleDealStageMoved implements ShouldQueue
 
         // ── 4. Cache bust ─────────────────────────────────────────────────────
         try {
-            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-
-            $adminIds = DB::table('tenant_memberships as tm')
-                ->join('tenant_users as u', 'tm.tenant_user_id', '=', 'u.id')
-                ->where('tm.tenant_id', $event->tenantId)
-                ->where('tm.status', 'active')
-                ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-                ->pluck('u.id');
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
 
             foreach ($adminIds as $uid) {
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
