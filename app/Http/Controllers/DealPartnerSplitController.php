@@ -329,7 +329,7 @@ class DealPartnerSplitController extends Controller
         try {
             if (!$lead->reseller_name) return;
             $reseller = Reseller::where('tenant_id', $lead->tenant_id)
-                ->where('name', $lead->reseller_name)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                 ->first();
             if (!$reseller) return;
             app(NotificationDispatchService::class)->dispatchToReseller(
@@ -343,6 +343,7 @@ class DealPartnerSplitController extends Controller
                 actionLabel:  'View Deal',
                 dedupeSuffix: $dedupSuffix,
             );
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
         } catch (\Throwable) {}
     }
 }

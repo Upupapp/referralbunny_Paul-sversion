@@ -31,9 +31,9 @@ return new class extends Migration
                     $table->string('status')->default('pending');
                     $table->string('rollback_status')->nullable();
                     $table->unsignedInteger('total_rows')->default(0);
-                    $table->unsignedInteger('successful_rows')->default(0)->nullable();
-                    $table->unsignedInteger('failed_rows')->default(0)->nullable();
-                    $table->unsignedInteger('unknown_referrer_rows')->default(0)->nullable();
+                    $table->unsignedInteger('successful_rows')->default(0);
+                    $table->unsignedInteger('failed_rows')->default(0);
+                    $table->unsignedInteger('unknown_referrer_rows')->default(0);
                     $table->string('imported_by_role')->nullable();
                     $table->uuid('imported_by_id')->nullable();
                     $table->uuid('rollback_id')->nullable();

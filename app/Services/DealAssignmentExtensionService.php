@@ -321,9 +321,7 @@ class DealAssignmentExtensionService
                     actionLabel:  'View Deal',
                     dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 );
-                if ($decision !== 'approved') {
-                    Cache::forget("notif_unread_reseller_{$reseller->id}");
-                }
+                Cache::forget("notif_unread_reseller_{$reseller->id}");
 
                 // Email notification (approved case is handled by HandleDealExtensionApproved listener)
                 if ($reseller->email && $decision !== 'approved') {
