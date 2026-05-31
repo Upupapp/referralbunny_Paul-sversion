@@ -301,6 +301,9 @@ class ImportRollbackService
 
     private function notifyRequester(ImportRollback $rollback, ImportBatch $batch, string $tenantId, array $result): void
     {
+        if (!$rollback->requested_by) {
+            return;
+        }
         try {
             $removed  = $result['removed']  ?? 0;
             $restored = $result['restored'] ?? 0;
@@ -313,7 +316,7 @@ class ImportRollbackService
                 title:            'Import rollback ' . $status,
                 body:             "Your import rollback for \"{$batch->file_name}\" is {$status}. {$removed} records removed, {$restored} records restored, {$conflict} items need review.",
                 notifiableType:   $rollback->requested_by_type ?? 'tenant_admin',
-                notifiableId:     $rollback->requested_by,
+                notifiableId:     $rollback->requested_by ?? null,
                 tenantId:         $tenantId,
                 actionUrl:        "/tenant/{$tenantId}/imports/{$batch->import_type === 'lgu_ids_deals' ? 'lgu-ids' : ($batch->import_type === 'contacts' ? 'contacts' : 'deals')}/{$batch->id}/rollback/{$rollback->id}",
                 actionLabel:      'View rollback report',

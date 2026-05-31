@@ -70,7 +70,7 @@ class ProcessImportRollbackJob implements ShouldQueue
             $rollback = ImportRollback::where('id', $this->rollbackId)->where('tenant_id', $this->tenantId)->first();
             if ($rollback && !$rollback->isCompleted()) {
                 $rollback->markFailed('Job failed: ' . $e->getMessage());
-                $batch = ImportBatch::where('id', $this->batchId)->first();
+                $batch = ImportBatch::where('id', $this->batchId)->where('tenant_id', $this->tenantId)->first();
                 if ($batch) {
                     $batch->update(['rollback_status' => 'failed']);
                     $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());

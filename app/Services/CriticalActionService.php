@@ -326,6 +326,8 @@ class CriticalActionService
      */
     public function invalidateAllAdminBadges(string $tenantId): void
     {
+        // Busts panel/dashboard cache keys only (no userId = no badge keys added inside invalidateCache).
+        // Per-user badge keys are cleared separately in the foreach below.
         $this->invalidateCache($tenantId);
         try {
             $uids = DB::table('tenant_memberships')
