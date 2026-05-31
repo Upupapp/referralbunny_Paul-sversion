@@ -894,11 +894,6 @@ class LeadController extends Controller
         $lead->save();
         $lead->delete();
         Cache::forget("dash_counts:{$tenantId}");
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
@@ -1060,11 +1055,6 @@ class LeadController extends Controller
         $lead->restore();
         $lead->update(['deleted_by' => null]);
         Cache::forget("dash_counts:{$tenantId}");
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         try {
             app(\App\Services\DealActivityService::class)->record(
@@ -1205,11 +1195,6 @@ class LeadController extends Controller
         ]);
 
         Cache::forget("dash_counts:{$tenantId}");
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
 
         // Notify each unique Referrer who had deals archived — batch Reseller lookup to avoid N+1
         // groupBy keys are already lowercase+trimmed — no further strtolower needed below

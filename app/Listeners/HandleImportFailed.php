@@ -127,13 +127,6 @@ class HandleImportFailed implements ShouldQueue
             }
         }
 
-        // ── 3. Cache bust: refresh CA badge + notification bell within 60s ──────
-        try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable $e) {
-            Log::warning('[HandleImportFailed] cache bust failed', ['error' => $e->getMessage()]);
-        }
     }
 
     public function failed(ImportFailed $event, \Throwable $exception): void

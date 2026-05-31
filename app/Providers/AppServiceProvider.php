@@ -28,8 +28,10 @@ use App\Models\Lead;
 use App\Models\Task;
 use App\Observers\LeadGoogleCalendarObserver;
 use App\Observers\TaskGoogleCalendarObserver;
+use App\Services\CriticalActionService;
 use App\Services\PermissionService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -60,6 +62,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(DealExtensionApproved::class,    HandleDealExtensionApproved::class);
         Event::listen(DealDeclined::class,             HandleDealDeclined::class);
         Event::listen(ImportFailed::class,             HandleImportFailed::class);
+
+        // Reset per-request memoization before each queue job so long-lived workers
+        // do not serve stale admin UID collections across job boundaries.
+        Queue::before(fn() => CriticalActionService::resetRequestMemo());
 
         // Google Calendar sync observers
         Task::observe(TaskGoogleCalendarObserver::class);

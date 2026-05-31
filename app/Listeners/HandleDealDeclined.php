@@ -114,13 +114,12 @@ class HandleDealDeclined implements ShouldQueue
             Log::warning('[HandleDealDeclined] Admin in-app failed', ['error' => $e->getMessage()]);
         }
 
-        // Cache bust — refresh reseller bell + admin CA/notification badges
+        // Cache bust — refresh reseller + partner bells
+        // Admin bells + CA badges busted internally by dispatchToTenantAdmins above.
         try {
             if ($resellerId) {
                 Cache::forget("notif_unread_reseller_{$resellerId}");
             }
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
 
             $partnerIds = DB::table('deal_partner_splits')
                 ->where('deal_id', $event->leadId)

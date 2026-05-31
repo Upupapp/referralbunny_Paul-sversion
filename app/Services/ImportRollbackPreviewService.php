@@ -204,6 +204,9 @@ class ImportRollbackPreviewService
         if (in_array($deal->stage, ['signed', 'paid'])) {
             return 'Deal has progressed to ' . ucfirst($deal->stage) . ' stage — cannot automatically undo.';
         }
+        if ($importedAt && isset($deal->updated_at) && $deal->updated_at > $importedAt) {
+            return 'Deal was modified after the import — rolling back would discard those changes.';
+        }
         return null;
     }
 
@@ -212,7 +215,7 @@ class ImportRollbackPreviewService
         $deal = $leadsMap->get($dealId);
         if (!$deal) return 'Record no longer exists.';
 
-        if ($importedAt && isset($deal->updated_at) && $deal->updated_at >= $importedAt) {
+        if ($importedAt && isset($deal->updated_at) && $deal->updated_at > $importedAt) {
             return 'Record was modified after the import.';
         }
         return null;
@@ -224,7 +227,7 @@ class ImportRollbackPreviewService
         if (!$contact) return null;
 
         // If contact was manually modified after import
-        if ($importedAt && isset($contact->updated_at) && $contact->updated_at >= $importedAt) {
+        if ($importedAt && isset($contact->updated_at) && $contact->updated_at > $importedAt) {
             return 'Contact was modified after the import.';
         }
         return null;
@@ -235,7 +238,7 @@ class ImportRollbackPreviewService
         $contact = $contactsMap->get($contactId);
         if (!$contact) return 'Contact no longer exists.';
 
-        if ($importedAt && isset($contact->updated_at) && $contact->updated_at >= $importedAt) {
+        if ($importedAt && isset($contact->updated_at) && $contact->updated_at > $importedAt) {
             return 'Contact was modified after the import.';
         }
         return null;

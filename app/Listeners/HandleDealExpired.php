@@ -130,13 +130,7 @@ class HandleDealExpired implements ShouldQueue
             Cache::deleteMultiple($pKeys);
         }
 
-        // ── Cache bust: refresh admin CA badges within 60s ────────────────────
-        try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable $e) {
-            Log::warning('[HandleDealExpired] Cache bust failed', ['error' => $e->getMessage()]);
-        }
+        // Admin bells + CA badges busted internally by dispatchToTenantAdmins above.
         if ($resellerId) {
             try { Cache::forget("notif_unread_reseller_{$resellerId}"); } catch (\Throwable) {}
         }

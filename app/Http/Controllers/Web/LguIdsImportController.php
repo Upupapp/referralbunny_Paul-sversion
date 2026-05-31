@@ -369,12 +369,6 @@ class LguIdsImportController extends Controller
             } catch (\Throwable) {}
         }
 
-        try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
-
         return redirect()
             ->route('tenant.imports.lgu-ids.show', [$tenantId, $batchId])
             ->with('success', "Import complete — Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$result['skipped']}, Failed: {$result['failed']}.");

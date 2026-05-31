@@ -20,6 +20,8 @@ class CriticalActionService
 
     // Per-request memoization: prevents redundant DB+cache round-trips when multiple
     // callsites bust the same tenant in the same HTTP request (e.g. moveStage path).
+    // WARNING: queue workers are long-lived processes — call resetRequestMemo() at the
+    // top of every ShouldQueue listener/job handle() to prevent cross-job memo bleed.
     private static array $bustedThisRequest = [];
 
     private static function tableExists(string $table): bool
@@ -327,6 +329,11 @@ class CriticalActionService
      * Use this from controllers, queue jobs, and services — all external bust callsites should prefer this method.
      * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
+    public static function resetRequestMemo(): void
+    {
+        self::$bustedThisRequest = [];
+    }
+
     public function invalidateAllAdminBadges(string $tenantId): Collection
     {
         if (isset(self::$bustedThisRequest[$tenantId])) {
