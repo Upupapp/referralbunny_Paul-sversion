@@ -145,7 +145,6 @@ class DealAssignmentExtensionController extends Controller
                 adminNote:      $data['admin_note'] ?? null,
             );
 
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorId); } catch (\Throwable) {}
             return response()->json([
                 'success' => true,
                 'message' => "Extension approved. {$extRequest->approved_days} days added to the deal.",
@@ -180,7 +179,6 @@ class DealAssignmentExtensionController extends Controller
                 reason:         $data['reason'],
             );
 
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorId); } catch (\Throwable) {}
             return response()->json([
                 'success' => true,
                 'message' => 'Extension request rejected.',
@@ -215,7 +213,6 @@ class DealAssignmentExtensionController extends Controller
                 note:           $data['note'],
             );
 
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, $actorId); } catch (\Throwable) {}
             return response()->json([
                 'success' => true,
                 'message' => 'Clarification requested from the Referrer.',

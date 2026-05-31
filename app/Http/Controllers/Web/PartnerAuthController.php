@@ -117,16 +117,6 @@ class PartnerAuthController extends Controller
             return back()->withErrors(['token' => 'This setup link is no longer valid. If you already activated your account, please sign in. If not, contact the workspace administrator for a new invitation.']);
         }
 
-        try {
-            // partner already updated above — no-op catch kept for downstream hooks
-        } catch (\Throwable $e) {
-            Log::error('PartnerAuthController::setup — update failed', [
-                'partner_id' => $partner->id,
-                'error'      => $e->getMessage(),
-            ]);
-            return back()->withErrors(['token' => 'Account activation failed. Please contact support. (' . $e->getMessage() . ')']);
-        }
-
         // Activate any pending DealPartner invitations for this partner
         try {
             DealPartner::where('partner_user_id', $partner->id)

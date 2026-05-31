@@ -101,7 +101,7 @@ class DealPartnerSplitController extends Controller
             // Notify the partner themselves (if they have an account)
             try {
                 $partnerUserId = $partnerEmail
-                    ? \Illuminate\Support\Facades\DB::table('partner_users')
+                    ? DB::table('partner_users')
                         ->where('tenant_id', $lead->tenant_id)
                         ->whereRaw('LOWER(email) = ?', [$partnerEmail])
                         ->value('id')
@@ -204,6 +204,30 @@ class DealPartnerSplitController extends Controller
                 'The split for ' . $data['partner_name'] . ' on "' . $lead->name . '" was updated to ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . '.',
                 $lead->id . ':partner_updated:' . $splitId . ':v' . md5((string)($data['split_share_value'] ?? '') . ($data['split_share_type'] ?? 'percentage')),
             );
+
+            // Notify the partner themselves (if they have an account)
+            try {
+                $partnerUserId = DB::table('partner_users')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->whereRaw('LOWER(email) = ?', [strtolower(trim($data['partner_email']))])
+                    ->value('id');
+
+                if ($partnerUserId) {
+                    app(\App\Services\NotificationDispatchService::class)->dispatchToPartner(
+                        partnerId:    (string) $partnerUserId,
+                        tenantId:     $lead->tenant_id,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Your partner split was updated',
+                        body:         'Your commission split on "' . $lead->name . '" has been updated to ' . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . '.',
+                        actionUrl:    url("/partner/deals/{$lead->id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: "{$lead->id}:partner_split_updated:{$partnerUserId}",
+                    );
+                    Cache::forget("notif_unread_partner_{$partnerUserId}");
+                    Cache::forget("partner_notif_unread:{$partnerUserId}");
+                }
+            } catch (\Throwable) {}
 
             try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, $this->resolveActorId()); } catch (\Throwable) {}
 

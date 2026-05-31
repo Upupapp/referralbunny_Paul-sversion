@@ -216,6 +216,14 @@ class DealAssignmentExtensionService
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'clarification_requested');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_clarification_requested', $reviewerUserId);
 
+        // Synchronous bust for the reviewing admin
+        try {
+            app(CriticalActionService::class)->invalidateCache($tenantId, $reviewerUserId);
+            if ($reviewerUserId) {
+                Cache::forget("notif_unread_tenant_admin_{$reviewerUserId}");
+            }
+        } catch (\Throwable) {}
+
         return $request->fresh();
     }
 
@@ -313,6 +321,9 @@ class DealAssignmentExtensionService
                     actionLabel:  'View Deal',
                     dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 );
+                if ($decision !== 'approved') {
+                    Cache::forget("notif_unread_reseller_{$reseller->id}");
+                }
 
                 // Email notification (approved case is handled by HandleDealExtensionApproved listener)
                 if ($reseller->email && $decision !== 'approved') {

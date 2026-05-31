@@ -1048,6 +1048,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $lead->id . ':coreferrer:' . (string) $targetReseller->id,
                 );
+                Cache::forget("notif_unread_reseller_{$targetReseller->id}");
             } catch (\Throwable) {}
         }
 
@@ -1070,6 +1071,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
                 );
+                Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -1291,6 +1293,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $lead->id . ':partner_added_primary:' . md5($data['partner_name'] . ($partnerEmail ?? '')),
                 );
+                Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -1423,6 +1426,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $lead->id . ':coreferrer:' . (string) $targetReseller->id,
                 );
+                Cache::forget("notif_unread_reseller_{$targetReseller->id}");
                 $notified = true;
             } catch (\Throwable) {}
 
@@ -1525,6 +1529,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $lead->id . ':primary_coreferrer_notice:' . md5($email),
                 );
+                Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -1680,6 +1685,7 @@ class ResellerDealController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: $approvalId . ':approved',
                     );
+                    Cache::forget("notif_unread_reseller_{$approval->requested_by_id}");
                 }
             } catch (\Throwable) {}
 
@@ -1823,6 +1829,7 @@ class ResellerDealController extends Controller
                         dedupeSuffix: $approvalId . ':rejected',
                     );
                 }
+                Cache::forget("notif_unread_reseller_{$approval->requested_by_id}");
             } catch (\Throwable) {}
 
             // Email referrer on archive rejection
@@ -1989,6 +1996,7 @@ class ResellerDealController extends Controller
                     dedupeSuffix: $splitId . ':share_updated:' . $hour,
                     metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'actor' => $actorName],
                 );
+                Cache::forget("notif_unread_reseller_{$coRefReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -2028,6 +2036,7 @@ class ResellerDealController extends Controller
                     dedupeSuffix: $splitId . ':primary_share_updated:' . $hour,
                     metadata:     ['old_percentage' => $oldPct, 'new_percentage' => $newPct, 'co_referrer' => $split->reseller_name],
                 );
+                Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -2139,6 +2148,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $splitId . ':coreferrer_removed:' . $coRefHour,
                 );
+                Cache::forget("notif_unread_reseller_{$coRefReseller->id}");
             }
         } catch (\Throwable) {}
 
@@ -2196,6 +2206,7 @@ class ResellerDealController extends Controller
                     actionLabel:  'View Deal',
                     dedupeSuffix: $splitId . ':primary_coreferrer_removed:' . $coRefHour,
                 );
+                Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
             }
         } catch (\Throwable) {}
 

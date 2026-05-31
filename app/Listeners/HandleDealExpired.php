@@ -110,19 +110,21 @@ class HandleDealExpired implements ShouldQueue
 
         $pKeys = [];
         foreach ($activePartners as $partnerRow) {
-            $dispatcher->dispatchToPartner(
-                partnerId:    (string) $partnerRow->partner_user_id,
-                tenantId:     $event->tenantId,
-                category:     'deal_pipeline',
-                priority:     'high',
-                title:        "Associated deal expired: {$event->leadName}",
-                body:         "A deal you are associated with has expired: \"{$event->leadName}\".",
-                actionUrl:    url("/partner/deals/{$event->leadId}"),
-                actionLabel:  'View Deal',
-                dedupeSuffix: "{$event->leadId}:expired:partner",
-            );
             $pKeys[] = "notif_unread_partner_{$partnerRow->partner_user_id}";
             $pKeys[] = "partner_notif_unread:{$partnerRow->partner_user_id}";
+            try {
+                $dispatcher->dispatchToPartner(
+                    partnerId:    (string) $partnerRow->partner_user_id,
+                    tenantId:     $event->tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'high',
+                    title:        "Associated deal expired: {$event->leadName}",
+                    body:         "A deal you are associated with has expired: \"{$event->leadName}\".",
+                    actionUrl:    url("/partner/deals/{$event->leadId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "{$event->leadId}:expired:partner",
+                );
+            } catch (\Throwable) {}
         }
         if (!empty($pKeys)) {
             Cache::deleteMultiple($pKeys);

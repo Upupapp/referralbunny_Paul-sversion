@@ -608,6 +608,7 @@ class LeadController extends Controller
                 actionLabel:  'View Deal',
                 dedupeSuffix: $dedupSuffix,
             );
+            Cache::forget("notif_unread_reseller_{$reseller->id}");
         } catch (\Throwable) {}
     }
 

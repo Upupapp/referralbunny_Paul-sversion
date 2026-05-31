@@ -12,6 +12,7 @@ use App\Models\Lead;
 use App\Models\Reseller;
 use App\Services\EmailLogger;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -252,7 +253,12 @@ class BulkDealExtensionService
             newDaysLeft:  $newDaysLeft,
             adminNote:    $reviewerNote,
         );
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
 
         return $request;
     }
@@ -308,7 +314,12 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
 
         return $request;
     }
@@ -358,7 +369,12 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
 
         return $request;
     }
@@ -405,6 +421,7 @@ class BulkDealExtensionService
 
     /**
      * Decline all pending items in a batch.
+
      */
     public function declineAll(
         string  $batchId,
@@ -499,8 +516,6 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
-
         return $results;
     }
 
@@ -533,8 +548,6 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
-
         return $results;
     }
 
@@ -566,8 +579,6 @@ class BulkDealExtensionService
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
             }
         }
-
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -614,8 +625,6 @@ class BulkDealExtensionService
             }
         }
 
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
-
         return $results;
     }
 
@@ -659,8 +668,6 @@ class BulkDealExtensionService
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
         }
-
-        $this->criticalActions->invalidateCache($tenantId, $reviewerUserId);
 
         return $results;
     }
@@ -926,6 +933,7 @@ class BulkDealExtensionService
                 dedupeSuffix: "ext_decision:{$request->id}:{$decision}",
                 metadata:     ['extension_request_id' => $request->id, 'deal_id' => $deal->id, 'batch_id' => $request->batch_id],
             );
+            Cache::forget("notif_unread_reseller_{$reseller->id}");
         } catch (\Throwable) {}
     }
 
@@ -955,6 +963,7 @@ class BulkDealExtensionService
                 dedupeSuffix: "bulk_ext_result_partial:{$batch->id}",
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount],
             );
+            Cache::forget("notif_unread_reseller_{$batch->requested_by_reseller_id}");
         } catch (\Throwable) {}
     }
 
@@ -979,6 +988,7 @@ class BulkDealExtensionService
                 dedupeSuffix: "bulk_ext_complete:{$batch->id}",
                 metadata:     ['batch_id' => $batch->id, 'approved' => $approved, 'declined' => $declined],
             );
+            Cache::forget("notif_unread_reseller_{$batch->requested_by_reseller_id}");
 
             // Send decision email to the referrer (one email per batch, not per deal)
             $reseller = DB::table('resellers')

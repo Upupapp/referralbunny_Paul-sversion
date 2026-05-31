@@ -62,11 +62,11 @@ return new class extends Migration
                     $table->string('mode')->default('full');
                     $table->string('requested_by')->nullable();
                     $table->string('requested_by_type')->nullable();
-                    $table->unsignedInteger('records_restored')->default(0)->nullable();
-                    $table->unsignedInteger('records_deleted')->default(0)->nullable();
-                    $table->unsignedInteger('records_failed')->default(0)->nullable();
-                    $table->unsignedInteger('records_skipped')->default(0)->nullable();
-                    $table->unsignedInteger('records_conflict')->default(0)->nullable();
+                    $table->unsignedInteger('records_restored')->default(0);
+                    $table->unsignedInteger('records_deleted')->default(0);
+                    $table->unsignedInteger('records_failed')->default(0);
+                    $table->unsignedInteger('records_skipped')->default(0);
+                    $table->unsignedInteger('records_conflict')->default(0);
                     $table->json('error_summary')->nullable();
                     $table->timestamp('started_at')->nullable();
                     $table->timestamp('completed_at')->nullable();
@@ -82,5 +82,7 @@ return new class extends Migration
         }
     }
 
+    // Intentionally empty: tables are shared with Supabase; dropping them would corrupt production data.
+    // CI environments should use a fresh DB rather than rolling back this migration.
     public function down(): void {}
 };

@@ -225,6 +225,7 @@ class TenantDealLifecycleController extends Controller
                     actionLabel:  'Respond to Clarification',
                     dedupeSuffix: $requestId . ':clarify:' . now()->format('Ymd'),
                 );
+                Cache::forget("notif_unread_reseller_{$requestedById}");
             }
         } catch (\Throwable) {}
 
@@ -376,6 +377,7 @@ class TenantDealLifecycleController extends Controller
                         actionLabel:  'View Deal',
                         dedupeSuffix: $lead->id . ':restored:' . now()->format('Ymd'),
                     );
+                    Cache::forget("notif_unread_reseller_{$reseller->id}");
                 }
             }
         } catch (\Throwable) {}
