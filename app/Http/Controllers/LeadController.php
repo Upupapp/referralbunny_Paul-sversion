@@ -525,7 +525,6 @@ class LeadController extends Controller
 
         try {
             $cs = app(\App\Services\CriticalActionService::class);
-            $cs->invalidateCache($lead->tenant_id);
             $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
             \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
@@ -1742,7 +1741,6 @@ class LeadController extends Controller
         }
         try {
             $cs = app(\App\Services\CriticalActionService::class);
-            $cs->invalidateCache($lead->tenant_id);
             $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
             \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}

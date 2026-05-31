@@ -56,7 +56,7 @@ Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00')->timezone('Asia/
 Schedule::command('search:reindex')->dailyAt('03:00')->timezone('Asia/Manila')->withoutOverlapping();
 
 // ── Email digests (batch / anti-spam) ────────────────────────
-Schedule::command('email:send-digests')->everyThirtyMinutes()->timezone('Asia/Manila')->withoutOverlapping(30);
+Schedule::command('email:send-digests')->everyThirtyMinutes()->timezone('Asia/Manila')->withoutOverlapping(20);
 
 // ── Message reminders (R Bunny AI Dialog) ────────────────────
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila')->withoutOverlapping(55);

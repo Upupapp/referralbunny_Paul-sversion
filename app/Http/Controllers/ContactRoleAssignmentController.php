@@ -241,7 +241,7 @@ class ContactRoleAssignmentController extends Controller
             recipientEmail: $contact->email,
             recipientType:  'external',
             emailKey:       'contact_role_invite.' . $invitation->id,
-            subject:        "You've been invited to join {$tenant?->name ?? 'the platform'}",
+            subject:        "You've been invited to join " . ($tenant?->name ?? 'the platform'),
             tenantId:       $tenantId,
         );
 
@@ -335,7 +335,7 @@ class ContactRoleAssignmentController extends Controller
             recipientType:  'external',
             emailKey:       'contact_role_invite_resend.' . $invitation->id,
             dailyDedup:     true,
-            subject:        "Reminder: You've been invited to join {$tenant?->name ?? 'the platform'}",
+            subject:        "Reminder: You've been invited to join " . ($tenant?->name ?? 'the platform'),
             tenantId:       $tenantId,
         );
 

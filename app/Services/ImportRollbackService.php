@@ -328,6 +328,7 @@ class ImportRollbackService
             return;
         }
 
+        $importPath = $batch->import_type === 'lgu_ids_deals' ? 'lgu-ids' : ($batch->import_type === 'contacts' ? 'contacts' : 'deals');
         try {
             $this->notifications->dispatch(
                 category:         'import_export',
@@ -337,7 +338,7 @@ class ImportRollbackService
                 notifiableType:   $rollback->requested_by_type ?? 'tenant_admin',
                 notifiableId:     $rollback->requested_by,
                 tenantId:         $tenantId,
-                actionUrl:        "/tenant/{$tenantId}/imports/{$batch->import_type === 'lgu_ids_deals' ? 'lgu-ids' : ($batch->import_type === 'contacts' ? 'contacts' : 'deals')}/{$batch->id}/rollback/{$rollback->id}",
+                actionUrl:        "/tenant/{$tenantId}/imports/{$importPath}/{$batch->id}/rollback/{$rollback->id}",
                 actionLabel:      'View rollback report',
                 deduplicationKey: "rollback_done:{$rollback->id}",
                 metadata:         $result,

@@ -651,6 +651,7 @@ class MessageController extends Controller
             tenantId:         $tenantId,
             deduplicationKey: null,
         );
+        \Illuminate\Support\Facades\Cache::forget("notif_unread_tenant_admin_{$userId}");
     }
 
     private function notifyContact(string $tenantId, string $contactId, string $body, string $senderName): void

@@ -282,7 +282,27 @@ class LguIdsImportController extends Controller
                 ->withErrors(['import' => "Import cannot be executed in '{$batch->status}' status. It must be in 'previewed' state."]);
         }
 
-        $result = $this->service->executeImport($batch, $this->authId(), $this->authRole());
+        try {
+            $result = $this->service->executeImport($batch, $this->authId(), $this->authRole());
+        } catch (\Throwable $e) {
+            try {
+                \App\Events\ImportFailed::dispatch(
+                    batchId:    $batchId,
+                    tenantId:   $tenantId,
+                    fileName:   $batch->file_name ?? 'import.lgu-ids.csv',
+                    importType: 'lgu_ids_deals',
+                    status:     'failed',
+                    failedRows: $batch->total_rows ?? 0,
+                    totalRows:  $batch->total_rows ?? 0,
+                    actorId:    $this->authId(),
+                    actorRole:  $this->authRole(),
+                );
+            } catch (\Throwable) {}
+
+            return redirect()
+                ->route('tenant.imports.lgu-ids.preview', [$tenantId, $batchId])
+                ->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
+        }
 
         // Activity log — feeds resellerImportEvents() in CriticalActionService
         try {

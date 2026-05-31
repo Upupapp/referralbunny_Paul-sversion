@@ -1983,7 +1983,8 @@ class CriticalActionService
             return $rows->map(fn($r) => $this->make([
                 'type'          => 'export_failed',
                 'category'      => 'export',
-                'severity'      => 'high',
+                'severity'      => 'normal',
+                'description'   => 'This export failed permanently — there is no auto-retry path. Start a new export from the dashboard.',
                 'summary'       => 'Export failed: ' . ucfirst(str_replace('_', ' ', $r->export_type)),
                 'actor_name'    => 'System',
                 'actor_role'    => 'System',
