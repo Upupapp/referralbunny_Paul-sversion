@@ -890,6 +890,7 @@ class ContactsImportService
                     dedupeSuffix: $batch->id,
                 );
             } catch (\Throwable) {}
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$importedByResellerId}");
         }
 
         return $batch;
@@ -1151,6 +1152,7 @@ class ContactsImportService
                     dedupeSuffix: $batch->id,
                 );
             } catch (\Throwable) {}
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$executorResellerId}");
         }
 
         return compact('created', 'updated', 'skipped', 'failed');

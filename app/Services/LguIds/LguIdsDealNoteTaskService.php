@@ -312,6 +312,7 @@ class LguIdsDealNoteTaskService
                 'error'       => $e->getMessage(),
             ]);
         }
+        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$referrer->id}");
     }
 
     // ── Email notification ─────────────────────────────────────────────────────

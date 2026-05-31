@@ -568,6 +568,7 @@ class ResellerController extends Controller
                 dedupeSuffix: "self_deactivated:{$reseller->id}",
             );
         } catch (\Throwable) {}
+        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
 
         return response()->json([
             'success'            => true,

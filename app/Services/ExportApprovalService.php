@@ -534,18 +534,21 @@ class ExportApprovalService
                 metadata:         $metadata,
             );
         } elseif ($request->requester_type === 'reseller') {
-            $this->notifications->dispatchToReseller(
-                resellerId:   (string) $request->requester_id,
-                tenantId:     $request->tenant_id,
-                category:     'import_export',
-                priority:     'normal',
-                title:        $title,
-                body:         $body,
-                actionUrl:    $actionUrl,
-                actionLabel:  $actionLabel,
-                dedupeSuffix: $dedupeSuffix,
-                metadata:     $metadata,
-            );
+            try {
+                $this->notifications->dispatchToReseller(
+                    resellerId:   (string) $request->requester_id,
+                    tenantId:     $request->tenant_id,
+                    category:     'import_export',
+                    priority:     'normal',
+                    title:        $title,
+                    body:         $body,
+                    actionUrl:    $actionUrl,
+                    actionLabel:  $actionLabel,
+                    dedupeSuffix: $dedupeSuffix,
+                    metadata:     $metadata,
+                );
+            } catch (\Throwable) {}
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$request->requester_id}");
         }
     }
 

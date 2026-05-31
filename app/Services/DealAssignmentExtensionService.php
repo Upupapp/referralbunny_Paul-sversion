@@ -152,9 +152,7 @@ class DealAssignmentExtensionService
 
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request->fresh();
@@ -184,9 +182,7 @@ class DealAssignmentExtensionService
 
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request->fresh();
@@ -216,9 +212,7 @@ class DealAssignmentExtensionService
 
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request->fresh();
@@ -256,6 +250,7 @@ class DealAssignmentExtensionService
     {
         $request = DealAssignmentExtensionRequest::where('id', $requestId)
             ->where('tenant_id', $tenantId)
+            ->lockForUpdate()
             ->firstOrFail();
 
         if (!in_array($request->status, ['pending_review', 'clarification_requested'])) {

@@ -850,6 +850,7 @@ class LguIdsImportService
                                 dedupeSuffix: $newLead->id . ':import_assigned',
                             );
                         } catch (\Throwable) {}
+                        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
                     }
 
                     // Secondary: auto-create note task if deal starts in a target stage (non-critical)

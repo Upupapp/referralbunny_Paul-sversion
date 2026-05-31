@@ -116,9 +116,7 @@ class ImportRollbackService
         $this->notifyRequester($rollback, $batch, $tenantId, $result);
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
     }
 

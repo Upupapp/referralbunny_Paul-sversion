@@ -165,9 +165,7 @@ class BulkDealExtensionService
             try { $this->notifyAdminsBulkRequest($tenantId, $reseller, $createdBatch); } catch (\Throwable) {}
             try {
                 $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-                foreach ($adminIds as $uid) {
-                    \Illuminate\Support\Facades\Cache::forget("notif_unread_tenant_admin_{$uid}");
-                }
+                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
             } catch (\Throwable) {}
             \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         }
@@ -262,9 +260,7 @@ class BulkDealExtensionService
         );
         try {
             $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request;
@@ -325,9 +321,7 @@ class BulkDealExtensionService
         ]);
         try {
             $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request;
@@ -381,9 +375,7 @@ class BulkDealExtensionService
         ]);
         try {
             $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         return $request;
