@@ -17,6 +17,7 @@ class ExportRejected extends Mailable
         public string  $exportType,
         public ?string $rejectionReason,
         public string  $tenantName,
+        public bool    $isSystemFailure = false,
     ) {}
 
     public function envelope(): Envelope
@@ -35,6 +36,7 @@ class ExportRejected extends Mailable
                 'exportType'      => $this->exportType,
                 'rejectionReason' => $this->rejectionReason,
                 'tenantName'      => $this->tenantName,
+                'isSystemFailure' => $this->isSystemFailure,
             ],
         );
     }

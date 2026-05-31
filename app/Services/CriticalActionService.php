@@ -17,12 +17,9 @@ class CriticalActionService
     // Severity ordering for sorting — 'normal' treated as alias for 'low'
     private const SEVERITY_ORDER = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'normal' => 3, 'info' => 4];
 
-    // Static in-process cache for Schema::hasTable() — avoids information_schema queries on every request
-    private static array $tableExistsCache = [];
-
     private static function tableExists(string $table): bool
     {
-        return self::$tableExistsCache[$table] ??= Schema::hasTable($table);
+        return Cache::remember("schema_table_exists:{$table}", 300, fn() => Schema::hasTable($table));
     }
 
     // ── Public API ─────────────────────────────────────────────────
@@ -389,6 +386,7 @@ class CriticalActionService
             if ($resellerId) {
                 $sources[] = fn() => $this->resellerImportEvents($tenantId, $resellerId);
                 $sources[] = fn() => $this->resellerOverdueTasks($tenantId, $resellerId);
+                $sources[] = fn() => $this->resellerFailedExports($tenantId, $resellerId);
             }
 
             // LGU IDS only — deals with no notes yet (additive, never runs for other tenants)
@@ -1770,6 +1768,33 @@ class CriticalActionService
                     'action_needed' => true,
                     'source'        => 'subscriptions',
                 ]);
+            } elseif ($sub->status === 'active') {
+                // Surface payment_failed during the retry window (before subscription goes past_due)
+                $failedPayment = DB::table('payments')
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'failed')
+                    ->where('retry_count', '<', 3)
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if ($failedPayment) {
+                    $actions[] = $this->make([
+                        'type'          => 'payment_failed',
+                        'category'      => 'billing',
+                        'severity'      => 'high',
+                        'summary'       => 'Payment failed — retrying automatically. Update your payment method to avoid suspension.',
+                        'actor_name'    => 'System',
+                        'actor_role'    => 'System',
+                        'related_label' => 'Payment',
+                        'related_type'  => 'billing',
+                        'related_id'    => $failedPayment->id ?? null,
+                        'occurred_at'   => $failedPayment->updated_at ?? now(),
+                        'action_url'    => "/tenant/{$tenantId}/billing",
+                        'action_label'  => 'Update Payment Method',
+                        'action_needed' => true,
+                        'source'        => 'payments',
+                    ]);
+                }
             } elseif ($sub->status === 'trial' && !empty($sub->trial_end_date)) {
                 $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($sub->trial_end_date), false);
                 if ($daysLeft >= 0 && $daysLeft <= 7) {
@@ -1835,6 +1860,42 @@ class CriticalActionService
             ]))->toArray();
         } catch (\Throwable $e) {
             Log::warning('[CriticalActionService] resellerOverdueTasks failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    private function resellerFailedExports(string $tenantId, string $resellerId): array
+    {
+        if (!self::tableExists('export_requests')) return [];
+
+        try {
+            $rows = DB::table('export_requests')
+                ->where('tenant_id', $tenantId)
+                ->where('requester_type', 'reseller')
+                ->where('requester_id', $resellerId)
+                ->where('status', 'failed')
+                ->orderByDesc('updated_at')
+                ->limit(5)
+                ->get(['id', 'export_type', 'error_message', 'updated_at']);
+
+            return $rows->map(fn($r) => $this->make([
+                'type'          => 'export_failed',
+                'category'      => 'export',
+                'severity'      => 'high',
+                'summary'       => 'Export failed: ' . ucfirst(str_replace('_', ' ', $r->export_type)),
+                'actor_name'    => 'System',
+                'actor_role'    => 'System',
+                'related_label' => ucfirst(str_replace('_', ' ', $r->export_type)) . ' export',
+                'related_type'  => 'export',
+                'related_id'    => $r->id,
+                'occurred_at'   => $r->updated_at ?? now(),
+                'action_url'    => "/reseller/{$tenantId}/exports/{$r->id}",
+                'action_label'  => 'View Details',
+                'action_needed' => true,
+                'source'        => 'export_requests',
+            ]))->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('[CriticalActionService] resellerFailedExports failed', ['error' => $e->getMessage()]);
             return [];
         }
     }

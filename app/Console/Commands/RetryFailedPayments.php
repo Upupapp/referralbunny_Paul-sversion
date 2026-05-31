@@ -41,19 +41,25 @@ class RetryFailedPayments extends Command
             ->whereDate('updated_at', today())
             ->get();
 
-        foreach ($toSuspend as $payment) {
-            try {
-                $subscription = Subscription::where('tenant_id', $payment->tenant_id)
-                    ->whereIn('status', ['active', 'trial', 'past_due'])
-                    ->latest()
-                    ->first();
+        if ($toSuspend->isNotEmpty()) {
+            // Batch-load subscriptions to avoid N+1
+            $subscriptionsByTenant = Subscription::whereIn('tenant_id', $toSuspend->pluck('tenant_id')->unique())
+                ->whereIn('status', ['active', 'trial', 'past_due'])
+                ->get()
+                ->groupBy('tenant_id')
+                ->map(fn($group) => $group->sortByDesc('created_at')->first());
 
-                if ($subscription) {
-                    // suspend() internally fires the tenant-facing suspension notification
-                    $billing->suspend($subscription, 'Payment failed after 3 retries', null);
+            foreach ($toSuspend as $payment) {
+                try {
+                    $subscription = $subscriptionsByTenant->get($payment->tenant_id);
+
+                    if ($subscription) {
+                        // suspend() internally fires the tenant-facing suspension notification
+                        $billing->suspend($subscription, 'Payment failed after 3 retries', null);
+                    }
+                } catch (\Throwable $e) {
+                    $this->error("Failed to suspend tenant {$payment->tenant_id}: {$e->getMessage()}");
                 }
-            } catch (\Throwable $e) {
-                $this->error("Failed to suspend tenant {$payment->tenant_id}: {$e->getMessage()}");
             }
         }
 

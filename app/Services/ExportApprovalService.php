@@ -690,8 +690,9 @@ class ExportApprovalService
                 mailable:       new ExportRejected(
                     requesterName:   $requesterName,
                     exportType:      $exportLabel,
-                    rejectionReason: 'Export generation failed. Please try again or contact support.',
+                    rejectionReason: $request->error_message ?: 'Export generation failed. Please try again or contact support.',
                     tenantName:      $tenantName,
+                    isSystemFailure: true,
                 ),
                 recipientEmail: $requesterEmail,
                 recipientType:  $request->requester_type,
