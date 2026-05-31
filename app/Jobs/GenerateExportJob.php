@@ -187,7 +187,7 @@ class GenerateExportJob implements ShouldQueue
 
         $headers = [
             'ID', 'Name', 'Stage', 'Status', 'Days Left',
-            'Reseller', 'Commission Status', 'Deal Value',
+            'Referrer', 'Commission Status', 'Deal Value',
             'Contract Value', 'Base Cost', 'Created At',
         ];
 

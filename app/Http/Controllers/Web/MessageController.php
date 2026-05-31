@@ -528,6 +528,13 @@ class MessageController extends Controller
             }
         } catch (\Throwable) {}
 
+        if (isset($partner)) {
+            \Illuminate\Support\Facades\Cache::deleteMultiple([
+                "notif_unread_partner_{$partner->id}",
+                "partner_notif_unread:{$partner->id}",
+            ]);
+        }
+
         return response()->json([
             'id'              => $message->id,
             'sender_type'     => $message->sender_type,
@@ -577,6 +584,7 @@ class MessageController extends Controller
             deduplicationKey: 'broadcast:reseller:' . $reseller->id . ':msg:' . now()->format('YmdH'),
             metadata:         ['sender_name' => $senderName, 'thread_id' => $thread->id],
         );
+        \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
     }
 
     private function sendToPartner(string $tenantId, string $partnerId, string $body, string $senderName, string $senderId): void
@@ -619,6 +627,10 @@ class MessageController extends Controller
             deduplicationKey: 'broadcast:partner:' . $partner->id . ':msg:' . now()->format('YmdH'),
             metadata:         ['sender_name' => $senderName, 'thread_id' => $thread->id],
         );
+        \Illuminate\Support\Facades\Cache::deleteMultiple([
+            "notif_unread_partner_{$partner->id}",
+            "partner_notif_unread:{$partner->id}",
+        ]);
     }
 
     private function notifyTenantUser(string $tenantId, string $userId, string $body, string $senderName): void

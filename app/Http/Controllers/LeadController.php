@@ -51,7 +51,7 @@ class LeadController extends Controller
             'data',
             'created_at', 'updated_at', 'deleted_at', 'deleted_by',
         ];
-        if (Cache::remember('schema.leads_has_reseller_id', 300, fn() =>
+        if (Cache::remember('schema.leads_has_reseller_id', 3600, fn() =>
             \Illuminate\Support\Facades\Schema::hasColumn('leads', 'reseller_id')
         )) {
             $baseSelect[] = 'reseller_id';
@@ -744,7 +744,11 @@ class LeadController extends Controller
                 Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
             }
             [$actorIdForCache] = $this->resolveActor();
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdForCache); } catch (\Throwable) {}
+            try {
+                $cs = app(\App\Services\CriticalActionService::class);
+                $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
         }
 
         // Fire commission status event AFTER the DB write succeeds
@@ -827,7 +831,11 @@ class LeadController extends Controller
                 $freshData['amount_confirmed_at']        = now()->toIso8601String();
                 $freshData['amount_confirmed_by']        = $actorName ?? 'Admin';
                 $lead->update(['data' => $freshData]);
-                try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorId); } catch (\Throwable) {}
+                try {
+                    $cs = app(\App\Services\CriticalActionService::class);
+                    $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+                    \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                } catch (\Throwable) {}
 
                 try {
                     app(\App\Services\DealActivityService::class)->record(
@@ -886,7 +894,11 @@ class LeadController extends Controller
         $lead->save();
         $lead->delete();
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         Log::info('Deal archived (soft-deleted)', [
             'lead_id'    => $leadId,
@@ -997,7 +1009,11 @@ class LeadController extends Controller
         if ($statusArchived) {
             $statusArchived->update(['status' => 'active']);
             Cache::forget("dash_counts:{$tenantId}");
-            try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+            try {
+                $cs = app(\App\Services\CriticalActionService::class);
+                $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
 
             // Log activity
             try {
@@ -1044,7 +1060,11 @@ class LeadController extends Controller
         $lead->restore();
         $lead->update(['deleted_by' => null]);
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         try {
             app(\App\Services\DealActivityService::class)->record(
@@ -1127,7 +1147,11 @@ class LeadController extends Controller
         $leadName    = $lead->name;
         $lead->forceDelete();
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         Log::info('Deal permanently deleted (force)', [
             'lead_id'    => $deletedId,
@@ -1175,7 +1199,11 @@ class LeadController extends Controller
         ]);
 
         Cache::forget("dash_counts:{$tenantId}");
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($tenantId, (string) $actorId); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         // Notify each unique Referrer who had deals archived — batch Reseller lookup to avoid N+1
         // groupBy keys are already lowercase+trimmed — no further strtolower needed below
@@ -1268,7 +1296,11 @@ class LeadController extends Controller
         $currentData['amount_confirmed_at']         = now()->toIso8601String();
         $currentData['amount_confirmed_by']         = $actorName ?? 'Admin';
         $lead->update(['data' => $currentData]);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorId); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         try {
             app(\App\Services\DealActivityService::class)->record(
@@ -1483,7 +1515,11 @@ class LeadController extends Controller
             $caEmail = $caReseller?->email;
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($lead->reseller_name . ':' . ($caRid ?? '')));
         }
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id, (string) $actorIdStage); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         // Fire stage-move event — HandleDealStageMoved notifies admin + reseller
         try {

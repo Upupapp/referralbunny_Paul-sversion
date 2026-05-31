@@ -646,7 +646,7 @@ class BulkDealExtensionService
 
         foreach ($rejectIds as $id) {
             try {
-                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason);
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -654,11 +654,16 @@ class BulkDealExtensionService
 
         foreach ($approveIds as $id) {
             try {
-                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote);
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
         }
+
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }
@@ -690,7 +695,7 @@ class BulkDealExtensionService
 
         foreach ($approveIds as $id) {
             try {
-                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote);
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -698,11 +703,16 @@ class BulkDealExtensionService
 
         foreach ($rejectIds as $id) {
             try {
-                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason);
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
         }
+
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }

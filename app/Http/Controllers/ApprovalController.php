@@ -47,7 +47,11 @@ class ApprovalController extends Controller
 
         $data = $request->validate(['notes' => 'nullable|string|max:500']);
         $this->approvals->approve($approval, $request->user()->id, $data['notes'] ?? null);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($approval->tenant_id, (string) $request->user()->id); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($approval->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json(['message' => 'Approved.', 'approval' => $approval->fresh()]);
     }
@@ -63,7 +67,11 @@ class ApprovalController extends Controller
 
         $data = $request->validate(['notes' => 'nullable|string|max:500']);
         $this->approvals->reject($approval, $request->user()->id, $data['notes'] ?? null);
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($approval->tenant_id, (string) $request->user()->id); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $adminIds = $cs->invalidateAllAdminBadges($approval->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json(['message' => 'Rejected.', 'approval' => $approval->fresh()]);
     }
