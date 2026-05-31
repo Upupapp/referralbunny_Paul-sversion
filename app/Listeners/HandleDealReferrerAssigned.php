@@ -6,9 +6,11 @@ use App\Events\DealReferrerAssigned;
 use App\Mail\ResellerDealAssigned;
 use App\Mail\ResellerRemovedFromDeal;
 use App\Models\Reseller;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -168,6 +170,18 @@ class HandleDealReferrerAssigned implements ShouldQueue
                 }
             }
         }
+    }
+
+        // Cache bust — refresh admin CA badge + notification bells
+        try {
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+            if ($resellerId) {
+                Cache::forget("notif_unread_reseller_{$resellerId}");
+            }
+        } catch (\Throwable) {}
     }
 
     public function failed(DealReferrerAssigned $event, \Throwable $exception): void

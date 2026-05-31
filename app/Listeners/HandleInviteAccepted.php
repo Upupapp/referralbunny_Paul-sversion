@@ -5,9 +5,11 @@ namespace App\Listeners;
 use App\Events\InviteAcceptedEvent;
 use App\Mail\InviterActivationMail;
 use App\Models\ActivityLog;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -51,6 +53,17 @@ class HandleInviteAccepted implements ShouldQueue
         // Skip reseller type: HandleResellerJoined already dispatched admin notification.
         if ($event->inviteType !== 'reseller') {
             $this->notifyAdmins($event, $dedupBase);
+        }
+
+        // ── 5. Cache bust — refresh admin CA badge + notification bell ───────
+        // Only when admins were notified (not reseller type — HandleResellerJoined handles that).
+        if ($event->inviteType !== 'reseller') {
+            try {
+                $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+                foreach ($adminIds as $uid) {
+                    Cache::forget("notif_unread_tenant_admin_{$uid}");
+                }
+            } catch (\Throwable) {}
         }
     }
 

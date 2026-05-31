@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -326,7 +327,7 @@ class CriticalActionService
      * Controller actions should use invalidateCache($tenantId, $actorId) instead.
      * Note: super_admin users are not in tenant_memberships and manage their own badge cache.
      */
-    public function invalidateAllAdminBadges(string $tenantId): \Illuminate\Support\Collection
+    public function invalidateAllAdminBadges(string $tenantId): Collection
     {
         // Busts panel/dashboard cache keys only (no userId = no badge keys added inside invalidateCache).
         // Per-user badge keys are cleared separately in the foreach below.

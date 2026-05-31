@@ -8,6 +8,8 @@ use App\Models\ImportRollback;
 use App\Models\ImportSnapshot;
 use App\Services\CriticalActionService;
 use App\Services\NotificationDispatchService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -112,7 +114,12 @@ class ImportRollbackService
 
         // Notify requester
         $this->notifyRequester($rollback, $batch, $tenantId, $result);
-        try { app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId); } catch (\Throwable) {}
+        try {
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+        } catch (\Throwable) {}
     }
 
     // ── Restore updated record ─────────────────────────────────────────

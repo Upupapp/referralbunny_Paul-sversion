@@ -615,6 +615,7 @@ class CriticalActionsNotifyTest extends TestCase
         ]);
 
         Cache::put("ca_badge_{$tenant->id}_{$admin->id}", 2, 300);
+        Cache::put("notif_unread_tenant_admin_{$admin->id}", 3, 300);
 
         $job = new ProcessImportRollbackJob($rollbackId, $batchId, $tenant->id);
         $job->failed(new \RuntimeException('Timed out'));
@@ -628,6 +629,7 @@ class CriticalActionsNotifyTest extends TestCase
             'rollback_status' => 'failed',
         ]);
         $this->assertFalse(Cache::has("ca_badge_{$tenant->id}_{$admin->id}"), 'Badge must be cleared on job failure');
+        $this->assertFalse(Cache::has("notif_unread_tenant_admin_{$admin->id}"), 'Bell count must be cleared on job failure');
     }
 
     /** @test */

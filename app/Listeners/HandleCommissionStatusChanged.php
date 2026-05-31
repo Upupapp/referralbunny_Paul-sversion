@@ -143,18 +143,21 @@ class HandleCommissionStatusChanged implements ShouldQueue
             }
         }
 
-        // Notify partners who have an active split on this deal
+        // Resolve partner IDs once — reused for both notification dispatch and cache bust
+        $partnerIds = collect();
         try {
-            $partnerSplits = DB::table('deal_partner_splits')
+            $partnerIds = DB::table('deal_partner_splits')
                 ->where('deal_id', $event->leadId)
                 ->where('tenant_id', $event->tenantId)
                 ->whereNull('deleted_at')
                 ->where('status', '!=', 'removed')
                 ->whereNotNull('partner_user_id')
-                ->select('partner_user_id')
-                ->get();
+                ->pluck('partner_user_id');
+        } catch (\Throwable) {}
 
-            if ($partnerSplits->isNotEmpty()) {
+        // Notify partners who have an active split on this deal
+        if ($partnerIds->isNotEmpty()) {
+            try {
                 $partnerTitles = [
                     'pending' => 'Commission pending',
                     'locked'  => 'Commission approved',
@@ -166,9 +169,9 @@ class HandleCommissionStatusChanged implements ShouldQueue
                     'paid'    => "Commission for deal \"{$event->leadName}\" has been paid.",
                 ];
 
-                foreach ($partnerSplits as $split) {
+                foreach ($partnerIds as $pid) {
                     $dispatcher->dispatchToPartner(
-                        partnerId:    $split->partner_user_id,
+                        partnerId:    $pid,
                         tenantId:     $event->tenantId,
                         category:     'commission',
                         priority:     $priorities[$event->newStatus] ?? 'normal',
@@ -176,13 +179,13 @@ class HandleCommissionStatusChanged implements ShouldQueue
                         body:         $partnerBodies[$event->newStatus] ?? "Commission updated for \"{$event->leadName}\".",
                         actionUrl:    url('/partner/commissions'),
                         actionLabel:  'View Commissions',
-                        dedupeSuffix: "partner_commission_{$event->newStatus}.{$event->leadId}.{$split->partner_user_id}",
+                        dedupeSuffix: "partner_commission_{$event->newStatus}.{$event->leadId}.{$pid}",
                         metadata:     ['deal_id' => $event->leadId, 'status' => $event->newStatus],
                     );
                 }
+            } catch (\Throwable $e) {
+                Log::warning('[HandleCommissionStatusChanged] Partner notification failed', ['error' => $e->getMessage()]);
             }
-        } catch (\Throwable $e) {
-            Log::warning('[HandleCommissionStatusChanged] Partner notification failed', ['error' => $e->getMessage()]);
         }
 
         // Cache bust — refresh reseller bell + admin CA badge so counts update promptly
@@ -196,17 +199,13 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 Cache::forget("notif_unread_tenant_admin_{$uid}");
             }
 
-            $partnerIds = DB::table('deal_partner_splits')
-                ->where('deal_id', $event->leadId)
-                ->where('tenant_id', $event->tenantId)
-                ->whereNull('deleted_at')
-                ->where('status', '!=', 'removed')
-                ->whereNotNull('partner_user_id')
-                ->pluck('partner_user_id');
-
-            foreach ($partnerIds as $pid) {
-                Cache::forget("notif_unread_partner_{$pid}");
-                Cache::forget("partner_notif_unread:{$pid}");
+            if ($partnerIds->isNotEmpty()) {
+                $pKeys = [];
+                foreach ($partnerIds as $pid) {
+                    $pKeys[] = "notif_unread_partner_{$pid}";
+                    $pKeys[] = "partner_notif_unread:{$pid}";
+                }
+                Cache::deleteMultiple($pKeys);
             }
         } catch (\Throwable $e) {
             Log::warning('[HandleCommissionStatusChanged] Cache bust failed', ['error' => $e->getMessage()]);

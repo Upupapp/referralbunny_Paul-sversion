@@ -6,8 +6,16 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Creates import_batches and import_rollbacks if they don't already exist.
- * Safe for Supabase environments where these tables are pre-created.
- * Uses nullable imported_by_id for cross-DB test compatibility.
+ * Safe for Supabase environments where these tables are pre-created (both hasTable()
+ * guards return true and both blocks are skipped entirely).
+ *
+ * On fresh DB environments (SQLite CI, staging clones): creates a full-schema replica
+ * so that CriticalActionService::importEvents(), badgeCount(), ImportBatch model
+ * operations, and ImportRollback::markFailed() / markCompleted() all work correctly.
+ *
+ * NOTE: Additional columns (file_path, duplicate_rows, same_email_*, etc.) are added
+ * by 2026_05_12_000002_add_lgu_ids_columns_to_import_batches.php via hasColumn() guards.
+ * Those additive migrations run after this one and are safe to run on top of this schema.
  */
 return new class extends Migration
 {
@@ -23,11 +31,17 @@ return new class extends Migration
                     $table->string('status')->default('pending');
                     $table->string('rollback_status')->nullable();
                     $table->integer('total_rows')->default(0);
+                    $table->integer('successful_rows')->default(0)->nullable();
+                    $table->integer('failed_rows')->default(0)->nullable();
+                    $table->integer('unknown_referrer_rows')->default(0)->nullable();
+                    $table->string('imported_by_role')->nullable();
                     $table->uuid('imported_by_id')->nullable();
+                    $table->timestamp('started_at')->nullable();
+                    $table->timestamp('completed_at')->nullable();
                     $table->timestamps();
                 });
             } catch (\Throwable) {
-                return;
+                // Table creation failed — do not return; import_rollbacks is independent
             }
 
             foreach ([['tenant_id', 'status'], ['tenant_id', 'import_type']] as $cols) {
@@ -47,11 +61,17 @@ return new class extends Migration
                     $table->string('mode')->default('full');
                     $table->string('requested_by')->nullable();
                     $table->string('requested_by_type')->nullable();
+                    $table->integer('records_restored')->default(0)->nullable();
+                    $table->integer('records_deleted')->default(0)->nullable();
+                    $table->integer('records_failed')->default(0)->nullable();
+                    $table->integer('records_skipped')->default(0)->nullable();
+                    $table->integer('records_conflict')->default(0)->nullable();
+                    $table->text('error_summary')->nullable();
+                    $table->timestamp('started_at')->nullable();
+                    $table->timestamp('completed_at')->nullable();
                     $table->timestamps();
                 });
-            } catch (\Throwable) {
-                return;
-            }
+            } catch (\Throwable) {}
 
             foreach ([['tenant_id', 'status'], ['import_batch_id']] as $cols) {
                 try {

@@ -27,7 +27,7 @@ class HandleDealDeclined implements ShouldQueue
         // Only do the DB lookup when BOTH identifiers are missing — AND guard prevents
         // overwriting a valid resellerId when only email is absent, and the resellerName
         // guard prevents a LOWER(name)='' match on deals with no assigned reseller.
-        if (!$email && !$resellerId && $event->resellerName) {
+        if ((!$email || !$resellerId) && $event->resellerName) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();
@@ -133,9 +133,13 @@ class HandleDealDeclined implements ShouldQueue
                 ->whereNotNull('partner_user_id')
                 ->pluck('partner_user_id');
 
-            foreach ($partnerIds as $pid) {
-                Cache::forget("notif_unread_partner_{$pid}");
-                Cache::forget("partner_notif_unread:{$pid}");
+            if ($partnerIds->isNotEmpty()) {
+                $pKeys = [];
+                foreach ($partnerIds as $pid) {
+                    $pKeys[] = "notif_unread_partner_{$pid}";
+                    $pKeys[] = "partner_notif_unread:{$pid}";
+                }
+                Cache::deleteMultiple($pKeys);
             }
         } catch (\Throwable $e) {
             Log::warning('[HandleDealDeclined] Cache bust failed', ['error' => $e->getMessage()]);

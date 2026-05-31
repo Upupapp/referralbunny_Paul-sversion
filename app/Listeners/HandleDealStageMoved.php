@@ -32,7 +32,7 @@ class HandleDealStageMoved implements ShouldQueue
         $resellerId = $event->resellerId;
         $reseller   = null;
 
-        if (!$email && !$resellerId && $event->resellerName) {
+        if ((!$email || !$resellerId) && $event->resellerName) {
             $reseller   = Reseller::where('tenant_id', $event->tenantId)
                 ->whereRaw('LOWER(name) = ?', [strtolower($event->resellerName)])
                 ->first();
@@ -147,9 +147,13 @@ class HandleDealStageMoved implements ShouldQueue
                 ->whereNotNull('partner_user_id')
                 ->pluck('partner_user_id');
 
-            foreach ($partnerIds as $pid) {
-                Cache::forget("notif_unread_partner_{$pid}");
-                Cache::forget("partner_notif_unread:{$pid}");
+            if ($partnerIds->isNotEmpty()) {
+                $pKeys = [];
+                foreach ($partnerIds as $pid) {
+                    $pKeys[] = "notif_unread_partner_{$pid}";
+                    $pKeys[] = "partner_notif_unread:{$pid}";
+                }
+                Cache::deleteMultiple($pKeys);
             }
         } catch (\Throwable $e) {
             Log::warning('[HandleDealStageMoved] Cache bust failed', ['error' => $e->getMessage()]);

@@ -5,8 +5,11 @@ namespace App\Listeners;
 use App\Events\DealAmountUpdated;
 use App\Mail\ResellerDealAmountUpdated;
 use App\Models\Reseller;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
+use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -39,29 +42,62 @@ class HandleDealAmountUpdated implements ShouldQueue
             }
         }
 
-        if (!$email) return;
+        if (!$email && !$resellerId) return;
 
         $tenantName = DB::table('tenants')->where('id', $event->tenantId)->value('name') ?? $event->tenantId;
 
-        EmailLogger::send(
-            mailable: new ResellerDealAmountUpdated(
-                resellerName:  $event->resellerName,
-                resellerEmail: $email,
-                tenantName:    $tenantName,
-                dealName:      $event->leadName,
-                oldAmount:     $event->oldAmount,
-                newAmount:     $event->newAmount,
-                updatedByName: $event->updatedByName ?? 'Admin',
-                dealUrl:       url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
-            ),
-            recipientEmail: $email,
-            recipientType:  'reseller',
-            emailKey:       'deal_amount_updated.' . $event->leadId,
-            subject:        "Deal amount updated: {$event->leadName}",
-            recipientId:    $resellerId,
-            tenantId:       $event->tenantId,
-            dailyDedup:     true,
-        );
+        // Email to Referrer
+        if ($email) {
+            EmailLogger::send(
+                mailable: new ResellerDealAmountUpdated(
+                    resellerName:  $event->resellerName,
+                    resellerEmail: $email,
+                    tenantName:    $tenantName,
+                    dealName:      $event->leadName,
+                    oldAmount:     $event->oldAmount,
+                    newAmount:     $event->newAmount,
+                    updatedByName: $event->updatedByName ?? 'Admin',
+                    dealUrl:       url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
+                ),
+                recipientEmail: $email,
+                recipientType:  'reseller',
+                emailKey:       'deal_amount_updated.' . $event->leadId,
+                subject:        "Deal amount updated: {$event->leadName}",
+                recipientId:    $resellerId,
+                tenantId:       $event->tenantId,
+                dailyDedup:     true,
+            );
+        }
+
+        // In-app to Referrer
+        if ($resellerId) {
+            try {
+                app(NotificationDispatchService::class)->dispatchToReseller(
+                    resellerId:   $resellerId,
+                    tenantId:     $event->tenantId,
+                    category:     'deal_pipeline',
+                    priority:     'normal',
+                    title:        "Deal amount updated: {$event->leadName}",
+                    body:         "The contract value for \"{$event->leadName}\" has been updated.",
+                    actionUrl:    url("/reseller/{$event->tenantId}/deals/{$event->leadId}"),
+                    actionLabel:  'View Deal',
+                    dedupeSuffix: "deal_amount_updated.{$event->leadId}",
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[HandleDealAmountUpdated] in-app failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Cache bust
+        try {
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+            if ($resellerId) {
+                Cache::forget("notif_unread_reseller_{$resellerId}");
+            }
+        } catch (\Throwable) {}
     }
 
     public function failed(DealAmountUpdated $event, \Throwable $exception): void

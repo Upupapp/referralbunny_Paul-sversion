@@ -5,9 +5,11 @@ namespace App\Listeners;
 use App\Events\DealCreated;
 use App\Mail\ResellerDealCreated;
 use App\Mail\TenantAdminNewDeal;
+use App\Services\CriticalActionService;
 use App\Services\EmailLogger;
 use App\Services\NotificationDispatchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -119,6 +121,18 @@ class HandleDealCreated implements ShouldQueue
                 tenantId:       $event->tenantId,
             );
         }
+    }
+
+        // Cache bust — refresh admin CA badge + notification bell
+        try {
+            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            foreach ($adminIds as $uid) {
+                Cache::forget("notif_unread_tenant_admin_{$uid}");
+            }
+            if ($reseller) {
+                Cache::forget("notif_unread_reseller_{$reseller->id}");
+            }
+        } catch (\Throwable) {}
     }
 
     public function failed(DealCreated $event, \Throwable $exception): void
