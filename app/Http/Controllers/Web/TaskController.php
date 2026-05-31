@@ -311,15 +311,15 @@ class TaskController extends Controller
                 // In-app notification to referrer portal
                 try {
                     $notifSvc->dispatchToReseller(
-                        resellerId:       (string) $assignee->id,
-                        tenantId:         $tenantId,
-                        category:         'task_approval',
-                        priority:         $notifPriority,
-                        title:            'New Task: ' . $task->title,
-                        body:             $notifBody,
-                        actionUrl:        "/reseller/{$tenantId}/tasks",
-                        actionLabel:      'View Task',
-                        deduplicationKey: "task_assigned_{$task->id}",
+                        resellerId:   (string) $assignee->id,
+                        tenantId:     $tenantId,
+                        category:     'task_approval',
+                        priority:     $notifPriority,
+                        title:        'New Task: ' . $task->title,
+                        body:         $notifBody,
+                        actionUrl:    "/reseller/{$tenantId}/tasks",
+                        actionLabel:  'View Task',
+                        dedupeSuffix: "task_assigned_{$task->id}",
                     );
                 } catch (\Throwable) {}
                 \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$assignee->id}");
