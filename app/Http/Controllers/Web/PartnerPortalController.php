@@ -649,6 +649,9 @@ class PartnerPortalController extends Controller
                 );
             }
         } catch (\Throwable) {}
+        if ($resellerId) {
+            \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$resellerId}");
+        }
 
         // Also notify tenant admins (so they can monitor partner communications)
         try {

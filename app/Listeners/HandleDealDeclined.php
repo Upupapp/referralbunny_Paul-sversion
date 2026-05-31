@@ -120,10 +120,7 @@ class HandleDealDeclined implements ShouldQueue
                 Cache::forget("notif_unread_reseller_{$resellerId}");
             }
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
 
             $partnerIds = DB::table('deal_partner_splits')
                 ->where('deal_id', $event->leadId)

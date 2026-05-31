@@ -45,9 +45,7 @@ class HandleDealExtensionApproved implements ShouldQueue
         // Cache bust — fires unconditionally; admin badge/bell must clear even for invited referrers
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
         } catch (\Throwable) {}
 
         if (!$email && !$resellerId) return;

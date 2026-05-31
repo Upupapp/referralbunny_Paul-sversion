@@ -94,9 +94,7 @@ class HandleResellerJoined implements ShouldQueue
         // Cache bust — refresh admin CA badge + notification bell
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
             Cache::forget("notif_unread_reseller_{$event->resellerId}");
         } catch (\Throwable) {}
     }

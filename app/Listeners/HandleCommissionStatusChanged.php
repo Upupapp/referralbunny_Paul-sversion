@@ -194,10 +194,7 @@ class HandleCommissionStatusChanged implements ShouldQueue
                 Cache::forget("notif_unread_reseller_{$reseller->id}");
             }
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
 
             if ($partnerIds->isNotEmpty()) {
                 $pKeys = [];

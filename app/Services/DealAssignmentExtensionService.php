@@ -167,15 +167,20 @@ class DealAssignmentExtensionService
         ?string $reviewerUserId,
         string  $reason
     ): DealAssignmentExtensionRequest {
-        $request = $this->loadForReview($requestId, $tenantId);
-        $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->firstOrFail();
+        $request = null;
+        $deal    = null;
 
-        $request->update([
-            'status'              => 'rejected',
-            'admin_note'          => $reason,
-            'reviewed_by_user_id' => $reviewerUserId,
-            'reviewed_at'         => now(),
-        ]);
+        DB::transaction(function () use ($requestId, $tenantId, $reviewerUserId, $reason, &$request, &$deal) {
+            $request = $this->loadForReview($requestId, $tenantId);
+            $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->firstOrFail();
+
+            $request->update([
+                'status'              => 'rejected',
+                'admin_note'          => $reason,
+                'reviewed_by_user_id' => $reviewerUserId,
+                'reviewed_at'         => now(),
+            ]);
+        });
 
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'rejected');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_rejected', $reviewerUserId);
@@ -197,15 +202,20 @@ class DealAssignmentExtensionService
         ?string $reviewerUserId,
         string  $note
     ): DealAssignmentExtensionRequest {
-        $request = $this->loadForReview($requestId, $tenantId);
-        $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->firstOrFail();
+        $request = null;
+        $deal    = null;
 
-        $request->update([
-            'status'              => 'clarification_requested',
-            'admin_note'          => $note,
-            'reviewed_by_user_id' => $reviewerUserId,
-            'reviewed_at'         => now(),
-        ]);
+        DB::transaction(function () use ($requestId, $tenantId, $reviewerUserId, $note, &$request, &$deal) {
+            $request = $this->loadForReview($requestId, $tenantId);
+            $deal    = Lead::where('id', $request->deal_id)->where('tenant_id', $tenantId)->firstOrFail();
+
+            $request->update([
+                'status'              => 'clarification_requested',
+                'admin_note'          => $note,
+                'reviewed_by_user_id' => $reviewerUserId,
+                'reviewed_at'         => now(),
+            ]);
+        });
 
         $this->notifyRequesterOfDecision($tenantId, $deal, $request, 'clarification_requested');
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_clarification_requested', $reviewerUserId);
@@ -300,13 +310,13 @@ class DealAssignmentExtensionService
                 ->where('id', $request->requested_by_user_id)
                 ->first();
 
-            if ($reseller) {
-                // In-app notification
+            // Approved case: in-app + email are handled by HandleDealExtensionApproved listener
+            if ($reseller && $decision !== 'approved') {
                 app(NotificationDispatchService::class)->dispatchToReseller(
                     resellerId:   $reseller->id,
                     tenantId:     $tenantId,
                     category:     'deal_pipeline',
-                    priority:     $decision === 'approved' ? 'normal' : 'high',
+                    priority:     'high',
                     title:        "{$titleLabel}: Extension request for \"{$deal->name}\"",
                     body:         $message,
                     actionUrl:    url("/reseller/{$tenantId}/deals/{$deal->id}"),
@@ -315,8 +325,7 @@ class DealAssignmentExtensionService
                 );
                 Cache::forget("notif_unread_reseller_{$reseller->id}");
 
-                // Email notification (approved case is handled by HandleDealExtensionApproved listener)
-                if ($reseller->email && $decision !== 'approved') {
+                if ($reseller->email) {
                     $tenant = \App\Models\Tenant::find($tenantId);
                     EmailLogger::send(
                         mailable:       new \App\Mail\DealExtensionDecisionMail(

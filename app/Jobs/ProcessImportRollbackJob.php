@@ -62,9 +62,7 @@ class ProcessImportRollbackJob implements ShouldQueue
             $this->notifyAdminsOfFailure($batch->file_name ?? 'unknown file', $e->getMessage());
             try {
                 $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId);
-                foreach ($adminIds as $uid) {
-                    Cache::forget("notif_unread_tenant_admin_{$uid}");
-                }
+                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
             } catch (\Throwable) {}
         }
     }
@@ -84,9 +82,7 @@ class ProcessImportRollbackJob implements ShouldQueue
                 $this->notifyAdminsOfFailure($fileName, $e->getMessage());
                 try {
                     $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($this->tenantId);
-                    foreach ($adminIds as $uid) {
-                        Cache::forget("notif_unread_tenant_admin_{$uid}");
-                    }
+                    Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
                 } catch (\Throwable) {}
             }
         } catch (\Throwable $fe) {

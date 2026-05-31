@@ -1991,8 +1991,8 @@ class CriticalActionService
                 'related_type'  => 'export',
                 'related_id'    => $r->id,
                 'occurred_at'   => $r->updated_at ?? now(),
-                'action_url'    => "/reseller/{$tenantId}/dashboard",
-                'action_label'  => 'Go to Dashboard',
+                'action_url'    => "/reseller/{$tenantId}/exports",
+                'action_label'  => 'View Exports',
                 'action_needed' => true,
                 'source'        => 'export_requests',
             ]))->toArray();

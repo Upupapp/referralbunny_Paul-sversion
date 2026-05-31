@@ -399,9 +399,9 @@ class GenerateExportJob implements ShouldQueue
         ]);
 
         $headers = [
-            'Lead ID', 'Lead Name', 'Reseller', 'Commission Status',
+            'Lead ID', 'Lead Name', 'Referrer', 'Commission Status',
             'Deal Value', 'Contract Value', 'Base Cost',
-            'Company Share', 'Reseller Share', 'Stage', 'Created At',
+            'Company Share', 'Referrer Share', 'Stage', 'Created At',
         ];
 
         $data = [$headers];

@@ -53,10 +53,10 @@ Schedule::command('reports:monthly')->monthlyOn(1, '08:00')->timezone('Asia/Mani
 Schedule::command('usage:reset-monthly')->monthlyOn(1, '00:00')->timezone('Asia/Manila'); // Reset usage counters
 
 // ── Search index ──────────────────────────────────────────────
-Schedule::command('search:reindex')->dailyAt('03:00')->timezone('Asia/Manila');
+Schedule::command('search:reindex')->dailyAt('03:00')->timezone('Asia/Manila')->withoutOverlapping();
 
 // ── Email digests (batch / anti-spam) ────────────────────────
-Schedule::command('email:send-digests')->everyThirtyMinutes()->timezone('Asia/Manila');
+Schedule::command('email:send-digests')->everyThirtyMinutes()->timezone('Asia/Manila')->withoutOverlapping();
 
 // ── Message reminders (R Bunny AI Dialog) ────────────────────
 Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila');
@@ -65,10 +65,10 @@ Schedule::command('messages:check-reminders')->hourly()->timezone('Asia/Manila')
 Schedule::command('invitations:send-reminders')->hourly()->timezone('Asia/Manila');
 
 // ── Lead expiry & pipeline ────────────────────────────────────
-Schedule::command('leads:expire')->dailyAt('00:05')->timezone('Asia/Manila');
+Schedule::command('leads:expire')->dailyAt('00:05')->timezone('Asia/Manila')->withoutOverlapping();
 Schedule::command('leads:purge-archived')->dailyAt('01:30')->timezone('Asia/Manila');
-Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30')->timezone('Asia/Manila');
-Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Manila');
+Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30')->timezone('Asia/Manila')->withoutOverlapping();
+Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Manila')->withoutOverlapping();
 
 // ── Promo jobs ────────────────────────────────────────────────
 Schedule::command('promos:expire')->dailyAt('00:15')->timezone('Asia/Manila');

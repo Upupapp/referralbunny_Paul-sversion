@@ -150,6 +150,9 @@ class MessageController extends Controller
                         );
                     }
                 } catch (\Throwable) {}
+                if ($reseller) {
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$reseller->id}");
+                }
             }
 
             return response()->json([
@@ -323,6 +326,9 @@ class MessageController extends Controller
                         );
                     }
                 } catch (\Throwable) {}
+                if ($thread->reseller_id) {
+                    \Illuminate\Support\Facades\Cache::forget("notif_unread_reseller_{$thread->reseller_id}");
+                }
             }
 
             return response()->json($this->formatMessage($msg));

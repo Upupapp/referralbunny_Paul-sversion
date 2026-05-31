@@ -175,9 +175,7 @@ class HandleDealReferrerAssigned implements ShouldQueue
         // Cache bust — refresh admin CA badge + notification bells
         try {
             $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            foreach ($adminIds as $uid) {
-                Cache::forget("notif_unread_tenant_admin_{$uid}");
-            }
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
             if ($resellerId) {
                 Cache::forget("notif_unread_reseller_{$resellerId}");
             }

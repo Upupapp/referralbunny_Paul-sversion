@@ -51,7 +51,7 @@ class LeadController extends Controller
             'data',
             'created_at', 'updated_at', 'deleted_at', 'deleted_by',
         ];
-        if (Cache::remember('schema.leads_has_reseller_id', 86400, fn() =>
+        if (Cache::remember('schema.leads_has_reseller_id', 300, fn() =>
             \Illuminate\Support\Facades\Schema::hasColumn('leads', 'reseller_id')
         )) {
             $baseSelect[] = 'reseller_id';
@@ -523,7 +523,12 @@ class LeadController extends Controller
             $inviteAction    = $result['action'];
         }
 
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $cs->invalidateCache($lead->tenant_id);
+            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return response()->json(array_merge(
             $lead->load(['commissionSplits', 'notes', 'history'])->toArray(),
@@ -1699,7 +1704,12 @@ class LeadController extends Controller
             }
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
-        try { app(\App\Services\CriticalActionService::class)->invalidateCache($lead->tenant_id); } catch (\Throwable) {}
+        try {
+            $cs = app(\App\Services\CriticalActionService::class);
+            $cs->invalidateCache($lead->tenant_id);
+            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
+            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();
         app(\App\Services\DealActivityService::class)->record($lead,

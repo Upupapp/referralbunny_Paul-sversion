@@ -183,7 +183,8 @@ class BulkDealExtensionService
         string  $tenantId,
         ?string $reviewerUserId,
         int     $approvedDays,
-        ?string $reviewerNote = null
+        ?string $reviewerNote = null,
+        bool    $skipBadgeBust = false
     ): DealAssignmentExtensionRequest {
         if ($approvedDays < 1 || $approvedDays > 90) {
             throw new \InvalidArgumentException('Approved days must be between 1 and 90.');
@@ -258,10 +259,12 @@ class BulkDealExtensionService
             newDaysLeft:  $newDaysLeft,
             adminNote:    $reviewerNote,
         );
-        try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
+        if (!$skipBadgeBust) {
+            try {
+                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
+        }
 
         return $request;
     }
@@ -273,7 +276,8 @@ class BulkDealExtensionService
         string  $requestId,
         string  $tenantId,
         ?string $reviewerUserId,
-        string  $reviewerNote
+        string  $reviewerNote,
+        bool    $skipBadgeBust = false
     ): DealAssignmentExtensionRequest {
         if (empty(trim($reviewerNote))) {
             throw new \InvalidArgumentException('A reason is required when declining an extension request.');
@@ -319,10 +323,12 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
+        if (!$skipBadgeBust) {
+            try {
+                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
+        }
 
         return $request;
     }
@@ -334,7 +340,8 @@ class BulkDealExtensionService
         string  $requestId,
         string  $tenantId,
         ?string $reviewerUserId,
-        ?string $reviewerNote = null
+        ?string $reviewerNote = null,
+        bool    $skipBadgeBust = false
     ): DealAssignmentExtensionRequest {
         $completeNotifyData = null;
 
@@ -373,10 +380,12 @@ class BulkDealExtensionService
             'reviewer_note' => $reviewerNote,
             'batch_id'      => $request->batch_id,
         ]);
-        try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
-        } catch (\Throwable) {}
+        if (!$skipBadgeBust) {
+            try {
+                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            } catch (\Throwable) {}
+        }
 
         return $request;
     }
@@ -404,12 +413,16 @@ class BulkDealExtensionService
 
         foreach ($pendingItems as $item) {
             try {
-                $approved          = $this->approveItem($item->id, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote);
+                $approved          = $this->approveItem($item->id, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true);
                 $results['approved'][] = $approved;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         $freshBatch = $batch->fresh();
         // Only send partial-result notification if the batch is not yet fully resolved.
@@ -442,12 +455,16 @@ class BulkDealExtensionService
 
         foreach ($pendingItems as $item) {
             try {
-                $declined            = $this->declineItem($item->id, $tenantId, $reviewerUserId, $reviewerNote);
+                $declined            = $this->declineItem($item->id, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
                 $results['declined'][] = $declined;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         $freshBatch = $batch->fresh();
         if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
@@ -477,12 +494,16 @@ class BulkDealExtensionService
 
         foreach ($pendingItems as $item) {
             try {
-                $skipped           = $this->skipItem($item->id, $tenantId, $reviewerUserId, $reviewerNote);
+                $skipped           = $this->skipItem($item->id, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
                 $results['skipped'][] = $skipped;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }
@@ -511,12 +532,16 @@ class BulkDealExtensionService
 
         foreach ($requestIds as $requestId) {
             try {
-                $approved          = $this->approveItem($requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote);
+                $approved          = $this->approveItem($requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true);
                 $results['approved'][] = $approved;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }
@@ -543,12 +568,16 @@ class BulkDealExtensionService
 
         foreach ($requestIds as $requestId) {
             try {
-                $declined            = $this->declineItem($requestId, $tenantId, $reviewerUserId, $reviewerNote);
+                $declined            = $this->declineItem($requestId, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
                 $results['declined'][] = $declined;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }
@@ -575,12 +604,16 @@ class BulkDealExtensionService
 
         foreach ($requestIds as $requestId) {
             try {
-                $skipped           = $this->skipItem($requestId, $tenantId, $reviewerUserId, $reviewerNote);
+                $skipped           = $this->skipItem($requestId, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
                 $results['skipped'][] = $skipped;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
             }
         }
+        try {
+            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+        } catch (\Throwable) {}
 
         return $results;
     }

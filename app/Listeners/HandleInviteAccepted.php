@@ -60,9 +60,7 @@ class HandleInviteAccepted implements ShouldQueue
         if ($event->inviteType !== 'reseller') {
             try {
                 $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-                foreach ($adminIds as $uid) {
-                    Cache::forget("notif_unread_tenant_admin_{$uid}");
-                }
+                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
             } catch (\Throwable) {}
         }
     }

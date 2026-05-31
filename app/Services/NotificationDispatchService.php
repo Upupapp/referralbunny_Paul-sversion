@@ -129,6 +129,11 @@ class NotificationDispatchService
                 metadata:          $metadata,
             );
         }
+
+        $bellKeys = $admins->map(fn($a) => "notif_unread_tenant_admin_{$a->id}")->toArray();
+        if (!empty($bellKeys)) {
+            \Illuminate\Support\Facades\Cache::deleteMultiple($bellKeys);
+        }
     }
 
     /**
