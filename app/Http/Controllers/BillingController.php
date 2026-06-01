@@ -194,8 +194,7 @@ class BillingController extends Controller
         ]);
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return response()->json([

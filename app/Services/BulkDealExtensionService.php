@@ -164,8 +164,7 @@ class BulkDealExtensionService
         if ($createdBatch) {
             try { $this->notifyAdminsBulkRequest($tenantId, $reseller, $createdBatch); } catch (\Throwable) {}
             try {
-                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                $this->criticalActions->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
             \Illuminate\Support\Facades\Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
         }
@@ -261,8 +260,7 @@ class BulkDealExtensionService
         );
         if (!$skipBadgeBust) {
             try {
-                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                $this->criticalActions->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
         }
 
@@ -325,8 +323,7 @@ class BulkDealExtensionService
         ]);
         if (!$skipBadgeBust) {
             try {
-                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                $this->criticalActions->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
         }
 
@@ -382,8 +379,7 @@ class BulkDealExtensionService
         ]);
         if (!$skipBadgeBust) {
             try {
-                $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-                Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                $this->criticalActions->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
         }
 
@@ -420,8 +416,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         $freshBatch = $batch->fresh();
@@ -462,8 +457,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         $freshBatch = $batch->fresh();
@@ -501,8 +495,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;
@@ -539,8 +532,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;
@@ -575,8 +567,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;
@@ -611,8 +602,7 @@ class BulkDealExtensionService
             }
         }
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;
@@ -661,8 +651,7 @@ class BulkDealExtensionService
         }
 
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;
@@ -710,8 +699,7 @@ class BulkDealExtensionService
         }
 
         try {
-            $adminIds = $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $results;

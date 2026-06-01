@@ -524,9 +524,7 @@ class LeadController extends Controller
         }
 
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
         } catch (\Throwable) {}
 
         return response()->json(array_merge(
@@ -744,9 +742,7 @@ class LeadController extends Controller
             }
             [$actorIdForCache] = $this->resolveActor();
             try {
-                $cs = app(\App\Services\CriticalActionService::class);
-                $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
             } catch (\Throwable) {}
         }
 
@@ -864,9 +860,7 @@ class LeadController extends Controller
             }
 
             try {
-                $cs = app(\App\Services\CriticalActionService::class);
-                $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
             } catch (\Throwable) {}
         }
 
@@ -1278,9 +1272,7 @@ class LeadController extends Controller
         $currentData['amount_confirmed_by']         = $actorName ?? 'Admin';
         $lead->update(['data' => $currentData]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
         } catch (\Throwable) {}
 
         try {
@@ -1717,9 +1709,7 @@ class LeadController extends Controller
             Cache::forget("ca_reseller:{$lead->tenant_id}:" . md5($rName . ':' . ($rid ?? '')));
         }
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($lead->tenant_id);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
         } catch (\Throwable) {}
 
         [$actorIdRa, $actorRoleRa, $actorNameRa] = $this->resolveActor();

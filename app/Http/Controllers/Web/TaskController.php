@@ -347,8 +347,7 @@ class TaskController extends Controller
         }
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         $selfMsg  = $isSelfAssign ? 'Task created and assigned to you.' : null;
@@ -485,8 +484,7 @@ class TaskController extends Controller
             : 'Task reassigned to you.';
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return response()->json([
@@ -752,8 +750,7 @@ class TaskController extends Controller
             }
 
             try {
-                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
 
             return response()->json([
@@ -786,8 +783,7 @@ class TaskController extends Controller
         });
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         $statusLabel = ucwords(str_replace('_', ' ', $newStatus));
@@ -1134,8 +1130,7 @@ class TaskController extends Controller
         $svc->complete($task, $actorType, $actorId, $actorName);
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return response()->json(['status' => 'completed', 'message' => 'Task completed.']);
@@ -1201,8 +1196,7 @@ class TaskController extends Controller
         );
 
         try {
-            $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         $msg = match ($result['email_status']) {

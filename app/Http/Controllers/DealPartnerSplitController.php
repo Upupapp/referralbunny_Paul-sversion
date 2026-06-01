@@ -129,8 +129,7 @@ class DealPartnerSplitController extends Controller
             } catch (\Throwable) {}
 
             try {
-                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
             } catch (\Throwable) {}
 
             return response()->json($split, 201);
@@ -241,8 +240,7 @@ class DealPartnerSplitController extends Controller
             } catch (\Throwable) {}
 
             try {
-                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
             } catch (\Throwable) {}
 
             return response()->json($split);
@@ -327,8 +325,7 @@ class DealPartnerSplitController extends Controller
             }
 
             try {
-                $adminIds = app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($lead->tenant_id);
             } catch (\Throwable) {}
 
             return response()->json(['success' => true, 'message' => 'Partner split removed.']);

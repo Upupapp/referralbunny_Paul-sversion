@@ -780,9 +780,7 @@ class ResellerDealController extends Controller
 
         try {
             \Illuminate\Support\Facades\Cache::deleteMultiple(["lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         // Activity log + notification AFTER commit — never let these roll back the business record
@@ -881,9 +879,7 @@ class ResellerDealController extends Controller
         ]);
 
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
         \Illuminate\Support\Facades\Cache::deleteMultiple(["subtab_badge_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}"]);
 
@@ -1667,9 +1663,7 @@ class ResellerDealController extends Controller
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         // LGU IDS: create note task if deal moved to a target stage with no notes
@@ -1810,9 +1804,7 @@ class ResellerDealController extends Controller
 
         \Illuminate\Support\Facades\Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         // Notify after commit — never inside transaction

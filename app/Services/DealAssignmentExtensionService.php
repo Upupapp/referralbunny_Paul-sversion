@@ -151,8 +151,7 @@ class DealAssignmentExtensionService
         );
 
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $request->fresh();
@@ -186,8 +185,7 @@ class DealAssignmentExtensionService
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_rejected', $reviewerUserId);
 
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $request->fresh();
@@ -221,8 +219,7 @@ class DealAssignmentExtensionService
         $this->audit($tenantId, $deal->id, $requestId, 'deal_extension_clarification_requested', $reviewerUserId);
 
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return $request->fresh();

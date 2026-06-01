@@ -269,9 +269,7 @@ class TenantDealLifecycleController extends Controller
         $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_archive_req_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return redirect()
@@ -389,9 +387,7 @@ class TenantDealLifecycleController extends Controller
         $actorUserId = Auth::guard('web')->id() ?? Auth::guard('tenant')->id();
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return back()->with('success', '"' . $lead->name . '" has been restored.');
@@ -432,9 +428,7 @@ class TenantDealLifecycleController extends Controller
 
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_del_arch_metrics:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         return redirect()
