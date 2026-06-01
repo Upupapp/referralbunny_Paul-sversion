@@ -665,9 +665,10 @@ function resellerDeals(tenantId, resellerName) {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) { this.availableOrgs = []; return; }
                 this.availableOrgs = await res.json();
             } catch(e) { this.availableOrgs = []; }
-            this.loadingOrgs = false;
+            finally { this.loadingOrgs = false; }
         },
 
         selectOrgToClaim(org) {

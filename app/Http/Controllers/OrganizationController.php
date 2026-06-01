@@ -118,19 +118,25 @@ class OrganizationController extends Controller
 
     public function available(Request $request): JsonResponse
     {
-        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check() || \Illuminate\Support\Facades\Auth::guard('partner')->check()) {
+        // Partners cannot query organizations
+        if (\Illuminate\Support\Facades\Auth::guard('partner')->check()) {
             return response()->json(['error' => 'You do not have permission to view organizations.'], 403);
         }
 
-        $tenantId = TenantContext::id();
-        if (!$tenantId) {
-            if (TenantContext::isSuperAdmin()) {
-                $tenantId = $request->query('tenant_id');
-                if (!$tenantId) {
-                    return response()->json(['error' => 'tenant_id query parameter required.'], 422);
+        // Resellers query their own tenant — derive from session, not TenantContext
+        if (\Illuminate\Support\Facades\Auth::guard('reseller')->check()) {
+            $tenantId = \Illuminate\Support\Facades\Auth::guard('reseller')->user()->tenant_id;
+        } else {
+            $tenantId = TenantContext::id();
+            if (!$tenantId) {
+                if (TenantContext::isSuperAdmin()) {
+                    $tenantId = $request->query('tenant_id');
+                    if (!$tenantId) {
+                        return response()->json(['error' => 'tenant_id query parameter required.'], 422);
+                    }
+                } else {
+                    abort(403, 'Tenant context required.');
                 }
-            } else {
-                abort(403, 'Tenant context required.');
             }
         }
         $province = $request->province;
