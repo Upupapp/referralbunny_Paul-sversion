@@ -135,10 +135,7 @@ class NotificationDispatchService
             );
         }
 
-        $bellKeys = $admins->map(fn($a) => "notif_unread_tenant_admin_{$a->id}")->toArray();
-        if (!empty($bellKeys)) {
-            \Illuminate\Support\Facades\Cache::deleteMultiple($bellKeys);
-        }
+        // invalidateAllAdminBadges busts CA badge keys + bell keys atomically.
         try {
             app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}

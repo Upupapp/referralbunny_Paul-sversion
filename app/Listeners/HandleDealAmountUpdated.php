@@ -42,10 +42,10 @@ class HandleDealAmountUpdated implements ShouldQueue
             }
         }
 
-        // Cache bust — fires unconditionally; admin badge/bell must clear even for invited referrers
+        // Cache bust — fires unconditionally; admin badge/bell clears even for invited referrers
+        // Bell keys now busted inside invalidateAllAdminBadges.
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
         } catch (\Throwable) {}
 
         if (!$email && !$resellerId) return;

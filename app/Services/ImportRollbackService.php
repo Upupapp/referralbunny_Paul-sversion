@@ -114,9 +114,9 @@ class ImportRollbackService
 
         // Notify requester
         $this->notifyRequester($rollback, $batch, $tenantId, $result);
+        // Bell keys now busted inside invalidateAllAdminBadges.
         try {
-            $adminIds = app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
-            Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
     }
 

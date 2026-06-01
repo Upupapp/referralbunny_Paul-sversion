@@ -1005,9 +1005,7 @@ class LeadController extends Controller
             $statusArchived->update(['status' => 'active']);
             Cache::forget("dash_counts:{$tenantId}");
             try {
-                $cs = app(\App\Services\CriticalActionService::class);
-                $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-                \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
             } catch (\Throwable) {}
 
             // Log activity
@@ -1138,9 +1136,7 @@ class LeadController extends Controller
         $lead->forceDelete();
         Cache::forget("dash_counts:{$tenantId}");
         try {
-            $cs = app(\App\Services\CriticalActionService::class);
-            $adminIds = $cs->invalidateAllAdminBadges($tenantId);
-            \Illuminate\Support\Facades\Cache::deleteMultiple($adminIds->map(fn($uid) => "notif_unread_tenant_admin_{$uid}")->toArray());
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
         Log::info('Deal permanently deleted (force)', [
