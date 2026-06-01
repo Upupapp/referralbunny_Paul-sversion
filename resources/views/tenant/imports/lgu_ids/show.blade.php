@@ -97,7 +97,7 @@
                 </a>
                 @endif
                 @if($batch->isRollbackEligible())
-                <a href="{{ route('imports.rollback.preview', [$tenant->id, $batch->id]) }}"
+                <a href="{{ route('tenant.imports.rollback.preview', [$tenant->id, $batch->id]) }}"
                    class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
@@ -413,7 +413,7 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
             @if($batch->isRollbackEligible())
-            <a href="{{ route('imports.rollback.preview', [$tenant->id, $batch->id]) }}"
+            <a href="{{ route('tenant.imports.rollback.preview', [$tenant->id, $batch->id]) }}"
                class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                 Rollback Import

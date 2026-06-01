@@ -48,7 +48,7 @@
 
         <div class="lg:col-span-2 space-y-4">
 
-            <form method="POST" action="{{ route('settings.update', $tenant->id) }}"
+            <form method="POST" action="{{ route('tenant.settings.update', $tenant->id) }}"
                   class="card" id="general-settings"
                   x-data="{ saving: false }"
                   @submit="if (!$el.checkValidity()) return; saving = true">
