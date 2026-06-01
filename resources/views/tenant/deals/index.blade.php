@@ -6,7 +6,7 @@
     {{-- Import Deals — only admin-level roles; LGU IDS uses locked import flow --}}
     @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
         @if($tenant->id === 'lgu-ids')
-            <a href="{{ route('imports.lgu-ids', $tenant->id) }}"
+            <a href="{{ route('tenant.imports.lgu-ids', $tenant->id) }}"
                class="btn-secondary"
                title="Uses the locked LGU IDS deal import template and computation rules.">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,7 +15,7 @@
                 <span class="hidden sm:inline">Import Deals</span>
             </a>
         @else
-            <a href="{{ route('imports.deals', $tenant->id) }}"
+            <a href="{{ route('tenant.imports.deals', $tenant->id) }}"
                class="btn-secondary"
                title="Upload a standard file to create or update deals.">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
