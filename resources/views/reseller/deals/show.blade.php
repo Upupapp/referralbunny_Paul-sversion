@@ -644,10 +644,10 @@ window.__rsDeal = {
             <div class="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
-                        {{ strtoupper(substr($lead->reseller_name ?? '?', 0, 2)) }}
+                        {{ $primaryResellerIsAnonymous ? 'AN' : strtoupper(substr($lead->reseller_name ?? '?', 0, 2)) }}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $lead->reseller_name ?? '—' }}</p>
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $primaryResellerIsAnonymous ? 'Anonymous Referrer' : ($lead->reseller_name ?? '—') }}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Primary Referrer</span>
                             @if($isImplicitPrimary)

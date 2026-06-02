@@ -188,13 +188,15 @@ class ResellerDealController extends Controller
         $splits = CommissionSplit::where('lead_id', $lead->id)->get();
 
         // Attach is_anonymous flag so the view can mask co-referrer names per anonymity rule.
+        // Also include the lead's primary reseller_name so the implicit-primary row is masked too.
         // The viewing reseller's own record is never masked regardless of their flag.
+        $namesToCheck = $splits->pluck('reseller_name')
+            ->push($lead->reseller_name)
+            ->map(fn($n) => strtolower($n ?? ''))
+            ->filter()->values()->toArray();
+
         $anonymousNames = \App\Models\Reseller::where('tenant_id', $tenantId)
-            ->whereIn(DB::raw('LOWER(name)'),
-                $splits->pluck('reseller_name')
-                    ->map(fn($n) => strtolower($n ?? ''))
-                    ->filter()->values()->toArray()
-            )
+            ->whereIn(DB::raw('LOWER(name)'), $namesToCheck)
             ->where('is_anonymous', true)
             ->pluck('is_anonymous', DB::raw('LOWER(name)'));
 
@@ -203,6 +205,10 @@ class ResellerDealController extends Controller
             $split->is_anonymous = !$isOwn && (bool) ($anonymousNames->get(strtolower($split->reseller_name ?? '')) ?? false);
             return $split;
         });
+
+        // Anonymity of the implicit primary row (when no explicit split record exists)
+        $primaryIsOwn = strtolower($lead->reseller_name ?? '') === strtolower($reseller->name ?? '');
+        $primaryResellerIsAnonymous = !$primaryIsOwn && (bool) ($anonymousNames->get(strtolower($lead->reseller_name ?? '')) ?? false);
 
         // Partner splits
         $partnerSplits = [];
@@ -338,7 +344,8 @@ class ResellerDealController extends Controller
                 'attachments', 'history', 'breakdown',
                 'myCommission', 'partnersCommission',
                 'commissionPool', 'remainingPool',
-                'stageRequirements', 'cfgStageOrder', 'cfgStageLabels'
+                'stageRequirements', 'cfgStageOrder', 'cfgStageLabels',
+                'primaryResellerIsAnonymous'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
             ->header('Pragma', 'no-cache');
