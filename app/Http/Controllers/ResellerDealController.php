@@ -195,20 +195,26 @@ class ResellerDealController extends Controller
             ->map(fn($n) => strtolower($n ?? ''))
             ->filter()->values()->toArray();
 
-        $anonymousNames = \App\Models\Reseller::where('tenant_id', $tenantId)
-            ->whereIn(DB::raw('LOWER(name)'), $namesToCheck)
-            ->where('is_anonymous', true)
-            ->pluck('is_anonymous', DB::raw('LOWER(name)'));
+        // selectRaw alias avoids the `$row->LOWER(name)` property-access bug when using
+        // DB::raw() as the $key argument to pluck().
+        $anonymousSet = $namesToCheck
+            ? \App\Models\Reseller::where('tenant_id', $tenantId)
+                ->whereIn(DB::raw('LOWER(name)'), $namesToCheck)
+                ->where('is_anonymous', true)
+                ->selectRaw('LOWER(name) as lower_name')
+                ->pluck('lower_name')
+                ->toArray()
+            : [];
 
-        $splits = $splits->map(function ($split) use ($anonymousNames, $reseller) {
+        $splits = $splits->map(function ($split) use ($anonymousSet, $reseller) {
             $isOwn = strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? '');
-            $split->is_anonymous = !$isOwn && (bool) ($anonymousNames->get(strtolower($split->reseller_name ?? '')) ?? false);
+            $split->is_anonymous = !$isOwn && in_array(strtolower($split->reseller_name ?? ''), $anonymousSet);
             return $split;
         });
 
         // Anonymity of the implicit primary row (when no explicit split record exists)
         $primaryIsOwn = strtolower($lead->reseller_name ?? '') === strtolower($reseller->name ?? '');
-        $primaryResellerIsAnonymous = !$primaryIsOwn && (bool) ($anonymousNames->get(strtolower($lead->reseller_name ?? '')) ?? false);
+        $primaryResellerIsAnonymous = !$primaryIsOwn && in_array(strtolower($lead->reseller_name ?? ''), $anonymousSet);
 
         // Partner splits
         $partnerSplits = [];
