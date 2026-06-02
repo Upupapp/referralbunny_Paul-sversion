@@ -179,7 +179,9 @@ class HandleInviteAccepted implements ShouldQueue
                 actionLabel:      $actionLabel,
                 deduplicationKey: "{$dedupBase}:inviter:{$inviter->id}",
             );
-            \Illuminate\Support\Facades\Cache::forget("notif_unread_tenant_admin_{$inviter->id}");
+            try {
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($event->tenantId);
+            } catch (\Throwable) {}
 
             // Email to inviter — only for reseller/partner activations.
             // tenant_user invitations already send TenantInvitationAcceptedMail

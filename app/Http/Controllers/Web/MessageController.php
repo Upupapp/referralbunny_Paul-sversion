@@ -442,6 +442,7 @@ class MessageController extends Controller
 
         // Mark partner messages as read for admin
         $thread->update(['admin_unread' => 0]);
+        try { app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId); } catch (\Throwable) {}
 
         PartnerMessage::where('thread_id', $threadId)
             ->where('tenant_id', $tenantId)
