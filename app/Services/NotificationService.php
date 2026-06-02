@@ -169,8 +169,9 @@ class NotificationService
     {
         try {
             $admins = User::where('email', 'admin@referralbunny.com')->get();
+            $prefsMap = UserNotificationPreference::whereIn('user_id', $admins->pluck('id'))->get()->keyBy('user_id');
             foreach ($admins as $admin) {
-                $prefs = UserNotificationPreference::where('user_id', $admin->id)->first();
+                $prefs = $prefsMap->get($admin->id);
                 if ($prefs && !$prefs->email_enabled) continue;
                 if ($prefs && $prefs->critical_alerts_only && $notification->priority !== 'critical') continue;
 
