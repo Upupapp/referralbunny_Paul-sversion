@@ -2245,6 +2245,10 @@ class ResellerDealController extends Controller
             ]);
         } catch (\Throwable) {}
 
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
+
         return response()->json(['success' => true, 'removed_name' => $removedName]);
     }
 }

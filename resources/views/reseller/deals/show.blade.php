@@ -720,7 +720,7 @@ window.__rsDeal = {
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
                     </button>
-                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', {{ json_encode($split->reseller_name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }}, '{{ csrf_token() }}')"
+                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', {{ json_encode($split->is_anonymous ? '' : ($split->reseller_name ?? ''), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }}, '{{ csrf_token() }}')"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                         Remove
                     </button>
