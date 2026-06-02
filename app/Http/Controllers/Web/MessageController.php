@@ -190,6 +190,7 @@ class MessageController extends Controller
                 ->update(['is_read' => true, 'read_at' => now()]);
 
             $thread->update(['admin_unread' => 0]);
+            try { app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId); } catch (\Throwable) {}
 
             $messages = ThreadMessage::where('thread_id', $threadId)
                 ->orderBy('created_at')
@@ -651,7 +652,9 @@ class MessageController extends Controller
             tenantId:         $tenantId,
             deduplicationKey: null,
         );
-        \Illuminate\Support\Facades\Cache::forget("notif_unread_tenant_admin_{$userId}");
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
     }
 
     private function notifyContact(string $tenantId, string $contactId, string $body, string $senderName): void
@@ -722,6 +725,9 @@ class MessageController extends Controller
             ->update(['admin_unread' => 0]);
 
         \Illuminate\Support\Facades\Cache::forget("nav_msg_badge:{$tenantId}");
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'message' => 'All messages marked as read.']);
     }
