@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CommissionSplit extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'commission_splits';
     public $incrementing = false;
     protected $keyType = 'string';

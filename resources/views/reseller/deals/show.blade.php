@@ -615,10 +615,10 @@ window.__rsDeal = {
             <div class="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-green-700" style="background:#dcfce7">
-                        {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
+                        {{ $split->is_anonymous ? 'AN' : strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->reseller_name ?? '—' }}</p>
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->is_anonymous ? 'Anonymous Referrer' : ($split->reseller_name ?? '—') }}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Primary Referrer</span>
                             @if(strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? ''))
@@ -692,10 +692,10 @@ window.__rsDeal = {
                  x-data="{ editing: false, pct: '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}', saving: false, err: '' }">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-blue-700" style="background:#dbeafe">
-                        {{ strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
+                        {{ $split->is_anonymous ? 'AN' : strtoupper(substr($split->reseller_name ?? '?', 0, 2)) }}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->reseller_name ?? '—' }}</p>
+                        <p class="font-semibold text-[#1E1B4B] text-sm truncate">{{ $split->is_anonymous ? 'Anonymous Referrer' : ($split->reseller_name ?? '—') }}</p>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">Co-Referrer</span>
                             @if(strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? ''))
@@ -1514,6 +1514,7 @@ function rsDealData() {
             ctx.editing = false;
             ctx.pct = String(d.new_percentage);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Co-referrer share updated.' } }));
+            setTimeout(() => window.location.reload(), 1200);
         } catch(e) { ctx.err = 'Network error. Please try again.'; }
         finally { ctx.saving = false; }
     };

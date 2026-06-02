@@ -187,6 +187,23 @@ class ResellerDealController extends Controller
         // Commission splits — anchor through tenant-scoped $lead to prevent IDOR
         $splits = CommissionSplit::where('lead_id', $lead->id)->get();
 
+        // Attach is_anonymous flag so the view can mask co-referrer names per anonymity rule.
+        // The viewing reseller's own record is never masked regardless of their flag.
+        $anonymousNames = \App\Models\Reseller::where('tenant_id', $tenantId)
+            ->whereIn(DB::raw('LOWER(name)'),
+                $splits->pluck('reseller_name')
+                    ->map(fn($n) => strtolower($n ?? ''))
+                    ->filter()->values()->toArray()
+            )
+            ->where('is_anonymous', true)
+            ->pluck('is_anonymous', DB::raw('LOWER(name)'));
+
+        $splits = $splits->map(function ($split) use ($anonymousNames, $reseller) {
+            $isOwn = strtolower($split->reseller_name ?? '') === strtolower($reseller->name ?? '');
+            $split->is_anonymous = !$isOwn && (bool) ($anonymousNames->get(strtolower($split->reseller_name ?? '')) ?? false);
+            return $split;
+        });
+
         // Partner splits
         $partnerSplits = [];
         try {
@@ -1362,19 +1379,6 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
-        // Prevent secondary splits from exceeding 100% combined.
-        // Primary referrer's 100% is the baseline that gets shared — exclude it from the cap.
-        $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
-            ->where('role', 'secondary')
-            ->sum('percentage');
-        if ($existingSecondary + $percentage > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
-            return response()->json([
-                'error' => "Co-referrer splits cannot exceed 100% combined. You can allocate up to {$available}% to this co-referrer.",
-                'max_percentage' => $available,
-            ], 422);
-        }
-
         // Look up tenant user (admin/manager) by email for notification
         $tenantUserByEmail = DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
@@ -1384,9 +1388,22 @@ class ResellerDealController extends Controller
             ->selectRaw("tu.id, tu.email, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tm.role")
             ->first();
 
-        // Commit the split creation as its own atomic step
+        // Commit the split creation — 100% cap check is inside the transaction with
+        // lockForUpdate to prevent a race condition between two concurrent adds.
         DB::beginTransaction();
         try {
+            $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'secondary')
+                ->lockForUpdate()
+                ->sum('percentage');
+            if ($existingSecondary + $percentage > 100.005) {
+                DB::rollBack();
+                $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
+                return response()->json([
+                    'error' => "Co-referrer splits cannot exceed 100% combined. You can allocate up to {$available}% to this co-referrer.",
+                    'max_percentage' => $available,
+                ], 422);
+            }
             CommissionSplit::create([
                 'lead_id'         => $lead->id,
                 'reseller_name'   => $displayName,
