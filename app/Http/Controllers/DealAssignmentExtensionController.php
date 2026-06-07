@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\EnforcesAdminRole;
 use App\Models\Lead;
 use App\Services\DealAssignmentExtensionService;
 use App\Services\TenantContext;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 
 class DealAssignmentExtensionController extends Controller
 {
+    use EnforcesAdminRole;
+
     public function __construct(private DealAssignmentExtensionService $service) {}
 
     /**
@@ -96,7 +99,11 @@ class DealAssignmentExtensionController extends Controller
             'reason'         => 'required|string|min:10|max:1000',
         ]);
 
+        // resolveActor() returns null role when the user's membership cannot be resolved
+        // (e.g. deactivated membership). Fall back to 'referrer' so createRequest()
+        // receives a valid non-null string and the audit log has a meaningful value.
         [$actorId, $actorRole] = $this->resolveActor();
+        $actorRole ??= Auth::guard('reseller')->check() ? 'referrer' : 'tenant_user';
 
         try {
             $extRequest = $this->service->createRequest(
@@ -223,38 +230,4 @@ class DealAssignmentExtensionController extends Controller
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
-
-    private function isAdminOrManager(): bool
-    {
-        if (Auth::guard('web')->check()) return true;
-        $userId = Auth::guard('tenant')->id();
-        if (!$userId) return false;
-        $tenantId = TenantContext::id();
-        if (!$tenantId) return false;
-        $role = \App\Models\TenantMembership::where('tenant_user_id', $userId)
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'active')
-            ->value('role');
-        return in_array($role, ['owner', 'admin', 'manager']);
-    }
-
-    private function resolveActor(): array
-    {
-        if (Auth::guard('tenant')->check()) {
-            $userId   = Auth::guard('tenant')->id();
-            $tenantId = TenantContext::id();
-            $role     = $tenantId ? \App\Models\TenantMembership::where('tenant_user_id', $userId)
-                ->where('tenant_id', $tenantId)->where('status', 'active')->value('role') : null;
-            // Fallback only reached when TenantContext::id() is null (super-admin, no tenant context); endpoint is already gated by isAdminOrManager().
-            return [$userId, $role ?? 'manager'];
-        }
-        if (Auth::guard('web')->check()) {
-            return [Auth::guard('web')->user()->id, 'admin'];
-        }
-        if (Auth::guard('reseller')->check()) {
-            return [Auth::guard('reseller')->user()->id, 'referrer'];
-        }
-        return [null, 'system'];
-    }
 }

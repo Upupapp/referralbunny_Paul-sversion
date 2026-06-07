@@ -183,7 +183,8 @@ class BulkDealExtensionService
         ?string $reviewerUserId,
         int     $approvedDays,
         ?string $reviewerNote = null,
-        bool    $skipBadgeBust = false
+        bool    $skipBadgeBust = false,
+        bool    $suppressIndividualNotify = false
     ): DealAssignmentExtensionRequest {
         if ($approvedDays < 1 || $approvedDays > 90) {
             throw new \InvalidArgumentException('Approved days must be between 1 and 90.');
@@ -240,7 +241,7 @@ class BulkDealExtensionService
                 $completeNotifyData['approved'],
                 $completeNotifyData['declined'],
             );
-        } else {
+        } elseif (!$suppressIndividualNotify) {
             $this->notifyResellerOfDecision($tenantId, $deal, $request, 'approved');
         }
         $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_approved', $reviewerUserId, [
@@ -275,7 +276,8 @@ class BulkDealExtensionService
         string  $tenantId,
         ?string $reviewerUserId,
         string  $reviewerNote,
-        bool    $skipBadgeBust = false
+        bool    $skipBadgeBust = false,
+        bool    $suppressIndividualNotify = false
     ): DealAssignmentExtensionRequest {
         if (empty(trim($reviewerNote))) {
             throw new \InvalidArgumentException('A reason is required when declining an extension request.');
@@ -314,7 +316,7 @@ class BulkDealExtensionService
                 $completeNotifyData['approved'],
                 $completeNotifyData['declined'],
             );
-        } else {
+        } elseif (!$suppressIndividualNotify) {
             $this->notifyResellerOfDecision($tenantId, $deal, $request, 'rejected');
         }
         $this->auditDeal($tenantId, $deal->id, $request->id, 'deal_extension_rejected', $reviewerUserId, [
@@ -347,6 +349,10 @@ class BulkDealExtensionService
             &$completeNotifyData
         ) {
             $request = $this->loadForReview($requestId, $tenantId);
+
+            if (!$request->batch_id) {
+                throw new \InvalidArgumentException('Standalone extension requests cannot be skipped. Use the batch review page.');
+            }
 
             $request->update([
                 'status'              => 'skipped',
@@ -409,7 +415,7 @@ class BulkDealExtensionService
 
         foreach ($pendingItems as $item) {
             try {
-                $approved          = $this->approveItem($item->id, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true);
+                $approved          = $this->approveItem($item->id, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true, suppressIndividualNotify: true);
                 $results['approved'][] = $approved;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
@@ -450,7 +456,7 @@ class BulkDealExtensionService
 
         foreach ($pendingItems as $item) {
             try {
-                $declined            = $this->declineItem($item->id, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
+                $declined            = $this->declineItem($item->id, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true, suppressIndividualNotify: true);
                 $results['declined'][] = $declined;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $item->id, 'reason' => $e->getMessage()];
@@ -477,7 +483,7 @@ class BulkDealExtensionService
         ?string $reviewerUserId,
         ?string $reviewerNote = null
     ): array {
-        $this->loadBatch($batchId, $tenantId);
+        $batch = $this->loadBatch($batchId, $tenantId);
 
         $pendingItems = DealAssignmentExtensionRequest::where('batch_id', $batchId)
             ->where('tenant_id', $tenantId)
@@ -498,11 +504,19 @@ class BulkDealExtensionService
             $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
 
+        // Notify referrer that items were skipped (still pending for later review)
+        $freshBatch = $batch->fresh();
+        if ($freshBatch && count($results['skipped']) > 0) {
+            $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
+        }
+
         return $results;
     }
 
     /**
      * Approve selected items in a batch.
+     * No partial notification is sent — selected-item operations are expected to be
+     * followed immediately by further review actions on remaining items.
      */
     public function approveSelected(
         string  $batchId,
@@ -525,7 +539,7 @@ class BulkDealExtensionService
 
         foreach ($requestIds as $requestId) {
             try {
-                $approved          = $this->approveItem($requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true);
+                $approved          = $this->approveItem($requestId, $tenantId, $reviewerUserId, $approvedDays, $reviewerNote, skipBadgeBust: true, suppressIndividualNotify: true);
                 $results['approved'][] = $approved;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
@@ -540,6 +554,7 @@ class BulkDealExtensionService
 
     /**
      * Decline selected items in a batch.
+     * No partial notification is sent — see approveSelected for the rationale.
      */
     public function declineSelected(
         string  $batchId,
@@ -560,7 +575,7 @@ class BulkDealExtensionService
 
         foreach ($requestIds as $requestId) {
             try {
-                $declined            = $this->declineItem($requestId, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true);
+                $declined            = $this->declineItem($requestId, $tenantId, $reviewerUserId, $reviewerNote, skipBadgeBust: true, suppressIndividualNotify: true);
                 $results['declined'][] = $declined;
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $requestId, 'reason' => $e->getMessage()];
@@ -575,6 +590,7 @@ class BulkDealExtensionService
 
     /**
      * Skip selected items in a batch.
+     * No partial notification is sent — see approveSelected for the rationale.
      */
     public function skipSelected(
         string  $batchId,
@@ -621,7 +637,7 @@ class BulkDealExtensionService
         string  $rejectionReason,
         ?string $approvalNote = null
     ): array {
-        $this->loadBatch($batchId, $tenantId);
+        $batch = $this->loadBatch($batchId, $tenantId);
 
         $allPendingIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
             ->where('tenant_id', $tenantId)
@@ -636,7 +652,7 @@ class BulkDealExtensionService
 
         foreach ($rejectIds as $id) {
             try {
-                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true);
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true, suppressIndividualNotify: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -644,7 +660,7 @@ class BulkDealExtensionService
 
         foreach ($approveIds as $id) {
             try {
-                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true);
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true, suppressIndividualNotify: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -653,6 +669,11 @@ class BulkDealExtensionService
         try {
             $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
+
+        $freshBatch = $batch->fresh();
+        if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
+            $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
+        }
 
         return $results;
     }
@@ -669,7 +690,7 @@ class BulkDealExtensionService
         string  $rejectionReason,
         ?string $approvalNote = null
     ): array {
-        $this->loadBatch($batchId, $tenantId);
+        $batch = $this->loadBatch($batchId, $tenantId);
 
         $allPendingIds = DealAssignmentExtensionRequest::where('batch_id', $batchId)
             ->where('tenant_id', $tenantId)
@@ -684,7 +705,7 @@ class BulkDealExtensionService
 
         foreach ($approveIds as $id) {
             try {
-                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true);
+                $results['approved'][] = $this->approveItem($id, $tenantId, $reviewerUserId, $approvedDays, $approvalNote, skipBadgeBust: true, suppressIndividualNotify: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -692,7 +713,7 @@ class BulkDealExtensionService
 
         foreach ($rejectIds as $id) {
             try {
-                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true);
+                $results['declined'][] = $this->declineItem($id, $tenantId, $reviewerUserId, $rejectionReason, skipBadgeBust: true, suppressIndividualNotify: true);
             } catch (\Throwable $e) {
                 $results['failed'][] = ['request_id' => $id, 'reason' => $e->getMessage()];
             }
@@ -701,6 +722,11 @@ class BulkDealExtensionService
         try {
             $this->criticalActions->invalidateAllAdminBadges($tenantId);
         } catch (\Throwable) {}
+
+        $freshBatch = $batch->fresh();
+        if ($freshBatch && ($freshBatch->pending_count + $freshBatch->skipped_count) > 0) {
+            $this->notifyResellerBatchPartialResult($tenantId, $freshBatch, $results);
+        }
 
         return $results;
     }
@@ -974,24 +1000,30 @@ class BulkDealExtensionService
 
             $approvedCount = count($results['approved'] ?? []);
             $declinedCount = count($results['declined'] ?? []);
-            if ($approvedCount === 0 && $declinedCount === 0) return;
+            $skippedCount  = count($results['skipped']  ?? []);
+            if ($approvedCount === 0 && $declinedCount === 0 && $skippedCount === 0) return;
 
             $parts = [];
             if ($approvedCount > 0) $parts[] = "{$approvedCount} approved";
             if ($declinedCount > 0) $parts[] = "{$declinedCount} declined";
+            if ($skippedCount  > 0) $parts[] = "{$skippedCount} skipped for now";
             $summary = implode(', ', $parts);
+
+            $title = ($approvedCount === 0 && $declinedCount === 0)
+                ? "Admin skipped your bulk extension request for now"
+                : "Bulk extension request partially reviewed";
 
             $this->notifications->dispatchToReseller(
                 resellerId:   $batch->requested_by_reseller_id,
                 tenantId:     $tenantId,
                 category:     'deal_pipeline',
                 priority:     'normal',
-                title:        "Bulk extension request partially reviewed",
+                title:        $title,
                 body:         "Your bulk extension request was reviewed: {$summary}.",
                 actionUrl:    url("/reseller/{$tenantId}/extension-requests/{$batch->id}"),
                 actionLabel:  'View My Request',
-                dedupeSuffix: "bulk_ext_result_partial:{$batch->id}:" . (int) floor(time() / 3600),
-                metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount],
+                dedupeSuffix: "bulk_ext_result_partial:{$batch->id}:{$approvedCount}:{$declinedCount}:{$skippedCount}",
+                metadata:     ['batch_id' => $batch->id, 'approved' => $approvedCount, 'declined' => $declinedCount, 'skipped' => $skippedCount],
             );
             Cache::forget("notif_unread_reseller_{$batch->requested_by_reseller_id}");
         } catch (\Throwable) {}

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Tenant;
 use App\Models\TenantMembership;
+use App\Services\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -60,6 +61,19 @@ class EnsureTenantAccess
             // Bind membership to request for downstream use (nav + controllers)
             $request->merge(['_tenant_membership' => $cached]);
             $request->attributes->set('_tenant_role', $cached['role'] ?? 'viewer');
+
+            // Set TenantContext so web-route controllers and traits (assertAdminContext,
+            // isAdminOrManager, TenantContext::id()) work the same as API routes.
+            // SetApiTenantContext only runs on /api/* — this fills the same gap for web.
+            try {
+                $tenant = Cache::remember("tenant_model:{$tenantId}", 60, fn() => Tenant::find($tenantId));
+            } catch (\Throwable) {
+                // Cache driver failure or model deserialization error — fall back to direct lookup.
+                $tenant = Tenant::find($tenantId);
+            }
+            if ($tenant) {
+                TenantContext::set($tenantId, $tenant, $cached['role'] ?? 'viewer');
+            }
 
             return $next($request);
         }

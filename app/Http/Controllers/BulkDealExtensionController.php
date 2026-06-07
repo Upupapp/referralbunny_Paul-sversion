@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\EnforcesAdminRole;
 use App\Models\DealAssignmentExtensionRequest;
 use App\Models\DealExtensionRequestBatch;
 use App\Models\Reseller;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class BulkDealExtensionController extends Controller
 {
+    use EnforcesAdminRole;
+
     public function __construct(
         private BulkDealExtensionService       $bulk,
         private DealExtensionEligibilityService $eligibility,
@@ -550,39 +553,6 @@ class BulkDealExtensionController extends Controller
             'failed'        => $failCount,
             'failed_detail' => $results['failed'] ?? [],
         ];
-    }
-
-    private function isAdminOrManager(): bool
-    {
-        if (Auth::guard('web')->check()) return true;
-        $userId = Auth::guard('tenant')->id();
-        if (!$userId) return false;
-        $tenantId = TenantContext::id();
-        if (!$tenantId) return false;
-        $role = \App\Models\TenantMembership::where('tenant_user_id', $userId)
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'active')
-            ->value('role');
-        return in_array($role, ['owner', 'admin', 'manager']);
-    }
-
-    private function resolveActor(): array
-    {
-        if (Auth::guard('tenant')->check()) {
-            $userId   = Auth::guard('tenant')->id();
-            $tenantId = TenantContext::id();
-            $role     = $tenantId ? \App\Models\TenantMembership::where('tenant_user_id', $userId)
-                ->where('tenant_id', $tenantId)->where('status', 'active')->value('role') : null;
-            // Fallback only reached when TenantContext::id() is null (super-admin, no tenant context); endpoint is already gated by isAdminOrManager().
-            return [$userId, $role ?? 'manager'];
-        }
-        if (Auth::guard('web')->check()) {
-            return [Auth::guard('web')->user()->id, 'admin'];
-        }
-        if (Auth::guard('reseller')->check()) {
-            return [Auth::guard('reseller')->user()->id, 'referrer'];
-        }
-        return [null, 'system'];
     }
 
     private function resolveReseller(string $tenantId): ?Reseller

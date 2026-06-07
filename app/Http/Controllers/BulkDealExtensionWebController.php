@@ -219,9 +219,14 @@ class BulkDealExtensionWebController extends Controller
 
     private function resolveReseller(string $tenantId): Reseller
     {
-        $user = Auth::guard('reseller')->user() ?? Auth::guard('web')->user();
+        // Super Admins (web guard only) have no reseller record — give a clear error
+        // instead of silently falling through to a confusing 403 "Referrer not found".
+        if (Auth::guard('web')->check() && !Auth::guard('reseller')->check()) {
+            abort(403, 'Super Admins cannot access the Referrer portal. Use the Tenant Admin panel instead.');
+        }
 
-        // In reseller portal, the authenticated user IS the reseller record
+        $user = Auth::guard('reseller')->user();
+
         $reseller = Reseller::where('tenant_id', $tenantId)
             ->where('id', $user?->id)
             ->first();

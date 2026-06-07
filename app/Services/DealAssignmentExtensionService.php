@@ -260,7 +260,7 @@ class DealAssignmentExtensionService
             ->lockForUpdate()
             ->firstOrFail();
 
-        if (!in_array($request->status, ['pending_review', 'clarification_requested'])) {
+        if (!in_array($request->status, ['pending_review', 'clarification_requested', 'skipped'])) {
             throw new \InvalidArgumentException("Extension request is already {$request->status}.");
         }
 

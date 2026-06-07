@@ -23,7 +23,7 @@
     ];
     $bc           = $batchStatusColors[$batch->status] ?? $batchStatusColors['pending'];
     $referrerName = $batch->requestedByReseller?->name ?? 'Unknown Referrer';
-    $hasPending   = $batch->pending_count > 0;
+    $hasPending   = ($batch->pending_count + $batch->skipped_count) > 0;
     $isResolved   = in_array($batch->status, ['approved', 'declined', 'cancelled']);
     $pendingItems = $batch->items->whereIn('status', ['pending_review', 'skipped']);
 @endphp
@@ -199,7 +199,7 @@ window.__bulkExtBatch = {
                         <span x-text="selectedIds.length"></span> selected
                     </span>
                     <button @click="selectedIds = []" class="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
-                    <button @click="selectAllPending()" class="text-xs text-gray-400 hover:text-gray-600 underline">Select all pending</button>
+                    <button @click="selectAllPending()" class="text-xs text-gray-400 hover:text-gray-600 underline">Select all pending &amp; skipped</button>
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
                     <button @click="openBulkModal('approve_selected')"
@@ -569,7 +569,7 @@ function bulkExtReview() {
     const cfg = window.__bulkExtBatch;
 
     return {
-        pendingCount: {{ $batch->pending_count }},
+        pendingCount: {{ $batch->pending_count + $batch->skipped_count }},
         counts: {
             total:    {{ $batch->total_items }},
             pending:  {{ $batch->pending_count }},
@@ -591,14 +591,17 @@ function bulkExtReview() {
 
         init() {
             window.addEventListener('item-resolved', (e) => {
-                const r = e.detail.result;
-                this.counts.pending  = Math.max(0, this.counts.pending - 1);
-                this.pendingCount    = this.counts.pending;
-                if (r === 'approved') this.counts.approved++;
-                if (r === 'declined') this.counts.declined++;
-                if (r === 'skipped')  this.counts.skipped++;
-                // Remove from selection if it was there
-                this.selectedIds = this.selectedIds.filter(id => id !== e.detail.requestId);
+                const { result, requestId, priorStatus } = e.detail;
+                if (priorStatus === 'skipped') {
+                    this.counts.skipped = Math.max(0, this.counts.skipped - 1);
+                } else {
+                    this.counts.pending = Math.max(0, this.counts.pending - 1);
+                }
+                if (result === 'approved') this.counts.approved++;
+                if (result === 'declined') this.counts.declined++;
+                if (result === 'skipped')  this.counts.skipped++;
+                this.pendingCount = this.counts.pending + this.counts.skipped;
+                this.selectedIds = this.selectedIds.filter(id => id !== requestId);
             });
         },
 
@@ -643,6 +646,9 @@ function bulkExtReview() {
             }
             if (['reject_selected_approve_rest','approve_selected_reject_rest'].includes(m.action)) {
                 return m.rejectionReason.trim().length >= 5 && m.approvedDays >= 1 && m.approvedDays <= 90;
+            }
+            if (['skip_all','skip_selected'].includes(m.action)) {
+                return true;
             }
             return true;
         },
@@ -763,10 +769,11 @@ function itemAction(requestId, initialStatus, requestedDays) {
                     approved_days: this.approvedDays,
                     reviewer_note: this.note || null,
                 });
+                const priorStatus = this.status;
                 this.status   = 'approved';
                 this.resolved = true;
                 this.action   = null;
-                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'approved', requestId: this.requestId } }));
+                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'approved', requestId: this.requestId, priorStatus } }));
             } catch (e) {
                 this.error = e.message;
             } finally {
@@ -781,10 +788,11 @@ function itemAction(requestId, initialStatus, requestedDays) {
                 await this.apiPost(`${cfg.baseApi}/bulk-extension-requests/${this.requestId}/decline`, {
                     reviewer_note: this.note,
                 });
+                const priorStatus = this.status;
                 this.status   = 'rejected';
                 this.resolved = true;
                 this.action   = null;
-                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'declined', requestId: this.requestId } }));
+                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'declined', requestId: this.requestId, priorStatus } }));
             } catch (e) {
                 this.error = e.message;
             } finally {
@@ -796,9 +804,10 @@ function itemAction(requestId, initialStatus, requestedDays) {
             this.busy = true; this.error = '';
             try {
                 await this.apiPost(`${cfg.baseApi}/bulk-extension-requests/${this.requestId}/skip`, {});
+                const priorStatus = this.status;
                 this.status = 'skipped';
                 this.action = null;
-                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'skipped', requestId: this.requestId } }));
+                window.dispatchEvent(new CustomEvent('item-resolved', { detail: { result: 'skipped', requestId: this.requestId, priorStatus } }));
             } catch (e) {
                 this.error = e.message;
             } finally {

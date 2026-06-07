@@ -367,6 +367,15 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::delete('tenant-overrides/{override}',     [FeatureAccessController::class, 'deleteOverride']);
 });
 
+// ── Referrer-facing bulk extension API routes (reseller session auth) ────
+// These mirror the Sanctum versions above but accept the reseller session guard
+// used by the Blade wizard, so JS calls from the portal work without a Sanctum token.
+Route::middleware(['auth:reseller', 'api.tenant'])->group(function () {
+    Route::get('extension-requests/eligible-deals', [\App\Http\Controllers\BulkDealExtensionController::class, 'eligibleDeals']);
+    Route::post('extension-requests/bulk',           [\App\Http\Controllers\BulkDealExtensionController::class, 'storeBulk']);
+    Route::get('extension-requests/batches/{batchId}', [\App\Http\Controllers\BulkDealExtensionController::class, 'showBatch']);
+});
+
 // ── PayMongo Webhook (no auth — verified by signature) ────────
 Route::post('webhooks/paymongo', [WebhookController::class, 'paymongo'])->middleware('throttle:60,1');
 
