@@ -18,13 +18,15 @@ class NotificationService
         ?string $tenantId   = null,
         ?string $actionUrl  = null,
         string  $channel    = 'in_app',
-        array   $metadata   = []
+        array   $metadata   = [],
+        ?string $title      = null,
     ): Notification {
         $notification = Notification::create([
             'tenant_id'    => $tenantId,
             'category'     => $category,
             'type'         => $type,
             'priority'     => $priority,
+            'title'        => $title,
             'message'      => $message,
             'action_url'   => $actionUrl,
             'channel'      => $channel,
