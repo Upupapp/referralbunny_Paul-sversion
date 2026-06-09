@@ -65,12 +65,9 @@ class EnsureTenantAccess
             // Set TenantContext so web-route controllers and traits (assertAdminContext,
             // isAdminOrManager, TenantContext::id()) work the same as API routes.
             // SetApiTenantContext only runs on /api/* — this fills the same gap for web.
-            try {
-                $tenant = Cache::remember("tenant_model:{$tenantId}", 60, fn() => Tenant::find($tenantId));
-            } catch (\Throwable) {
-                // Cache driver failure or model deserialization error — fall back to direct lookup.
-                $tenant = Tenant::find($tenantId);
-            }
+            // We fetch the model directly — caching Eloquent objects in Redis causes
+            // __PHP_Incomplete_Class on deserialization, which breaks the typed set() call.
+            $tenant = Tenant::find($tenantId);
             if ($tenant) {
                 TenantContext::set($tenantId, $tenant, $cached['role'] ?? 'viewer');
             }
