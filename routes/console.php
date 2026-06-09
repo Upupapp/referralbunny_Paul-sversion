@@ -68,7 +68,7 @@ Schedule::command('invitations:send-reminders')->hourly()->timezone('Asia/Manila
 Schedule::command('leads:expire')->dailyAt('00:05')->timezone('Asia/Manila')->withoutOverlapping();
 Schedule::command('leads:purge-archived')->dailyAt('01:30')->timezone('Asia/Manila');
 Schedule::command('leads:check-pipeline-limits')->dailyAt('07:30')->timezone('Asia/Manila')->withoutOverlapping();
-Schedule::command('leads:notify-expiring')->dailyAt('07:00')->timezone('Asia/Manila')->withoutOverlapping();
+Schedule::command('leads:notify-expiring')->dailyAt('07:05')->timezone('Asia/Manila')->withoutOverlapping();
 
 // ── Promo jobs ────────────────────────────────────────────────
 Schedule::command('promos:expire')->dailyAt('00:15')->timezone('Asia/Manila');

@@ -186,7 +186,7 @@ class NotificationService
                     topic:         'platform_' . ($notification->category ?? 'general'),
                     topicLabel:    ucwords(str_replace('_', ' ', $notification->category ?? 'Platform Update')),
                     item:          [
-                        'title'      => $notification->message,
+                        'title'      => $notification->title ?? $notification->message,
                         'body'       => $notification->message,
                         'priority'   => $notification->priority,
                         'action_url' => $notification->action_url,

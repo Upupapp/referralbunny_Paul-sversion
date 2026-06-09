@@ -12,7 +12,7 @@ class LeadNote extends Model
     protected $keyType = 'string';
     const UPDATED_AT = null;
 
-    protected $fillable = ['lead_id', 'text', 'author'];
+    protected $fillable = ['lead_id', 'tenant_id', 'text', 'author'];
 
     protected static function boot(): void
     {

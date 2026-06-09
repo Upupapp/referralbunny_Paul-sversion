@@ -261,7 +261,11 @@ class NotificationDispatchService
              ->where(fn($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
         }
 
-        if ($tenantId && $type === 'tenant_admin') {
+        if ($type === 'tenant_admin') {
+            if (!$tenantId) {
+                // No workspace context — return empty result to prevent cross-tenant bleed.
+                return $q->whereRaw('1=0');
+            }
             // Also show tenant-scoped platform notifications (no notifiable_id).
             // Both branches are scoped to $tenantId — without it, an admin who belongs
             // to multiple tenants would see notifications from all their tenants in the

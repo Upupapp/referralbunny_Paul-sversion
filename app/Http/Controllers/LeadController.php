@@ -42,20 +42,13 @@ class LeadController extends Controller
             $relations[] = 'dealPartners.partner';
         }
 
-        // reseller_id column may not exist on all DB deployments — check once per day and add
-        // it to the select only if present; leads still load without it (uses reseller_name)
         $baseSelect = [
             'id', 'tenant_id', 'name', 'stage', 'status', 'days_left',
-            'reseller_name', 'organization_id',
+            'reseller_id', 'reseller_name', 'organization_id',
             'commission_status', 'base_cost', 'added_amount', 'deal_value',
             'data',
             'created_at', 'updated_at', 'deleted_at', 'deleted_by',
         ];
-        if (Cache::remember('schema.leads_has_reseller_id', 3600, fn() =>
-            \Illuminate\Support\Facades\Schema::hasColumn('leads', 'reseller_id')
-        )) {
-            $baseSelect[] = 'reseller_id';
-        }
 
         $query = Lead::with($relations)
             ->select($baseSelect)
@@ -1582,7 +1575,7 @@ class LeadController extends Controller
         [$actorId, $actorRole, $actorName] = $this->resolveActor();
         $data['author'] = $actorName ?? 'Unknown';
 
-        $note = LeadNote::create(['lead_id' => $lead->id, ...$data]);
+        $note = LeadNote::create(['lead_id' => $lead->id, 'tenant_id' => $lead->tenant_id, ...$data]);
 
         try {
             app(\App\Services\DealActivityService::class)->noteAdded($lead, $data['text'] ?? '', [

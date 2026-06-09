@@ -164,8 +164,8 @@ class ResellerDealController extends Controller
             ])->toArray();
 
             // Legacy notes: lead_notes (old system, no attachments)
-            // No tenant subquery needed — $lead is already verified to belong to $tenantId by $this->deal()
             $legacyNotes = LeadNote::where('lead_id', $dealId)
+                ->where(fn($q) => $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id'))
                 ->orderBy('created_at', 'asc')
                 ->get()
                 ->map(fn($n) => [

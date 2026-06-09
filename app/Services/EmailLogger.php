@@ -53,6 +53,7 @@ class EmailLogger
 
         try {
             Mail::to($recipientEmail)->queue($mailable);
+            $log->update(['status' => 'sent']);
             return true;
         } catch (\Throwable $e) {
             $log->update(['status' => 'failed', 'failed_at' => now(), 'error_message' => $e->getMessage()]);
