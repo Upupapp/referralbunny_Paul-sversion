@@ -14,13 +14,10 @@ class SetApiTenantContext
 {
     public function handle(Request $request, Closure $next)
     {
-        // Only SA may context-switch via a request-supplied tenant_id.
-        // For all other guards the membership lookup in resolveFromAuth() already
-        // enforces the correct tenant — passing a user-supplied ID would allow a
-        // tenant user to switch context to a different tenant.
-        $requestedTenantId = \Illuminate\Support\Facades\Auth::guard('web')->check()
-            ? ($request->input('tenant_id') ?? $request->query('tenant_id'))
-            : null;
+        // All guards may pass a tenant_id to select which of their tenants to act in.
+        // resolveFromAuth() validates the ID against the user's actual membership and
+        // aborts 403 if they don't belong to that tenant — so this is safe for all guards.
+        $requestedTenantId = $request->input('tenant_id') ?? $request->query('tenant_id');
 
         TenantContext::resolveFromAuth($requestedTenantId);
 

@@ -394,7 +394,7 @@
                 @endif
 
                 {{-- Notifications --}}
-                <div x-data="notifPanel()" x-init="init()"
+                <div x-data="notifPanel('{{ $layoutTenantId ?? '' }}')" x-init="init()"
                      x-effect="if(open && count > 0) markAllRead()"
                      class="relative">
                     <button @click="open = !open"
@@ -634,10 +634,13 @@
 </div>
 
 <script>
-function notifPanel() {
+function notifPanel(tenantId) {
     const csrf = () => document.querySelector('meta[name=csrf-token]')?.content ?? '';
     const hdrs  = () => ({ 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
     const whrs  = () => ({ ...hdrs(), 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() });
+    // Tenant scope: passed from PHP so the API always fetches notifications for the
+    // current workspace, not the user's "first" membership (avoids cross-tenant bleed).
+    const tidSuffix = tenantId ? ('&tenant_id=' + encodeURIComponent(tenantId)) : '';
 
     return {
         open: false,
@@ -647,7 +650,7 @@ function notifPanel() {
 
         async load() {
             try {
-                const res  = await fetch('/api/notifications/mine?unread=true&limit=6', {
+                const res  = await fetch('/api/notifications/mine?unread=true&limit=6' + tidSuffix, {
                     credentials: 'same-origin',
                     headers: hdrs()
                 });
@@ -720,7 +723,8 @@ function notifPanel() {
             this.count = 0;
             window.dispatchEvent(new CustomEvent('notifications:updated', { detail: { unreadCount: 0 } }));
             try {
-                const res = await fetch('/api/notifications/mine/mark-all-read', {
+                const marUrl = '/api/notifications/mine/mark-all-read' + (tenantId ? ('?tenant_id=' + encodeURIComponent(tenantId)) : '');
+                const res = await fetch(marUrl, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: whrs()

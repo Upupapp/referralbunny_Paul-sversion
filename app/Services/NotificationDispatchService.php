@@ -262,10 +262,15 @@ class NotificationDispatchService
         }
 
         if ($tenantId && $type === 'tenant_admin') {
-            // Also show tenant-scoped platform notifications (no notifiable_id)
+            // Also show tenant-scoped platform notifications (no notifiable_id).
+            // Both branches are scoped to $tenantId — without it, an admin who belongs
+            // to multiple tenants would see notifications from all their tenants in the
+            // bell, and clicking one could navigate to a different tenant's page.
             $q = Notification::where(fn($outer) =>
                 $outer->where(fn($q) =>
-                    $q->where('notifiable_type', 'tenant_admin')->where('notifiable_id', $id)
+                    $q->where('notifiable_type', 'tenant_admin')
+                       ->where('notifiable_id', $id)
+                       ->where('tenant_id', $tenantId)
                 )->orWhere(fn($q) =>
                     $q->where('tenant_id', $tenantId)->whereNull('notifiable_type')
                 )
