@@ -33,8 +33,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasColumn('lead_notes', 'tenant_id')) {
+            return;
+        }
+        // PostgreSQL drops associated indexes automatically when the column is dropped.
         Schema::table('lead_notes', function (Blueprint $table) {
-            $table->dropIndexIfExists('idx_lead_notes_tenant_id');
             $table->dropColumn('tenant_id');
         });
     }

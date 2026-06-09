@@ -226,6 +226,7 @@ class LguIdsDealNoteTaskService
 
         return ! DB::table('lead_notes')
             ->where('lead_id', $dealId)
+            ->where('tenant_id', 'lgu-ids')
             ->exists();
     }
 

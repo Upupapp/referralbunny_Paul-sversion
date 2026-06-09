@@ -121,6 +121,7 @@ class LguIdsReferrerDealNoteReminderService
                         ->select(DB::raw(1))
                         ->from('lead_notes')
                         ->whereColumn('lead_notes.lead_id', 'leads.id')
+                        ->where('lead_notes.tenant_id', 'lgu-ids')
                     );
             })
             ->select('id', 'name', 'email', 'tenant_id')
@@ -161,6 +162,7 @@ class LguIdsReferrerDealNoteReminderService
                 ->select(DB::raw(1))
                 ->from('lead_notes')
                 ->whereColumn('lead_notes.lead_id', 'leads.id')
+                ->where('lead_notes.tenant_id', 'lgu-ids')
             )
             ->select('leads.id', 'leads.name', 'leads.stage', 'leads.status', 'leads.days_left', 'leads.deal_value')
             ->orderByRaw("CASE WHEN leads.status = 'expiring' THEN 0 ELSE 1 END")
