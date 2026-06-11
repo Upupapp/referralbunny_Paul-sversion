@@ -40,6 +40,9 @@
 
     {{-- Table --}}
     <div class="card p-0 overflow-hidden">
+        <div x-show="!loading && leads.length < total" class="px-5 py-2 text-xs text-gray-400 border-b border-gray-100">
+            Showing <span x-text="leads.length"></span> of <span x-text="total"></span> leads
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead><tr class="table-head"><th>Lead</th><th>Stage</th><th>Referrer</th><th>Value</th><th>Status</th><th></th></tr></thead>
@@ -132,7 +135,7 @@
 <script>
 function leadsPage(tenantId, showLocation) {
     return {
-        leads: [], filtered: [], loading: true, loadError: false, showAdd: false, saving: false,
+        leads: [], filtered: [], total: 0, loading: true, loadError: false, showAdd: false, saving: false,
         search: '', filterStage: '', filterStatus: '', formError: '',
         nameAutoFilled: false,
         form: { name:'', stage:'introduction', deal_value:'', reseller_name:'', province:'', municipality:'' },
@@ -146,6 +149,7 @@ function leadsPage(tenantId, showLocation) {
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
+                this.total = d.total ?? this.leads.length;
             } catch(e) { this.leads = []; this.loadError = true; }
             this.filtered = this.leads;
             this.loading = false;

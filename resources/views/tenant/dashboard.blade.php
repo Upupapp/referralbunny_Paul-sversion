@@ -50,6 +50,15 @@ document.addEventListener('alpine:init', () => {
         </button>
     </div>
 
+    {{-- Partial-data notice (>500 deals) --}}
+    <div x-show="!dataError && leads.length < leadsTotal" x-cloak
+         class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>Breakdown stats below are based on <span x-text="leads.length"></span> of <span x-text="leadsTotal"></span> referrals. "Total Referrals" reflects the full count.</span>
+    </div>
+
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
 

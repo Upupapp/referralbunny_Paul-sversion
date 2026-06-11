@@ -104,7 +104,7 @@
     <div class="card p-0 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <p class="text-sm font-semibold" style="color:#1E1B4B">
-                <span x-text="filtered.length"></span> deal<span x-show="filtered.length !== 1">s</span>
+                <span x-text="filtered.length"></span><span x-show="poolLength < poolTotal" x-text="' of ' + poolTotal"></span> deal<span x-show="filtered.length !== 1">s</span>
             </p>
         </div>
 
@@ -570,9 +570,9 @@ const CLAIM_PROMPTS = [
 
 function resellerDeals(tenantId, resellerName) {
     return {
-        leads: [], filtered: [], loading: true,
+        leads: [], filtered: [], total: 0, loading: true,
         search: '', filterStatus: '', filterStage: '', filterPartner: '',
-        filterArchived: false, archivedLeads: [], archivedLoaded: false,
+        filterArchived: false, archivedLeads: [], archivedTotal: 0, archivedLoaded: false,
         filterNoNotes: false,
         showClaim: false, claimStep: 1, dealMode: 'standard',
         claimProvince: '', availableOrgs: [], loadingOrgs: false,
@@ -604,10 +604,14 @@ function resellerDeals(tenantId, resellerName) {
                 });
                 const data = await res.json();
                 this.leads = Array.isArray(data) ? data : (data.data || []);
+                this.total = data.total ?? this.leads.length;
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
         },
+
+        get poolLength() { return this.filterArchived ? this.archivedLeads.length : this.leads.length; },
+        get poolTotal()  { return this.filterArchived ? this.archivedTotal       : this.total; },
 
         timeAgo(iso) {
             if (!iso) return '—';
@@ -668,6 +672,7 @@ function resellerDeals(tenantId, resellerName) {
                     });
                     const data = await res.json();
                     this.archivedLeads = Array.isArray(data) ? data : (data.data || []);
+                    this.archivedTotal = data.total ?? this.archivedLeads.length;
                     this.archivedLoaded = true;
                 } catch(e) { this.archivedLeads = []; }
                 this.loading = false;

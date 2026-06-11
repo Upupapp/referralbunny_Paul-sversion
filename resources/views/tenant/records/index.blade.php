@@ -65,7 +65,7 @@
     <div x-show="!loading && viewMode === 'table'" class="card p-0 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <p class="text-sm font-semibold text-[#1E1B4B]">
-                <span x-text="filtered.length"></span> records
+                <span x-text="filtered.length"></span><span x-show="leads.length < total" x-text="' of ' + total"></span> records
                 <span x-show="filterStage || filterStatus || filterCommission || search" class="text-gray-400 font-normal text-xs ml-1">— filtered</span>
             </p>
             <div class="flex items-center gap-3 text-xs text-gray-400">
@@ -255,7 +255,7 @@
 <script>
 function recordsModule(tenantId) {
     return {
-        leads: [], filtered: [], loading: true,
+        leads: [], filtered: [], total: 0, loading: true,
         viewMode: 'table',
         search: '', filterStage: '', filterStatus: '', filterCommission: '',
         showAdd: false, saving: false, formError: '',
@@ -273,6 +273,7 @@ function recordsModule(tenantId) {
             try {
                 const res = await fetch(`/api/leads?tenant_id=${tenantId}&per_page=500`);
                 const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
+                this.total = d.total ?? this.leads.length;
             } catch(e) { this.leads = []; }
             this.applyFilters();
             this.loading = false;
