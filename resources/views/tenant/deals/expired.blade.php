@@ -183,6 +183,7 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
     const checkboxes  = document.querySelectorAll('.expired-deal-checkbox');
     const countLabel  = document.getElementById('bulk-extend-count');
     const extendBtn   = document.getElementById('bulk-extend-btn');
+    const bulkForm    = document.getElementById('bulk-extend-form');
 
     function refresh() {
         const checked = document.querySelectorAll('.expired-deal-checkbox:checked').length;
@@ -201,6 +202,14 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
     }
 
     checkboxes.forEach(cb => cb.addEventListener('change', refresh));
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', function () {
+            extendBtn.disabled = true;
+            extendBtn.textContent = 'Extending…';
+        });
+    }
+
     refresh();
 })();
 </script>
