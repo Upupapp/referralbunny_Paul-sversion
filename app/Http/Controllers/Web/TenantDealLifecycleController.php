@@ -11,6 +11,7 @@ use App\Models\TenantMembership;
 use App\Services\DealActivityService;
 use App\Services\DealExtensionDisplayService;
 use App\Services\NotificationDispatchService;
+use App\Services\ReferrerCacheService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -138,6 +139,10 @@ class TenantDealLifecycleController extends Controller
 
         $extendedCount = 0;
 
+        // Bust referrer-scoped caches for all candidate leads up front, in two
+        // batched queries instead of one round-trip per lead.
+        $primariesByLeadId = app(ReferrerCacheService::class)->bustForLeads($tenantId, $leads);
+
         foreach ($leads as $lead) {
             $updated = DB::transaction(function () use ($lead, $days) {
                 $lockedLead = DB::table('leads')->where('id', $lead->id)->lockForUpdate()->first();
@@ -167,33 +172,11 @@ class TenantDealLifecycleController extends Controller
                 );
             } catch (\Throwable) {}
 
-            // Bust referrer-scoped caches (activity log, performance stats, critical-action
-            // badges) for the primary referrer and any co-referrers, and notify the primary
-            // referrer that their deal is active again — mirrors LeadController's pattern
-            // for lead status/assignment changes (see reassignReferrer ~line 1690).
+            // Notify the primary referrer that their deal is active again — mirrors
+            // LeadController's pattern for lead status/assignment changes (see
+            // reassignReferrer ~line 1690). Cache-busting was already done in bulk above.
             try {
-                $referrerNames = collect([$lead->reseller_name])
-                    ->merge(DB::table('commission_splits')->where('lead_id', $lead->id)->pluck('reseller_name'))
-                    ->map(fn($n) => trim((string) $n))
-                    ->filter()
-                    ->unique();
-
-                $primaryReseller = null;
-
-                foreach ($referrerNames as $rName) {
-                    $r = \App\Models\Reseller::where('tenant_id', $tenantId)
-                        ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
-                        ->first(['id', 'name']);
-
-                    if ($r) {
-                        Cache::forget("reseller_leadids:{$tenantId}:{$r->id}");
-                        Cache::forget("referrer_perf:{$tenantId}:{$r->id}");
-                        if (strtolower($rName) === strtolower((string) $lead->reseller_name)) {
-                            $primaryReseller = $r;
-                        }
-                    }
-                    Cache::forget("ca_reseller:{$tenantId}:" . md5($rName . ':' . ($r?->id ?? '')));
-                }
+                $primaryReseller = $primariesByLeadId[$lead->id] ?? null;
 
                 if ($primaryReseller) {
                     app(NotificationDispatchService::class)->dispatchToReseller(
