@@ -57,6 +57,7 @@ class DealExtensionDisplayService
                 if ($reviewerIds->isNotEmpty()) {
                     $reviewerNames = DB::table('tenant_users')
                         ->whereIn('id', $reviewerIds)
+                        ->selectRaw("id, TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))) as full_name")
                         ->pluck('full_name', 'id')
                         ->all();
 
