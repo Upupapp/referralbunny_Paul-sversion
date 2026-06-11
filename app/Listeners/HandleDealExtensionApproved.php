@@ -92,6 +92,9 @@ class HandleDealExtensionApproved implements ShouldQueue
                 Log::warning('[HandleDealExtensionApproved] in-app failed', ['error' => $e->getMessage()]);
             }
             Cache::forget("notif_unread_reseller_{$resellerId}");
+            // Refresh the referrer dashboard's "active deals" stat (forReseller() caches 120s)
+            // so a just-approved extension (status reverted to 'active') is reflected immediately.
+            Cache::forget("referrer_perf:{$event->tenantId}:{$resellerId}");
         }
     }
 

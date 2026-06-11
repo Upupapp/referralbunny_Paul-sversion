@@ -206,6 +206,10 @@ class BulkDealExtensionWebController extends Controller
         if (!$contextId || $contextId !== $tenantId) {
             abort(403, 'Tenant context mismatch.');
         }
+
+        if (!in_array(TenantContext::role(), ['owner', 'admin', 'manager'], true)) {
+            abort(403, 'Insufficient permissions to review extension requests.');
+        }
     }
 
     private function resolveTenant(string $tenantId): Tenant
