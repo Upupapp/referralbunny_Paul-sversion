@@ -198,8 +198,26 @@
                                          :style="`background:${stageColor(d.stage)}`"
                                          x-text="(d.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
-                                        <a :href="`/reseller/{{ $tenant->id }}/deals/${d.id}`"
-                                           class="font-medium text-sm truncate block hover:underline" style="color:#1E1B4B" x-text="d.name"></a>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <a :href="`/reseller/{{ $tenant->id }}/deals/${d.id}`"
+                                               class="font-medium text-sm truncate hover:underline min-w-0" style="color:#1E1B4B" x-text="d.name"></a>
+                                            <template x-if="d.extension_summary?.has_extension">
+                                                <a :href="`/reseller/{{ $tenant->id }}/extension-requests`"
+                                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200 transition-colors shrink-0"
+                                                   :title="'Extended +' + d.extension_summary.total_days + ' day' + (d.extension_summary.total_days !== 1 ? 's' : '') + (d.extension_summary.new_deadline ? ' · New deadline: ' + d.extension_summary.new_deadline : '')">
+                                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+                                                    <span x-text="'+' + d.extension_summary.total_days + 'd'"></span>
+                                                </a>
+                                            </template>
+                                            <template x-if="d.extension_summary?.pending_count > 0">
+                                                <a :href="`/reseller/{{ $tenant->id }}/extension-requests`"
+                                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors shrink-0"
+                                                   :title="d.extension_summary.pending_count + ' extension request(s) awaiting review'">
+                                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    <span x-text="d.extension_summary.pending_count + 'p'"></span>
+                                                </a>
+                                            </template>
+                                        </div>
                                         <p class="text-xs text-gray-400 truncate" x-text="d.data?.province || ''"></p>
                                         {{-- Partner info visible on mobile (md and below hides the Partner column) --}}
                                         <div class="md:hidden mt-0.5" x-show="(d.partners||[]).length > 0">

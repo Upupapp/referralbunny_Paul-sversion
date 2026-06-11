@@ -125,10 +125,17 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
                                        form="bulk-extend-form" class="expired-deal-checkbox rounded border-gray-300">
                             </td>
                             <td class="px-4 py-3">
-                                <a href="{{ route('tenant.deals.show', [$tenant->id, $deal->id]) }}"
-                                   class="font-semibold text-[#1E1B4B] hover:text-[#7B61FF] transition-colors">
-                                    {{ $deal->name }}
-                                </a>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <a href="{{ route('tenant.deals.show', [$tenant->id, $deal->id]) }}"
+                                       class="font-semibold text-[#1E1B4B] hover:text-[#7B61FF] transition-colors">
+                                        {{ $deal->name }}
+                                    </a>
+                                    <x-deals.extension-badge
+                                        :summary="$extensionSummaries[$deal->id] ?? []"
+                                        :viewer-role="$extensionViewerRole"
+                                        :review-url="route('tenant.extension-requests.index', $tenant->id)"
+                                        :compact="true" />
+                                </div>
                                 <p class="text-xs text-gray-400 mt-0.5 sm:hidden">
                                     {{ ucwords(str_replace('_',' ',$deal->stage)) }}
                                     @if($deal->reseller_name) · {{ $deal->reseller_name }} @endif

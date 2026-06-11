@@ -42,7 +42,7 @@
 
 @section('content')
 <div class="space-y-5"
-     x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }})"
+     x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }}, '{{ $actingRole }}')"
      x-init="init()"
      @open-add-deal.window="showAdd = true; resetForm()"
      @open-deal-delete.window="showDeleteInstructions = true; selectMode = false; selectedDeals = []"
@@ -326,7 +326,27 @@
                                     <div class="w-8 h-8 rounded-xl flex items-center justify-center text-[#7B61FF] font-bold text-xs shrink-0"
                                          style="background:#EDE9FE" x-text="(lead.name||'?').slice(0,2).toUpperCase()"></div>
                                     <div class="min-w-0">
-                                        <p class="font-medium text-[#1E1B4B] truncate max-w-48" x-text="lead.name"></p>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <p class="font-medium text-[#1E1B4B] truncate max-w-48" x-text="lead.name"></p>
+                                            <template x-if="lead.extension_summary?.has_extension">
+                                                <a href="#" @click.stop.prevent="canReviewExtensions && (window.location.href = '/tenant/{{ $tenant->id }}/extension-requests')"
+                                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200"
+                                                   :class="canReviewExtensions ? 'hover:bg-orange-200 transition-colors cursor-pointer' : 'cursor-default'"
+                                                   :title="'Extended +' + lead.extension_summary.total_days + ' day' + (lead.extension_summary.total_days !== 1 ? 's' : '') + (lead.extension_summary.new_deadline ? ' · New deadline: ' + lead.extension_summary.new_deadline : '')">
+                                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+                                                    <span x-text="'+' + lead.extension_summary.total_days + 'd'"></span>
+                                                </a>
+                                            </template>
+                                            <template x-if="lead.extension_summary?.pending_count > 0">
+                                                <a href="#" @click.stop.prevent="canReviewExtensions && (window.location.href = '/tenant/{{ $tenant->id }}/extension-requests')"
+                                                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200"
+                                                   :class="canReviewExtensions ? 'hover:bg-amber-200 transition-colors cursor-pointer' : 'cursor-default'"
+                                                   :title="lead.extension_summary.pending_count + ' extension request(s) awaiting review'">
+                                                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    <span x-text="lead.extension_summary.pending_count + 'p'"></span>
+                                                </a>
+                                            </template>
+                                        </div>
                                         <p class="text-xs text-gray-400" x-text="[lead.data?.province, lead.data?.municipality].filter(Boolean).join(' › ') || ''"></p>
                                     </div>
                                 </div>
@@ -418,6 +438,20 @@
                             <a :href="'/tenant/{{ $tenant->id }}/deals/' + lead.id"
                                class="block card p-3 hover:shadow-md transition-shadow cursor-pointer">
                                 <p class="font-medium text-[#1E1B4B] text-sm truncate" x-text="lead.name"></p>
+                                <template x-if="lead.extension_summary?.has_extension || lead.extension_summary?.pending_count > 0">
+                                    <div class="flex items-center gap-1 mt-1">
+                                        <template x-if="lead.extension_summary?.has_extension">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700"
+                                                  :title="'Extended +' + lead.extension_summary.total_days + ' day' + (lead.extension_summary.total_days !== 1 ? 's' : '')"
+                                                  x-text="'+' + lead.extension_summary.total_days + 'd'"></span>
+                                        </template>
+                                        <template x-if="lead.extension_summary?.pending_count > 0">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700"
+                                                  :title="lead.extension_summary.pending_count + ' extension request(s) awaiting review'"
+                                                  x-text="lead.extension_summary.pending_count + 'p'"></span>
+                                        </template>
+                                    </div>
+                                </template>
                                 <template x-if="!canViewReferrers">
                                     <p class="text-xs text-gray-300 mt-0.5">Restricted</p>
                                 </template>
@@ -901,11 +935,15 @@ function lguBaseCost(dv) {
     return Math.round(dv * 0.41);
 }
 
-function dealsModule(tenantId, showLocation, canViewReferrers = false) {
+function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRole = 'viewer') {
     return {
         leads: [], filtered: [], _byStage: {}, loading: true, initError: false, totalDeals: 0, _watchersInited: false,
         canViewReferrers,
         showLocation,
+        actingRole,
+        get canReviewExtensions() {
+            return ['owner', 'admin', 'manager', 'super_admin'].includes(this.actingRole);
+        },
         viewMode: 'table',
         search: '', filterStage: '', filterStatus: '', filterCommission: '', filterProvince: '', filterReseller: '', filterPartner: '',
         sortCol: 'created_at', sortDir: 'desc',

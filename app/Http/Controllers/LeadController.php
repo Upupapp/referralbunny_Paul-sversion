@@ -258,6 +258,38 @@ class LeadController extends Controller
             });
         }
 
+        // Enrich with extension_summary — batched (2-4 queries total, regardless of page size).
+        try {
+            $pageIds = $leads->pluck('id')->all();
+            if (!empty($pageIds) && $tenantId) {
+                if (Auth::guard('reseller')->check()) {
+                    $extViewerRole = 'referrer';
+                } elseif (Auth::guard('tenant')->check()) {
+                    $extViewerRole = \App\Services\DealExtensionDisplayService::normalizeViewerRole(TenantContext::role());
+                } else {
+                    $extViewerRole = 'admin';
+                }
+
+                $extensionSummaries = app(\App\Services\DealExtensionDisplayService::class)
+                    ->getSummariesForDeals($pageIds, $tenantId, $extViewerRole);
+
+                $leads = $leads->map(function ($lead) use ($extensionSummaries) {
+                    $id      = is_array($lead) ? ($lead['id'] ?? null) : $lead->id;
+                    $summary = $extensionSummaries[$id] ?? null;
+                    if ($summary && $summary['status'] !== 'none') {
+                        if (is_array($lead)) {
+                            $lead['extension_summary'] = $summary;
+                        } else {
+                            $lead->extension_summary = $summary;
+                        }
+                    }
+                    return $lead;
+                });
+            }
+        } catch (\Throwable) {
+            // Extension summary enrichment failed — leads render without badges
+        }
+
         if (isset($paginated)) {
             return response()->json([
                 'data'      => $leads->values(),

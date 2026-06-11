@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\TenantConfig;
 use App\Models\TenantMembership;
 use App\Services\DealActivityService;
+use App\Services\DealExtensionDisplayService;
 use App\Services\NotificationDispatchService;
 use App\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
@@ -90,6 +91,10 @@ class TenantDealLifecycleController extends Controller
 
         $deals = $query->orderBy('leads.updated_at', 'desc')->paginate($per)->withQueryString();
 
+        $extensionViewerRole = DealExtensionDisplayService::normalizeViewerRole($role);
+        $extensionSummaries  = app(DealExtensionDisplayService::class)
+            ->getSummariesForDeals($deals->pluck('id')->all(), $tenantId, $extensionViewerRole);
+
         $metrics = Cache::remember("lifecycle_expired_metrics:{$tenantId}", 120, function () use ($tenantId) {
             return [
                 'total'     => Lead::where('tenant_id', $tenantId)->where('status', 'expired')->whereNull('deleted_at')->count(),
@@ -101,7 +106,7 @@ class TenantDealLifecycleController extends Controller
         });
 
         return view('tenant.deals.expired', array_merge(
-            compact('tenant', 'deals', 'metrics', 'role', 'search', 'stage', 'reseller'),
+            compact('tenant', 'deals', 'metrics', 'role', 'search', 'stage', 'reseller', 'extensionSummaries', 'extensionViewerRole'),
             $this->configMeta($tenantId)
         ));
     }
