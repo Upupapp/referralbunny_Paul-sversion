@@ -460,7 +460,7 @@ function contactsModule(tenantId) {
                 const [cr, or, dr] = await Promise.all([
                     fetch(`/api/contacts?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
                     fetch(`/api/organizations?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
-                    fetch(`/api/leads?tenant_id=${tenantId}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
+                    fetch(`/api/leads?tenant_id=${tenantId}&per_page=500`, { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(r => r.json()),
                 ]);
                 this.contacts = Array.isArray(cr) ? cr : (cr?.data || []);
                 this.orgs     = Array.isArray(or) ? or : [];

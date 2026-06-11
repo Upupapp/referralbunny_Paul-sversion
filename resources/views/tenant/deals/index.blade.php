@@ -987,7 +987,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
             }
 
             try {
-                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&include_partners=1`, {
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&include_partners=1&per_page=500`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });

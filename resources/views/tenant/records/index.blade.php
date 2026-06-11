@@ -271,7 +271,7 @@ function recordsModule(tenantId) {
 
         async init() {
             try {
-                const res = await fetch(`/api/leads?tenant_id=${tenantId}`);
+                const res = await fetch(`/api/leads?tenant_id=${tenantId}&per_page=500`);
                 const d = await res.json(); this.leads = Array.isArray(d) ? d : (d.data || []);
             } catch(e) { this.leads = []; }
             this.applyFilters();

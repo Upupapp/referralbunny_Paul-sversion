@@ -414,7 +414,7 @@ function billingUsage(tenantId) {
                 fetch(`/api/billing/tenants/${tenantId}/subscription`),
                 fetch('/api/pricing/plans'),
                 fetch(`/api/metrics/${tenantId}`),
-                fetch(`/api/leads?tenant_id=${tenantId}`),
+                fetch(`/api/leads?tenant_id=${tenantId}&per_page=500`),
                 fetch(`/api/resellers?tenant_id=${tenantId}`),
             ]);
 

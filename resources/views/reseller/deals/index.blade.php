@@ -598,7 +598,7 @@ function resellerDeals(tenantId, resellerName) {
             if (['expiring','expired','active'].includes(preStatus)) this.filterStatus = preStatus;
             if (urlParams.get('filter') === 'no_notes') this.filterNoNotes = true;
             try {
-                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1`, {
+                const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1&per_page=500`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -662,7 +662,7 @@ function resellerDeals(tenantId, resellerName) {
             if (this.filterArchived && !this.archivedLoaded) {
                 this.loading = true;
                 try {
-                    const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1&status=archived`, {
+                    const res  = await fetch(`/api/leads?tenant_id=${tenantId}&reseller_name=${encodeURIComponent(resellerName)}&include_partners=1&status=archived&per_page=500`, {
                         credentials: 'same-origin',
                         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     });

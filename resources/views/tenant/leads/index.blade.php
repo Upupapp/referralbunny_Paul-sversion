@@ -140,7 +140,7 @@ function leadsPage(tenantId, showLocation) {
         async init() {
             this.loading = true; this.loadError = false;
             try {
-                const res = await fetch(`/api/leads?tenant_id=${tenantId}`, {
+                const res = await fetch(`/api/leads?tenant_id=${tenantId}&per_page=500`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
