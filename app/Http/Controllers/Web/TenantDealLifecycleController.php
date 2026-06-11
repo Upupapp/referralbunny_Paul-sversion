@@ -150,26 +150,47 @@ class TenantDealLifecycleController extends Controller
                 );
             } catch (\Throwable) {}
 
-            // Notify the referrer that their deal has been extended and reactivated
+            // Bust referrer-scoped caches (activity log, performance stats, critical-action
+            // badges) for the primary referrer and any co-referrers, and notify the primary
+            // referrer that their deal is active again — mirrors LeadController's pattern
+            // for lead status/assignment changes (see reassignReferrer ~line 1690).
             try {
-                if ($lead->reseller_name) {
-                    $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
-                        ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
-                        ->first();
-                    if ($reseller) {
-                        app(NotificationDispatchService::class)->dispatchToReseller(
-                            resellerId:   (string) $reseller->id,
-                            tenantId:     $tenantId,
-                            category:     'deal_pipeline',
-                            priority:     'normal',
-                            title:        'Deal extended: "' . $lead->name . '"',
-                            body:         'Your deal "' . $lead->name . '" has been extended by ' . $days . ' day(s) and is active again.',
-                            actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
-                            actionLabel:  'View Deal',
-                            dedupeSuffix: $lead->id . ':admin_extended:' . now()->format('Ymd'),
-                        );
-                        Cache::forget("notif_unread_reseller_{$reseller->id}");
+                $referrerNames = collect([$lead->reseller_name])
+                    ->merge(DB::table('commission_splits')->where('lead_id', $lead->id)->pluck('reseller_name'))
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter()
+                    ->unique();
+
+                $primaryReseller = null;
+
+                foreach ($referrerNames as $rName) {
+                    $r = \App\Models\Reseller::where('tenant_id', $tenantId)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
+                        ->first(['id', 'name']);
+
+                    if ($r) {
+                        Cache::forget("reseller_leadids:{$tenantId}:{$r->id}");
+                        Cache::forget("referrer_perf:{$tenantId}:{$r->id}");
+                        if (strtolower($rName) === strtolower((string) $lead->reseller_name)) {
+                            $primaryReseller = $r;
+                        }
                     }
+                    Cache::forget("ca_reseller:{$tenantId}:" . md5($rName . ':' . ($r?->id ?? '')));
+                }
+
+                if ($primaryReseller) {
+                    app(NotificationDispatchService::class)->dispatchToReseller(
+                        resellerId:   (string) $primaryReseller->id,
+                        tenantId:     $tenantId,
+                        category:     'deal_pipeline',
+                        priority:     'normal',
+                        title:        'Deal extended: "' . $lead->name . '"',
+                        body:         'Your deal "' . $lead->name . '" has been extended by ' . $days . ' day(s) and is active again.',
+                        actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                        actionLabel:  'View Deal',
+                        dedupeSuffix: $lead->id . ':admin_extended:' . now()->format('Ymd'),
+                    );
+                    Cache::forget("notif_unread_reseller_{$primaryReseller->id}");
                 }
             } catch (\Throwable) {}
         }
