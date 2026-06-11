@@ -43,6 +43,7 @@ class ReferrerCacheService
 
         $coReferrerNames = DB::table('commission_splits')
             ->where('lead_id', $leadId)
+            ->whereNull('deleted_at')
             ->pluck('reseller_name')
             ->map(fn($n) => trim((string) $n))
             ->filter()
@@ -82,6 +83,7 @@ class ReferrerCacheService
 
         $coReferrersByLead = DB::table('commission_splits')
             ->whereIn('lead_id', $leads->pluck('id'))
+            ->whereNull('deleted_at')
             ->get(['lead_id', 'reseller_name'])
             ->groupBy('lead_id');
 
