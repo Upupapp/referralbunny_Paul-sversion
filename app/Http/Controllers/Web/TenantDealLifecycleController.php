@@ -144,10 +144,10 @@ class TenantDealLifecycleController extends Controller
         $primariesByLeadId = app(ReferrerCacheService::class)->bustForLeads($tenantId, $leads);
 
         foreach ($leads as $lead) {
-            $updated = DB::transaction(function () use ($lead, $days) {
+            $newDaysLeft = DB::transaction(function () use ($lead, $days) {
                 $lockedLead = DB::table('leads')->where('id', $lead->id)->lockForUpdate()->first();
                 if (($lockedLead->status ?? null) !== 'expired') {
-                    return false;
+                    return null;
                 }
                 $newDaysLeft = max(0, ($lockedLead->days_left ?? 0)) + $days;
                 DB::table('leads')->where('id', $lead->id)->update([
@@ -155,10 +155,10 @@ class TenantDealLifecycleController extends Controller
                     'status'     => 'active',
                     'updated_at' => now(),
                 ]);
-                return true;
+                return $newDaysLeft;
             });
 
-            if (!$updated) {
+            if ($newDaysLeft === null) {
                 continue;
             }
 
@@ -168,7 +168,8 @@ class TenantDealLifecycleController extends Controller
                 app(DealActivityService::class)->record(
                     $lead,
                     "Deal assignment extended by {$days} day(s) by admin and reactivated.",
-                    'deal_extended'
+                    'deal_extended',
+                    ['metadata' => ['extension_days' => $days, 'new_days_left' => $newDaysLeft]]
                 );
             } catch (\Throwable) {}
 

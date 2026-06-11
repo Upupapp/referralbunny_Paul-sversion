@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DealAssignmentExtensionRequest;
+use App\Models\LeadHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -69,13 +70,27 @@ class DealExtensionDisplayService
                 }
             }
 
+            // Deals reactivated via direct admin bulk-extend (no formal
+            // DealAssignmentExtensionRequest row) record their extension as a
+            // 'deal_extended' lead_history entry with an extension_days metadata
+            // field — pick those up too so the badge reflects all extension paths.
+            $directExtensionsByDeal = LeadHistory::where('tenant_id', $tenantId)
+                ->whereIn('lead_id', $dealIds)
+                ->where('type', 'deal_extended')
+                ->whereNotNull('metadata')
+                ->orderBy('created_at')
+                ->get(['lead_id', 'metadata', 'actor_name', 'created_at'])
+                ->filter(fn($row) => (int) (($row->metadata ?? [])['extension_days'] ?? 0) > 0)
+                ->groupBy('lead_id');
+
             $summaries = [];
             foreach ($dealIds as $dealId) {
                 $summaries[$dealId] = $this->buildSummary(
                     $approvedByDeal->get($dealId, collect()),
                     (int) ($pendingCounts[$dealId] ?? 0),
                     $viewerRole,
-                    $reviewerNames
+                    $reviewerNames,
+                    $directExtensionsByDeal->get($dealId, collect())
                 );
             }
 
@@ -106,13 +121,17 @@ class DealExtensionDisplayService
         };
     }
 
-    private function buildSummary($approved, int $pendingCount, string $viewerRole, array $reviewerNames): array
+    private function buildSummary($approved, int $pendingCount, string $viewerRole, array $reviewerNames, $directExtensions = null): array
     {
-        $totalDays     = (int) $approved->sum('approved_days');
-        $approvedCount = $approved->count();
-        $latest        = $approved->last();
+        $directExtensions = $directExtensions ?? collect();
 
-        $hasExtension = $approvedCount > 0;
+        $directDays   = (int) $directExtensions->sum(fn($row) => (int) (($row->metadata ?? [])['extension_days'] ?? 0));
+        $totalDays    = (int) $approved->sum('approved_days') + $directDays;
+        $eventCount   = $approved->count() + $directExtensions->count();
+        $latest       = $approved->last();
+        $latestDirect = $directExtensions->last();
+
+        $hasExtension = $eventCount > 0;
         $hasPending   = $pendingCount > 0;
 
         if (!$hasExtension && !$hasPending) {
@@ -126,13 +145,27 @@ class DealExtensionDisplayService
             default                      => 'none',
         };
 
+        // When both a formal approval and a direct admin extension exist, the
+        // most recent of the two drives the "latest" display fields below.
+        $latestAt       = $latest?->reviewed_at ? Carbon::parse($latest->reviewed_at) : null;
+        $latestDirectAt = $latestDirect?->created_at ? Carbon::parse($latestDirect->created_at) : null;
+        $latestIsDirect = $latestDirectAt && (!$latestAt || $latestDirectAt->gt($latestAt));
+
+        $latestDays = $latestIsDirect
+            ? (int) (($latestDirect->metadata ?? [])['extension_days'] ?? 0)
+            : (int) ($latest?->approved_days ?? 0);
+
         $reviewerName = null;
-        if (in_array($viewerRole, ['admin', 'manager']) && $latest?->reviewed_by_user_id) {
-            $reviewerName = $reviewerNames[$latest->reviewed_by_user_id] ?? null;
+        if (in_array($viewerRole, ['admin', 'manager'])) {
+            if ($latestIsDirect) {
+                $reviewerName = $latestDirect->actor_name ?: null;
+            } elseif ($latest?->reviewed_by_user_id) {
+                $reviewerName = $reviewerNames[$latest->reviewed_by_user_id] ?? null;
+            }
         }
 
         $newDeadline = null;
-        if ($latest?->approved_new_expiry_at) {
+        if (!$latestIsDirect && $latest?->approved_new_expiry_at) {
             try {
                 $newDeadline = Carbon::parse($latest->approved_new_expiry_at)
                     ->timezone('Asia/Manila')
@@ -141,32 +174,31 @@ class DealExtensionDisplayService
         }
 
         $latestApprovedAt = null;
-        if ($latest?->reviewed_at) {
+        $latestAtForDisplay = $latestIsDirect ? $latestDirectAt : $latestAt;
+        if ($latestAtForDisplay) {
             try {
-                $latestApprovedAt = Carbon::parse($latest->reviewed_at)
-                    ->timezone('Asia/Manila')
-                    ->format('M j, Y');
+                $latestApprovedAt = $latestAtForDisplay->copy()->timezone('Asia/Manila')->format('M j, Y');
             } catch (\Throwable) {}
         }
 
         $tooltipItems = [];
         if ($hasExtension) {
-            if ($approvedCount === 1) {
+            if ($eventCount === 1) {
                 $tooltipItems[] = ['label' => 'Extended', 'value' => '+' . $totalDays . ' day' . ($totalDays !== 1 ? 's' : '')];
             } else {
-                $tooltipItems[] = ['label' => 'Total extension', 'value' => '+' . $totalDays . ' days (' . $approvedCount . ' approvals)'];
-                $tooltipItems[] = ['label' => 'Latest approval', 'value' => '+' . ((int) ($latest->approved_days ?? 0)) . ' days'];
+                $tooltipItems[] = ['label' => 'Total extension', 'value' => '+' . $totalDays . ' days (' . $eventCount . ' extensions)'];
+                $tooltipItems[] = ['label' => 'Latest extension', 'value' => '+' . $latestDays . ' day' . ($latestDays !== 1 ? 's' : '')];
             }
             if ($newDeadline) {
                 $tooltipItems[] = ['label' => 'New deadline', 'value' => $newDeadline];
             }
             if ($latestApprovedAt) {
-                $tooltipItems[] = ['label' => 'Approved on', 'value' => $latestApprovedAt];
+                $tooltipItems[] = ['label' => $latestIsDirect ? 'Extended on' : 'Approved on', 'value' => $latestApprovedAt];
             }
             if ($reviewerName) {
-                $tooltipItems[] = ['label' => 'Approved by', 'value' => $reviewerName];
+                $tooltipItems[] = ['label' => $latestIsDirect ? 'Extended by' : 'Approved by', 'value' => $reviewerName];
             }
-            if ($latest?->admin_note && in_array($viewerRole, ['referrer', 'admin', 'manager'])) {
+            if (!$latestIsDirect && $latest?->admin_note && in_array($viewerRole, ['referrer', 'admin', 'manager'])) {
                 $tooltipItems[] = ['label' => 'Reviewer note', 'value' => Str::limit((string) $latest->admin_note, 120)];
             }
         }
@@ -182,8 +214,8 @@ class DealExtensionDisplayService
         return [
             'has_extension'      => $hasExtension,
             'total_days'         => $totalDays,
-            'latest_days'        => (int) ($latest?->approved_days ?? 0),
-            'approved_count'     => $approvedCount,
+            'latest_days'        => $latestDays,
+            'approved_count'     => $eventCount,
             'pending_count'      => $pendingCount,
             'label'              => $label,
             'short_label'        => $shortLabel,
