@@ -120,7 +120,7 @@ class TenantDealLifecycleController extends Controller
 
         $data = $request->validate([
             'deal_ids'        => 'required|array|min:1|max:50',
-            'deal_ids.*'      => 'string',
+            'deal_ids.*'      => 'required|string|uuid',
             'extension_days'  => 'required|integer|min:1|max:90',
         ]);
 
@@ -136,16 +136,28 @@ class TenantDealLifecycleController extends Controller
             return back()->with('error', 'No matching expired deals found to extend.');
         }
 
+        $extendedCount = 0;
+
         foreach ($leads as $lead) {
-            DB::transaction(function () use ($lead, $days) {
-                $lockedLead  = DB::table('leads')->where('id', $lead->id)->lockForUpdate()->first();
+            $updated = DB::transaction(function () use ($lead, $days) {
+                $lockedLead = DB::table('leads')->where('id', $lead->id)->lockForUpdate()->first();
+                if (($lockedLead->status ?? null) !== 'expired') {
+                    return false;
+                }
                 $newDaysLeft = max(0, ($lockedLead->days_left ?? 0)) + $days;
                 DB::table('leads')->where('id', $lead->id)->update([
                     'days_left'  => $newDaysLeft,
                     'status'     => 'active',
                     'updated_at' => now(),
                 ]);
+                return true;
             });
+
+            if (!$updated) {
+                continue;
+            }
+
+            $extendedCount++;
 
             try {
                 app(DealActivityService::class)->record(
@@ -200,8 +212,6 @@ class TenantDealLifecycleController extends Controller
             } catch (\Throwable) {}
         }
 
-        $extended = $leads->count();
-
         Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
         try {
             app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
@@ -209,7 +219,7 @@ class TenantDealLifecycleController extends Controller
 
         return redirect()
             ->route('tenant.deals.expired', $tenantId)
-            ->with('success', "{$extended} deal(s) extended by {$days} day(s) and moved back to active.");
+            ->with('success', "{$extendedCount} deal(s) extended by {$days} day(s) and moved back to active.");
     }
 
     // ── GET /tenant/{tenantId}/deals/archive-requests ───────────────────────
