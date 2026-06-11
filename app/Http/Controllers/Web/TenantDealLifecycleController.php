@@ -114,7 +114,7 @@ class TenantDealLifecycleController extends Controller
         if (!$this->isAdminMgr($role)) abort(403);
 
         $data = $request->validate([
-            'deal_ids'        => 'required|array|min:1',
+            'deal_ids'        => 'required|array|min:1|max:50',
             'deal_ids.*'      => 'string',
             'extension_days'  => 'required|integer|min:1|max:90',
         ]);
