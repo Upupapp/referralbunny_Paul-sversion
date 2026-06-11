@@ -81,7 +81,9 @@ class LguIdsPurgeDealsCommand extends Command
 
         $partnerCount    = DB::table('deal_partners')->whereIn('deal_id', $dealIds)->count();
         $commissionCount = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->count();
-        $noteCount       = DB::table('lead_notes')->whereIn('lead_id', $dealIds)->count();
+        $noteCount       = DB::table('lead_notes')->whereIn('lead_id', $dealIds)
+            ->where(fn($q) => $q->where('tenant_id', self::TENANT_ID)->orWhereNull('tenant_id'))
+            ->count();
         $historyCount    = DB::table('lead_history')->whereIn('lead_id', $dealIds)->count();
         $commentCount    = 0;
         try { $commentCount = DB::table('deal_comments')->whereIn('deal_id', $dealIds)->count(); } catch (\Throwable) {}
@@ -140,7 +142,9 @@ class LguIdsPurgeDealsCommand extends Command
                 // Detach relations first
                 DB::table('commission_splits')->whereIn('lead_id', $dealIds)->delete();
                 DB::table('deal_partners')->whereIn('deal_id', $dealIds)->delete();
-                DB::table('lead_notes')->whereIn('lead_id', $dealIds)->where('tenant_id', self::TENANT_ID)->delete();
+                DB::table('lead_notes')->whereIn('lead_id', $dealIds)
+                    ->where(fn($q) => $q->where('tenant_id', self::TENANT_ID)->orWhereNull('tenant_id'))
+                    ->delete();
                 DB::table('lead_history')->whereIn('lead_id', $dealIds)->delete();
                 try { DB::table('deal_comments')->whereIn('deal_id', $dealIds)->delete(); } catch (\Throwable) {}
                 DB::table('leads')->where('tenant_id', self::TENANT_ID)->delete();

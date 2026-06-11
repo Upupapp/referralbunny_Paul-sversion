@@ -121,7 +121,7 @@ class LguIdsReferrerDealNoteReminderService
                         ->select(DB::raw(1))
                         ->from('lead_notes')
                         ->whereColumn('lead_notes.lead_id', 'leads.id')
-                        ->where('lead_notes.tenant_id', 'lgu-ids')
+                        ->where(fn($q) => $q->where('lead_notes.tenant_id', 'lgu-ids')->orWhereNull('lead_notes.tenant_id'))
                     );
             })
             ->select('id', 'name', 'email', 'tenant_id')

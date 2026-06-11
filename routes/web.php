@@ -305,6 +305,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/deals',         [TenantAdminController::class, 'deals'])->name('deals');
     // ── Deal Lifecycle subtabs (must be before deals/{dealId} to avoid conflict) ──
     Route::get('/deals/expired',                          [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'expired'])->name('deals.expired');
+    Route::post('/deals/expired/bulk-extend',             [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'bulkExtendExpired'])->name('deals.expired.bulk-extend');
     Route::get('/deals/archive-requests',                 [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'archiveRequests'])->name('deals.archive-requests');
     Route::get('/deals/archive-requests/{requestId}',     [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'archiveRequestShow'])->name('deals.archive-requests.show');
     Route::post('/deals/archive-requests/{requestId}/clarify', [\App\Http\Controllers\Web\TenantDealLifecycleController::class, 'clarifyArchiveRequest'])->name('deals.archive-requests.clarify');

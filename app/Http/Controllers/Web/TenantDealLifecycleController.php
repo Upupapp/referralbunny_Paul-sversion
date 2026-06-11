@@ -106,6 +106,86 @@ class TenantDealLifecycleController extends Controller
         ));
     }
 
+    // ── POST /tenant/{tenantId}/deals/expired/bulk-extend ───────────────────
+
+    public function bulkExtendExpired(Request $request, string $tenantId): RedirectResponse
+    {
+        $role = $this->resolveRole($tenantId);
+        if (!$this->isAdminMgr($role)) abort(403);
+
+        $data = $request->validate([
+            'deal_ids'        => 'required|array|min:1',
+            'deal_ids.*'      => 'string',
+            'extension_days'  => 'required|integer|min:1|max:90',
+        ]);
+
+        $days = (int) $data['extension_days'];
+
+        $leads = Lead::where('tenant_id', $tenantId)
+            ->where('status', 'expired')
+            ->whereNull('deleted_at')
+            ->whereIn('id', $data['deal_ids'])
+            ->get();
+
+        if ($leads->isEmpty()) {
+            return back()->with('error', 'No matching expired deals found to extend.');
+        }
+
+        foreach ($leads as $lead) {
+            DB::transaction(function () use ($lead, $days) {
+                $lockedLead  = DB::table('leads')->where('id', $lead->id)->lockForUpdate()->first();
+                $newDaysLeft = max(0, ($lockedLead->days_left ?? 0)) + $days;
+                DB::table('leads')->where('id', $lead->id)->update([
+                    'days_left'  => $newDaysLeft,
+                    'status'     => 'active',
+                    'updated_at' => now(),
+                ]);
+            });
+
+            try {
+                app(DealActivityService::class)->record(
+                    $lead,
+                    "Deal assignment extended by {$days} day(s) by admin and reactivated.",
+                    'deal_extended'
+                );
+            } catch (\Throwable) {}
+
+            // Notify the referrer that their deal has been extended and reactivated
+            try {
+                if ($lead->reseller_name) {
+                    $reseller = \App\Models\Reseller::where('tenant_id', $tenantId)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
+                        ->first();
+                    if ($reseller) {
+                        app(NotificationDispatchService::class)->dispatchToReseller(
+                            resellerId:   (string) $reseller->id,
+                            tenantId:     $tenantId,
+                            category:     'deal_pipeline',
+                            priority:     'normal',
+                            title:        'Deal extended: "' . $lead->name . '"',
+                            body:         'Your deal "' . $lead->name . '" has been extended by ' . $days . ' day(s) and is active again.',
+                            actionUrl:    url("/reseller/{$tenantId}/deals/{$lead->id}"),
+                            actionLabel:  'View Deal',
+                            dedupeSuffix: $lead->id . ':admin_extended:' . now()->format('Ymd'),
+                        );
+                        Cache::forget("notif_unread_reseller_{$reseller->id}");
+                    }
+                }
+            } catch (\Throwable) {}
+        }
+
+        $extended = $leads->count();
+
+        Cache::deleteMultiple(["dash_counts:{$tenantId}", "lifecycle_expired_metrics:{$tenantId}", "subtab_badge_counts:{$tenantId}"]);
+        try {
+            app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
+
+        return redirect()
+            ->route('tenant.deals.expired', $tenantId)
+            ->with('success', "{$extended} deal(s) extended by {$days} day(s) and moved back to active.");
+    }
+
     // ── GET /tenant/{tenantId}/deals/archive-requests ───────────────────────
 
     public function archiveRequests(Request $request, string $tenantId)

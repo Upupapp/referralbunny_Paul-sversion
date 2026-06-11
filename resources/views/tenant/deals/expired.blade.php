@@ -67,6 +67,24 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
         </form>
     </div>
 
+    {{-- Bulk extend bar --}}
+    @if(!$deals->isEmpty())
+        <form id="bulk-extend-form" method="POST" action="{{ route('tenant.deals.expired.bulk-extend', $tenant->id) }}" class="card flex flex-wrap items-center gap-3 py-3">
+            @csrf
+            <span class="text-sm text-gray-500">
+                <span id="bulk-extend-count">0</span> selected
+            </span>
+            <input type="number" name="extension_days" min="1" max="90" value="14"
+                   class="w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                   title="Number of days to extend">
+            <span class="text-sm text-gray-500">days</span>
+            <button type="submit" id="bulk-extend-btn" class="btn-primary text-sm" disabled
+                    onclick="return confirm('Extend the selected deal(s) and move them back to Active?');">
+                Extend Deal
+            </button>
+        </form>
+    @endif
+
     {{-- Table --}}
     <div class="card overflow-hidden">
         @if($deals->isEmpty())
@@ -88,6 +106,9 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-100 bg-gray-50/50">
+                            <th class="px-4 py-3 w-8">
+                                <input type="checkbox" id="select-all-expired" class="rounded border-gray-300">
+                            </th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Deal</th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Stage</th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Referrer</th>
@@ -99,6 +120,10 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
                     <tbody class="divide-y divide-gray-50">
                         @foreach($deals as $deal)
                         <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-4 py-3">
+                                <input type="checkbox" name="deal_ids[]" value="{{ $deal->id }}"
+                                       form="bulk-extend-form" class="expired-deal-checkbox rounded border-gray-300">
+                            </td>
                             <td class="px-4 py-3">
                                 <a href="{{ route('tenant.deals.show', [$tenant->id, $deal->id]) }}"
                                    class="font-semibold text-[#1E1B4B] hover:text-[#7B61FF] transition-colors">
@@ -143,4 +168,34 @@ $subtabCounts = array_merge($_badgeCounts, ['expired' => $metrics['total']]);
     </div>
 
 </div>
+
+@if(!$deals->isEmpty())
+<script>
+(function () {
+    const selectAll   = document.getElementById('select-all-expired');
+    const checkboxes  = document.querySelectorAll('.expired-deal-checkbox');
+    const countLabel  = document.getElementById('bulk-extend-count');
+    const extendBtn   = document.getElementById('bulk-extend-btn');
+
+    function refresh() {
+        const checked = document.querySelectorAll('.expired-deal-checkbox:checked').length;
+        countLabel.textContent = checked;
+        extendBtn.disabled = checked === 0;
+        if (selectAll) {
+            selectAll.checked = checked > 0 && checked === checkboxes.length;
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            refresh();
+        });
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', refresh));
+    refresh();
+})();
+</script>
+@endif
 @endsection

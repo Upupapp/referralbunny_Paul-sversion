@@ -226,7 +226,7 @@ class LguIdsDealNoteTaskService
 
         return ! DB::table('lead_notes')
             ->where('lead_id', $dealId)
-            ->where('tenant_id', 'lgu-ids')
+            ->where(fn($q) => $q->where('tenant_id', 'lgu-ids')->orWhereNull('tenant_id'))
             ->exists();
     }
 
@@ -355,7 +355,7 @@ class LguIdsDealNoteTaskService
     {
         static $tenant = false;
         if ($tenant === false) {
-            $tenant = Tenant::where('slug', 'lgu-ids')->first();
+            $tenant = Tenant::where('id', 'lgu-ids')->first();
         }
         return $tenant;
     }
