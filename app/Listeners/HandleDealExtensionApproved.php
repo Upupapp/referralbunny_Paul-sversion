@@ -92,9 +92,36 @@ class HandleDealExtensionApproved implements ShouldQueue
                 Log::warning('[HandleDealExtensionApproved] in-app failed', ['error' => $e->getMessage()]);
             }
             Cache::forget("notif_unread_reseller_{$resellerId}");
-            // Refresh the referrer dashboard's "active deals" stat (forReseller() caches 120s)
-            // so a just-approved extension (status reverted to 'active') is reflected immediately.
-            Cache::forget("referrer_perf:{$event->tenantId}:{$resellerId}");
+
+            // Refresh referrer-side caches ("active deals" stats, activity lists, and
+            // critical-action badges) for the primary referrer AND any commission_splits
+            // co-referrers, so a just-approved extension (status reverted to 'active') is
+            // reflected immediately — mirrors TenantDealLifecycleController::bulkExtendExpired.
+            try {
+                Cache::forget("referrer_perf:{$event->tenantId}:{$resellerId}");
+                Cache::forget("reseller_leadids:{$event->tenantId}:{$resellerId}");
+                Cache::forget("ca_reseller:{$event->tenantId}:" . md5($event->resellerName . ':' . $resellerId));
+
+                $coReferrerNames = DB::table('commission_splits')
+                    ->where('lead_id', $event->leadId)
+                    ->pluck('reseller_name')
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter()
+                    ->unique()
+                    ->reject(fn($n) => strtolower($n) === strtolower($event->resellerName));
+
+                foreach ($coReferrerNames as $rName) {
+                    $r = Reseller::where('tenant_id', $event->tenantId)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($rName)])
+                        ->first(['id']);
+
+                    if ($r) {
+                        Cache::forget("referrer_perf:{$event->tenantId}:{$r->id}");
+                        Cache::forget("reseller_leadids:{$event->tenantId}:{$r->id}");
+                    }
+                    Cache::forget("ca_reseller:{$event->tenantId}:" . md5($rName . ':' . ($r?->id ?? '')));
+                }
+            } catch (\Throwable) {}
         }
     }
 
