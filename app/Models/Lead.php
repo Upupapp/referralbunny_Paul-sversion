@@ -104,6 +104,7 @@ class Lead extends Model
                   $sub->from('commission_splits')
                       ->whereColumn('commission_splits.lead_id', 'leads.id')
                       ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                      ->whereNull('commission_splits.deleted_at')
               );
         });
     }

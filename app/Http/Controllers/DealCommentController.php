@@ -54,6 +54,7 @@ class DealCommentController extends Controller
             $isCoReferrer = !$isPrimary && DB::table('commission_splits')
                 ->where('lead_id', $dealId)
                 ->whereRaw('LOWER(reseller_name) = ?', [strtolower($actor->name ?? '')])
+                ->whereNull('deleted_at')
                 ->exists();
             if (!$isPrimary && !$isCoReferrer) {
                 return response()->json(['error' => 'You are not assigned to this deal.'], 403);
@@ -136,6 +137,7 @@ class DealCommentController extends Controller
             $isCoReferrer = !$isPrimary && DB::table('commission_splits')
                 ->where('lead_id', $dealId)
                 ->whereRaw('LOWER(reseller_name) = ?', [strtolower($actor->name ?? '')])
+                ->whereNull('deleted_at')
                 ->exists();
             if (!$isPrimary && !$isCoReferrer) {
                 return response()->json(['error' => 'You are not assigned to this deal.'], 403);
