@@ -63,6 +63,7 @@ class ResellerPortalController extends Controller
                 ? DB::table('commission_splits')
                     ->whereIn('lead_id', $recentIds)
                     ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                    ->whereNull('deleted_at')
                     ->get()->keyBy('lead_id')
                 : collect();
 
