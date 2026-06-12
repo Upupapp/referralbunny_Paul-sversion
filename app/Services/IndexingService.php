@@ -372,16 +372,17 @@ class IndexingService
     private function indexAdmins(): int
     {
         $rows = DB::table('tenant_memberships as tm')
-            ->join('users as u', 'u.id', '=', 'tm.user_id')
+            ->join('tenant_users as u', 'u.id', '=', 'tm.tenant_user_id')
             ->join('tenants as t', 't.id', '=', 'tm.tenant_id')
             ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->whereNull('u.deleted_at')
-            ->select('u.id', 'tm.tenant_id', 'u.name', 'u.email', 'tm.role', 't.name as tenant_name', 'u.updated_at')
+            ->where('tm.status', 'active')
+            ->where('u.status', 'active')
+            ->select('u.id', 'tm.tenant_id', 'u.first_name', 'u.last_name', 'u.nickname', 'u.email', 'tm.role', 't.name as tenant_name', 'u.updated_at')
             ->get()
             ->map(fn($r) => [
                 'entity_type'       => 'admin',
                 'entity_id'         => $r->id . ':' . $r->tenant_id,
-                'title'             => $r->name,
+                'title'             => $r->nickname ?: trim($r->first_name . ' ' . $r->last_name),
                 'description'       => $r->tenant_name . ' · ' . ucfirst($r->role),
                 'keywords'          => $r->email,
                 'tags'              => '{admin,' . $r->role . '}',
@@ -389,7 +390,7 @@ class IndexingService
                 'url'               => '/tenant/' . $r->tenant_id . '/settings/team',
                 'tenant_id'         => $r->tenant_id,
                 'relationships_json'=> json_encode(['tenant_id' => $r->tenant_id, 'role' => $r->role]),
-                'searchable_text'   => implode(' ', array_filter([$r->name, $r->email, $r->role, $r->tenant_name])),
+                'searchable_text'   => implode(' ', array_filter([$r->first_name, $r->last_name, $r->nickname, $r->email, $r->role, $r->tenant_name])),
                 'last_activity_at'  => $r->updated_at,
                 'created_at'        => now(),
                 'updated_at'        => now(),
@@ -429,21 +430,26 @@ class IndexingService
 
     private function indexOrganizations(): int
     {
-        try {
-            $count = 0;
-            \App\Models\Organization::with('tenant')->chunk(500, function ($orgs) use (&$count) {
+        $count = 0;
+        DB::table('organizations as o')
+            ->leftJoin('tenants as t', 't.id', '=', 'o.tenant_id')
+            ->select('o.id', 'o.tenant_id', 'o.name', 'o.industry', 'o.website', 'o.city', 'o.country', 'o.type', 'o.updated_at', 't.name as tenant_name')
+            ->orderBy('o.id')
+            ->get()
+            ->chunk(500)
+            ->each(function ($orgs) use (&$count) {
                 $rows = $orgs->map(fn($o) => [
                     'entity_type'       => 'organization',
                     'entity_id'         => (string) $o->id,
                     'title'             => $o->name,
-                    'description'       => ($o->tenant?->name ?? '—') . ($o->industry ? ' · ' . $o->industry : ''),
-                    'keywords'          => implode(' ', array_filter([$o->website, $o->email])),
+                    'description'       => ($o->tenant_name ?? '—') . ($o->industry ? ' · ' . $o->industry : ''),
+                    'keywords'          => $o->website ?? '',
                     'tags'              => '{organization}',
-                    'status'            => $o->status ?? 'active',
+                    'status'            => 'active',
                     'url'               => '/tenant/' . $o->tenant_id . '/contacts?org=' . $o->id,
                     'tenant_id'         => $o->tenant_id,
                     'relationships_json'=> json_encode(['tenant_id' => $o->tenant_id]),
-                    'searchable_text'   => implode(' ', array_filter([$o->name, $o->industry, $o->website, $o->email, $o->tenant?->name])),
+                    'searchable_text'   => implode(' ', array_filter([$o->name, $o->industry, $o->website, $o->city, $o->country, $o->type, $o->tenant_name])),
                     'last_activity_at'  => $o->updated_at,
                     'created_at'        => now(),
                     'updated_at'        => now(),
@@ -451,10 +457,7 @@ class IndexingService
                 DB::table('search_index')->insert($rows);
                 $count += count($rows);
             });
-            return $count;
-        } catch (\Throwable) {
-            return 0;
-        }
+        return $count;
     }
 
     private function indexNotifications(): int

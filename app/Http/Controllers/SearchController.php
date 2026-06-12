@@ -30,11 +30,12 @@ class SearchController extends Controller
         // tenant_id is always derived from authenticated session, never from user input
         $sessionTenantId = \App\Services\TenantContext::id();
         $filters = array_filter([
-            'type'      => $request->get('type'),
-            'status'    => $request->get('status'),
-            'from'      => $request->get('from'),
-            'to'        => $request->get('to'),
-            'tenant_id' => $sessionTenantId, // ignore any frontend-supplied tenant_id
+            'type'           => $request->get('type'),
+            'status'         => $request->get('status'),
+            'from'           => $request->get('from'),
+            'to'             => $request->get('to'),
+            'tenant_id'      => $sessionTenantId, // ignore any frontend-supplied tenant_id
+            'is_super_admin' => \App\Services\TenantContext::isSuperAdmin(),
         ]);
 
         if (strlen($query) < 1) {
@@ -58,7 +59,8 @@ class SearchController extends Controller
     {
         $query    = substr((string) $request->get('q', ''), 0, 200);
         $tenantId = \App\Services\TenantContext::id();
-        return response()->json($this->search->suggest($query, $tenantId));
+        $isSuperAdmin = \App\Services\TenantContext::isSuperAdmin();
+        return response()->json($this->search->suggest($query, $tenantId, $isSuperAdmin));
     }
 
     // GET /api/search/recent

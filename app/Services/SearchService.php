@@ -28,6 +28,16 @@ class SearchService
         'notification'     => ['label' => 'Notification',     'icon' => 'bell'],
     ];
 
+    // Entity types whose results link to /platform/* (super-admin only).
+    // Excluded from non-super-admin (tenant/reseller/partner) search & suggest
+    // results — otherwise they either leak platform-wide records (promo codes,
+    // promotions, approval requests are indexed with tenant_id = null) or
+    // return dead links the requesting session can't open.
+    private const PLATFORM_ONLY_ENTITY_TYPES = [
+        'tenant', 'invoice', 'payment', 'subscription',
+        'promo_code', 'promotion', 'approval_request',
+    ];
+
     // Scoped search keywords → entity type + status filter
     private const SCOPE_MAP = [
         'tenant'       => ['type' => 'tenant',           'status' => null],
@@ -62,7 +72,9 @@ class SearchService
     public function search(string $query, array $filters = [], int $limit = 20, int $offset = 0): array
     {
         $query   = trim($query);
-        $command = $this->parseCommand($query);
+        // Slash-commands all resolve to /platform/* navigation or actions —
+        // only surface them to super-admin sessions (see PLATFORM_ONLY_ENTITY_TYPES note above).
+        $command = !empty($filters['is_super_admin']) ? $this->parseCommand($query) : null;
         $scoped  = $this->parseScope($query);
         $terms   = $this->expandTerms($scoped['query']);
 
@@ -92,6 +104,11 @@ class SearchService
         // Tenant filter
         if (!empty($filters['tenant_id'])) {
             $dbQuery->where('tenant_id', $filters['tenant_id']);
+
+            // Non-super-admin sessions can't open /platform/* — hide those entity types.
+            if (empty($filters['is_super_admin'])) {
+                $dbQuery->whereNotIn('entity_type', self::PLATFORM_ONLY_ENTITY_TYPES);
+            }
         }
 
         // Text search: each term must match somewhere in searchable_text
@@ -138,7 +155,7 @@ class SearchService
         ];
     }
 
-    public function suggest(string $query, ?string $tenantId = null): array
+    public function suggest(string $query, ?string $tenantId = null, bool $isSuperAdmin = false): array
     {
         if (strlen($query) < 2) return [];
 
@@ -148,11 +165,20 @@ class SearchService
             ->where('is_deleted', false)
             ->where('searchable_text', 'ILIKE', '%' . $escaped . '%');
 
-        // Scope to tenant's own data plus platform-level records (tenant_id = null)
         if ($tenantId) {
-            $q->where(function ($sub) use ($tenantId) {
-                $sub->where('tenant_id', $tenantId)->orWhereNull('tenant_id');
-            });
+            if ($isSuperAdmin) {
+                // Super admin viewing a specific tenant: include that tenant's
+                // data plus platform-level records (tenant_id = null) — both
+                // resolve to /platform/* routes they can access.
+                $q->where(function ($sub) use ($tenantId) {
+                    $sub->where('tenant_id', $tenantId)->orWhereNull('tenant_id');
+                });
+            } else {
+                // Tenant/reseller/partner session: only their own data, and
+                // never the platform-only entity types (see search() above).
+                $q->where('tenant_id', $tenantId)
+                  ->whereNotIn('entity_type', self::PLATFORM_ONLY_ENTITY_TYPES);
+            }
         }
 
         return $q->select('entity_type', 'title', 'url', 'status')
