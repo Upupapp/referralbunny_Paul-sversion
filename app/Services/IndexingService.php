@@ -50,6 +50,16 @@ class IndexingService
             }
         }
 
+        // Each type above does a delete-then-reinsert, leaving dead tuples behind.
+        // Across 14 types that roughly doubles the table + trgm GIN index size per
+        // run; VACUUM reclaims that space (cannot run inside a transaction, so it's
+        // skipped if reindexAll() is ever called within one).
+        try {
+            DB::statement('VACUUM ANALYZE search_index');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[IndexingService] post-reindex VACUUM failed: ' . $e->getMessage());
+        }
+
         return $results;
     }
 
