@@ -2568,7 +2568,7 @@ function dealComments(dealId, tenantId, viewerUserId, viewerRole) {
             if (!text) return '';
             const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
             return e.replace(
-                /(https?:\/\/[^\s<>&"'()\[\]{}]+)/gi,
+                /(https?:\/\/[^\s<>"'()\[\]{}]+)/gi,
                 '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#7B61FF;text-decoration:underline;word-break:break-all">$1</a>'
             );
         },

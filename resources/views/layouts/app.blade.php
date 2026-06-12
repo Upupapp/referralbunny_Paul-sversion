@@ -888,7 +888,7 @@ document.addEventListener('alpine:init', () => {
         const escaped = String(text)
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         return escaped.replace(
-            /(https?:\/\/[^\s<>"'&]+)/gi,
+            /(https?:\/\/[^\s<>"']+)/gi,
             '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">$1</a>'
         );
     });

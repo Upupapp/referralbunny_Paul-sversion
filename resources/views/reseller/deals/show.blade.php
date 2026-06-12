@@ -877,7 +877,7 @@ window.__rsDeal = {
                     <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($note['created_at'])->diffForHumans() }}</span>
                 </div>
                 @if(!empty($note['text']))
-                <p class="text-sm text-gray-600 leading-relaxed break-words ml-8">{!! preg_replace_callback('~(https?://[^\s<>"\']+)~i', fn($m) => '<a href="' . e($m[1]) . '" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">' . e($m[1]) . '</a>', e($note['text'] ?? '')) !!}</p>
+                <p class="text-sm text-gray-600 leading-relaxed break-words ml-8">{!! preg_replace_callback('~(https?://[^\s<>"\']+)~i', fn($m) => '<a href="' . $m[1] . '" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline hover:text-teal-800 break-all">' . $m[1] . '</a>', e($note['text'] ?? '')) !!}</p>
                 @endif
                 @if(!empty($note['attachments']))
                 <div class="flex flex-wrap gap-1.5 mt-2 ml-8">
