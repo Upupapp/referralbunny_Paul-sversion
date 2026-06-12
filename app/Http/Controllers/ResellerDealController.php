@@ -300,12 +300,18 @@ class ResellerDealController extends Controller
         $myCommission = 0.0;
         $myPct        = 100.0;
         try {
+            $coReferrerTotal = (float) $splits->where('role', 'secondary')->sum('percentage');
             $mySplitRecord = $splits->first(fn($s) => strtolower((string) $s->reseller_name) === strtolower((string) $reseller->name));
-            if ($mySplitRecord) {
-                $myPct = (float) ($mySplitRecord->percentage ?? 100.0);
+            if ($mySplitRecord && $mySplitRecord->role === 'secondary') {
+                $myPct = (float) ($mySplitRecord->percentage ?? 0.0);
+            } elseif ($mySplitRecord) {
+                // Cap the primary's recorded percentage at 100% minus co-referrer
+                // carve-outs, so shares never exceed the pool. A referrer reassignment
+                // resets the primary's split to a flat 100, and co-referrers added
+                // afterwards carve out of that without updating the primary's record.
+                $myPct = max(0.0, min((float) $mySplitRecord->percentage, 100.0 - $coReferrerTotal));
             } else {
-                $coReferrerTotal = $splits->where('role', 'secondary')->sum('percentage');
-                $myPct = max(0.0, 100.0 - (float) $coReferrerTotal);
+                $myPct = max(0.0, 100.0 - $coReferrerTotal);
             }
             $myCommission = $calc->referrerShare($remainingPool, $myPct);
         } catch (\Throwable) {}
@@ -1012,6 +1018,11 @@ class ResellerDealController extends Controller
 
         $lead = Lead::where('id', $dealId)->where('tenant_id', $tenantId)->firstOrFail();
 
+        // Block edits when commission is finalised (mirrors doUpdateSplit/doRemoveSplit)
+        if (in_array($lead->commission_status, ['locked', 'paid'], true)) {
+            return response()->json(['error' => 'Commission splits cannot be modified after commission is locked or paid.'], 422);
+        }
+
         $data = $request->validate([
             'referrer_email' => 'required|email|max:200',
             'percentage'     => 'required|numeric|min:0|max:100',
@@ -1034,16 +1045,19 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'This referrer is already associated with this deal.'], 422);
         }
 
-        $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
-            ->where('role', 'secondary')
-            ->sum('percentage');
-        if ($existingSecondary + $percentage > 100.005) {
-            $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
-            return response()->json(['error' => "Co-referrer splits cannot exceed 100% combined. Available: {$available}%.", 'max_percentage' => $available], 422);
-        }
-
+        // Commit the split creation — 100% cap check is inside the transaction with
+        // lockForUpdate to prevent a race condition between two concurrent adds.
         DB::beginTransaction();
         try {
+            $existingSecondary = CommissionSplit::where('lead_id', $lead->id)
+                ->where('role', 'secondary')
+                ->lockForUpdate()
+                ->sum('percentage');
+            if ($existingSecondary + $percentage > 100.005) {
+                DB::rollBack();
+                $available = max(0.0, round(100.0 - (float) $existingSecondary, 2));
+                return response()->json(['error' => "Co-referrer splits cannot exceed 100% combined. Available: {$available}%.", 'max_percentage' => $available], 422);
+            }
             CommissionSplit::create([
                 'lead_id'         => $lead->id,
                 'reseller_name'   => $displayName,
@@ -1357,6 +1371,11 @@ class ResellerDealController extends Controller
 
         if (!$isPrimary) {
             return response()->json(['error' => 'Only the primary Referrer on this deal can add co-referrers.'], 403);
+        }
+
+        // Block edits when commission is finalised (mirrors doUpdateSplit/doRemoveSplit)
+        if (in_array($lead->commission_status, ['locked', 'paid'], true)) {
+            return response()->json(['error' => 'Commission splits cannot be modified after commission is locked or paid.'], 422);
         }
 
         $data = $request->validate([
@@ -2161,7 +2180,24 @@ class ResellerDealController extends Controller
         }
 
         $removedName = $split->reseller_name;
-        $split->delete();
+
+        // Lock all splits for this lead + re-read lead under lock to prevent a race
+        // with a concurrent commission_status change (mirrors doUpdateSplit()).
+        DB::transaction(function () use ($splitId, $lead) {
+            CommissionSplit::where('lead_id', $lead->id)->lockForUpdate()->get();
+            $freshLead = Lead::where('id', $lead->id)->lockForUpdate()->first();
+            if ($freshLead && in_array($freshLead->commission_status, ['locked', 'paid'], true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'commission_status' => 'Commission was locked by another process. Co-referrers cannot be removed.',
+                ]);
+            }
+
+            CommissionSplit::where('id', $splitId)
+                ->where('lead_id', $lead->id)
+                ->where('role', 'secondary')
+                ->firstOrFail()
+                ->delete();
+        });
 
         // Resolve removed co-referrer — isolated so a DB failure doesn't suppress notification or email
         $coRefReseller = null;
