@@ -233,7 +233,7 @@ class ResellerDealController extends Controller
         try {
             $attachments = DB::table('lead_attachments')
                 ->where('lead_id', $lead->id)
-                ->orderBy('created_at', 'desc')
+                ->orderBy('uploaded_at', 'desc')
                 ->limit(50)
                 ->get()
                 ->toArray();
