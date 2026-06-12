@@ -262,6 +262,7 @@ class LguIdsDealNoteTaskService
 
         $coReferrerNames = DB::table('commission_splits')
             ->where('lead_id', $lead->id)
+            ->whereNull('deleted_at')
             ->pluck('reseller_name');
 
         $allNames = $names->merge($coReferrerNames)

@@ -107,6 +107,7 @@ class LguIdsReferrerDealNoteReminderService
                                ->from('commission_splits')
                                ->whereColumn('commission_splits.lead_id', 'leads.id')
                                ->whereRaw('LOWER(commission_splits.reseller_name) = LOWER(resellers.name)')
+                               ->whereNull('commission_splits.deleted_at')
                            );
                     })
                     ->whereNotExists(fn($nc) => $nc
@@ -148,6 +149,7 @@ class LguIdsReferrerDealNoteReminderService
                       ->from('commission_splits')
                       ->whereColumn('commission_splits.lead_id', 'leads.id')
                       ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                      ->whereNull('commission_splits.deleted_at')
                   );
             })
             ->whereNotExists(fn($dc) => $dc

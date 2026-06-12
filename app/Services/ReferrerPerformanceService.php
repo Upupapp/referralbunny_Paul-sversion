@@ -45,7 +45,7 @@ class ReferrerPerformanceService
                     COALESCE(cs.percentage, 100.0) AS percentage
                 FROM leads AS l
                 LEFT JOIN commission_splits AS cs
-                    ON cs.lead_id = l.id AND LOWER(cs.reseller_name) = ?
+                    ON cs.lead_id = l.id AND LOWER(cs.reseller_name) = ? AND cs.deleted_at IS NULL
                 WHERE l.tenant_id = ?
                   AND (LOWER(l.reseller_name) = ? OR cs.lead_id IS NOT NULL)
                   AND l.deleted_at IS NULL
@@ -90,7 +90,8 @@ class ReferrerPerformanceService
             $overdueUpdates = DB::table('leads AS l')
                 ->leftJoin('commission_splits AS cs2', function ($join) use ($lower) {
                     $join->on('cs2.lead_id', '=', 'l.id')
-                         ->whereRaw('LOWER(cs2.reseller_name) = ?', [$lower]);
+                         ->whereRaw('LOWER(cs2.reseller_name) = ?', [$lower])
+                         ->whereNull('cs2.deleted_at');
                 })
                 ->where('l.tenant_id', $tenantId)
                 ->whereRaw('(LOWER(l.reseller_name) = ? OR cs2.lead_id IS NOT NULL)', [$lower])

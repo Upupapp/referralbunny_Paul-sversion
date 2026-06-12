@@ -94,6 +94,7 @@ class ResellerPortalController extends Controller
                                 ->from('commission_splits')
                                 ->whereColumn('commission_splits.lead_id', 'leads.id')
                                 ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [$lower])
+                                ->whereNull('commission_splits.deleted_at')
                             )
                         );
                 })
@@ -158,6 +159,7 @@ class ResellerPortalController extends Controller
                         ->from('commission_splits')
                         ->whereColumn('commission_splits.lead_id', 'leads.id')
                         ->whereRaw('LOWER(commission_splits.reseller_name) = ?', [strtolower($reseller->name)])
+                        ->whereNull('commission_splits.deleted_at')
                     )
                 )
                 ->selectRaw('commission_status, COUNT(DISTINCT id) AS cnt')
@@ -184,6 +186,7 @@ class ResellerPortalController extends Controller
             ? DB::table('commission_splits')
                 ->whereIn('lead_id', $pageIds)
                 ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
+                ->whereNull('deleted_at')
                 ->get()
                 ->keyBy('lead_id')
             : collect();

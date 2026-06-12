@@ -110,6 +110,7 @@ class ResellerController extends Controller
             $splitsByLead = count($leadIds) > 0
                 ? DB::table('commission_splits')
                     ->whereIn('lead_id', $leadIds)
+                    ->whereNull('deleted_at')
                     ->select('lead_id', 'reseller_name', 'percentage')
                     ->get()
                     ->groupBy('lead_id')

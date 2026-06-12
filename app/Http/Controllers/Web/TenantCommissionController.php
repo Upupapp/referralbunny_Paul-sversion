@@ -95,6 +95,7 @@ class TenantCommissionController extends Controller
         $dealIds = collect($deals->items())->pluck('id');
         $splits  = DB::table('commission_splits')
             ->whereIn('lead_id', $dealIds)
+            ->whereNull('deleted_at')
             ->get()
             ->groupBy('lead_id');
 
@@ -211,7 +212,7 @@ class TenantCommissionController extends Controller
         }
 
         $dealIds = (clone $query)->pluck('id');
-        $splits  = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->get()->groupBy('lead_id');
+        $splits  = DB::table('commission_splits')->whereIn('lead_id', $dealIds)->whereNull('deleted_at')->get()->groupBy('lead_id');
         $pSplits = DB::table('deal_partner_splits')->whereIn('deal_id', $dealIds)->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', '!=', 'removed')->get()->groupBy('deal_id');
         $deals   = $query->orderByDesc('created_at')->cursor();
 
