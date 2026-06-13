@@ -47,6 +47,7 @@ class PermissionService
         'invite_tenant_managers'  => true,
         'invite_tenant_staff'     => true,
         // Disabled by default for Manager:
+        'manage_referral_program_setup' => false,
         'manage_billing_and_subscription' => false,
         'upgrade_subscription'    => false,
         'change_payment_method'   => false,

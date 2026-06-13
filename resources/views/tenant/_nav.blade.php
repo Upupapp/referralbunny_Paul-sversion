@@ -606,6 +606,16 @@ $workspaceBadge += $criticalBadge;
                 </svg>
                 Settings
             </a>
+
+            <a href="{{ route('tenant.settings.referral-program.overview', $tenantId) }}"
+               aria-current="{{ request()->routeIs('tenant.settings.referral-program.*') ? 'page' : 'false' }}"
+               @click="window.dispatchEvent(new CustomEvent('sidebar-close'))"
+               class="nav-child {{ request()->routeIs('tenant.settings.referral-program.*') ? 'nav-child-active' : '' }}">
+                <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Referral Program
+            </a>
         </div>
     </div>
     @endif

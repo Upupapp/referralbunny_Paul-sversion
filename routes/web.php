@@ -362,6 +362,14 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->name('settings');
     Route::post('/settings',       [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('settings.update');
 
+    // ── Referral Program Setup Wizard ─────────────────────────────
+    Route::prefix('settings/referral-program')->name('settings.referral-program.')->group(function () {
+        Route::get('/',              [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'overview'])->name('overview');
+        Route::get('/wizard',        [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'wizard'])->name('wizard');
+        Route::patch('/wizard/step/{step}', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'updateStep'])->middleware('throttle:60,1')->name('wizard.step');
+        Route::post('/wizard/discard', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'discardDraft'])->name('wizard.discard');
+    });
+
     // ── Export Approval Center ────────────────────────────────────
     Route::get('/exports',                           [\App\Http\Controllers\Web\TenantExportController::class, 'index'])->name('exports');
     Route::get('/exports/{exportId}',                [\App\Http\Controllers\Web\TenantExportController::class, 'show'])->name('exports.show');
