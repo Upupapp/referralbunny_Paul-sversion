@@ -8,7 +8,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         @foreach($options['programTypes'] as $key => $type)
-        <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-colors"
+        <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-[#7B61FF] focus-within:ring-offset-1"
                :class="data.program_type === '{{ $key }}' ? 'border-[#7B61FF] bg-purple-50 ring-1 ring-[#7B61FF]' : 'border-gray-200 hover:border-purple-200'">
             <input type="radio" name="program_type" value="{{ $key }}" x-model="data.program_type" class="sr-only">
             @if(($recommendation['program_type'] ?? null) === $key)

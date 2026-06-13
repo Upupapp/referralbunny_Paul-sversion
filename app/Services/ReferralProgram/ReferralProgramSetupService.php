@@ -41,6 +41,10 @@ class ReferralProgramSetupService
         'industry-goal',
         'program-type',
         'participants',
+        'pipeline',
+        'fields',
+        'rewards',
+        'partner-split',
     ];
 
     /**

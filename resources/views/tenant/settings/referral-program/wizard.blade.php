@@ -87,6 +87,18 @@
                     @case('participants')
                         @include('tenant.settings.referral-program._steps.participants')
                         @break
+                    @case('pipeline')
+                        @include('tenant.settings.referral-program._steps.pipeline')
+                        @break
+                    @case('fields')
+                        @include('tenant.settings.referral-program._steps.fields')
+                        @break
+                    @case('rewards')
+                        @include('tenant.settings.referral-program._steps.rewards')
+                        @break
+                    @case('partner-split')
+                        @include('tenant.settings.referral-program._steps.partner-split')
+                        @break
                 @endswitch
             </div>
 
@@ -189,23 +201,14 @@ function referralWizardStep(tenantId, step, initialData) {
             this.saving = true;
 
             try {
-                const body = new URLSearchParams();
-                body.append('_explicit', explicit ? '1' : '0');
-                Object.entries(this.data).forEach(([key, value]) => {
-                    if (Array.isArray(value)) {
-                        value.forEach(v => body.append(key + '[]', v));
-                    } else if (value !== null && value !== undefined) {
-                        body.append(key, value);
-                    }
-                });
-
                 const res = await fetch(`/tenant/${tenantId}/settings/referral-program/wizard/step/${step}`, {
                     method: 'PATCH',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
                         'Accept': 'application/json',
+                        'Content-Type': 'application/json',
                     },
-                    body,
+                    body: JSON.stringify({ ...this.data, _explicit: explicit ? '1' : '0' }),
                 });
 
                 let json = {};

@@ -77,13 +77,17 @@ class ReferralProgramSetupController extends Controller
             }
         }
 
-        $step = $request->query('step', $draft->current_step ?? ReferralProgramSetupService::STEPS[0]);
-        if (! in_array($step, ReferralProgramSetupService::STEPS, true)) {
-            $step = ReferralProgramSetupService::STEPS[0];
+        $step = $request->query('step', $draft->current_step ?? ReferralProgramSetupService::IMPLEMENTED_STEPS[0]);
+        if (! in_array($step, ReferralProgramSetupService::IMPLEMENTED_STEPS, true)) {
+            $step = ReferralProgramSetupService::IMPLEMENTED_STEPS[0];
         }
 
         $industry = $draft->config['industry_goal']['industry'] ?? null;
         $recommendation = app(ReferralProgramRecommendationService::class)->recommendForIndustry($industry);
+
+        $programType = $draft->config['program_type']['program_type'] ?? $recommendation['program_type'] ?? null;
+        $pipelineStages = $draft->config['pipeline']['stages']
+            ?? ReferralProgramOptions::pipelineStageTemplates()[ReferralProgramOptions::pipelineTemplateForProgramType($programType)];
 
         return view('tenant.settings.referral-program.wizard', [
             'tenant'           => $tenant,
@@ -97,13 +101,18 @@ class ReferralProgramSetupController extends Controller
             'implementedSteps' => ReferralProgramSetupService::IMPLEMENTED_STEPS,
             'health'           => $setup->healthScore($draft),
             'recommendation'   => $recommendation,
+            'pipelineStages'   => $pipelineStages,
             'options'          => [
-                'industries'   => ReferralProgramOptions::industries(),
-                'goals'        => ReferralProgramOptions::referralGoals(),
-                'programTypes' => ReferralProgramOptions::programTypes(),
-                'roles'        => ReferralProgramOptions::participantRoles(),
+                'industries'      => ReferralProgramOptions::industries(),
+                'goals'           => ReferralProgramOptions::referralGoals(),
+                'programTypes'    => ReferralProgramOptions::programTypes(),
+                'roles'           => ReferralProgramOptions::participantRoles(),
+                'fieldDataTypes'  => ReferralProgramOptions::customFieldDataTypes(),
+                'commissionTypes' => ReferralProgramOptions::commissionTypes(),
+                'reassignmentModes' => ReferralProgramOptions::reassignmentModes(),
+                'partnerSplitTypes' => ReferralProgramOptions::partnerSplitTypes(),
             ],
-            'stepData'         => $this->stepData($draft, $step, $tenant, $recommendation),
+            'stepData'         => $this->stepData($draft, $step, $tenant, $recommendation, $pipelineStages),
             'justStarted'      => $justStarted,
             'protected'        => ProtectedTenants::isProtected($tenantId),
         ]);
@@ -125,6 +134,27 @@ class ReferralProgramSetupController extends Controller
             return response()->json(['success' => false, 'message' => 'No setup draft found. Please reload and start again.'], 404);
         }
 
+        $setup = app(ReferralProgramSetupService::class);
+
+        // LGU IDS' commission/pipeline config is locked to its dedicated pricing
+        // service and pipeline-stage rules — silently ignore writes to those
+        // sections instead of erroring, per the protected-workspace rules.
+        if (ProtectedTenants::isProtected($tenantId) && in_array($step, ProtectedTenants::lockedConfigSteps(), true)) {
+            app(ReferralProgramAuditService::class)->log(
+                $tenantId,
+                'lgu_ids_protected_setting_change_blocked',
+                Auth::guard('tenant')->id(),
+                ['draft_id' => $draft->id, 'step' => $step]
+            );
+
+            return response()->json([
+                'success'        => true,
+                'message'        => "This section is managed by your administrator and can't be changed here.",
+                'health'         => $setup->healthScore($draft),
+                'recommendation' => null,
+            ]);
+        }
+
         try {
             $data = $this->validateStep($request, $step);
         } catch (ValidationException $e) {
@@ -135,7 +165,6 @@ class ReferralProgramSetupController extends Controller
             ], 422);
         }
 
-        $setup = app(ReferralProgramSetupService::class);
         $setup->updateStep($draft, $step, $data);
 
         $userId   = Auth::guard('tenant')->id();
@@ -229,7 +258,7 @@ class ReferralProgramSetupController extends Controller
      * falling back to sensible defaults derived from the tenant's existing
      * profile (or the industry recommendation, for Program Type).
      */
-    private function stepData(TenantReferralProgramDraft $draft, string $step, Tenant $tenant, array $recommendation): array
+    private function stepData(TenantReferralProgramDraft $draft, string $step, Tenant $tenant, array $recommendation, array $pipelineStages = []): array
     {
         $config = $draft->config ?? [];
 
@@ -260,6 +289,31 @@ class ReferralProgramSetupController extends Controller
                 'roles' => ['tenant_admins', 'referrers'],
             ], $config['participants'] ?? []),
 
+            'pipeline' => [
+                'stages' => $config['pipeline']['stages'] ?? $pipelineStages,
+            ],
+
+            'fields' => [
+                'fields' => $config['fields']['fields'] ?? [],
+            ],
+
+            'rewards' => array_merge([
+                'commission_type'     => 'percentage_of_value',
+                'company_share_pct'   => 30,
+                'referrer_share_pct'  => 70,
+                'default_expiry_days' => 21,
+                'reassignment_mode'   => 'manual',
+            ], $config['rewards'] ?? []),
+
+            'partner-split' => array_merge([
+                'allow_partners'      => in_array('partners', $config['participants']['roles'] ?? ['tenant_admins', 'referrers'], true),
+                'require_approval'    => true,
+                'split_type'          => 'percentage',
+                'default_split_value' => 50,
+                'lock_after_stage'    => null,
+                'notify_partner'      => true,
+            ], $config['partner_split'] ?? []),
+
             default => [],
         };
     }
@@ -274,6 +328,10 @@ class ReferralProgramSetupController extends Controller
             'industry-goal'  => "Tell us your industry and main goal so we can recommend a program type that fits.",
             'program-type'   => "Not sure? The highlighted option is what we'd recommend based on your industry — you can pick a different one anytime.",
             'participants'   => "Tenant admins are always included. Add Referrers and Partners if they'll take part in this program.",
+            'pipeline'       => "We've pre-filled stages based on your program type. Add, rename, reorder, or remove stages to match how deals move through your team.",
+            'fields'         => "Add any extra details your team needs to capture on each deal. You can always add more fields later — existing data is never deleted.",
+            'rewards'        => "Set how commission is calculated and split. Company share + referrer share should add up to 100%.",
+            'partner-split'  => "If Partners are part of this program, decide how their share is calculated and when it locks in.",
         ];
     }
 
@@ -301,6 +359,46 @@ class ReferralProgramSetupController extends Controller
             'participants' => $request->validate([
                 'roles'   => ['required', 'array', 'min:1'],
                 'roles.*' => ['string', Rule::in(array_keys(ReferralProgramOptions::participantRoles()))],
+            ]),
+            'pipeline' => $request->validate([
+                'stages'             => ['required', 'array', 'min:2', 'max:10'],
+                'stages.*.stage_key' => ['required', 'string', 'max:50'],
+                'stages.*.name'      => ['required', 'string', 'max:100'],
+                'stages.*.days'      => ['nullable', 'integer', 'min:1', 'max:365'],
+                'stages.*.color'     => ['nullable', 'string', 'max:20'],
+                'stages.*.is_final'  => ['nullable', 'boolean'],
+                'stages.*.is_won'    => ['nullable', 'boolean'],
+            ]),
+            'fields' => $request->validate([
+                'fields'               => ['present', 'array', 'max:20'],
+                'fields.*.field_key'   => ['required', 'string', 'max:50'],
+                'fields.*.field_label' => ['required', 'string', 'max:100'],
+                'fields.*.data_type'   => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::customFieldDataTypes()))],
+                'fields.*.is_required' => ['nullable', 'boolean'],
+            ]),
+            'rewards' => $request->validate([
+                'commission_type'    => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::commissionTypes()))],
+                'company_share_pct'  => ['required', 'numeric', 'min:0', 'max:100'],
+                'referrer_share_pct' => ['required', 'numeric', 'min:0', 'max:100', function ($attribute, $value, $fail) use ($request) {
+                    $company = (float) $request->input('company_share_pct', 0);
+                    if (abs(($company + (float) $value) - 100) > 0.01) {
+                        $fail('Company share and referrer share must add up to 100%.');
+                    }
+                }],
+                'default_expiry_days' => ['required', 'integer', 'min:1', 'max:365'],
+                'reassignment_mode'   => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::reassignmentModes()))],
+            ]),
+            'partner-split' => $request->validate([
+                'allow_partners'      => ['required', 'boolean'],
+                'require_approval'    => ['nullable', 'boolean'],
+                'split_type'          => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::partnerSplitTypes()))],
+                'default_split_value' => ['nullable', 'numeric', 'min:0', function ($attribute, $value, $fail) use ($request) {
+                    if ($request->input('split_type') === 'percentage' && $value > 100) {
+                        $fail('Percentage splits cannot exceed 100%.');
+                    }
+                }],
+                'lock_after_stage'    => ['nullable', 'string', 'max:50'],
+                'notify_partner'      => ['nullable', 'boolean'],
             ]),
             default => [],
         };

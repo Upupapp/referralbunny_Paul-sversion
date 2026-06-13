@@ -197,4 +197,120 @@ class ReferralProgramOptions
             'contacts_only'   => ['label' => 'Contacts only', 'description' => "People tracked as contacts who don't have a ReferralBunny account or receive emails."],
         ];
     }
+
+    /**
+     * Pipeline stage templates for Step 5, keyed by template name. Each stage
+     * mirrors the tenant_pipeline_stages columns (stage_key/name/days/color/
+     * is_final/is_won); array position is the stage's order.
+     */
+    public static function pipelineStageTemplates(): array
+    {
+        return [
+            'sales' => [
+                ['stage_key' => 'introduction', 'name' => 'Introduction',  'days' => 7,    'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'qualified',    'name' => 'Qualified',     'days' => 7,    'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'proposal',     'name' => 'Proposal Sent', 'days' => 7,    'color' => '#FBBF24', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'won',          'name' => 'Won',           'days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'lost',         'name' => 'Lost',          'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+            'affiliate' => [
+                ['stage_key' => 'clicked',   'name' => 'Link Clicked',    'days' => 14,   'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'signed_up', 'name' => 'Signed Up',       'days' => 14,   'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'converted', 'name' => 'Converted (Paid)','days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'churned',   'name' => 'Churned',         'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+            'customer' => [
+                ['stage_key' => 'referred',      'name' => 'Referred',        'days' => 14,   'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'signed_up',     'name' => 'Signed Up',       'days' => 14,   'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'purchased',     'name' => 'Purchased',       'days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'not_converted', 'name' => 'Did Not Convert', 'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+            'partner_cosell' => [
+                ['stage_key' => 'introduction', 'name' => 'Introduction',  'days' => 7,    'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'co_selling',   'name' => 'Co-Selling',    'days' => 14,   'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'proposal',     'name' => 'Proposal Sent','days' => 7,    'color' => '#FBBF24', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'closed_won',   'name' => 'Closed Won',    'days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'closed_lost',  'name' => 'Closed Lost',   'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+            'donor_volunteer' => [
+                ['stage_key' => 'new_contact', 'name' => 'New Contact', 'days' => 14,   'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'engaged',     'name' => 'Engaged',     'days' => 14,   'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'onboarded',   'name' => 'Onboarded',   'days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'lapsed',      'name' => 'Lapsed',      'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+            'service_booking' => [
+                ['stage_key' => 'inquiry',   'name' => 'Inquiry',   'days' => 3,    'color' => '#60A5FA', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'quoted',    'name' => 'Quoted',    'days' => 7,    'color' => '#7B61FF', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'booked',    'name' => 'Booked',    'days' => 14,   'color' => '#FBBF24', 'is_final' => false, 'is_won' => false],
+                ['stage_key' => 'completed', 'name' => 'Completed', 'days' => null, 'color' => '#34D399', 'is_final' => true,  'is_won' => true],
+                ['stage_key' => 'cancelled', 'name' => 'Cancelled', 'days' => null, 'color' => '#9CA3AF', 'is_final' => true,  'is_won' => false],
+            ],
+        ];
+    }
+
+    /**
+     * Maps a Step 3 program type to the closest pipeline template name above.
+     */
+    public static function pipelineTemplateForProgramType(?string $programType): string
+    {
+        return match ($programType) {
+            'affiliate', 'influencer_creator'                    => 'affiliate',
+            'customer_referral', 'event_referral'                => 'customer',
+            'partner_cosell', 'channel_partner', 'agency_referral' => 'partner_cosell',
+            'donor_volunteer'                                    => 'donor_volunteer',
+            'service_booking'                                    => 'service_booking',
+            default                                              => 'sales',
+        };
+    }
+
+    /**
+     * Data types offered when adding a custom deal field on Step 6 — mirrors
+     * the data_type options already used by the deal import column mapper.
+     */
+    public static function customFieldDataTypes(): array
+    {
+        return [
+            'text'    => 'Text',
+            'number'  => 'Number',
+            'email'   => 'Email',
+            'date'    => 'Date',
+            'boolean' => 'Yes / No',
+            'url'     => 'URL',
+            'phone'   => 'Phone',
+        ];
+    }
+
+    /**
+     * Commission types offered on Step 7 — mirrors tenant_program_configs.commission_type.
+     */
+    public static function commissionTypes(): array
+    {
+        return [
+            'percentage_of_value' => ['label' => 'Percentage of Deal Value', 'description' => 'Commission is a percentage of the Added Amount (Deal Value minus Base Cost).'],
+            'fixed_amount'        => ['label' => 'Fixed Amount per Deal', 'description' => 'A flat commission amount is paid out per closed deal, regardless of value.'],
+            'placement_fee'       => ['label' => 'Placement Fee', 'description' => 'A one-time fee is paid when a referral results in a placement (e.g. hire, booking, signup).'],
+        ];
+    }
+
+    /**
+     * Reassignment modes offered on Step 7 — mirrors tenant_program_configs.reassignment_mode.
+     */
+    public static function reassignmentModes(): array
+    {
+        return [
+            'manual'    => ['label' => 'Manual', 'description' => 'Tenant Admins reassign deals between Referrers and Partners by hand.'],
+            'automatic' => ['label' => 'Automatic', 'description' => 'Deals are automatically reassigned based on pipeline rules, e.g. on a stage timeout.'],
+        ];
+    }
+
+    /**
+     * Partner split types offered on Step 8 — mirrors CommissionCalculationService::partnerShare()'s $type argument.
+     */
+    public static function partnerSplitTypes(): array
+    {
+        return [
+            'percentage'   => ['label' => 'Percentage of Commission Pool', 'description' => "The partner's share is a percentage of the commission pool, split with the Referrer."],
+            'fixed_amount' => ['label' => 'Fixed Amount per Deal', 'description' => 'The partner receives a flat amount per closed deal, regardless of value.'],
+        ];
+    }
 }
