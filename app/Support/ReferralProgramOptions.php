@@ -313,4 +313,72 @@ class ReferralProgramOptions
             'fixed_amount' => ['label' => 'Fixed Amount per Deal', 'description' => 'The partner receives a flat amount per closed deal, regardless of value.'],
         ];
     }
+
+    /**
+     * Document types offered on Step 9's required-documents list — mirrors the
+     * shape of reseller_required_documents.document_type.
+     */
+    public static function documentTypes(): array
+    {
+        return [
+            'government_id'    => 'Government-issued ID',
+            'business_permit'  => 'Business Permit',
+            'tax_document'     => 'Tax Document',
+            'proof_of_address' => 'Proof of Address',
+            'certification'    => 'Certification / License',
+            'other'            => 'Other',
+        ];
+    }
+
+    /**
+     * Approver role options offered on Step 10.
+     */
+    public static function approverRoles(): array
+    {
+        return [
+            'owner_admin'         => 'Owner & Admins only',
+            'owner_admin_manager' => 'Owner, Admins & Managers',
+        ];
+    }
+
+    /**
+     * Import templates offered on Step 12 — sourced from
+     * config/referralbunny_import_templates.php so the wizard and the import
+     * tooling never drift apart.
+     */
+    public static function importTemplates(): array
+    {
+        return collect(config('referralbunny_import_templates', []))
+            ->map(fn (array $tpl) => [
+                'label'           => $tpl['label'] ?? '',
+                'description'     => $tpl['description'] ?? '',
+                'required_fields' => $tpl['required_fields'] ?? [],
+                'optional_fields' => $tpl['optional_fields'] ?? [],
+            ])
+            ->all();
+    }
+
+    /**
+     * Maps a Step 2 industry to the closest import template key above, used
+     * to pre-select a sensible default on Step 12.
+     */
+    public static function importTemplateForIndustry(?string $industry): string
+    {
+        return match ($industry) {
+            'saas_software'                                        => 'saas',
+            'retail', 'ecommerce'                                  => 'retail',
+            'food_beverage'                                        => 'fnb',
+            'beauty_wellness', 'healthcare_wellness'               => 'beauty',
+            'pet_industry'                                         => 'pet',
+            'training_events', 'education'                         => 'training',
+            'ngo_nonprofit'                                        => 'ngo',
+            'real_estate'                                          => 'real_estate',
+            'professional_services', 'agencies_marketing',
+            'b2b_services', 'finance_insurance',
+            'construction_contractors', 'hospitality_travel',
+            'manufacturing_distribution'                           => 'professional_services',
+            'government_public_sector'                             => 'government_generic',
+            default                                                => 'default',
+        };
+    }
 }

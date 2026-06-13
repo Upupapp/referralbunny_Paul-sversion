@@ -99,6 +99,18 @@
                     @case('partner-split')
                         @include('tenant.settings.referral-program._steps.partner-split')
                         @break
+                    @case('documents')
+                        @include('tenant.settings.referral-program._steps.documents')
+                        @break
+                    @case('approvals')
+                        @include('tenant.settings.referral-program._steps.approvals')
+                        @break
+                    @case('forms')
+                        @include('tenant.settings.referral-program._steps.forms')
+                        @break
+                    @case('import')
+                        @include('tenant.settings.referral-program._steps.import')
+                        @break
                 @endswitch
             </div>
 

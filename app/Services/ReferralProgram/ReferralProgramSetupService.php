@@ -45,6 +45,10 @@ class ReferralProgramSetupService
         'fields',
         'rewards',
         'partner-split',
+        'documents',
+        'approvals',
+        'forms',
+        'import',
     ];
 
     /**

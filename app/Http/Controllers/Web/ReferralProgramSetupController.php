@@ -111,6 +111,9 @@ class ReferralProgramSetupController extends Controller
                 'commissionTypes' => ReferralProgramOptions::commissionTypes(),
                 'reassignmentModes' => ReferralProgramOptions::reassignmentModes(),
                 'partnerSplitTypes' => ReferralProgramOptions::partnerSplitTypes(),
+                'documentTypes'   => ReferralProgramOptions::documentTypes(),
+                'approverRoles'   => ReferralProgramOptions::approverRoles(),
+                'importTemplates' => ReferralProgramOptions::importTemplates(),
             ],
             'stepData'         => $this->stepData($draft, $step, $tenant, $recommendation, $pipelineStages),
             'justStarted'      => $justStarted,
@@ -290,7 +293,7 @@ class ReferralProgramSetupController extends Controller
             ], $config['participants'] ?? []),
 
             'pipeline' => [
-                'stages' => $config['pipeline']['stages'] ?? $pipelineStages,
+                'stages' => (count($config['pipeline']['stages'] ?? []) >= 2) ? $config['pipeline']['stages'] : $pipelineStages,
             ],
 
             'fields' => [
@@ -314,6 +317,35 @@ class ReferralProgramSetupController extends Controller
                 'notify_partner'      => true,
             ], $config['partner_split'] ?? []),
 
+            'documents' => array_merge([
+                'require_referrer_agreement' => false,
+                'referrer_agreement_text'    => null,
+                'require_partner_agreement'  => false,
+                'partner_agreement_text'     => null,
+                'required_documents'         => [],
+            ], $config['documents'] ?? []),
+
+            'approvals' => array_merge([
+                'new_referral_review'     => false,
+                'deal_extension_approval' => true,
+                'import_approval'         => false,
+                'approver_role'           => 'owner_admin',
+            ], $config['approvals'] ?? []),
+
+            'forms' => array_merge([
+                'enable_public_referral_form'       => false,
+                'referral_link_slug'                => null,
+                'show_referrer_name_on_public_form' => true,
+                'generate_qr_code'                  => true,
+                'redirect_url_after_submit'         => null,
+            ], $config['forms'] ?? []),
+
+            'import' => array_merge([
+                'enable_imports'            => true,
+                'template_key'              => ReferralProgramOptions::importTemplateForIndustry($config['industry_goal']['industry'] ?? null),
+                'notify_on_import_complete' => true,
+            ], $config['import'] ?? []),
+
             default => [],
         };
     }
@@ -332,6 +364,10 @@ class ReferralProgramSetupController extends Controller
             'fields'         => "Add any extra details your team needs to capture on each deal. You can always add more fields later — existing data is never deleted.",
             'rewards'        => "Set how commission is calculated and split. Company share + referrer share should add up to 100%.",
             'partner-split'  => "If Partners are part of this program, decide how their share is calculated and when it locks in.",
+            'documents'      => "Decide whether Referrers or Partners need to accept an agreement, and list any documents they should upload before they can start.",
+            'approvals'      => "Choose which actions need a Tenant Admin's sign-off before they take effect. Partner-assignment approval is set on the Partner Split step.",
+            'forms'          => "Turn on a public link so people outside your team can submit referrals without an account. You'll confirm this again before publishing.",
+            'import'         => "Pick a starting template that matches your industry — you can fine-tune column mappings later when you import your first file.",
         ];
     }
 
@@ -399,6 +435,35 @@ class ReferralProgramSetupController extends Controller
                 }],
                 'lock_after_stage'    => ['nullable', 'string', 'max:50'],
                 'notify_partner'      => ['nullable', 'boolean'],
+            ]),
+            'documents' => $request->validate([
+                'require_referrer_agreement'   => ['nullable', 'boolean'],
+                'referrer_agreement_text'      => ['nullable', 'string', 'max:5000'],
+                'require_partner_agreement'    => ['nullable', 'boolean'],
+                'partner_agreement_text'       => ['nullable', 'string', 'max:5000'],
+                'required_documents'                 => ['present', 'array', 'max:10'],
+                'required_documents.*.doc_key'       => ['required', 'string', 'max:50'],
+                'required_documents.*.label'         => ['required', 'string', 'max:100'],
+                'required_documents.*.document_type' => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::documentTypes()))],
+                'required_documents.*.is_required'   => ['nullable', 'boolean'],
+            ]),
+            'approvals' => $request->validate([
+                'new_referral_review'     => ['nullable', 'boolean'],
+                'deal_extension_approval' => ['nullable', 'boolean'],
+                'import_approval'         => ['nullable', 'boolean'],
+                'approver_role'           => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::approverRoles()))],
+            ]),
+            'forms' => $request->validate([
+                'enable_public_referral_form'       => ['nullable', 'boolean'],
+                'referral_link_slug'                => ['nullable', 'string', 'max:50', 'regex:/^[a-z0-9\-]*$/'],
+                'show_referrer_name_on_public_form' => ['nullable', 'boolean'],
+                'generate_qr_code'                   => ['nullable', 'boolean'],
+                'redirect_url_after_submit'          => ['nullable', 'url', 'max:255'],
+            ]),
+            'import' => $request->validate([
+                'enable_imports'            => ['nullable', 'boolean'],
+                'template_key'              => ['required', 'string', Rule::in(array_keys(ReferralProgramOptions::importTemplates()))],
+                'notify_on_import_complete' => ['nullable', 'boolean'],
             ]),
             default => [],
         };

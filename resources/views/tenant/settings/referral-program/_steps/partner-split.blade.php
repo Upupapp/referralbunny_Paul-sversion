@@ -50,7 +50,7 @@
                     class="form-input">
                 <option value="">Never (always editable)</option>
                 @foreach($pipelineStages as $stage)
-                <option value="{{ $stage['stage_key'] }}">{{ $stage['name'] }}</option>
+                <option value="{{ $stage['stage_key'] ?? '' }}">{{ $stage['name'] ?? 'Unnamed stage' }}</option>
                 @endforeach
             </select>
             <p class="text-xs text-gray-400 mt-1">Once a deal reaches this stage, its partner split can no longer be changed.</p>
