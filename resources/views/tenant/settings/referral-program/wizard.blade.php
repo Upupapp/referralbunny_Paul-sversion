@@ -185,6 +185,10 @@ function referralWizardStep(tenantId, step, initialData) {
         errors: {},
         _timer: null,
 
+        errFor(field) {
+            return this.errors[field]?.[0] ?? null;
+        },
+
         init() {
             this.$watch('data', () => this.scheduleAutosave());
 

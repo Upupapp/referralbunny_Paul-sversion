@@ -55,11 +55,14 @@
 
         <div class="space-y-2">
             <template x-for="(doc, i) in data.required_documents" :key="doc.doc_key">
-                <div class="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-gray-200">
-                    <input type="text" x-model="doc.label" maxlength="100" placeholder="e.g. Valid Government ID"
-                           class="form-input flex-1 min-w-[160px]">
+                <div class="flex flex-wrap items-start gap-2 p-3 rounded-xl border border-gray-200">
+                    <div class="flex-1 min-w-[160px]">
+                        <input type="text" x-model="doc.label" maxlength="100" placeholder="e.g. Valid Government ID"
+                               aria-label="Document label" class="form-input w-full">
+                        <p x-show="errFor('required_documents.' + i + '.label')" x-cloak class="text-xs text-red-600 mt-1" x-text="errFor('required_documents.' + i + '.label')"></p>
+                    </div>
 
-                    <select x-model="doc.document_type" class="form-input w-44">
+                    <select x-model="doc.document_type" aria-label="Document type" class="form-input w-44">
                         @foreach($options['documentTypes'] as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach

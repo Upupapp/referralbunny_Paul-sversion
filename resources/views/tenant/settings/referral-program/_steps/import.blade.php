@@ -57,6 +57,13 @@
             </div>
         </label>
 
+        <div class="flex gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100">
+            <svg class="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="text-xs text-blue-700 leading-relaxed">
+                The two preferences above are saved with your program setup and will take effect in an upcoming release — for now, default import behavior applies.
+            </p>
+        </div>
+
         {{-- Preview of selected template --}}
         <div class="card bg-gray-50/50">
             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">

@@ -125,9 +125,17 @@
 
     @if($versions->isNotEmpty())
     {{-- Version history --}}
+    @php
+        $restoreConfirmMessage = $draft
+            ? 'You have an unfinished setup in progress ('.($health['score'] ?? 0).'% complete). Restoring this version will overwrite that draft with this version\'s settings and discard your unsaved changes. Continue?'
+            : 'Restore this version into a new draft? Nothing changes for your team until you publish again.';
+    @endphp
     <div class="card">
         <h3 class="font-semibold text-[#1E1B4B] text-sm mb-1">Version history</h3>
         <p class="text-xs text-gray-400 mb-3">Restore a previous version into a draft to review and publish it again.</p>
+        @if($draft)
+        <p class="text-xs text-amber-600 mb-3">You have a draft in progress — restoring a version below will replace it.</p>
+        @endif
         <ul class="divide-y divide-gray-100">
             @foreach($versions as $i => $version)
             <li class="flex items-center justify-between gap-3 py-2.5">
@@ -141,7 +149,7 @@
                     <p class="text-xs text-gray-400">{{ $version->published_at?->diffForHumans() }}</p>
                 </div>
                 <form method="POST" action="{{ route('tenant.settings.referral-program.versions.restore', ['tenantId' => $tenantId, 'versionId' => $version->id]) }}"
-                      onsubmit="return confirm('Restore this version into a draft? Your current draft (if any) will be replaced with this version\'s settings. Nothing changes for your team until you publish again.');">
+                      onsubmit="return confirm('{{ addslashes($restoreConfirmMessage) }}');">
                     @csrf
                     <button type="submit" class="btn-secondary text-xs shrink-0">Restore</button>
                 </form>
