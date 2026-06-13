@@ -41,23 +41,16 @@
 
         <div class="flex flex-wrap gap-2">
             @foreach($steps as $i => $s)
-                @if(in_array($s, $implementedSteps, true))
-                    <a href="{{ route('tenant.settings.referral-program.wizard', ['tenantId' => $tenantId, 'step' => $s]) }}"
-                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors
-                              {{ $s === $step
-                                    ? 'bg-[#7B61FF] text-white'
-                                    : (in_array($s, $health['completed_steps'], true) ? 'bg-purple-50 text-[#7B61FF]' : 'bg-gray-50 text-gray-500 hover:bg-gray-100') }}">
-                        @if($s !== $step && in_array($s, $health['completed_steps'], true))
-                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                        @endif
-                        {{ $i + 1 }}. {{ $stepLabels[$s] }}
-                    </a>
-                @else
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-300 cursor-default" title="Coming soon">
-                        {{ $i + 1 }}. {{ $stepLabels[$s] }}
-                        <span class="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">Soon</span>
-                    </span>
-                @endif
+                <a href="{{ route('tenant.settings.referral-program.wizard', ['tenantId' => $tenantId, 'step' => $s]) }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors
+                          {{ $s === $step
+                                ? 'bg-[#7B61FF] text-white'
+                                : (in_array($s, $health['completed_steps'], true) ? 'bg-purple-50 text-[#7B61FF]' : 'bg-gray-50 text-gray-500 hover:bg-gray-100') }}">
+                    @if($s !== $step && in_array($s, $health['completed_steps'], true))
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    @endif
+                    {{ $i + 1 }}. {{ $stepLabels[$s] }}
+                </a>
             @endforeach
         </div>
     </div>
@@ -111,21 +104,17 @@
                     @case('import')
                         @include('tenant.settings.referral-program._steps.import')
                         @break
+                    @case('notifications')
+                        @include('tenant.settings.referral-program._steps.notifications')
+                        @break
+                    @case('dashboard')
+                        @include('tenant.settings.referral-program._steps.dashboard')
+                        @break
+                    @case('review')
+                        @include('tenant.settings.referral-program._steps.review')
+                        @break
                 @endswitch
             </div>
-
-            @if($lastImplemented)
-            <div class="flex gap-3 p-4 rounded-xl bg-[#F0EFFA] border border-purple-100">
-                <x-r-bunny variant="celebration" size="sm" :decorative="true" class="shrink-0 mt-0.5" />
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-[#1E1B4B] mb-0.5">More steps are on the way</p>
-                    <p class="text-xs text-gray-500 leading-relaxed">
-                        Pipeline, rewards, documents, and the rest of the setup are coming soon. Everything you've entered so far is saved —
-                        select "Save &amp; Exit" and we'll let you know when the next steps are ready.
-                    </p>
-                </div>
-            </div>
-            @endif
 
             {{-- Back / Next --}}
             <div class="flex items-center justify-between">

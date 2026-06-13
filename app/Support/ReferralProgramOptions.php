@@ -359,6 +359,89 @@ class ReferralProgramOptions
     }
 
     /**
+     * Notification toggles offered on Step 13 — each controls whether a
+     * specific in-program event fires a notification, independent of each
+     * user's personal UserNotificationPreference channel settings.
+     */
+    public static function notificationEvents(): array
+    {
+        return [
+            'notify_admins_on_new_referral'    => ['label' => 'New referral submitted', 'description' => 'Tenant Admins and Managers are notified when a Referrer submits a new deal.'],
+            'notify_referrer_on_stage_change'  => ['label' => 'Deal moves to a new stage', 'description' => "The Referrer is notified when one of their deals advances in the pipeline."],
+            'notify_referrer_on_reward_earned' => ['label' => 'Reward earned', 'description' => 'The Referrer (and Partner, if assigned) is notified when a commission is earned on a closed deal.'],
+            'notify_partner_on_assignment'     => ['label' => 'Partner assigned to a deal', 'description' => 'The Partner is notified when they are assigned to a deal.'],
+        ];
+    }
+
+    /**
+     * Digest frequency options for the admin summary notification on Step 13.
+     */
+    public static function digestFrequencies(): array
+    {
+        return [
+            'realtime' => 'As they happen',
+            'daily'    => 'Daily digest',
+            'weekly'   => 'Weekly digest',
+        ];
+    }
+
+    /**
+     * Dashboard widgets offered on Step 14 — keys are illustrative metric
+     * groupings shown on the tenant dashboard once a preset is chosen.
+     */
+    public static function dashboardWidgets(): array
+    {
+        return [
+            'pipeline_value'          => 'Total Pipeline Value',
+            'win_rate'                => 'Win Rate',
+            'avg_deal_size'           => 'Average Deal Size',
+            'deals_by_stage'          => 'Deals by Stage',
+            'active_referrers'        => 'Active Referrers',
+            'top_referrers'           => 'Top Referrers Leaderboard',
+            'referrals_this_month'    => 'Referrals This Month',
+            'pending_rewards'         => 'Pending Rewards',
+            'active_partners'         => 'Active Partners',
+            'partner_commission_owed' => 'Partner Commission Owed',
+            'recent_activity'         => 'Recent Activity Feed',
+        ];
+    }
+
+    /**
+     * Dashboard presets offered on Step 14 — each maps to a starter set of
+     * widgets from dashboardWidgets(). "Custom" lets the tenant pick their own.
+     */
+    public static function dashboardPresets(): array
+    {
+        return [
+            'balanced' => [
+                'label'       => 'Balanced Overview',
+                'description' => 'A general mix of pipeline, referrer, and reward metrics.',
+                'widgets'     => ['pipeline_value', 'active_referrers', 'pending_rewards', 'win_rate'],
+            ],
+            'sales_focus' => [
+                'label'       => 'Sales Pipeline Focus',
+                'description' => 'Emphasizes deal flow, win rate, and average deal size.',
+                'widgets'     => ['pipeline_value', 'win_rate', 'avg_deal_size', 'deals_by_stage'],
+            ],
+            'referrer_focus' => [
+                'label'       => 'Referrer Engagement Focus',
+                'description' => 'Highlights Referrer activity and leaderboards.',
+                'widgets'     => ['active_referrers', 'referrals_this_month', 'top_referrers', 'pending_rewards'],
+            ],
+            'partner_focus' => [
+                'label'       => 'Partner Co-Sell Focus',
+                'description' => 'Highlights Partner activity and commission owed.',
+                'widgets'     => ['active_partners', 'partner_commission_owed', 'pipeline_value', 'deals_by_stage'],
+            ],
+            'custom' => [
+                'label'       => 'Custom',
+                'description' => 'Choose exactly which widgets appear on your dashboard.',
+                'widgets'     => [],
+            ],
+        ];
+    }
+
+    /**
      * Maps a Step 2 industry to the closest import template key above, used
      * to pre-select a sensible default on Step 12.
      */

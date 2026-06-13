@@ -49,13 +49,37 @@
         </div>
     </div>
 
+    @if($isLive)
+    {{-- Live state --}}
+    <div class="card bg-green-50 border border-green-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-green-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                    <h3 class="font-semibold text-[#1E1B4B]">Your referral program is live</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">Last published {{ $versions->first()->published_at?->diffForHumans() }}.</p>
+                </div>
+            </div>
+            @if(!$draft)
+            <a href="{{ route('tenant.settings.referral-program.wizard', ['tenantId' => $tenantId, 'mode' => 'custom']) }}" class="btn-secondary shrink-0">Edit Setup</a>
+            @endif
+        </div>
+    </div>
+    @endif
+
     @if($draft)
         {{-- Continue draft --}}
         <div class="card">
             <div class="flex items-start justify-between gap-4 mb-4">
                 <div>
-                    <h3 class="font-semibold text-[#1E1B4B]">Continue your setup</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">You have an unfinished referral program setup.</p>
+                    <h3 class="font-semibold text-[#1E1B4B]">{{ $isLive ? 'Continue editing your setup' : 'Continue your setup' }}</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        @if($isLive)
+                            These changes won't affect your live program until you publish them.
+                        @else
+                            You have an unfinished referral program setup.
+                        @endif
+                    </p>
                 </div>
                 <span class="badge badge-purple shrink-0">{{ $health['score'] }}% complete</span>
             </div>
@@ -76,7 +100,7 @@
                 </form>
             </div>
         </div>
-    @else
+    @elseif(!$isLive)
         {{-- Empty state --}}
         <div class="card text-center py-10">
             <div class="flex justify-center mb-4">
@@ -97,6 +121,34 @@
                 </a>
             </div>
         </div>
+    @endif
+
+    @if($versions->isNotEmpty())
+    {{-- Version history --}}
+    <div class="card">
+        <h3 class="font-semibold text-[#1E1B4B] text-sm mb-1">Version history</h3>
+        <p class="text-xs text-gray-400 mb-3">Restore a previous version into a draft to review and publish it again.</p>
+        <ul class="divide-y divide-gray-100">
+            @foreach($versions as $i => $version)
+            <li class="flex items-center justify-between gap-3 py-2.5">
+                <div>
+                    <p class="text-sm font-medium text-[#1E1B4B]">
+                        Published {{ $version->published_at?->format('M j, Y \a\t g:ia') }}
+                        @if($i === 0)
+                        <span class="badge badge-purple ml-1 text-[10px]">Current</span>
+                        @endif
+                    </p>
+                    <p class="text-xs text-gray-400">{{ $version->published_at?->diffForHumans() }}</p>
+                </div>
+                <form method="POST" action="{{ route('tenant.settings.referral-program.versions.restore', ['tenantId' => $tenantId, 'versionId' => $version->id]) }}"
+                      onsubmit="return confirm('Restore this version into a draft? Your current draft (if any) will be replaced with this version\'s settings. Nothing changes for your team until you publish again.');">
+                    @csrf
+                    <button type="submit" class="btn-secondary text-xs shrink-0">Restore</button>
+                </form>
+            </li>
+            @endforeach
+        </ul>
+    </div>
     @endif
 
     {{-- R Bunny tips --}}

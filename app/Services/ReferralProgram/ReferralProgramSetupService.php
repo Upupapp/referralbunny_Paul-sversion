@@ -3,6 +3,7 @@
 namespace App\Services\ReferralProgram;
 
 use App\Models\TenantReferralProgramDraft;
+use App\Models\TenantReferralProgramVersion;
 
 /**
  * Core read/write operations for the Referral Program Setup Wizard draft.
@@ -49,6 +50,9 @@ class ReferralProgramSetupService
         'approvals',
         'forms',
         'import',
+        'notifications',
+        'dashboard',
+        'review',
     ];
 
     /**
@@ -83,11 +87,18 @@ class ReferralProgramSetupService
             return $draft;
         }
 
+        // If this tenant has published before, start the new draft from their
+        // last published config rather than blank, so "Edit Setup" after a
+        // publish continues from the live settings instead of from scratch.
+        $lastVersion = TenantReferralProgramVersion::where('tenant_id', $tenantId)
+            ->latest('published_at')
+            ->first();
+
         return TenantReferralProgramDraft::create([
             'tenant_id'    => $tenantId,
             'status'       => 'draft',
             'mode'         => $mode,
-            'config'       => [],
+            'config'       => $lastVersion?->config ?? [],
             'current_step' => self::STEPS[0],
             'created_by'   => $userId,
         ]);
@@ -115,6 +126,15 @@ class ReferralProgramSetupService
         $completedSteps = [];
 
         foreach (self::STEPS as $step) {
+            // "Preview & Publish" has no config of its own — it's complete once
+            // this draft has actually been published, not based on config shape.
+            if ($step === 'review') {
+                if ($draft->status === 'published') {
+                    $completedSteps[] = $step;
+                }
+                continue;
+            }
+
             if (!empty($config[self::configKey($step)])) {
                 $completedSteps[] = $step;
             }

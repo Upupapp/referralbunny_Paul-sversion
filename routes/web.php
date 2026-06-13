@@ -368,6 +368,9 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::get('/wizard',        [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'wizard'])->name('wizard');
         Route::patch('/wizard/step/{step}', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'updateStep'])->middleware('throttle:60,1')->name('wizard.step');
         Route::post('/wizard/discard', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'discardDraft'])->name('wizard.discard');
+        Route::post('/wizard/simulate', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'simulate'])->middleware('throttle:30,1')->name('wizard.simulate');
+        Route::post('/wizard/publish', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'publish'])->middleware('throttle:10,1')->name('wizard.publish');
+        Route::post('/versions/{versionId}/restore', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'restoreVersion'])->middleware('throttle:10,1')->name('versions.restore');
     });
 
     // ── Export Approval Center ────────────────────────────────────
