@@ -19,7 +19,7 @@ class ReferralProgramSimulationService
         $protected = ProtectedTenants::isProtected($tenantId);
 
         $scenarios = [
-            $this->checkPipeline($config),
+            $this->checkPipeline($config, $protected),
             $this->checkDealSubmission($config),
             $this->checkCommission($config, $protected),
             $this->checkPartnerSplit($config),
@@ -42,9 +42,14 @@ class ReferralProgramSimulationService
         ];
     }
 
-    private function checkPipeline(array $config): array
+    private function checkPipeline(array $config, bool $protected): array
     {
-        $label  = 'Pipeline & Journey';
+        $label = 'Pipeline & Journey';
+
+        if ($protected) {
+            return $this->result($label, 'pass', "This workspace's pipeline is managed by a dedicated service — pipeline settings from this wizard are not applied.");
+        }
+
         $stages = $config['pipeline']['stages'] ?? [];
 
         if (count($stages) < 2) {
