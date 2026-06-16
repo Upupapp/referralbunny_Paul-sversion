@@ -153,13 +153,13 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-2">
                                     {{-- Restore --}}
-                                    <button @click="openRestore('{{ $deal->id }}', {{ json_encode($deal->name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
+                                    <button type="button" @click="openRestore('{{ $deal->id }}', {{ json_encode($deal->name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                                             class="text-xs text-green-600 hover:underline font-medium whitespace-nowrap">
                                         Restore
                                     </button>
                                     {{-- Soft-delete archived deals (reversible — lands in Deleted Only filter) --}}
                                     @if(!$isDeleted)
-                                        <button @click="openDelete('{{ $deal->id }}', {{ json_encode($deal->name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
+                                        <button type="button" @click="openDelete('{{ $deal->id }}', {{ json_encode($deal->name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                                                 class="text-xs text-red-500 hover:underline font-medium whitespace-nowrap">
                                             Soft Delete
                                         </button>
@@ -199,7 +199,7 @@ $subtabCounts = array_merge($_badgeCounts, ['deleted_archived' => $metrics['arch
                     </div>
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="restoreModal.open = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="restoreModal.open = false" class="btn-secondary">Cancel</button>
                     <form :action="`{{ route('tenant.deals.restore', [$tenant->id, '__ID__']) }}`.replace('__ID__', restoreModal.dealId)"
                           method="POST" @submit="submitting = true">
                         @csrf

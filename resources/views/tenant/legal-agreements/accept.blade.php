@@ -148,7 +148,7 @@
                     <p class="text-sm font-semibold text-[#1E1B4B]" x-text="allAgreed ? 'All agreements accepted — you may continue.' : (totalCount - agreedIds.length) + ' agreement' + ((totalCount - agreedIds.length) === 1 ? '' : 's') + ' remaining'"></p>
                     <p x-show="!allAgreed" class="text-xs text-gray-400 mt-0.5">Please read and accept all agreements to continue.</p>
                 </div>
-                <button @click.prevent="submitAll()"
+                <button type="button" @click.prevent="submitAll()"
                         :disabled="!allAgreed || submitting"
                         class="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm bg-[#7B61FF] text-white hover:bg-[#6B51EF] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <svg x-show="submitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>

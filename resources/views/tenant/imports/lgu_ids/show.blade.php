@@ -119,7 +119,7 @@
     {{-- ── Result KPI Grid ──────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {{-- Created --}}
-        <button @click="rowFilter = rowFilter === 'created' ? 'all' : 'created'"
+        <button type="button" @click="rowFilter = rowFilter === 'created' ? 'all' : 'created'"
                 class="kpi-card text-left w-full transition-all"
                 :class="rowFilter === 'created' ? 'ring-2 ring-emerald-400 shadow-md' : 'hover:ring-1 hover:ring-emerald-200'"
                 title="Click to filter rows">
@@ -138,7 +138,7 @@
         </button>
 
         {{-- Updated --}}
-        <button @click="rowFilter = rowFilter === 'updated' ? 'all' : 'updated'"
+        <button type="button" @click="rowFilter = rowFilter === 'updated' ? 'all' : 'updated'"
                 class="kpi-card text-left w-full transition-all"
                 :class="rowFilter === 'updated' ? 'ring-2 ring-blue-400 shadow-md' : 'hover:ring-1 hover:ring-blue-200'"
                 title="Click to filter rows">
@@ -157,7 +157,7 @@
         </button>
 
         {{-- Skipped --}}
-        <button @click="rowFilter = rowFilter === 'skipped' ? 'all' : 'skipped'"
+        <button type="button" @click="rowFilter = rowFilter === 'skipped' ? 'all' : 'skipped'"
                 class="kpi-card text-left w-full transition-all"
                 :class="rowFilter === 'skipped' ? 'ring-2 ring-gray-400 shadow-md' : 'hover:ring-1 hover:ring-gray-200'"
                 title="Click to filter rows">
@@ -176,7 +176,7 @@
         </button>
 
         {{-- Failed --}}
-        <button @click="rowFilter = rowFilter === 'failed' ? 'all' : 'failed'"
+        <button type="button" @click="rowFilter = rowFilter === 'failed' ? 'all' : 'failed'"
                 class="kpi-card text-left w-full transition-all"
                 :class="rowFilter === 'failed' ? 'ring-2 ring-red-400 shadow-md' : 'hover:ring-1 hover:ring-red-200'"
                 title="Click to filter rows">

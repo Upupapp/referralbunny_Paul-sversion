@@ -84,7 +84,7 @@
                     x-text="currentStepData?.title"></h2>
 
                 {{-- Skip link --}}
-                <button
+                <button type="button"
                     @click="skip()"
                     class="absolute top-4 right-4 z-20 text-white/40 hover:text-white/70 transition-colors text-xs flex items-center gap-1"
                     aria-label="Skip walkthrough"
@@ -102,7 +102,7 @@
 
                 {{-- CTA buttons --}}
                 <div class="flex gap-2.5 mt-5">
-                    <button
+                    <button type="button"
                         x-show="currentStep > 0"
                         @click="prev()"
                         class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors"
@@ -110,7 +110,7 @@
                     >← Back</button>
 
                     <template x-if="currentStep < steps.length - 1">
-                        <button
+                        <button type="button"
                             @click="next()"
                             class="flex-1 bg-[#7B61FF] hover:bg-[#6D4FE8] text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors"
                         >
@@ -118,7 +118,7 @@
                         </button>
                     </template>
                     <template x-if="currentStep === steps.length - 1">
-                        <button
+                        <button type="button"
                             @click="finish()"
                             class="flex-1 bg-gradient-to-r from-[#7B61FF] to-[#EC4899] text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors hover:opacity-90"
                         >

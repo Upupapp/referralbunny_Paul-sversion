@@ -6,7 +6,7 @@
 @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-compose')"
+    <button type="button" x-data @click="$dispatch('open-compose')"
             class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -32,7 +32,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
         </svg>
         <span x-text="globalError" class="flex-1"></span>
-        <button @click="globalError = null" class="shrink-0 text-red-400 hover:text-red-600">
+        <button type="button" @click="globalError = null" class="shrink-0 text-red-400 hover:text-red-600">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -61,7 +61,7 @@
                 <div class="flex items-center gap-1.5 shrink-0">
                     {{-- Mark all read (only when unread > 0) --}}
                     <template x-if="totalUnread > 0">
-                        <button x-data="{ busy: false }"
+                        <button type="button" x-data="{ busy: false }"
                                 @click="if(busy) return; busy=true;
                                     fetch('{{ route('tenant.messages.mark-all-read', $tenant->id) }}', {
                                         method:'POST', credentials:'same-origin',
@@ -78,7 +78,7 @@
                             </svg>
                         </button>
                     </template>
-                    <button @click="openCompose = true"
+                    <button type="button" @click="openCompose = true"
                             class="w-7 h-7 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md"
                             style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)"
                             title="New Message">
@@ -91,10 +91,10 @@
 
             {{-- Tabs --}}
             <div class="flex border-b border-gray-100 shrink-0">
-                <button @click="setInbox('referrers')"
+                <button type="button" @click="setInbox('referrers')"
                         :class="inbox==='referrers' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[11px] py-2.5 transition-colors">Referrers</button>
-                <button @click="setInbox('partners')"
+                <button type="button" @click="setInbox('partners')"
                         :class="inbox==='partners' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[11px] py-2.5 transition-colors relative">
                     Partners
@@ -106,10 +106,10 @@
 
             {{-- Sub-tabs (only for referrers inbox) --}}
             <div x-show="inbox==='referrers'" class="flex border-b border-gray-100 shrink-0">
-                <button @click="setTab('all')"
+                <button type="button" @click="setTab('all')"
                         :class="activeTab==='all' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[10px] py-2 transition-colors">All</button>
-                <button @click="setTab('needs_reply')"
+                <button type="button" @click="setTab('needs_reply')"
                         :class="activeTab==='needs_reply' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[10px] py-2 transition-colors relative">
                     Needs Reply
@@ -117,7 +117,7 @@
                           class="absolute top-1 right-1 w-3 h-3 rounded-full bg-orange-400 text-white text-[7px] font-bold flex items-center justify-center"
                           x-text="needsReplyCount > 9 ? '9+' : needsReplyCount"></span>
                 </button>
-                <button @click="setTab('unread')"
+                <button type="button" @click="setTab('unread')"
                         :class="activeTab==='unread' ? 'text-[#7B61FF] border-b-2 border-[#7B61FF] font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[10px] py-2 transition-colors">Unread</button>
             </div>
@@ -130,7 +130,7 @@
                     </svg>
                     <input x-model="search" type="text" placeholder="Search conversations…"
                            class="w-full text-xs py-2 pl-8 pr-8 bg-gray-50 rounded-lg border-0 outline-none focus:ring-1 focus:ring-[#7B61FF] focus:bg-white transition-all">
-                    <button x-show="search" @click="search = ''"
+                    <button type="button" x-show="search" @click="search = ''"
                             class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -158,7 +158,7 @@
                     <div class="flex flex-col items-center justify-center py-10 px-4 text-center">
                         <img src="/images/mascots/r-bunny-warning-error.webp" alt="" class="w-12 h-12 object-contain mb-2 opacity-80">
                         <p class="text-xs text-red-500 font-medium">Failed to load conversations</p>
-                        <button @click="loadThreads()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
+                        <button type="button" @click="loadThreads()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
                     </div>
                 </template>
 
@@ -171,7 +171,7 @@
                         <p class="text-xs font-medium text-gray-500" x-show="!search && activeTab === 'unread'">All caught up — no unread messages</p>
                         <p class="text-xs font-medium text-gray-500" x-show="!search && activeTab === 'all'">No conversations yet</p>
                         <p class="text-xs text-gray-400 mt-1" x-show="!search && activeTab === 'all'">Start a conversation with a Referrer.</p>
-                        <button x-show="!search && activeTab === 'all'"
+                        <button type="button" x-show="!search && activeTab === 'all'"
                                 @click="openCompose = true"
                                 class="mt-3 btn-primary text-xs">Start a Conversation</button>
                     </div>
@@ -181,7 +181,7 @@
                 <template x-if="inbox==='referrers' && !loading && !loadError">
                     <div>
                         <template x-for="thread in filteredThreads" :key="thread.id">
-                            <button
+                            <button type="button"
                                 @click="selectThread(thread)"
                                 class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70"
                                 :class="activeThread?.id === thread.id && !activePartnerThread
@@ -241,7 +241,7 @@
                 <template x-if="inbox==='partners' && !partnerLoading && filteredPartnerThreads.length > 0">
                     <div>
                         <template x-for="thread in filteredPartnerThreads" :key="thread.id">
-                            <button
+                            <button type="button"
                                 @click="selectPartnerThread(thread)"
                                 class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70"
                                 :class="activePartnerThread?.id === thread.id
@@ -290,7 +290,7 @@
                     <img src="/images/mascots/r-bunny-helper-question.webp" alt="" class="w-16 h-16 object-contain mb-3 opacity-70">
                     <h3 class="text-[#1E1B4B] font-semibold text-sm">Select a conversation</h3>
                     <p class="text-gray-400 text-xs mt-1 max-w-xs">Choose from the list on the left, or tap <strong>+</strong> to message a Referrer, Partner, Admin, or Contact.</p>
-                    <button @click="openCompose = true"
+                    <button type="button" @click="openCompose = true"
                             class="mt-4 btn-secondary text-xs hidden lg:inline-flex">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -306,7 +306,7 @@
 
                     {{-- Thread header --}}
                     <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
-                        <button @click="mobilePane = 'list'; activeThread = null"
+                        <button type="button" @click="mobilePane = 'list'; activeThread = null"
                                 class="lg:hidden p-1.5 -ml-0.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -331,7 +331,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
                             <p class="text-[11px] text-amber-700 flex-1" x-text="activeThreadReminder?.body"></p>
-                            <button @click="resolveThreadReminder()" class="text-[10px] text-amber-500 hover:text-amber-700 font-medium shrink-0 transition-colors">✕</button>
+                            <button type="button" @click="resolveThreadReminder()" class="text-[10px] text-amber-500 hover:text-amber-700 font-medium shrink-0 transition-colors">✕</button>
                         </div>
                     </template>
 
@@ -350,7 +350,7 @@
                             <div class="flex flex-col items-center justify-center py-8 text-center">
                                 <img src="/images/mascots/r-bunny-warning-error.webp" alt="" class="w-12 h-12 object-contain mb-2 opacity-80">
                                 <p class="text-xs text-red-500 font-medium">Failed to load messages</p>
-                                <button @click="retryLoadMessages()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
+                                <button type="button" @click="retryLoadMessages()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
                             </div>
                         </template>
                         <template x-if="!loadingMessages && !messageLoadError && activeMessages.length === 0">
@@ -381,7 +381,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                         </svg>
                         <span x-text="sendError"></span>
-                        <button @click="sendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
+                        <button type="button" @click="sendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
                     </div>
 
                     <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
@@ -416,7 +416,7 @@
 
                     {{-- Partner thread header --}}
                     <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
-                        <button @click="mobilePane = 'list'; activePartnerThread = null"
+                        <button type="button" @click="mobilePane = 'list'; activePartnerThread = null"
                                 class="lg:hidden p-1.5 -ml-0.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -474,7 +474,7 @@
                     <div x-show="partnerSendError"
                          class="mx-3 mb-1 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2 shrink-0">
                         <span x-text="partnerSendError"></span>
-                        <button @click="partnerSendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
+                        <button type="button" @click="partnerSendError = null" class="ml-auto text-red-400 hover:text-red-600">✕</button>
                     </div>
 
                     <div class="p-2.5 sm:p-3 border-t border-gray-100 shrink-0">
@@ -521,7 +521,7 @@
                     <h3 class="text-[#1E1B4B] font-bold text-base">New Message</h3>
                     <p class="text-gray-400 text-xs mt-0.5">Send to anyone in your workspace</p>
                 </div>
-                <button @click="openCompose = false; resetCompose()"
+                <button type="button" @click="openCompose = false; resetCompose()"
                         class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

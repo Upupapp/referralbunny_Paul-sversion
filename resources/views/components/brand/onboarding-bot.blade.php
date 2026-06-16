@@ -41,7 +41,7 @@
                 <p class="text-white/50 text-[10px] mt-0.5"
                    x-text="`${progressDone} of ${progressTotal} steps complete`"></p>
             </div>
-            <button @click="open = false"
+            <button type="button" @click="open = false"
                     class="text-white/50 hover:text-white transition-colors shrink-0"
                     aria-label="Collapse R Bunny">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,12 +79,12 @@
                             </a>
                         </template>
                         <template x-if="!nextTask.action">
-                            <button @click="completeTask(nextTask.key)"
+                            <button type="button" @click="completeTask(nextTask.key)"
                                     class="px-3 py-1.5 bg-[#7B61FF] hover:bg-[#6D4FE8] text-white text-xs font-semibold rounded-lg transition-colors">
                                 Mark as done ✓
                             </button>
                         </template>
-                        <button @click="dismissTask(nextTask.key)"
+                        <button type="button" @click="dismissTask(nextTask.key)"
                                 class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium rounded-lg transition-colors">
                             Not now
                         </button>
@@ -98,7 +98,7 @@
                     <img src="/images/mascots/r-bunny-sleeping.webp" alt="R Bunny resting"
                          class="w-10 h-10 object-contain mx-auto mb-2" loading="lazy">
                     <p class="text-xs text-gray-400">Reminders snoozed. I'll be back soon!</p>
-                    <button @click="wakeUp()"
+                    <button type="button" @click="wakeUp()"
                             class="mt-2 text-xs text-[#7B61FF] hover:text-purple-700 font-medium">
                         Resume now
                     </button>
@@ -107,7 +107,7 @@
 
             {{-- Task list --}}
             <div>
-                <button @click="showTasks = !showTasks"
+                <button type="button" @click="showTasks = !showTasks"
                         class="flex items-center justify-between w-full text-[10px] font-bold text-gray-400 uppercase tracking-widest py-1"
                         :aria-expanded="showTasks">
                     <span>All steps</span>
@@ -152,7 +152,7 @@
                     <span class="font-semibold text-[#7B61FF]" x-text="profilePercent + '%'"></span>
                     complete
                 </div>
-                <button @click="snooze()"
+                <button type="button" @click="snooze()"
                         class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
                     Snooze 24h
                 </button>
@@ -178,7 +178,7 @@
                 You've completed the important first steps. Come back here anytime if you have
                 questions or need bunny-ful assistance. Happy referring!
             </p>
-            <button
+            <button type="button"
                 @click="celebrationDismissed = true; open = false"
                 class="mt-4 w-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
@@ -188,7 +188,7 @@
     </div>
 
     {{-- ── Collapsed toggle button ───────────────────────────────── --}}
-    <button
+    <button type="button"
         x-show="!open || (fullyReady && celebrationDismissed)"
         @click="open = true; celebrationDismissed = false"
         class="flex items-center gap-2 bg-white rounded-full shadow-lg border border-gray-100 pl-2.5 pr-4 py-2 hover:shadow-xl transition-all"

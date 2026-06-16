@@ -85,7 +85,7 @@
         .success-box p { margin: 0; font-size: .875rem; color: #166534; }
     </style>
 </head>
-<body>
+<body data-stitch-page="join-program" data-stitch-fallback="{{ route('public.home') }}">
 
 <div class="login-page">
     <div class="login-card">
@@ -93,9 +93,15 @@
         {{-- LEFT — join options --}}
         <div class="card-left" x-data="joinFlow()">
 
-            <div style="margin-bottom:2rem">
+            <a href="{{ route('public.home') }}"
+               data-stitch-action="navigate"
+               data-stitch-target="{{ route('public.home') }}"
+               data-stitch-fallback="{{ route('public.home') }}"
+               data-stitch-loading="none"
+               aria-label="ReferralBunny.ai home"
+               style="margin-bottom:2rem;display:inline-block">
                 <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
-            </div>
+            </a>
 
             <h1 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:700;color:#111827">Join a referral program</h1>
             <p style="margin:0 0 1.75rem;font-size:.8125rem;color:#6b7280;line-height:1.5">Use your invite link, a program code, or search by company name.</p>
@@ -170,7 +176,7 @@
                                 <p style="font-size:.75rem;color:#6b7280;margin:0" x-text="code.result.industry"></p>
                             </div>
                         </div>
-                        <button @click="requestAccess(code.result.id)"
+                        <button type="button" @click="requestAccess(code.result.id)"
                                 class="btn-primary" style="margin-top:0" :disabled="loading">
                             <span x-text="loading ? 'Sending request…' : 'Request Access'"></span>
                         </button>
@@ -210,7 +216,7 @@
                     <div class="result-box">
                         <p style="font-size:.8125rem;font-weight:600;color:#1E1B4B;margin:0 0 .25rem" x-text="search.result.name"></p>
                         <p style="font-size:.75rem;color:#6b7280;margin:0 0 .75rem" x-text="search.result.industry + ' · ' + search.result.country"></p>
-                        <button @click="requestAccess(search.result.id)"
+                        <button type="button" @click="requestAccess(search.result.id)"
                                 class="btn-primary" style="margin-top:0" :disabled="loading">
                             <span x-text="loading ? 'Sending request…' : 'Request to Join'"></span>
                         </button>

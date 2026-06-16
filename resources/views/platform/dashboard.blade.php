@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('stitch_page', 'platform-dashboard')
 @section('title', 'Dashboard')
 @section('platformLabel', 'Super Admin')
 

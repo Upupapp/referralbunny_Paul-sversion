@@ -93,11 +93,11 @@
             </div>
 
             <div style="display:flex;gap:10px">
-                <button @click="open = false"
+                <button type="button" @click="open = false"
                         style="flex:1;padding:10px;border-radius:12px;background:linear-gradient(135deg,#0D9488,#0F766E);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(13,148,136,.25)">
                     Review Import Details
                 </button>
-                <button @click="open = false"
+                <button type="button" @click="open = false"
                         style="padding:10px 16px;border-radius:12px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer">
                     Dismiss
                 </button>

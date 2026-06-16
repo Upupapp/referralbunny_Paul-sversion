@@ -62,7 +62,7 @@
 
             {{-- Actions --}}
             <div class="flex items-center gap-2">
-                <button @click="newFolderOpen = true; $nextTick(() => $refs.newFolderInput?.focus())"
+                <button type="button" @click="newFolderOpen = true; $nextTick(() => $refs.newFolderInput?.focus())"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
                     New Folder
@@ -83,10 +83,10 @@
             <input x-ref="newFolderInput" x-model="newFolderName" type="text" placeholder="Folder name"
                    class="flex-1 border border-purple-200 rounded-lg px-2.5 py-1 text-sm bg-white outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-100"
                    @keydown.enter="createFolder()" @keydown.escape="newFolderOpen = false; newFolderName = ''">
-            <button @click="createFolder()" :disabled="!newFolderName.trim()"
+            <button type="button" @click="createFolder()" :disabled="!newFolderName.trim()"
                     class="px-3 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                     style="background:#7B61FF">Create</button>
-            <button @click="newFolderOpen = false; newFolderName = ''"
+            <button type="button" @click="newFolderOpen = false; newFolderName = ''"
                     class="px-3 py-1 rounded-lg text-xs font-medium text-gray-600 border border-gray-200 hover:bg-gray-50">Cancel</button>
         </div>
 
@@ -99,7 +99,7 @@
         {{-- Error --}}
         <div x-show="error" class="px-4 py-2 bg-red-50 border-b border-red-100 text-xs text-red-600 flex items-center justify-between">
             <span x-text="error"></span>
-            <button @click="error=''" class="text-red-400 hover:text-red-600 ml-2">✕</button>
+            <button type="button" @click="error=''" class="text-red-400 hover:text-red-600 ml-2">✕</button>
         </div>
 
         {{-- File grid --}}
@@ -133,23 +133,23 @@
                                 {{-- Context menu --}}
                                 <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div x-data="{ open: false }" class="relative">
-                                        <button @click.stop="open = !open"
+                                        <button type="button" @click.stop="open = !open"
                                                 class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200">
                                             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                                         </button>
                                         <div x-show="open" @click.outside="open=false" x-cloak
                                              class="absolute right-0 top-7 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-10 w-36">
-                                            <button @click="open=false; navigateFolder(folder.id)"
+                                            <button type="button" @click="open=false; navigateFolder(folder.id)"
                                                     class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                                 Open
                                             </button>
-                                            <button @click="open=false; startRenameFolder(folder)"
+                                            <button type="button" @click="open=false; startRenameFolder(folder)"
                                                     class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 Rename
                                             </button>
-                                            <button @click="open=false; deleteFolder(folder.id)"
+                                            <button type="button" @click="open=false; deleteFolder(folder.id)"
                                                     class="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 Delete
@@ -183,7 +183,7 @@
                                 {{-- Context menu --}}
                                 <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div x-data="{ open: false }" class="relative">
-                                        <button @click.stop="open = !open"
+                                        <button type="button" @click.stop="open = !open"
                                                 class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200">
                                             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                                         </button>
@@ -195,12 +195,12 @@
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                                 Download
                                             </a>
-                                            <button @click="open=false; startRenameFile(file)"
+                                            <button type="button" @click="open=false; startRenameFile(file)"
                                                     class="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 Rename
                                             </button>
-                                            <button @click="open=false; deleteFile(file.id)"
+                                            <button type="button" @click="open=false; deleteFile(file.id)"
                                                     class="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 Delete
@@ -228,8 +228,8 @@
                    class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-gray-50 outline-none focus:border-[#7B61FF] focus:ring-2 focus:ring-purple-100"
                    @keydown.enter="submitRename()" @keydown.escape="renameModal.open=false">
             <div class="flex gap-2 justify-end">
-                <button @click="renameModal.open=false" class="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button @click="submitRename()" :disabled="!renameModal.name.trim()"
+                <button type="button" @click="renameModal.open=false" class="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                <button type="button" @click="submitRename()" :disabled="!renameModal.name.trim()"
                         class="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                         style="background:#7B61FF">Rename</button>
             </div>

@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\TenantAdminController;
 use App\Http\Controllers\Web\TenantProfileController;
 use App\Http\Controllers\Web\TenantSignupWebController;
 use App\Http\Controllers\Web\TenantAuthWebController;
+use App\Http\Controllers\Web\PublicLandingController;
 use App\Http\Controllers\Web\TenantExportController;
 use App\Http\Controllers\ResellerPortalAuthController;
 use App\Http\Controllers\ResellerPortalController;
@@ -24,19 +25,8 @@ Route::get('/platform/login', fn() => redirect()->route('login'))->name('platfor
 Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
-// ── Root — always show portal selection (scrapers get OG landing) ────────
-Route::get('/', function (\Illuminate\Http\Request $request) {
-    // Social scrapers — return landing page with OG tags
-    $ua       = $request->userAgent() ?? '';
-    $scrapers = ['facebookexternalhit', 'Twitterbot', 'LinkedInBot', 'WhatsApp', 'Slackbot', 'TelegramBot'];
-    foreach ($scrapers as $bot) {
-        if (stripos($ua, $bot) !== false) {
-            return response(view('landing'), 200)->header('X-Robots-Tag', 'all');
-        }
-    }
-    // Everyone else — always show the portal selection screen
-    return view('auth.portal-select');
-})->name('home');
+// ── Root — public marketing landing page ──────────────────────
+Route::get('/', [PublicLandingController::class, 'index'])->name('public.home');
 
 // ── LGU IDS public helpers ────────────────────────────────────
 Route::get('/api/lgu-ids/municipalities', function(\Illuminate\Http\Request $request) {
@@ -86,11 +76,17 @@ Route::post('/tenant/select-workspace', [TenantAuthWebController::class, 'choose
 // ── Build a Referral Program (Tenant Signup) ─────────────────
 Route::get('/tenant/create',  [TenantSignupWebController::class, 'showBuild'])->name('tenant.create');
 Route::post('/tenant/create', [TenantSignupWebController::class, 'build'])->name('tenant.create.post')->middleware('throttle:5,1');
+Route::get('/signup/build', [TenantSignupWebController::class, 'showBuild'])->name('signup.build');
 
 // ── Join a Referral Program ───────────────────────────────────
 Route::get('/tenant/join',         [TenantSignupWebController::class, 'showJoin'])->name('tenant.join');
 Route::get('/join-referral-program', [TenantSignupWebController::class, 'showJoin'])->name('join.program');
+Route::get('/join', [TenantSignupWebController::class, 'showJoin'])->name('join');
 Route::get('/tenant/invite/{token}', [TenantSignupWebController::class, 'showInvite'])->name('tenant.invite.show');
+
+// ── Legal pages ────────────────────────────────────────────────
+Route::view('/terms', 'legal.terms')->name('terms');
+Route::view('/privacy', 'legal.privacy')->name('privacy');
 
 // ── Other tenant stubs ────────────────────────────────────────
 Route::get('/tenant/select', fn() => view('auth.tenant-coming-soon', ['page' => 'Select Workspace']))->name('tenant.select');

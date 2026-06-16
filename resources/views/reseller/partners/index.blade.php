@@ -16,7 +16,7 @@
             <p class="text-sm text-gray-400 mt-0.5">Partners connected to your assigned deals.</p>
         </div>
         @if($myDeals->isNotEmpty())
-        <button @click="openAddModal()"
+        <button type="button" @click="openAddModal()"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md shrink-0"
                 style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +35,7 @@
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Total Partners</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -52,7 +52,7 @@
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Active</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -69,7 +69,7 @@
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Pending Invites</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -86,7 +86,7 @@
             <div class="flex items-center justify-between mb-2">
                 <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Partners Commission</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -110,18 +110,18 @@
             </svg>
             <input x-model="search" type="text" placeholder="Search by name or email…"
                    class="w-full text-sm py-2.5 pl-10 pr-9 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400 transition-all">
-            <button x-show="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+            <button type="button" x-show="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <button @click="setFilter('all')"
+            <button type="button" @click="setFilter('all')"
                     :class="filter==='all' ? 'bg-teal-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
                     class="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 transition-all">All</button>
-            <button @click="setFilter('active')"
+            <button type="button" @click="setFilter('active')"
                     :class="filter==='active' ? 'bg-green-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
                     class="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 transition-all">Active</button>
-            <button @click="setFilter('pending_invite')"
+            <button type="button" @click="setFilter('pending_invite')"
                     :class="filter==='pending_invite' ? 'bg-amber-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'"
                     class="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 transition-all">Pending Invite</button>
         </div>
@@ -160,7 +160,7 @@
                 @endif
             </p>
             @if($myDeals->isNotEmpty())
-            <button @click="openAddModal()"
+            <button type="button" @click="openAddModal()"
                     class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                     style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -275,7 +275,7 @@
                     <h3 class="text-[#1E1B4B] font-bold text-base">Add Partner</h3>
                     <p class="text-gray-400 text-xs mt-0.5">Associate a Partner with one of your assigned deals.</p>
                 </div>
-                <button @click="modal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <button type="button" @click="modal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>

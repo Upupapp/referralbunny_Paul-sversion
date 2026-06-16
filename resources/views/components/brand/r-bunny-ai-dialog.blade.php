@@ -56,7 +56,7 @@
                 </div>
 
                 {{-- Close --}}
-                <button
+                <button type="button"
                     @click="dismiss()"
                     class="shrink-0 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     aria-label="Dismiss reminder"
@@ -73,11 +73,11 @@
                     <p class="text-[10px] font-semibold text-[#7B61FF] uppercase tracking-wide mb-1.5">Suggested reply</p>
                     <p class="text-xs text-gray-600 leading-relaxed italic" x-text="suggestions[0]"></p>
                     <div class="flex gap-2 mt-2">
-                        <button @click="useSuggestion(suggestions[0])"
+                        <button type="button" @click="useSuggestion(suggestions[0])"
                                 class="text-[10px] font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">
                             Use this →
                         </button>
-                        <button @click="showSuggestions = false"
+                        <button type="button" @click="showSuggestions = false"
                                 class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
                             Hide
                         </button>
@@ -88,7 +88,7 @@
             {{-- Action buttons --}}
             <div class="mt-3 flex flex-wrap gap-2">
                 {{-- Primary action --}}
-                <button
+                <button type="button"
                     @click="handlePrimary()"
                     :class="['urgent','high'].includes(activeReminder?.priority)
                         ? 'bg-orange-500 hover:bg-orange-600 text-white'
@@ -98,7 +98,7 @@
                 ></button>
 
                 {{-- Suggest reply button --}}
-                <button
+                <button type="button"
                     x-show="activeReminder?.action_url && !showSuggestions"
                     @click="loadSuggestions()"
                     class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
@@ -107,7 +107,7 @@
                 </button>
 
                 {{-- No reply needed --}}
-                <button
+                <button type="button"
                     @click="resolve()"
                     class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
                 >
@@ -116,7 +116,7 @@
 
                 {{-- Snooze dropdown --}}
                 <div x-data="{ snoozeOpen: false }" class="relative">
-                    <button
+                    <button type="button"
                         @click="snoozeOpen = !snoozeOpen"
                         class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
                         aria-haspopup="true"
@@ -131,10 +131,10 @@
                         class="absolute bottom-full right-0 mb-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 w-36 z-10"
                         role="menu"
                     >
-                        <button @click="snooze(30); snoozeOpen=false"   role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">30 minutes</button>
-                        <button @click="snooze(120); snoozeOpen=false"  role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">2 hours</button>
-                        <button @click="snooze(480); snoozeOpen=false"  role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">8 hours</button>
-                        <button @click="snooze(1440); snoozeOpen=false" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">Tomorrow</button>
+                        <button type="button" @click="snooze(30); snoozeOpen=false"   role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">30 minutes</button>
+                        <button type="button" @click="snooze(120); snoozeOpen=false"  role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">2 hours</button>
+                        <button type="button" @click="snooze(480); snoozeOpen=false"  role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">8 hours</button>
+                        <button type="button" @click="snooze(1440); snoozeOpen=false" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50">Tomorrow</button>
                     </div>
                 </div>
             </div>
@@ -144,7 +144,7 @@
                 <span class="text-[10px] text-gray-400"
                       x-text="`${reminders.length - 1} more item${reminders.length > 2 ? 's' : ''} need${reminders.length === 2 ? 's' : ''} attention`">
                 </span>
-                <button @click="next()" class="text-[10px] font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">
+                <button type="button" @click="next()" class="text-[10px] font-medium text-[#7B61FF] hover:text-purple-800 transition-colors">
                     View next →
                 </button>
             </div>
@@ -159,7 +159,7 @@
         style="pointer-events:all"
         class="flex justify-end"
     >
-        <button
+        <button type="button"
             @click="visible = true"
             class="flex items-center gap-2 bg-white rounded-full shadow-lg border border-gray-100 pl-3 pr-4 py-2 hover:shadow-xl transition-all"
             aria-label="Open R Bunny AI messaging reminders"

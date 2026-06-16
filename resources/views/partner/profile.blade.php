@@ -76,7 +76,7 @@
                     @if($photoUrl)
                     <form method="POST" action="{{ route('partner.profile.photo.destroy') }}">
                         @csrf @method('DELETE')
-                        <button class="px-3 py-2 rounded-xl text-sm font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                        <button type="submit" class="px-3 py-2 rounded-xl text-sm font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                             Remove
                         </button>
                     </form>

@@ -19,12 +19,12 @@
         <h2 style="font-size:18px;font-weight:700;color:#1E1B4B;margin-bottom:6px">{{ $form->title }}</h2>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px">Saved as draft. Publish it when you're ready so people can start submitting requests.</p>
         <div style="display:flex;flex-direction:column;gap:10px">
-            <button @click="open=false; publishForm()"
+            <button type="button" @click="open=false; publishForm()"
                     id="created-publish-btn"
                     style="padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.25)">
                 Publish Now
             </button>
-            <button @click="open=false"
+            <button type="button" @click="open=false"
                     style="padding:11px 24px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                 Keep as Draft
             </button>
@@ -70,7 +70,7 @@
                 @endif
             </a>
             @if($form->isPublished())
-            <a href="{{ $form->publicUrl() }}" target="_blank" rel="noopener"
+            <a href="{{ $form->publicUrl() }}" target="_blank" rel="noopener noreferrer"
                style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:9px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">
                 <svg style="width:12px;height:12px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 Preview
@@ -434,7 +434,7 @@
                 <h3 style="font-size:12px;font-weight:700;color:#1E1B4B;text-transform:uppercase;letter-spacing:.05em;margin:0">Public Link Active</h3>
             </div>
             <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #f3f4f6;margin-bottom:10px" x-data="{ copied: false }">
-                <a href="{{ $form->publicUrl() }}" target="_blank"
+                <a rel="noopener noreferrer" href="{{ $form->publicUrl() }}" target="_blank"
                    style="flex:1;font-size:11px;color:#7B61FF;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ $form->publicUrl() }}</a>
                 <button type="button"
                         @click="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(()=>{ copied=true; setTimeout(()=>copied=false,2000); })"
@@ -442,7 +442,7 @@
                         :style="copied ? 'background:#dcfce7;color:#15803d' : 'background:#ede9fe;color:#7B61FF'"
                         x-text="copied ? '✓ Copied' : 'Copy'"></button>
             </div>
-            <a href="{{ $form->publicUrl() }}" target="_blank" rel="noopener"
+            <a href="{{ $form->publicUrl() }}" target="_blank" rel="noopener noreferrer"
                style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:8px;border-radius:9px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;text-decoration:none;box-sizing:border-box">
                 <svg style="width:12px;height:12px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 Preview Public Form
@@ -513,9 +513,9 @@
         <h3 id="rb-delete-form-title" style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form, all its fields, and all submitted responses. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
-            <button onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
+            <button type="button" onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
                     style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
-            <button id="rb-delete-form-btn"
+            <button type="button" id="rb-delete-form-btn"
                     style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">Delete Form</button>
         </div>
     </div>

@@ -49,6 +49,7 @@ class ReferrerPerformanceService
                 WHERE l.tenant_id = ?
                   AND (LOWER(l.reseller_name) = ? OR cs.lead_id IS NOT NULL)
                   AND l.deleted_at IS NULL
+                  AND l.status != 'archived'
                 ORDER BY l.id, cs.id NULLS LAST
             ";
 

@@ -8,10 +8,10 @@
 @section('topbar-actions')
     {{-- View toggle --}}
     <div class="flex items-center gap-1 bg-gray-100 rounded-xl p-1" x-data>
-        <button @click="$store.dashView.set('basic')"
+        <button type="button" @click="$store.dashView.set('basic')"
                 :class="$store.dashView.mode==='basic' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-500'"
                 class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Overview</button>
-        <button @click="$store.dashView.set('full')"
+        <button type="button" @click="$store.dashView.set('full')"
                 :class="$store.dashView.mode==='full' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-500'"
                 class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Full View</button>
     </div>
@@ -20,7 +20,7 @@
         <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 000 4h6a2 2 0 000-4"/></svg>
         <span class="hidden sm:inline">Tasks</span>
     </a>
-    <button x-data @click="$dispatch('open-add-deal')" class="btn-primary text-sm">
+    <button type="button" x-data @click="$dispatch('open-add-deal')" class="btn-primary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>
     </button>
@@ -45,7 +45,7 @@ document.addEventListener('alpine:init', () => {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <span>Dashboard data could not be fully loaded. Some KPIs may show incomplete totals.</span>
-        <button @click="dataError = false" class="ml-auto text-red-400 hover:text-red-600 shrink-0">
+        <button type="button" @click="dataError = false" class="ml-auto text-red-400 hover:text-red-600 shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
     </div>
@@ -883,7 +883,7 @@ document.addEventListener('alpine:init', () => {
                         <h3 class="text-white text-xl font-bold leading-tight">Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }} 👋</h3>
                         <p class="text-white/60 text-sm mt-1">{{ $totalItems }} item{{ $totalItems > 1 ? 's' : '' }} need your attention today</p>
                     </div>
-                    <button @click="open = false"
+                    <button type="button" @click="open = false"
                             class="w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0"
                             style="background:rgba(255,255,255,0.15)" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1043,7 +1043,7 @@ document.addEventListener('alpine:init', () => {
 
             {{-- Footer --}}
             <div class="px-5 py-4 border-t border-gray-100 bg-white shrink-0 flex gap-3">
-                <button @click="open = false"
+                <button type="button" @click="open = false"
                         class="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors">
                     Skip
                 </button>
@@ -1062,7 +1062,7 @@ document.addEventListener('alpine:init', () => {
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Add Referral</h3>
-                <button @click="showAdd=false; clearLgu()" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showAdd=false; clearLgu()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1088,7 +1088,7 @@ document.addEventListener('alpine:init', () => {
                                    :class="lguSelected ? 'border-violet-300 bg-violet-50/30' : ''"
                                    placeholder="Type city or municipality name…"
                                    autocomplete="off">
-                            <button x-show="lguSelected" @click="clearLgu()"
+                            <button type="button" x-show="lguSelected" @click="clearLgu()"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
@@ -1180,8 +1180,8 @@ document.addEventListener('alpine:init', () => {
 
                 <p x-show="addError" class="text-xs text-red-600 font-medium" x-text="addError"></p>
                 <div class="flex justify-end gap-3">
-                    <button @click="showAdd=false; clearLgu()" class="btn-secondary">Cancel</button>
-                    <button @click="addLead()" :disabled="saving || !lguSelected" class="btn-primary"
+                    <button type="button" @click="showAdd=false; clearLgu()" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="addLead()" :disabled="saving || !lguSelected" class="btn-primary"
                             x-text="saving ? 'Saving…' : 'Add Referral'"></button>
                 </div>
             </div>
@@ -1605,15 +1605,15 @@ function tenantDashboard(tenantId, currentResellerName, canViewReferrers = false
                     <p class="text-sm text-gray-600 leading-relaxed">{{ $accessExtendedNotif->message }}</p>
                 </div>
                 <div class="rb-fade-4 flex gap-2.5 pt-1">
-                    <button @click="dismiss()" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 border border-gray-200 font-medium">Got it</button>
-                    <button @click="dismiss()" class="flex-[2] btn-primary text-sm justify-center">
+                    <button type="button" @click="dismiss()" class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 border border-gray-200 font-medium">Got it</button>
+                    <button type="button" @click="dismiss()" class="flex-[2] btn-primary text-sm justify-center">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                         Continue
                     </button>
                 </div>
             </div>
         </div>
-        <button @click="dismiss()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-gray-400 hover:text-gray-700 border border-gray-100">
+        <button type="button" @click="dismiss()" class="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center text-gray-400 hover:text-gray-700 border border-gray-100">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
     </div>
@@ -1661,7 +1661,7 @@ function rbAccessExtendedPopup(notifId) {
         <p style="font-size:13px;color:#9ca3af;line-height:1.65;margin-bottom:28px">
             You've joined as <strong style="color:#374151">{{ session('welcome_role') }}</strong>. Your dashboard is ready — explore deals, contacts, and more.
         </p>
-        <button onclick="document.getElementById('rb-welcome-modal').style.display='none'"
+        <button type="button" onclick="document.getElementById('rb-welcome-modal').style.display='none'"
                 style="width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#5b4cdb);color:white;border:none;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,0.3)">
             Go to My Dashboard →
         </button>

@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-add-org')" class="btn-primary">
+    <button type="button" x-data @click="$dispatch('open-add-org')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -64,7 +64,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="text" x-model="search" @input.debounce.400ms="resetAndFetch()"
                    placeholder="Search city or municipality…">
-            <button x-show="search.length > 0" @click="search=''; resetAndFetch()"
+            <button type="button" x-show="search.length > 0" @click="search=''; resetAndFetch()"
                     class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
@@ -132,7 +132,7 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
 
-            <button x-show="filterIsland || filterRegion || filterProvince || filterType || filterHasDeal !== '' || search"
+            <button type="button" x-show="filterIsland || filterRegion || filterProvince || filterType || filterHasDeal !== '' || search"
                     @click="filterIsland=''; filterRegion=''; filterProvince=''; filterType=''; filterHasDeal=''; search=''; resetAndFetch()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -223,11 +223,11 @@
                             {{-- Actions --}}
                             <td>
                                 <div class="flex items-center gap-1.5 justify-end">
-                                    <button @click="openEdit(o)"
+                                    <button type="button" @click="openEdit(o)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     </button>
-                                    <button @click="deleteOrg(o.id)"
+                                    <button type="button" @click="deleteOrg(o.id)"
                                             class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
@@ -245,17 +245,17 @@
             <p class="text-xs text-gray-400"
                x-text="`Showing ${((meta.page-1)*meta.per_page)+1}–${Math.min(meta.page*meta.per_page, meta.total)} of ${meta.total.toLocaleString()} organizations`"></p>
             <div class="flex items-center gap-1.5">
-                <button @click="goPage(meta.page - 1)" :disabled="meta.page <= 1"
+                <button type="button" @click="goPage(meta.page - 1)" :disabled="meta.page <= 1"
                         class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     ← Prev
                 </button>
                 <template x-for="p in pageNumbers()" :key="p">
-                    <button @click="goPage(p)"
+                    <button type="button" @click="goPage(p)"
                             :class="p === meta.page ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
                             class="w-8 h-8 rounded-lg text-xs font-semibold border transition-colors"
                             x-text="p"></button>
                 </template>
-                <button @click="goPage(meta.page + 1)" :disabled="meta.page >= meta.last_page"
+                <button type="button" @click="goPage(meta.page + 1)" :disabled="meta.page >= meta.last_page"
                         class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     Next →
                 </button>
@@ -270,7 +270,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]" x-text="editId ? 'Edit Organization' : 'Add Organization'"></h3>
-                <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -307,8 +307,8 @@
                 </div>
                 <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
                 <div class="flex justify-end gap-3 pt-1">
-                    <button @click="showModal = false" class="btn-secondary">Cancel</button>
-                    <button @click="saveOrg()" :disabled="saving" class="btn-primary"
+                    <button type="button" @click="showModal = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="saveOrg()" :disabled="saving" class="btn-primary"
                             x-text="saving ? 'Saving…' : (editId ? 'Save Changes' : 'Add Organization')"></button>
                 </div>
             </div>

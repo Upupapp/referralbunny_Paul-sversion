@@ -35,7 +35,7 @@
                 <p class="text-gray-400 text-xs mt-0.5">ID: {{ $tenant->id }}</p>
             </div>
             <div class="flex flex-wrap gap-2 shrink-0">
-                <button x-data @click="$dispatch('open-extend-access')" class="btn-secondary">
+                <button type="button" x-data @click="$dispatch('open-extend-access')" class="btn-secondary">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
@@ -193,7 +193,7 @@
                     <p class="text-xs text-gray-400">{{ $tenant->name }}</p>
                 </div>
             </div>
-            <button @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button type="button" @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -274,8 +274,8 @@
             <p x-show="error" class="text-xs text-red-600 font-medium" x-text="error"></p>
 
             <div class="flex justify-end gap-3 pt-1">
-                <button @click="show = false" class="btn-secondary">Cancel</button>
-                <button @click="submit()" :disabled="saving || days < 1" class="btn-primary"
+                <button type="button" @click="show = false" class="btn-secondary">Cancel</button>
+                <button type="button" @click="submit()" :disabled="saving || days < 1" class="btn-primary"
                         x-text="saving ? 'Extending…' : 'Extend Access'"></button>
             </div>
         </div>
@@ -498,7 +498,7 @@ function extendAccessModal(tenantId, tenantStatus) {
 
                 {{-- CTAs --}}
                 <div class="fade-up-4 flex gap-2.5 pt-1">
-                    <button @click="show = false"
+                    <button type="button" @click="show = false"
                             class="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:text-[#1E1B4B] hover:bg-gray-50 transition-all font-medium">
                         View details
                     </button>
@@ -519,7 +519,7 @@ function extendAccessModal(tenantId, tenantStatus) {
         </div>
 
         {{-- Close button --}}
-        <button @click="show = false"
+        <button type="button" @click="show = false"
                 class="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors border border-gray-100">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

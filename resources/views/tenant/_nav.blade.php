@@ -245,7 +245,7 @@ $workspaceBadge += $criticalBadge;
 
     {{-- ── Pipeline ────────────────────────────────────────────────────────── --}}
     <div>
-        <button @click="toggle('pipeline')"
+        <button type="button" @click="toggle('pipeline')"
                 :aria-expanded="open.pipeline.toString()"
                 aria-controls="nav-pipeline"
                 class="nav-group {{ $activeGroup === 'pipeline' ? 'nav-group-active' : '' }}">
@@ -346,7 +346,7 @@ $workspaceBadge += $criticalBadge;
                 });
             }
          }">
-        <button @click="toggle('workspace')"
+        <button type="button" @click="toggle('workspace')"
                 :aria-expanded="open.workspace.toString()"
                 aria-controls="nav-workspace"
                 class="nav-group {{ $activeGroup === 'workspace' ? 'nav-group-active' : '' }}">
@@ -481,7 +481,7 @@ $workspaceBadge += $criticalBadge;
     {{-- ── Data & Reports ──────────────────────────────────────────────────── --}}
     @if($isAdminMgr)
     <div>
-        <button @click="toggle('data')"
+        <button type="button" @click="toggle('data')"
                 :aria-expanded="open.data.toString()"
                 aria-controls="nav-data"
                 class="nav-group {{ $activeGroup === 'data' ? 'nav-group-active' : '' }}">
@@ -542,7 +542,7 @@ $workspaceBadge += $criticalBadge;
     {{-- ── Admin ────────────────────────────────────────────────────────────── --}}
     @if($isAdminMgr)
     <div>
-        <button @click="toggle('admin')"
+        <button type="button" @click="toggle('admin')"
                 :aria-expanded="open.admin.toString()"
                 aria-controls="nav-admin"
                 class="nav-group {{ $activeGroup === 'admin' ? 'nav-group-active' : '' }}">

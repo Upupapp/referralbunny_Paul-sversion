@@ -47,9 +47,9 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2 mt-4">
-                    <button @click="moveStage()" x-show="stageIndex < stages.length - 1" :disabled="moving"
+                    <button type="button" @click="moveStage()" x-show="stageIndex < stages.length - 1" :disabled="moving"
                             class="btn-primary text-sm" x-text="moving ? 'Moving...' : 'Move to Next Stage'"></button>
-                    <button @click="openReassign()" class="btn-secondary text-sm">Reassign</button>
+                    <button type="button" @click="openReassign()" class="btn-secondary text-sm">Reassign</button>
                 </div>
             </div>
 
@@ -69,7 +69,7 @@
                 <div class="card space-y-3">
                     <div class="flex items-center justify-between">
                         <h3 class="font-semibold text-[#1E1B4B]">Notes</h3>
-                        <button @click="showNote = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add</button>
+                        <button type="button" @click="showNote = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add</button>
                     </div>
                     <template x-for="note in (lead.notes || [])" :key="note.id">
                         <div class="p-3 bg-[#F0EFFA] rounded-xl">
@@ -114,13 +114,13 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Add Note</h3>
-                <button @click="showNote = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button type="button" @click="showNote = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
                 <div><label class="form-label">Note</label><textarea x-model="noteText" rows="3" class="form-input" placeholder="Write your note..."></textarea></div>
                 <div class="flex justify-end gap-3">
-                    <button @click="showNote = false" class="btn-secondary">Cancel</button>
-                    <button @click="addNote()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Save Note'"></button>
+                    <button type="button" @click="showNote = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="addNote()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Save Note'"></button>
                 </div>
             </div>
         </div>
@@ -131,7 +131,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Reassign Deal</h3>
-                <button @click="showReassign = false" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showReassign = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -165,8 +165,8 @@
                 </div>
                 {{-- Footer --}}
                 <div class="flex justify-end gap-3 pt-1">
-                    <button @click="showReassign = false" class="btn-secondary">Cancel</button>
-                    <button @click="reassign()" :disabled="saving || !reassignSelectedName"
+                    <button type="button" @click="showReassign = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="reassign()" :disabled="saving || !reassignSelectedName"
                             class="btn-primary"
                             x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
                 </div>

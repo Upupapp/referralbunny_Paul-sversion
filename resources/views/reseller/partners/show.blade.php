@@ -43,7 +43,7 @@
                 </div>
             </div>
             <div class="flex gap-2 sm:shrink-0">
-                <button @click="openAddModal()"
+                <button type="button" @click="openAddModal()"
                         class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-md"
                         style="background:linear-gradient(135deg,#0D9488,#14B8A6)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -55,19 +55,19 @@
 
     {{-- ── Tab navigation ──────────────────────────────────────── --}}
     <div class="flex gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto sm:inline-flex">
-        <button @click="tab='overview'"
+        <button type="button" @click="tab='overview'"
                 :class="tab==='overview' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-400 hover:text-gray-600'"
                 class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all">Overview</button>
-        <button @click="tab='deals'"
+        <button type="button" @click="tab='deals'"
                 :class="tab==='deals' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-400 hover:text-gray-600'"
                 class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all">
             Shared Deals
             <span class="ml-1 text-xs text-gray-400">({{ $sharedDeals->count() }})</span>
         </button>
-        <button @click="tab='commission'"
+        <button type="button" @click="tab='commission'"
                 :class="tab==='commission' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-400 hover:text-gray-600'"
                 class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all">Commission</button>
-        <button @click="tab='activity'"
+        <button type="button" @click="tab='activity'"
                 :class="tab==='activity' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-400 hover:text-gray-600'"
                 class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all">Activity</button>
     </div>
@@ -124,7 +124,7 @@
             <div class="flex items-center gap-2 mb-4">
                 <h2 class="text-sm font-bold text-[#1E1B4B]">Commission Snapshot</h2>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -148,7 +148,7 @@
                     <div class="flex items-center gap-1 mb-1">
                         <p class="text-xs text-gray-400">{{ $cLabel }}</p>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                     class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About {{ $cLabel }} commission">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
@@ -226,7 +226,7 @@
                                     View Deal
                                 </a>
                                 @if(!in_array($lead?->commission_status ?? '', ['locked','paid']))
-                                <button @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
+                                <button type="button" @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                                         class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                                     Remove
                                 </button>
@@ -267,7 +267,7 @@
                         View Deal
                     </a>
                     @if(!in_array($lead?->commission_status ?? '', ['locked','paid']))
-                    <button @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
+                    <button type="button" @click="confirmRemove('{{ $split->id }}', {{ json_encode($lead?->name ?? '', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                             class="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                         Remove
                     </button>
@@ -288,7 +288,7 @@
             <div class="flex items-center gap-2 mb-5">
                 <h2 class="text-sm font-bold text-[#1E1B4B]">Partner Commission Summary</h2>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                             class="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </button>
@@ -312,7 +312,7 @@
                     <div class="flex items-center justify-center gap-1 mb-1">
                         <p class="text-xs text-gray-400">{{ $cLabel }}</p>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                     class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About {{ $cLabel }} commission">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
@@ -398,7 +398,7 @@
                     <h3 class="text-[#1E1B4B] font-bold text-base">Add Partner to Another Deal</h3>
                     <p class="text-gray-400 text-xs mt-0.5">Associate <strong>{{ $first->partner_name }}</strong> with another one of your deals.</p>
                 </div>
-                <button @click="modal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <button type="button" @click="modal = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -477,8 +477,8 @@
             <p class="text-sm text-gray-500 mb-4">Are you sure? This action will be logged and the admin will be notified.</p>
             <div x-show="removeError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl mb-3" x-text="removeError"></div>
             <div class="flex gap-3 justify-end">
-                <button @click="removeModal = false" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
-                <button @click="doRemove()"
+                <button type="button" @click="removeModal = false" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
+                <button type="button" @click="doRemove()"
                         :disabled="removing"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50">
                     <svg x-show="removing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">

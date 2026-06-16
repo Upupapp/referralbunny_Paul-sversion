@@ -48,6 +48,7 @@ class CheckPipelineStageLimits extends Command
                     ->whereIn('status', ['active', 'expiring'])
                     ->where('days_left', '<=', $rule->warning_days)
                     ->where('days_left', '>', 0)
+                    ->whereNull('deleted_at')
                     ->select('id', 'name', 'reseller_name', 'days_left', 'stage')
                     ->get();
 

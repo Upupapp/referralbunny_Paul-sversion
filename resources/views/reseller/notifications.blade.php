@@ -12,7 +12,7 @@
                 <span x-text="unreadCount">0</span> unread
             </p>
         </div>
-        <button @click="markAllRead()"
+        <button type="button" @click="markAllRead()"
                 x-show="unreadCount > 0"
                 class="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors">
             Mark all as read
@@ -22,7 +22,7 @@
     {{-- Filter tabs --}}
     <div class="flex gap-2 flex-wrap">
         <template x-for="tab in tabs" :key="tab.key">
-            <button @click="activeTab = tab.key; page = 1; load()"
+            <button type="button" @click="activeTab = tab.key; page = 1; load()"
                     :class="activeTab === tab.key
                         ? 'bg-teal-500 text-white shadow-sm'
                         : 'bg-white text-gray-500 border border-gray-200 hover:border-teal-300'"
@@ -61,7 +61,7 @@
                 <p class="text-sm font-semibold text-[#1E1B4B]">No notifications</p>
                 <p class="text-xs text-gray-400 mt-1 max-w-xs">
                     <template x-if="activeTab !== 'all'">
-                        <span>No notifications in this filter. <button @click="activeTab='all'; load()" class="text-teal-600 underline">View all</button></span>
+                        <span>No notifications in this filter. <button type="button" @click="activeTab='all'; load()" class="text-teal-600 underline">View all</button></span>
                     </template>
                     <template x-if="activeTab === 'all'">
                         <span>Updates about your deals, commissions, and messages will appear here.</span>
@@ -104,7 +104,7 @@
 
                                 {{-- Actions --}}
                                 <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button x-show="!n.is_read" @click.stop="markRead(n)"
+                                    <button type="button" x-show="!n.is_read" @click.stop="markRead(n)"
                                             title="Mark as read"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-teal-500 transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,14 +130,14 @@
         {{-- Pagination --}}
         <template x-if="!loading && totalPages > 1">
             <div class="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
-                <button @click="page--; load()" :disabled="page <= 1"
+                <button type="button" @click="page--; load()" :disabled="page <= 1"
                         class="text-xs text-gray-500 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed">
                     ← Previous
                 </button>
                 <span class="text-xs text-gray-400">
                     Page <span x-text="page"></span> of <span x-text="totalPages"></span>
                 </span>
-                <button @click="page++; load()" :disabled="page >= totalPages"
+                <button type="button" @click="page++; load()" :disabled="page >= totalPages"
                         class="text-xs text-gray-500 hover:text-teal-600 disabled:opacity-40 disabled:cursor-not-allowed">
                     Next →
                 </button>

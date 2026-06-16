@@ -146,7 +146,7 @@
                         @endif
                     </div>
                     {{-- Link --}}
-                    <a href="{{ route('reseller.deals.show', [$tenantId, $deal->id]) }}"
+                    <a rel="noopener noreferrer" href="{{ route('reseller.deals.show', [$tenantId, $deal->id]) }}"
                        class="text-xs text-gray-400 hover:text-violet-600 whitespace-nowrap"
                        target="_blank">View</a>
                 </div>

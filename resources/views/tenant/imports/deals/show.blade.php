@@ -104,7 +104,7 @@
                             Undoing import…
                         </div>
                     @else
-                        <button @click="openRollbackModal()"
+                        <button type="button" @click="openRollbackModal()"
                                 class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                             Undo Import
@@ -125,7 +125,7 @@
                                 <h3 class="font-bold text-[#1E1B4B]">Undo Import</h3>
                                 <p class="text-xs text-gray-400 mt-0.5">Review what will be changed before confirming.</p>
                             </div>
-                            <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 mt-0.5">
+                            <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600 mt-0.5">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -143,7 +143,7 @@
                                 <p class="text-sm text-amber-800 font-medium" x-text="preview?.reason || 'This import cannot be undone.'"></p>
                             </div>
                             <div class="flex justify-end mt-4">
-                                <button @click="showModal = false" class="btn-secondary text-sm">Close</button>
+                                <button type="button" @click="showModal = false" class="btn-secondary text-sm">Close</button>
                             </div>
                         </div>
 
@@ -213,8 +213,8 @@
 
                             {{-- Actions --}}
                             <div class="flex gap-3 justify-end pt-2">
-                                <button @click="showModal = false" class="btn-secondary text-sm">Cancel</button>
-                                <button @click="submitRollback()"
+                                <button type="button" @click="showModal = false" class="btn-secondary text-sm">Cancel</button>
+                                <button type="button" @click="submitRollback()"
                                         :disabled="!canSubmit() || submitting"
                                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                     <svg x-show="submitting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>

@@ -17,7 +17,7 @@
                 <div class="flex items-center gap-1.5 shrink-0">
                     {{-- Mark all read (only when unread exists) --}}
                     <template x-if="totalUnread > 0">
-                        <button x-data="{ busy: false }"
+                        <button type="button" x-data="{ busy: false }"
                                 @click="if(busy) return; busy=true;
                                     fetch('{{ route('partner.messages.mark-all-read') }}', {
                                         method:'POST', credentials:'same-origin',
@@ -35,7 +35,7 @@
                         </button>
                     </template>
                     {{-- New Message button --}}
-                    <button @click="showCompose = !showCompose"
+                    <button type="button" @click="showCompose = !showCompose"
                             class="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:shadow-md"
                             style="background:linear-gradient(135deg,#2563EB,#3B82F6)"
                             title="New Message"
@@ -75,9 +75,9 @@
                     </select>
                 </template>
                 <div class="flex gap-1.5">
-                    <button @click="showCompose = false; composeType = ''; composeReferrer = ''; composeAdmin = ''"
+                    <button type="button" @click="showCompose = false; composeType = ''; composeReferrer = ''; composeAdmin = ''"
                             class="flex-1 py-1 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50">Cancel</button>
-                    <button @click="openComposedConversation()"
+                    <button type="button" @click="openComposedConversation()"
                             :disabled="!composeType || (composeType === 'referrer' && !composeReferrer) || (composeType === 'admin' && !composeAdmin)"
                             class="flex-1 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
                             style="background:linear-gradient(135deg,#2563EB,#3B82F6)">Start</button>
@@ -86,10 +86,10 @@
 
             {{-- Tabs --}}
             <div class="flex border-b border-gray-100 shrink-0">
-                <button @click="msgTab = 'deals'"
+                <button type="button" @click="msgTab = 'deals'"
                         :class="msgTab === 'deals' ? 'text-blue-600 border-b-2 border-blue-500 font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[11px] py-2.5 transition-colors">Deal Threads</button>
-                <button @click="msgTab = 'admin'"
+                <button type="button" @click="msgTab = 'admin'"
                         :class="msgTab === 'admin' ? 'text-blue-600 border-b-2 border-blue-500 font-semibold' : 'text-gray-400 hover:text-gray-600'"
                         class="flex-1 text-[11px] py-2.5 transition-colors relative">
                     Admin &amp; Support
@@ -104,7 +104,7 @@
                 <template x-if="msgTab === 'deals'">
                     <div>
                         @forelse($dealThreads as $thread)
-                        <button @click="selectThread('{{ $thread->id }}')"
+                        <button type="button" @click="selectThread('{{ $thread->id }}')"
                                 :class="activeThreadId === '{{ $thread->id }}' ? 'bg-blue-50 border-l-[3px] border-l-blue-500' : 'border-l-[3px] border-l-transparent'"
                                 class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70">
                             <div class="flex items-center gap-2.5">
@@ -150,7 +150,7 @@
                         </div>
                         @else
                         @foreach($directThreads as $thread)
-                        <button @click="selectThread('{{ $thread->id }}')"
+                        <button type="button" @click="selectThread('{{ $thread->id }}')"
                                 :class="activeThreadId === '{{ $thread->id }}' ? 'bg-purple-50 border-l-[3px] border-l-purple-500' : 'border-l-[3px] border-l-transparent'"
                                 class="w-full text-left px-3 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50/70">
                             <div class="flex items-center gap-2.5">
@@ -191,7 +191,7 @@
                     <p class="text-gray-400 text-xs mt-1 max-w-xs">
                         Choose a deal thread from the list, or switch to <strong>Contact Admin</strong> to send a direct message to the workspace team.
                     </p>
-                    <button @click="startDirectAdminMessage()"
+                    <button type="button" @click="startDirectAdminMessage()"
                             class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:shadow-md"
                             style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +207,7 @@
 
                     {{-- Thread header --}}
                     <div class="px-3 sm:px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
-                        <button @click="mobilePane = 'list'" class="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+                        <button type="button" @click="mobilePane = 'list'" class="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                             </svg>
@@ -264,7 +264,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/>
                         </svg>
                         <span class="flex-1" x-text="sendError"></span>
-                        <button @click="sendError = null" class="shrink-0 text-red-400 hover:text-red-600">✕</button>
+                        <button type="button" @click="sendError = null" class="shrink-0 text-red-400 hover:text-red-600">✕</button>
                     </div>
 
                     {{-- Compose --}}

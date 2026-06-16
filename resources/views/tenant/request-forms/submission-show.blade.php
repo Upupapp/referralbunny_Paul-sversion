@@ -644,7 +644,7 @@ $allActivities = collect([$timelineSubmitEntry])
                     <p style="font-size:11px;color:#9ca3af;margin:0">Compose a message to the requester</p>
                 </div>
             </div>
-            <button onclick="document.getElementById('rb-email-modal').style.display='none'"
+            <button type="button" onclick="document.getElementById('rb-email-modal').style.display='none'"
                     style="width:28px;height:28px;border-radius:8px;border:none;background:#f3f4f6;color:#6b7280;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
                     aria-label="Close">×</button>
         </div>
@@ -686,17 +686,17 @@ Best regards,
 
         {{-- Actions --}}
         <div style="display:flex;align-items:center;gap:10px;padding:16px 24px 20px;border-top:1px solid #f3f4f6;flex-wrap:wrap">
-            <button onclick="rbSendEmailViaMailto()"
+            <button type="button" onclick="rbSendEmailViaMailto()"
                     style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;min-width:140px;box-shadow:0 2px 8px rgba(123,97,255,0.25)">
                 <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 Open in Email App
             </button>
-            <button onclick="rbCopyEmailContent(this)"
+            <button type="button" onclick="rbCopyEmailContent(this)"
                     style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
                 <svg style="width:13px;height:13px;color:#6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 Copy Content
             </button>
-            <button onclick="document.getElementById('rb-email-modal').style.display='none'"
+            <button type="button" onclick="document.getElementById('rb-email-modal').style.display='none'"
                     style="display:flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
                 Cancel
             </button>

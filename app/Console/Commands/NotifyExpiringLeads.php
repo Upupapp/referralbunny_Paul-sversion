@@ -141,6 +141,7 @@ class NotifyExpiringLeads extends Command
                   ->on('l.tenant_id', '=', 'dps.tenant_id');
             })
             ->where('l.status', 'expiring')
+            ->whereNull('l.deleted_at')
             ->where('dps.status', 'active')
             ->whereNotNull('dps.partner_user_id')
             ->whereNull('dps.deleted_at')

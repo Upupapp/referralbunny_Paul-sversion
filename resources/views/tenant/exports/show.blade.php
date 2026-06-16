@@ -70,14 +70,14 @@
             {{-- Action buttons --}}
             <div class="flex flex-wrap items-center gap-2 shrink-0">
                 @if($isPending)
-                    <button @click="openRejectModal()"
+                    <button type="button" @click="openRejectModal()"
                             class="btn-secondary !border-red-200 !text-red-600 hover:!bg-red-50">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                         Reject Export
                     </button>
-                    <button @click="confirmApprove()"
+                    <button type="button" @click="confirmApprove()"
                             class="btn-primary !bg-emerald-600 hover:!bg-emerald-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -441,7 +441,7 @@
 
             {{-- Cancel button (for pending requests) --}}
             @if($exportRequest->canBeCancelled())
-                <button @click="confirmCancel()"
+                <button type="button" @click="confirmCancel()"
                         class="w-full btn-secondary !border-gray-200 !text-gray-500 hover:!border-red-200 hover:!text-red-500 text-xs">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -479,7 +479,7 @@
                 </div>
                 <h3 class="text-[#1E1B4B] font-bold text-base">Reject Export Request</h3>
             </div>
-            <button @click="$store.rejectModal.close()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button type="button" @click="$store.rejectModal.close()" class="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -503,8 +503,8 @@
         </div>
 
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-            <button @click="$store.rejectModal.close()" class="btn-secondary" :disabled="submitting">Cancel</button>
-            <button @click="submitReject()"
+            <button type="button" @click="$store.rejectModal.close()" class="btn-secondary" :disabled="submitting">Cancel</button>
+            <button type="button" @click="submitReject()"
                     class="btn-primary !bg-red-600 hover:!bg-red-700"
                     :disabled="submitting || !reason.trim()">
                 <span x-show="!submitting">Confirm Rejection</span>

@@ -119,7 +119,7 @@
         <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Import Rows</h2>
             @if($ready->count() > 0)
-            <button @click="bulkApprove('create')" :disabled="busy"
+            <button type="button" @click="bulkApprove('create')" :disabled="busy"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors disabled:opacity-50">
                 <svg x-show="busy" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Approve All Ready ({{ $ready->count() }})

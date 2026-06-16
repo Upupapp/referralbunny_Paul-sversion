@@ -39,35 +39,35 @@
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
             {{-- Count pills --}}
             <div class="flex flex-wrap gap-2 flex-1">
-                <button @click="activeTab = 'ready'" :class="activeTab === 'ready' ? 'ring-2 ring-emerald-400' : ''"
+                <button type="button" @click="activeTab = 'ready'" :class="activeTab === 'ready' ? 'ring-2 ring-emerald-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     Ready <span class="font-bold">{{ $cnt['ready'] }}</span>
                 </button>
-                <button @click="activeTab = 'duplicate'" :class="activeTab === 'duplicate' ? 'ring-2 ring-amber-400' : ''"
+                <button type="button" @click="activeTab = 'duplicate'" :class="activeTab === 'duplicate' ? 'ring-2 ring-amber-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                     Duplicates <span class="font-bold">{{ $cnt['duplicate'] }}</span>
                 </button>
-                <button @click="activeTab = 'unknown_referrer'" :class="activeTab === 'unknown_referrer' ? 'ring-2 ring-yellow-400' : ''"
+                <button type="button" @click="activeTab = 'unknown_referrer'" :class="activeTab === 'unknown_referrer' ? 'ring-2 ring-yellow-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
                     Unknown Referrers <span class="font-bold">{{ $cnt['unknown_referrer'] }}</span>
                 </button>
-                <button @click="activeTab = 'pricing_issue'" :class="activeTab === 'pricing_issue' ? 'ring-2 ring-red-400' : ''"
+                <button type="button" @click="activeTab = 'pricing_issue'" :class="activeTab === 'pricing_issue' ? 'ring-2 ring-red-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                     Pricing Issues <span class="font-bold">{{ $cnt['pricing_issue'] }}</span>
                 </button>
                 @if($cnt['failed'] > 0)
-                <button @click="activeTab = 'failed'" :class="activeTab === 'failed' ? 'ring-2 ring-red-600' : ''"
+                <button type="button" @click="activeTab = 'failed'" :class="activeTab === 'failed' ? 'ring-2 ring-red-600' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
                     Failed <span class="font-bold">{{ $cnt['failed'] }}</span>
                 </button>
                 @endif
                 @if($cnt['blocked'] > 0)
-                <button @click="activeTab = 'blocked'" :class="activeTab === 'blocked' ? 'ring-2 ring-gray-500' : ''"
+                <button type="button" @click="activeTab = 'blocked'" :class="activeTab === 'blocked' ? 'ring-2 ring-gray-500' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                     Blocked <span class="font-bold">{{ $cnt['blocked'] }}</span>
@@ -119,7 +119,7 @@
                     <option value="merge">Merge Missing Fields</option>
                     <option value="overwrite">Overwrite All</option>
                 </select>
-                <button @click="applyBulk()"
+                <button type="button" @click="applyBulk()"
                         :disabled="!bulkAction || selectedRows.length === 0"
                         :class="!bulkAction || selectedRows.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
                         class="btn-primary text-sm py-1.5">
@@ -293,7 +293,7 @@
                             <div x-data="{ open: false, action: rowActions['{{ $row->id }}'] ?? 'skip', busy: false }"
                                  class="relative"
                                  @click.outside="open = false">
-                                <button @click="open = !open" :disabled="busy"
+                                <button type="button" @click="open = !open" :disabled="busy"
                                         class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-[#7B61FF] hover:text-[#7B61FF] transition-colors"
                                         :class="action === 'skip' ? 'text-gray-500' : action === 'merge' ? 'text-blue-600 border-blue-200' : 'text-amber-600 border-amber-200'">
                                     <svg x-show="busy" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
@@ -302,15 +302,15 @@
                                 </button>
                                 <div x-show="open" x-cloak
                                      class="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-gray-100 shadow-lg z-10 overflow-hidden py-1">
-                                    <button @click="busy=true; action='skip'; open=false; setRowAction('{{ $row->id }}', 'skip').finally(()=>busy=false)"
+                                    <button type="button" @click="busy=true; action='skip'; open=false; setRowAction('{{ $row->id }}', 'skip').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 text-gray-600 transition-colors">
                                         Skip this row
                                     </button>
-                                    <button @click="busy=true; action='merge'; open=false; setRowAction('{{ $row->id }}', 'merge').finally(()=>busy=false)"
+                                    <button type="button" @click="busy=true; action='merge'; open=false; setRowAction('{{ $row->id }}', 'merge').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-blue-700 transition-colors">
                                         Merge Missing Fields
                                     </button>
-                                    <button @click="busy=true; action='overwrite'; open=false; setRowAction('{{ $row->id }}', 'overwrite').finally(()=>busy=false)"
+                                    <button type="button" @click="busy=true; action='overwrite'; open=false; setRowAction('{{ $row->id }}', 'overwrite').finally(()=>busy=false)"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 text-amber-700 transition-colors">
                                         Overwrite All
                                     </button>

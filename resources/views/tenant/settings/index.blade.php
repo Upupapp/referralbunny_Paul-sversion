@@ -143,7 +143,7 @@
                         <h3 class="font-semibold text-[#1E1B4B]">Agreement Files</h3>
                         <p class="text-xs text-gray-400 mt-0.5">Referrers must acknowledge required agreements before they can refer deals.</p>
                     </div>
-                    <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
+                    <button type="button" @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -172,7 +172,7 @@
                         </div>
                         <p class="text-sm font-medium text-gray-600">No agreement files yet</p>
                         <p class="text-xs text-gray-400 mt-1">Add an NDA or Non-Compete to require referrer sign-off.</p>
-                        <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Agreement</button>
+                        <button type="button" @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Agreement</button>
                     </div>
 
                     {{-- Agreement list --}}
@@ -197,7 +197,7 @@
                                         <span x-show="a.version" class="text-xs text-gray-400" x-text="'v' + a.version"></span>
                                         <span x-show="a.effective_date" class="text-xs text-gray-400"
                                               x-text="a.effective_date ? 'Effective ' + new Date(a.effective_date).toLocaleDateString('en', {month:'short',day:'numeric',year:'numeric'}) : ''"></span>
-                                        <a x-show="a.file_url" :href="a.file_url" target="_blank"
+                                        <a rel="noopener noreferrer" x-show="a.file_url" :href="a.file_url" target="_blank"
                                            class="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z"/>
@@ -207,14 +207,14 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center">
-                                    <button @click="openEdit(a)"
+                                    <button type="button" @click="openEdit(a)"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
                                             title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
                                     </button>
-                                    <button @click="deleteAgreement(a.id)"
+                                    <button type="button" @click="deleteAgreement(a.id)"
                                             class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                                             title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +234,7 @@
                     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
                         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                             <h3 class="font-semibold text-[#1E1B4B]" x-text="editId ? 'Edit Agreement' : 'Add Agreement File'"></h3>
-                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button type="button" @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
@@ -287,8 +287,8 @@
                             <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
 
                             <div class="flex justify-end gap-3 pt-1">
-                                <button @click="closeModal()" class="btn-secondary">Cancel</button>
-                                <button @click="saveAgreement()" :disabled="saving" class="btn-primary"
+                                <button type="button" @click="closeModal()" class="btn-secondary">Cancel</button>
+                                <button type="button" @click="saveAgreement()" :disabled="saving" class="btn-primary"
                                         x-text="saving ? 'Saving…' : (editId ? 'Save Changes' : 'Add Agreement')"></button>
                             </div>
                         </div>
@@ -304,7 +304,7 @@
                         <h3 class="font-semibold text-[#1E1B4B]">Required Documents</h3>
                         <p class="text-xs text-gray-400 mt-0.5">Documents referrers must submit before they can refer deals. Admin reviews and approves each submission.</p>
                     </div>
-                    <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
+                    <button type="button" @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
@@ -331,7 +331,7 @@
                         </div>
                         <p class="text-sm font-medium text-gray-600">No required documents yet</p>
                         <p class="text-xs text-gray-400 mt-1">Add a Valid ID or other document to require from referrers.</p>
-                        <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Document</button>
+                        <button type="button" @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Document</button>
                     </div>
 
                     <div x-show="!loading && docs.length > 0" class="space-y-2">
@@ -357,10 +357,10 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center">
-                                    <button @click="openEdit(d)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Edit">
+                                    <button type="button" @click="openEdit(d)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     </button>
-                                    <button @click="deleteDoc(d.id)" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                                    <button type="button" @click="deleteDoc(d.id)" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
                                 </div>
@@ -376,7 +376,7 @@
                     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
                         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                             <h3 class="font-semibold text-[#1E1B4B]" x-text="editId ? 'Edit Document' : 'Add Required Document'"></h3>
-                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button type="button" @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -421,8 +421,8 @@
                             </div>
                             <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
                             <div class="flex justify-end gap-3 pt-1">
-                                <button @click="closeModal()" class="btn-secondary">Cancel</button>
-                                <button @click="saveDoc()" :disabled="saving" class="btn-primary"
+                                <button type="button" @click="closeModal()" class="btn-secondary">Cancel</button>
+                                <button type="button" @click="saveDoc()" :disabled="saving" class="btn-primary"
                                         x-text="saving ? 'Saving…' : (editId ? 'Save Changes' : 'Add Document')"></button>
                             </div>
                         </div>
@@ -438,7 +438,7 @@
                         <h3 class="font-semibold text-[#1E1B4B]">Legal Agreements by Role</h3>
                         <p class="text-xs text-gray-400 mt-0.5">Paste NDA, Non-Compete, or other legal text. Users must scroll through and accept before accessing the workspace.</p>
                     </div>
-                    <button @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
+                    <button type="button" @click="openAdd()" class="btn-primary text-sm py-1.5 px-3 shrink-0 ml-4">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span class="hidden sm:inline ml-1">Add Agreement</span>
                     </button>
@@ -458,7 +458,7 @@
                         </div>
                         <p class="text-sm font-medium text-gray-600">No legal agreements configured</p>
                         <p class="text-xs text-gray-400 mt-1">Add an NDA or Non-Compete that new members must accept when joining.</p>
-                        <button @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Agreement</button>
+                        <button type="button" @click="openAdd()" class="btn-primary text-sm mt-4 py-1.5 px-4">Add First Agreement</button>
                     </div>
 
                     <div x-show="!loading && agreements.length > 0" class="space-y-2">
@@ -499,10 +499,10 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center">
-                                    <button @click="openEdit(a)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Edit">
+                                    <button type="button" @click="openEdit(a)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                     </button>
-                                    <button @click="deleteLegalAgreement(a.id)" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                                    <button type="button" @click="deleteLegalAgreement(a.id)" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                     </button>
                                 </div>
@@ -518,7 +518,7 @@
                     <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col" @click.stop>
                         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
                             <h3 class="font-semibold text-[#1E1B4B]" x-text="editId ? 'Edit Legal Agreement' : 'Add Legal Agreement'"></h3>
-                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button type="button" @click="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -591,8 +591,8 @@
                             <p x-show="formError" class="text-xs text-red-600 font-medium p-2 bg-red-50 rounded-lg" x-text="formError"></p>
                         </div>
                         <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
-                            <button @click="closeModal()" class="btn-secondary">Cancel</button>
-                            <button @click="saveLegalAgreement()" :disabled="saving" class="btn-primary"
+                            <button type="button" @click="closeModal()" class="btn-secondary">Cancel</button>
+                            <button type="button" @click="saveLegalAgreement()" :disabled="saving" class="btn-primary"
                                     x-text="saving ? 'Saving…' : (editId ? 'Save Changes' : 'Add Agreement')"></button>
                         </div>
                     </div>

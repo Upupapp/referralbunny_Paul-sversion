@@ -6,7 +6,7 @@
 @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-new-agreement')"
+    <button type="button" x-data @click="$dispatch('open-new-agreement')"
             class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -72,7 +72,7 @@
     {{-- Error state --}}
     <div x-show="loadError && !loading" class="card text-center py-10">
         <p class="text-sm text-red-500 font-medium">Could not load agreements.</p>
-        <button @click="load()" class="mt-3 text-sm text-[#7B61FF] underline">Retry</button>
+        <button type="button" @click="load()" class="mt-3 text-sm text-[#7B61FF] underline">Retry</button>
     </div>
 
     {{-- Empty state --}}
@@ -85,7 +85,7 @@
         </div>
         <p class="text-sm font-semibold text-[#1E1B4B]">No agreements yet</p>
         <p class="text-xs text-gray-400 mt-1 max-w-xs">Create your first agreement to require referrers to read and accept your terms before accessing their portal.</p>
-        <button @click="openCreate()" class="mt-4 btn-primary text-sm">
+        <button type="button" @click="openCreate()" class="mt-4 btn-primary text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -136,20 +136,20 @@
 
                     {{-- Actions --}}
                     <div class="flex items-center gap-2 shrink-0">
-                        <button @click="toggleActive(agreement)"
+                        <button type="button" @click="toggleActive(agreement)"
                                 class="text-xs px-2.5 py-1 rounded-lg border transition-colors"
                                 :class="agreement.is_active ? 'border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'"
                                 :title="agreement.is_active ? 'Deactivate' : 'Activate'"
                                 x-text="agreement.is_active ? 'Deactivate' : 'Activate'">
                         </button>
-                        <button @click="openEdit(agreement)"
+                        <button type="button" @click="openEdit(agreement)"
                                 class="p-1.5 rounded-lg text-gray-400 hover:text-[#7B61FF] hover:bg-purple-50 transition-colors"
                                 title="Edit">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                         </button>
-                        <button @click="confirmDelete(agreement)"
+                        <button type="button" @click="confirmDelete(agreement)"
                                 class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                                 title="Delete">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@
         {{-- Modal header --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
             <h3 class="font-bold text-[#1E1B4B] text-base" x-text="editingId ? 'Edit Agreement' : 'New Agreement'"></h3>
-            <button @click="closeForm()" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+            <button type="button" @click="closeForm()" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -248,7 +248,7 @@
         {{-- Modal footer --}}
         <div class="flex gap-3 justify-end px-6 py-4 border-t border-gray-100 shrink-0">
             <button type="button" @click="closeForm()" class="btn-secondary text-sm">Cancel</button>
-            <button @click="saveAgreement()"
+            <button type="button" @click="saveAgreement()"
                     :disabled="saving || !form.title.trim() || !form.content.trim()"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
                     style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
@@ -278,8 +278,8 @@
             <strong x-text="deleteTarget?.title"></strong> will be permanently removed, including all acceptance records. This cannot be undone.
         </p>
         <div class="flex gap-3 justify-end">
-            <button @click="showDelete = false" class="btn-secondary text-sm">Cancel</button>
-            <button @click="deleteAgreement()"
+            <button type="button" @click="showDelete = false" class="btn-secondary text-sm">Cancel</button>
+            <button type="button" @click="deleteAgreement()"
                     :disabled="deleting"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50">
                 <svg x-show="deleting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">

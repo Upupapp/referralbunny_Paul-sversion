@@ -8,15 +8,15 @@
     {{-- Toolbar --}}
     <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-white border-b border-gray-200 shrink-0 flex-wrap gap-y-2">
         <div class="flex items-center gap-2">
-            <button @click="prevMonth()" :disabled="loading"
+            <button type="button" @click="prevMonth()" :disabled="loading"
                     class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <button @click="nextMonth()" :disabled="loading"
+            <button type="button" @click="nextMonth()" :disabled="loading"
                     class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
-            <button @click="goToToday()" :disabled="loading"
+            <button type="button" @click="goToToday()" :disabled="loading"
                     class="px-4 py-1.5 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 Today
             </button>
@@ -29,14 +29,14 @@
 
         {{-- Filter chips + legend --}}
         <div class="flex items-center gap-2 flex-wrap">
-            <button @click="toggleFilter('deal')"
+            <button type="button" @click="toggleFilter('deal')"
                     :class="filters.deal ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-100 text-gray-400 border-gray-200'"
                     class="flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold transition-colors">
                 <span class="w-2 h-2 rounded-full"
                       :class="filters.deal ? 'bg-orange-400' : 'bg-gray-300'"></span>
                 Deal Expiry
             </button>
-            <button @click="toggleFilter('task')"
+            <button type="button" @click="toggleFilter('task')"
                     :class="filters.task ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-400 border-gray-200'"
                     class="flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold transition-colors">
                 <span class="w-2 h-2 rounded-full"
@@ -50,7 +50,7 @@
     <div x-show="fetchError" class="mx-4 mt-3 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 shrink-0">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
         <span>Couldn't load calendar events.</span>
-        <button @click="fetchEvents()" class="underline font-semibold ml-1">Retry</button>
+        <button type="button" @click="fetchEvents()" class="underline font-semibold ml-1">Retry</button>
     </div>
 
     {{-- Empty month notice --}}
@@ -89,7 +89,7 @@
                         </div>
                         <div class="px-1 pb-1 space-y-0.5">
                             <template x-for="evt in cell.visibleEvents" :key="evt.id">
-                                <button @click.stop="selectDay(cell)"
+                                <button type="button" @click.stop="selectDay(cell)"
                                         :title="evt.title"
                                         :class="pillClass(evt)"
                                         class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium leading-snug truncate w-full text-left hover:opacity-80 transition-opacity">
@@ -97,7 +97,7 @@
                                     <span class="truncate" x-text="evt.title"></span>
                                 </button>
                             </template>
-                            <button x-show="cell.moreCount > 0" @click.stop="selectDay(cell)"
+                            <button type="button" x-show="cell.moreCount > 0" @click.stop="selectDay(cell)"
                                     class="text-[11px] text-indigo-500 font-medium px-1.5 w-full text-left"
                                     x-text="'+' + cell.moreCount + ' more'"></button>
                         </div>
@@ -120,7 +120,7 @@
                     <p class="text-2xl font-bold leading-none mt-0.5" x-text="selectedDayNum"
                        :class="selectedDayIsToday ? 'text-blue-600' : 'text-gray-800'"></p>
                 </div>
-                <button @click="selectedDay = null"
+                <button type="button" @click="selectedDay = null"
                         class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>

@@ -12,7 +12,7 @@
                 <span x-text="unreadCount">0</span> unread
             </p>
         </div>
-        <button @click="markAllRead()"
+        <button type="button" @click="markAllRead()"
                 x-show="unreadCount > 0"
                 class="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Mark all as read
@@ -22,7 +22,7 @@
     {{-- Filter tabs --}}
     <div class="flex gap-2 flex-wrap">
         <template x-for="tab in tabs" :key="tab.key">
-            <button @click="activeTab = tab.key; page = 1; load()"
+            <button type="button" @click="activeTab = tab.key; page = 1; load()"
                     :class="activeTab === tab.key
                         ? 'bg-blue-500 text-white shadow-sm'
                         : 'bg-white text-gray-500 border border-gray-200 hover:border-blue-300'"
@@ -55,7 +55,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
                 <p class="text-sm font-medium text-gray-500">Could not load notifications</p>
-                <button @click="load()" class="mt-2 text-xs text-blue-600 hover:underline">Try again</button>
+                <button type="button" @click="load()" class="mt-2 text-xs text-blue-600 hover:underline">Try again</button>
             </div>
         </template>
 
@@ -87,7 +87,7 @@
                                        x-text="n.action_label || 'View'"></a>
                                 </template>
                                 <template x-if="!n.is_read">
-                                    <button @click="markRead(n)"
+                                    <button type="button" @click="markRead(n)"
                                             class="text-[11px] text-gray-400 hover:text-blue-600 transition-colors"
                                             aria-label="Mark as read">
                                         Mark read
@@ -103,12 +103,12 @@
 
     {{-- Pagination --}}
     <div class="flex items-center justify-between" x-show="total > perPage">
-        <button @click="prev()" :disabled="page === 1"
+        <button type="button" @click="prev()" :disabled="page === 1"
                 class="px-3 py-2 text-xs font-medium rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
             Previous
         </button>
         <span class="text-xs text-gray-400" x-text="`Page ${page} of ${Math.ceil(total / perPage)}`"></span>
-        <button @click="next()" :disabled="page >= Math.ceil(total / perPage)"
+        <button type="button" @click="next()" :disabled="page >= Math.ceil(total / perPage)"
                 class="px-3 py-2 text-xs font-medium rounded-xl border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
             Next
         </button>

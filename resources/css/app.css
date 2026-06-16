@@ -335,3 +335,144 @@ body {
 ::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #C4C3E0; border-radius: 10px; }
+
+/* ════════════════════════════════════════════════════════════
+   Public landing page — animation keyframes & utilities
+   Additive only. All animations/transitions are neutralized by
+   the sitewide prefers-reduced-motion override in
+   layouts/public.blade.php.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Scroll reveal ─────────────────────────────────────────
+   public-landing.js adds 'js-ready' to <html> and toggles
+   '.is-visible' via IntersectionObserver. If JS never runs,
+   content stays visible (no permanently-hidden sections). */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+html:not(.js-ready) .reveal {
+    opacity: 1;
+    transform: none;
+}
+
+/* ── Floating motion (cards, mascots) ──────────────────────── */
+@keyframes rb-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+.rb-float {
+    animation: rb-float 4s ease-in-out infinite;
+}
+
+/* ── R Bunny entrance ──────────────────────────────────────── */
+@keyframes rb-entrance {
+    from { opacity: 0; transform: translateY(24px) scale(0.94) rotate(-3deg); }
+    to   { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+.rb-entrance {
+    animation: rb-entrance 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Animated referral-path dot ────────────────────────────── */
+@keyframes rb-dot-travel {
+    0%   { transform: translateX(0) scale(0.6); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { transform: translateX(var(--rb-travel, 220px)) scale(1); opacity: 0; }
+}
+.rb-dot {
+    animation: rb-dot-travel 3.2s ease-in-out infinite;
+}
+
+/* ── Pipeline stage shift ───────────────────────────────────── */
+@keyframes rb-pipeline-shift {
+    0%, 100% { transform: translateX(0); opacity: 1; }
+    45%      { transform: translateX(10px); opacity: 0.55; }
+    55%      { transform: translateX(-6px); opacity: 0.55; }
+}
+.rb-pipeline-shift {
+    animation: rb-pipeline-shift 5s ease-in-out infinite;
+}
+
+/* ── Notification pop-in ────────────────────────────────────── */
+@keyframes rb-pop-in {
+    0%   { opacity: 0; transform: scale(0.85) translateY(8px); }
+    60%  { opacity: 1; transform: scale(1.03) translateY(0); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.rb-pop-in {
+    animation: rb-pop-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Commission meter fill ──────────────────────────────────── */
+@keyframes rb-meter-fill {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+.rb-meter-fill {
+    transform-origin: left center;
+    animation: rb-meter-fill 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Glowing connection lines ──────────────────────────────── */
+@keyframes rb-glow-pulse {
+    0%, 100% { opacity: 0.35; filter: drop-shadow(0 0 2px var(--color-grad-via)); }
+    50%      { opacity: 1;    filter: drop-shadow(0 0 8px var(--color-grad-via)); }
+}
+.rb-glow-line {
+    animation: rb-glow-pulse 2.6s ease-in-out infinite;
+}
+
+/* ── Card hover lift ─────────────────────────────────────────── */
+.rb-card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.rb-card-hover:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px -15px rgba(30, 27, 75, 0.25);
+}
+
+/* ── CSS-only 3D tilt ──────────────────────────────────────── */
+.rb-tilt {
+    transition: transform 0.4s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+.rb-tilt:hover {
+    transform: perspective(800px) rotateX(3deg) rotateY(-3deg) translateY(-4px);
+}
+
+/* ── Glassmorphism panel ────────────────────────────────────── */
+.rb-glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ── Carrot-shaped highlight (decorative, CSS-only) ─────────── */
+.rb-carrot {
+    clip-path: polygon(50% 0%, 96% 38%, 80% 100%, 20% 100%, 4% 38%);
+}
+
+/* ── Gradient text (reuses existing gradient-banner palette) ─ */
+.rb-gradient-text {
+    background: linear-gradient(135deg, var(--color-grad-from), var(--color-grad-via), var(--color-grad-to));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* ── CTA micro-interaction ───────────────────────────────────── */
+.rb-cta {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.rb-cta:active {
+    transform: scale(0.97);
+}

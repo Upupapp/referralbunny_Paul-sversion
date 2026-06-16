@@ -67,7 +67,7 @@ window.__rsDeal = {
                 Please confirm this is correct or update it to the actual contract value.
             </p>
             <div class="flex flex-wrap items-center gap-2 mt-3">
-                <button @click="async () => {
+                <button type="button" @click="async () => {
                             busy = true; err = null;
                             const r = await fetch('/api/leads/{{ $lead->id }}/confirm-default-amount', {
                                 method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},
@@ -84,12 +84,12 @@ window.__rsDeal = {
                     <span x-text="busy ? 'Confirming…' : 'Confirm ₱4,000,000'"></span>
                 </button>
                 @if($canEditSplits)
-                <button @click="showUpdateAmount = true"
+                <button type="button" @click="showUpdateAmount = true"
                         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-all">
                     Change Amount
                 </button>
                 @endif
-                <button @click="visible = false" class="text-xs text-amber-600 hover:text-amber-800 underline">
+                <button type="button" @click="visible = false" class="text-xs text-amber-600 hover:text-amber-800 underline">
                     Remind me later
                 </button>
             </div>
@@ -148,7 +148,7 @@ window.__rsDeal = {
         </div>
         @if(empty($pendingArchiveRequest['visible_response']))
         <div x-show="!showReply">
-            <button @click="showReply = true"
+            <button type="button" @click="showReply = true"
                     class="text-xs font-semibold text-blue-700 hover:underline flex items-center gap-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                 Reply to admin
@@ -230,7 +230,7 @@ window.__rsDeal = {
                 <div class="flex items-center justify-end gap-1.5 mb-0.5">
                     <p class="text-xs text-gray-400 font-medium">Deal Value</p>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                        <button type="button" @click.stop="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                 class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="Info about Deal Value">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </button>
@@ -374,7 +374,7 @@ window.__rsDeal = {
             <div class="hidden sm:block space-y-2 mb-3">
                 {{-- Row 1 --}}
                 <div class="flex gap-2">
-                    <button @click="showAddNote = true"
+                    <button type="button" @click="showAddNote = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition-all hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-1"
                             style="background:#0D9488">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -382,7 +382,7 @@ window.__rsDeal = {
                     </button>
                     @if($canEditSplits)
                     @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
-                    <button @click="showUpdateAmount = true"
+                    <button type="button" @click="showUpdateAmount = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Update Amount
@@ -396,7 +396,7 @@ window.__rsDeal = {
                     @endif
                     @endif
                     @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
-                    <button @click="showMoveStage = true"
+                    <button type="button" @click="showMoveStage = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                         Move Stage
@@ -411,19 +411,19 @@ window.__rsDeal = {
                 </div>
                 {{-- Row 2 --}}
                 <div class="flex gap-2">
-                    <button @click="showAddPartner = true"
+                    <button type="button" @click="showAddPartner = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                         Add Partner
                     </button>
                     @if($canEditSplits)
-                    <button @click="showAddReferrer = true"
+                    <button type="button" @click="showAddReferrer = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Add Co-Referrer
                     </button>
                     @endif
-                    <button @click="showExtension = true"
+                    <button type="button" @click="showExtension = true"
                             class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Request Extension
@@ -434,7 +434,7 @@ window.__rsDeal = {
             {{-- Desktop: danger action visually separated below ── --}}
             @if(!$pendingArchiveRequest)
             <div class="hidden sm:flex justify-end pt-2.5 border-t border-gray-50">
-                <button @click="showArchive = true"
+                <button type="button" @click="showArchive = true"
                         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
                     Request Archive
@@ -447,7 +447,7 @@ window.__rsDeal = {
                 <div class="grid grid-cols-2 gap-2">
 
                     {{-- Add Note --}}
-                    <button @click="showAddNote = true"
+                    <button type="button" @click="showAddNote = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-1"
                             style="background:#0D9488">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -456,7 +456,7 @@ window.__rsDeal = {
 
                     {{-- Move Stage --}}
                     @if(!$pendingStageMoveRequest && $lead->stage !== 'paid')
-                    <button @click="showMoveStage = true"
+                    <button type="button" @click="showMoveStage = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                         Move Stage
@@ -471,7 +471,7 @@ window.__rsDeal = {
                     {{-- Update Amount — primary referrer only --}}
                     @if($canEditSplits)
                     @if(!in_array($lead->commission_status ?? 'pending', ['locked','paid']))
-                    <button @click="showUpdateAmount = true"
+                    <button type="button" @click="showUpdateAmount = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Update Amount
@@ -485,7 +485,7 @@ window.__rsDeal = {
                     @endif
 
                     {{-- Add Partner --}}
-                    <button @click="showAddPartner = true"
+                    <button type="button" @click="showAddPartner = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                         Add Partner
@@ -493,7 +493,7 @@ window.__rsDeal = {
 
                     {{-- Add Co-Referrer — primary referrer only --}}
                     @if($canEditSplits)
-                    <button @click="showAddReferrer = true"
+                    <button type="button" @click="showAddReferrer = true"
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Add Co-Referrer
@@ -501,7 +501,7 @@ window.__rsDeal = {
                     @endif
 
                     {{-- Request Extension — spans full row on mobile --}}
-                    <button @click="showExtension = true"
+                    <button type="button" @click="showExtension = true"
                             class="col-span-2 inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Request Extension
@@ -511,7 +511,7 @@ window.__rsDeal = {
                 {{-- Archive — full-width, visually separated --}}
                 @if(!$pendingArchiveRequest)
                 <div class="pt-1">
-                    <button @click="showArchive = true"
+                    <button type="button" @click="showArchive = true"
                             class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/></svg>
                         Request Archive
@@ -574,13 +574,13 @@ window.__rsDeal = {
             @if(!$isArchived)
             <div class="flex items-center gap-2">
                 @if($canEditSplits)
-                <button @click="showAddReferrer = true"
+                <button type="button" @click="showAddReferrer = true"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                     Co-Referrer
                 </button>
                 @endif
-                <button @click="showAddPartner = true"
+                <button type="button" @click="showAddPartner = true"
                         class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                     Partner
@@ -716,11 +716,11 @@ window.__rsDeal = {
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
                     @if($splitCanEdit && !$isArchived)
-                    <button @click="editing = true"
+                    <button type="button" @click="editing = true"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors">
                         Edit %
                     </button>
-                    <button @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', {{ json_encode($split->is_anonymous ? '' : ($split->reseller_name ?? ''), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }}, '{{ csrf_token() }}')"
+                    <button type="button" @click="window.__removeCoRef('{{ $splitUpdateUrl ?? '' }}', {{ json_encode($split->is_anonymous ? '' : ($split->reseller_name ?? ''), JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }}, '{{ csrf_token() }}')"
                             class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                         Remove
                     </button>
@@ -735,11 +735,11 @@ window.__rsDeal = {
                         <span class="text-xs text-gray-500">% <span class="text-gray-400">(max {{ $maxForSplit }}%)</span></span>
                     </div>
                     <p x-show="err" class="text-[10px] text-red-600 w-full text-right" x-text="err"></p>
-                    <button @click="editing = false; pct = '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}'; err = ''"
+                    <button type="button" @click="editing = false; pct = '{{ number_format((float)($split->percentage ?? 0), 2, '.', '') }}'; err = ''"
                             class="px-2 py-1 rounded-lg text-[10px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button @click="window.__saveSplit('{{ $splitUpdateUrl ?? '' }}', '{{ csrf_token() }}', pct, $data)"
+                    <button type="button" @click="window.__saveSplit('{{ $splitUpdateUrl ?? '' }}', '{{ csrf_token() }}', pct, $data)"
                             :disabled="saving || !pct"
                             class="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-50 transition-all"
                             style="background:linear-gradient(135deg,#2563EB,#1D4ED8)"
@@ -794,7 +794,7 @@ window.__rsDeal = {
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
                     @if($canRemovePartner)
-                    <button onclick="rbRemovePartner('{{ $ps['id'] }}', {{ json_encode($ps['partner_name'] ?? 'this partner', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
+                    <button type="button" onclick="rbRemovePartner('{{ $ps['id'] }}', {{ json_encode($ps['partner_name'] ?? 'this partner', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                             title="Remove partner"
                             class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
                             aria-label="Remove {{ $ps['partner_name'] ?? 'partner' }}">
@@ -841,7 +841,7 @@ window.__rsDeal = {
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
             <h2 class="text-sm font-bold text-[#1E1B4B]">Notes</h2>
             @if(!$isArchived)
-            <button @click="showAddNote = true" class="text-xs text-teal-600 font-semibold hover:underline">+ Add Note</button>
+            <button type="button" @click="showAddNote = true" class="text-xs text-teal-600 font-semibold hover:underline">+ Add Note</button>
             @endif
         </div>
         @if(count($notes) === 0)
@@ -855,7 +855,7 @@ window.__rsDeal = {
                 Deals with notes get approved faster.
             </p>
             @if(!$isArchived)
-            <button @click="showAddNote = true"
+            <button type="button" @click="showAddNote = true"
                     class="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white transition-colors"
                     style="background:#0D9488">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -944,7 +944,7 @@ window.__rsDeal = {
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h3 class="font-bold text-[#1E1B4B]">Add Note</h3>
-                <button @click="showAddNote = false; noteFiles = []; noteBody = ''" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showAddNote = false; noteFiles = []; noteBody = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -983,8 +983,8 @@ window.__rsDeal = {
                 <div x-show="noteError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="noteError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showAddNote = false; noteFiles = []; noteBody = ''" class="btn-secondary text-sm">Cancel</button>
-                <button @click="saveNote()" :disabled="(!noteBody.trim() && noteFiles.length === 0) || noteSaving"
+                <button type="button" @click="showAddNote = false; noteFiles = []; noteBody = ''" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="saveNote()" :disabled="(!noteBody.trim() && noteFiles.length === 0) || noteSaving"
                         class="rs-btn-primary text-sm" x-text="noteSaving ? 'Saving…' : 'Add Note'"></button>
             </div>
         </div>
@@ -997,7 +997,7 @@ window.__rsDeal = {
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h3 class="font-bold text-[#1E1B4B]">Update Deal Amount</h3>
-                <button @click="showUpdateAmount = false" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showUpdateAmount = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1016,8 +1016,8 @@ window.__rsDeal = {
                 <div x-show="amountError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="amountError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showUpdateAmount = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="saveAmount()" :disabled="!newAmount || !amountReason.trim() || amountSaving"
+                <button type="button" @click="showUpdateAmount = false" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="saveAmount()" :disabled="!newAmount || !amountReason.trim() || amountSaving"
                         class="rs-btn-primary text-sm" x-text="amountSaving ? 'Updating…' : 'Update Amount'"></button>
             </div>
         </div>
@@ -1033,7 +1033,7 @@ window.__rsDeal = {
                     <h3 class="font-bold text-[#1E1B4B]">Move Deal Stage</h3>
                     <p class="text-xs text-gray-400 mt-0.5">Check all requirements before moving the stage.</p>
                 </div>
-                <button @click="showMoveStage = false; resetStageModal()" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showMoveStage = false; resetStageModal()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1097,8 +1097,8 @@ window.__rsDeal = {
                 <div x-show="stageError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="stageError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showMoveStage = false; resetStageModal()" class="btn-secondary text-sm">Cancel</button>
-                <button @click="moveStage()"
+                <button type="button" @click="showMoveStage = false; resetStageModal()" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="moveStage()"
                         :disabled="!targetStage || stageSaving"
                         :class="needsApproval() ? 'bg-amber-500 hover:bg-amber-600' : ''"
                         class="rs-btn-primary text-sm"
@@ -1117,7 +1117,7 @@ window.__rsDeal = {
                     <h3 class="font-bold text-[#1E1B4B]">Request Deal Archive</h3>
                     <p class="text-[10px] text-gray-400 mt-0.5">Requires Admin or Manager approval before taking effect.</p>
                 </div>
-                <button @click="showArchive = false; archiveError = ''" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showArchive = false; archiveError = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1155,9 +1155,9 @@ window.__rsDeal = {
                 <div x-show="archiveError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="archiveError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showArchive = false; archiveError = ''" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="showArchive = false; archiveError = ''" class="btn-secondary text-sm">Cancel</button>
                 @if($lead->stage !== 'paid')
-                <button @click="submitArchive()"
+                <button type="button" @click="submitArchive()"
                         :disabled="!archiveReason || archiveSaving"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50">
                     <svg x-show="archiveSaving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
@@ -1220,7 +1220,7 @@ window.__rsDeal = {
                     <h3 class="font-bold text-[#1E1B4B]">Add Partner</h3>
                     <p class="text-[10px] text-gray-400 mt-0.5">Partner share comes out of the commission pool.</p>
                 </div>
-                <button @click="showAddPartner = false" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showAddPartner = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1320,8 +1320,8 @@ window.__rsDeal = {
                 <div x-show="partnerError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="partnerError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showAddPartner = false" class="btn-secondary text-sm">Cancel</button>
-                <button @click="savePartner()"
+                <button type="button" @click="showAddPartner = false" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="savePartner()"
                         :disabled="!partnerName || !partnerSplit || partnerSaving || overCap {{ $poolLocked ? '|| true' : '' }}"
                         class="rs-btn-primary text-sm"
                         x-text="partnerSaving ? 'Saving…' : (partnerEmail && partnerEmail.includes('@') ? 'Add & Send Invite' : 'Add Partner')"></button>
@@ -1338,7 +1338,7 @@ window.__rsDeal = {
                     <h3 class="font-bold text-[#1E1B4B]">Request Deal Extension</h3>
                     <p class="text-[10px] text-gray-400 mt-0.5">Ask an Admin to extend your assignment deadline.</p>
                 </div>
-                <button @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="text-gray-400 hover:text-gray-600" aria-label="Close">
+                <button type="button" @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="text-gray-400 hover:text-gray-600" aria-label="Close">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1360,8 +1360,8 @@ window.__rsDeal = {
                 <div x-show="extError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="extError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="btn-secondary text-sm">Cancel</button>
-                <button @click="saveExtension()"
+                <button type="button" @click="showExtension = false; extDays = '14'; extReason = ''; extError = ''" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="saveExtension()"
                         :disabled="!extDays || !extReason.trim() || extSaving"
                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         x-text="extSaving ? 'Submitting…' : 'Submit Request'"></button>
@@ -1380,7 +1380,7 @@ window.__rsDeal = {
                     <h3 class="font-bold text-[#1E1B4B]">Add Co-Referrer</h3>
                     <p class="text-xs text-gray-400 mt-0.5">An invite or in-app notification will be sent.</p>
                 </div>
-                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" aria-label="Close" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" aria-label="Close" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1409,8 +1409,8 @@ window.__rsDeal = {
                 <div x-show="refError" class="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg" x-text="refError"></div>
             </div>
             <div class="flex gap-3 justify-end px-5 py-4 border-t border-gray-100">
-                <button @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" class="btn-secondary text-sm">Cancel</button>
-                <button @click="saveReferrer()" :disabled="!refName || !refSplit || refSaving"
+                <button type="button" @click="showAddReferrer = false; refName=''; refSplit=''; refError=''" class="btn-secondary text-sm">Cancel</button>
+                <button type="button" @click="saveReferrer()" :disabled="!refName || !refSplit || refSaving"
                         class="rs-btn-primary text-sm" x-text="refSaving ? 'Adding…' : 'Add Co-Referrer'"></button>
             </div>
         </div>
@@ -1434,12 +1434,12 @@ window.__rsDeal = {
             This co-referrer will be removed from this deal. Their commission share will be released back to you.
         </p>
         <div style="display:flex;gap:10px">
-            <button id="rb-remove-coref-cancel"
+            <button type="button" id="rb-remove-coref-cancel"
                     onclick="document.getElementById('rb-remove-coref-modal').style.display='none'"
                     style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                 Cancel
             </button>
-            <button id="rb-remove-coref-confirm"
+            <button type="button" id="rb-remove-coref-confirm"
                     style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
                 Yes, Remove
             </button>
@@ -1463,12 +1463,12 @@ window.__rsDeal = {
             This partner will be removed from this deal. Their commission split will no longer be counted. This can be undone by adding them again.
         </p>
         <div style="display:flex;gap:10px">
-            <button id="rb-remove-cancel"
+            <button type="button" id="rb-remove-cancel"
                     onclick="document.getElementById('rb-remove-partner-modal').style.display='none'"
                     style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                 Cancel
             </button>
-            <button id="rb-remove-confirm"
+            <button type="button" id="rb-remove-confirm"
                     style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
                 Remove Partner
             </button>

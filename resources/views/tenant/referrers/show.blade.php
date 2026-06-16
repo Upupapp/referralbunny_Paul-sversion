@@ -20,7 +20,7 @@
     </form>
     @endif
     @if($reseller->status !== 'deactivated')
-    <button onclick="document.getElementById('deactivate-section').scrollIntoView({behavior:'smooth'})"
+    <button type="button" onclick="document.getElementById('deactivate-section').scrollIntoView({behavior:'smooth'})"
             class="px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-100">
         Deactivate
     </button>
@@ -411,7 +411,7 @@
                                 @endif
 
                                 @if($ag->file_url)
-                                    <a href="{{ $ag->file_url }}" target="_blank"
+                                    <a rel="noopener noreferrer" href="{{ $ag->file_url }}" target="_blank"
                                        class="inline-flex items-center gap-1 text-xs text-[#7B61FF] hover:underline mt-1">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                         View Document
@@ -542,7 +542,7 @@
                         <p class="text-sm font-semibold text-red-700">Deactivate Referrer</p>
                         <p class="text-xs text-gray-500 mt-0.5">Remove portal access. Historical deals, commissions, and audit logs are preserved.</p>
                     </div>
-                    <button @click="open = !open"
+                    <button type="button" @click="open = !open"
                             class="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors shrink-0">
                         Deactivate
                     </button>

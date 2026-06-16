@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button @click="$store.exportModal.open()" class="btn-primary">
+    <button type="button" @click="$store.exportModal.open()" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -100,7 +100,7 @@
                    @input.debounce.300ms="currentPage = 1; fetchData()"
                    placeholder="Search by requester, export type…"
                    autocomplete="off">
-            <button x-show="search.length > 0"
+            <button type="button" x-show="search.length > 0"
                     @click="search = ''; currentPage = 1; fetchData()"
                     class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@
                 <input type="date" x-model="filterTo" @change="currentPage = 1; fetchData()" placeholder="To">
             </label>
 
-            <button x-show="filterStatus || filterType || filterRole || filterFrom || filterTo || search"
+            <button type="button" x-show="filterStatus || filterType || filterRole || filterFrom || filterTo || search"
                     @click="filterStatus = ''; filterType = ''; filterRole = ''; filterFrom = ''; filterTo = ''; search = ''; currentPage = 1; fetchData()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,7 +214,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
             <p class="text-sm font-semibold text-gray-600">Failed to load export requests</p>
-            <button @click="fetchData()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
+            <button type="button" @click="fetchData()" class="mt-2 text-xs text-[#7B61FF] hover:underline">Try again</button>
         </div>
 
         {{-- Empty state --}}
@@ -222,7 +222,7 @@
             <img src="/images/mascots/r-bunny-sleeping.webp" alt="" class="w-14 h-14 object-contain mb-3 opacity-50">
             <p class="text-sm font-semibold text-gray-500">No export requests found</p>
             <p class="text-xs text-gray-400 mt-1">R Bunny says no data exports have been requested yet.</p>
-            <button @click="$store.exportModal.open()" class="mt-4 btn-primary text-xs py-1.5 px-3">Request an Export</button>
+            <button type="button" @click="$store.exportModal.open()" class="mt-4 btn-primary text-xs py-1.5 px-3">Request an Export</button>
         </div>
 
         {{-- Desktop table --}}
@@ -322,10 +322,10 @@
             of <span x-text="meta.total ?? 0"></span> requests
         </p>
         <div class="flex items-center gap-1.5">
-            <button x-show="currentPage > 1"
+            <button type="button" x-show="currentPage > 1"
                     @click="currentPage--; fetchData()"
                     class="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">← Prev</button>
-            <button x-show="currentPage < (meta.last_page ?? 1)"
+            <button type="button" x-show="currentPage < (meta.last_page ?? 1)"
                     @click="currentPage++; fetchData()"
                     class="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">Next →</button>
         </div>
@@ -363,7 +363,7 @@
                     <p class="text-gray-400 text-xs">Request a data export from your workspace</p>
                 </div>
             </div>
-            <button @click="$store.exportModal.close()"
+            <button type="button" @click="$store.exportModal.close()"
                     class="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -460,9 +460,9 @@
 
         {{-- Modal footer --}}
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-            <button @click="$store.exportModal.close()" class="btn-secondary" :disabled="submitting">Cancel</button>
+            <button type="button" @click="$store.exportModal.close()" class="btn-secondary" :disabled="submitting">Cancel</button>
             <template x-if="!success">
-                <button @click="submit()" class="btn-primary" :disabled="submitting || !form.export_type || !form.format">
+                <button type="button" @click="submit()" class="btn-primary" :disabled="submitting || !form.export_type || !form.format">
                     <span x-show="!submitting">Request Export</span>
                     <span x-show="submitting" class="flex items-center gap-2">
                         <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -474,7 +474,7 @@
                 </button>
             </template>
             <template x-if="success">
-                <button @click="$store.exportModal.close()" class="btn-primary">Done</button>
+                <button type="button" @click="$store.exportModal.close()" class="btn-primary">Done</button>
             </template>
         </div>
     </div>

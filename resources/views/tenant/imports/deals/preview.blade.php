@@ -22,36 +22,36 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
             {{-- Count pills --}}
             <div class="flex flex-wrap gap-2 flex-1">
-                <button @click="activeTab = 'ready'" :class="activeTab === 'ready' ? 'ring-2 ring-[#7B61FF]' : ''"
+                <button type="button" @click="activeTab = 'ready'" :class="activeTab === 'ready' ? 'ring-2 ring-[#7B61FF]' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all"
                         style="background: #EDE9FE; color: #5B45DF;">
                     <span class="w-1.5 h-1.5 rounded-full" style="background: #7B61FF;"></span>
                     Ready <span class="font-bold">{{ $grouped['ready']->count() }}</span>
                 </button>
-                <button @click="activeTab = 'duplicate'" :class="activeTab === 'duplicate' ? 'ring-2 ring-amber-400' : ''"
+                <button type="button" @click="activeTab = 'duplicate'" :class="activeTab === 'duplicate' ? 'ring-2 ring-amber-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                     Duplicates <span class="font-bold">{{ $grouped['duplicate']->count() }}</span>
                 </button>
-                <button @click="activeTab = 'unknown_referrer'" :class="activeTab === 'unknown_referrer' ? 'ring-2 ring-yellow-400' : ''"
+                <button type="button" @click="activeTab = 'unknown_referrer'" :class="activeTab === 'unknown_referrer' ? 'ring-2 ring-yellow-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
                     Unknown Referrers <span class="font-bold">{{ $grouped['unknown_referrer']->count() }}</span>
                 </button>
-                <button @click="activeTab = 'unknown_org'" :class="activeTab === 'unknown_org' ? 'ring-2 ring-blue-400' : ''"
+                <button type="button" @click="activeTab = 'unknown_org'" :class="activeTab === 'unknown_org' ? 'ring-2 ring-blue-400' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                     Unknown Org <span class="font-bold">{{ $grouped['unknown_org']->count() }}</span>
                 </button>
                 @if($grouped['failed']->count() > 0)
-                <button @click="activeTab = 'failed'" :class="activeTab === 'failed' ? 'ring-2 ring-red-600' : ''"
+                <button type="button" @click="activeTab = 'failed'" :class="activeTab === 'failed' ? 'ring-2 ring-red-600' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
                     Failed <span class="font-bold">{{ $grouped['failed']->count() }}</span>
                 </button>
                 @endif
                 @if($grouped['blocked']->count() > 0)
-                <button @click="activeTab = 'blocked'" :class="activeTab === 'blocked' ? 'ring-2 ring-gray-500' : ''"
+                <button type="button" @click="activeTab = 'blocked'" :class="activeTab === 'blocked' ? 'ring-2 ring-gray-500' : ''"
                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 transition-all">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                     Blocked <span class="font-bold">{{ $grouped['blocked']->count() }}</span>
@@ -101,7 +101,7 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
             @endphp
             @foreach($tabs as $tab)
             @if($tab['count'] > 0 || $tab['key'] === 'all')
-            <button @click="activeTab = '{{ $tab['key'] }}'"
+            <button type="button" @click="activeTab = '{{ $tab['key'] }}'"
                     :class="activeTab === '{{ $tab['key'] }}' ? 'active' : ''"
                     class="filter-pill">
                 {{ $tab['label'] }}
@@ -130,7 +130,7 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
                     <option value="merge">Merge Missing Fields</option>
                     <option value="overwrite">Overwrite All</option>
                 </select>
-                <button @click="applyBulk()"
+                <button type="button" @click="applyBulk()"
                         :disabled="!bulkAction || selectedRows.length === 0"
                         :class="!bulkAction || selectedRows.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
                         class="btn-primary text-sm py-1.5">
@@ -204,18 +204,18 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
         {{-- Bulk Actions Bar --}}
         <div class="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-gray-100">
             <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide mr-1">Bulk:</span>
-            <button @click="setAllAction('ignore')"
+            <button type="button" @click="setAllAction('ignore')"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 hover:border-gray-400 hover:bg-gray-50 text-gray-600 transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Ignore all unmapped
             </button>
-            <button @click="setAllAction('create')"
+            <button type="button" @click="setAllAction('create')"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-purple-50 transition-colors"
                     style="border-color: #C4B5FD; color: #7B61FF;">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Import all as custom fields
             </button>
-            <button @click="setAllAction('metadata')"
+            <button type="button" @click="setAllAction('metadata')"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-200 hover:bg-blue-50 text-blue-600 transition-colors">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
                 Save all as metadata
@@ -303,7 +303,7 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
             <p class="text-xs text-gray-400">
                 Actions will be applied when you confirm the import.
             </p>
-            <button @click="saveActions()"
+            <button type="button" @click="saveActions()"
                     :disabled="saving || saved"
                     :class="saving || saved ? 'opacity-60 cursor-not-allowed' : ''"
                     class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium text-white transition-colors"
@@ -448,7 +448,7 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
                             <div x-data="{ open: false, action: rowActions[{{ $row->id }}] ?? 'skip', busy: false }"
                                  class="relative"
                                  @click.outside="open = false">
-                                <button @click="open = !open"
+                                <button type="button" @click="open = !open"
                                         class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-[#7B61FF] hover:text-[#7B61FF] transition-colors"
                                         :class="action === 'skip' ? 'text-gray-500' : action === 'merge' ? 'text-blue-600 border-blue-200' : 'text-amber-600 border-amber-200'">
                                     <span x-text="action === 'skip' ? 'Skip' : action === 'merge' ? 'Merge' : 'Overwrite'"></span>
@@ -456,15 +456,15 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
                                 </button>
                                 <div x-show="open" x-cloak
                                      class="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-gray-100 shadow-lg z-10 overflow-hidden py-1">
-                                    <button @click="setRowAction({{ $row->id }}, 'skip'); open = false"
+                                    <button type="button" @click="setRowAction({{ $row->id }}, 'skip'); open = false"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 text-gray-600 transition-colors">
                                         Skip this row
                                     </button>
-                                    <button @click="setRowAction({{ $row->id }}, 'merge'); open = false"
+                                    <button type="button" @click="setRowAction({{ $row->id }}, 'merge'); open = false"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-blue-700 transition-colors">
                                         Merge Missing Fields
                                     </button>
-                                    <button @click="setRowAction({{ $row->id }}, 'overwrite'); open = false"
+                                    <button type="button" @click="setRowAction({{ $row->id }}, 'overwrite'); open = false"
                                             class="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 text-amber-700 transition-colors">
                                         Overwrite All
                                     </button>
@@ -660,7 +660,7 @@ $verifyUrl   = route('tenant.imports.deals.verify-adoption',   [$tenant->id, $ba
                         </div>
                         <h2 class="text-[#1E1B4B] font-bold text-base">Confirm Template Update</h2>
                     </div>
-                    <button @click="showAdoptModal = false"
+                    <button type="button" @click="showAdoptModal = false"
                             class="text-gray-400 hover:text-gray-600 transition-colors p-1">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

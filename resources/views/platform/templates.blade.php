@@ -61,10 +61,10 @@
                 <span class="badge badge-green text-xs">Active</span>
             </div>
             <div class="mt-4 pt-3 border-t border-gray-100 flex gap-2">
-                <button class="flex-1 text-xs text-center py-1.5 rounded-lg bg-[#F0EFFA] text-purple-700 font-medium hover:bg-purple-100 transition-colors">
+                <button type="button" class="flex-1 text-xs text-center py-1.5 rounded-lg bg-[#F0EFFA] text-purple-700 font-medium hover:bg-purple-100 transition-colors">
                     View Fields
                 </button>
-                <button class="flex-1 text-xs text-center py-1.5 rounded-lg bg-[#F0EFFA] text-purple-700 font-medium hover:bg-purple-100 transition-colors">
+                <button type="button" class="flex-1 text-xs text-center py-1.5 rounded-lg bg-[#F0EFFA] text-purple-700 font-medium hover:bg-purple-100 transition-colors">
                     View Stages
                 </button>
             </div>

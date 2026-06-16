@@ -38,7 +38,7 @@
             </svg>
             Download Template
         </a>
-        <button @click="showUpload = true"
+        <button type="button" @click="showUpload = true"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
                 style="background:#0D9488">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@
             </div>
             <p class="text-sm font-semibold text-[#1E1B4B]">No imports yet</p>
             <p class="text-xs text-gray-400 mt-1 max-w-xs">Download the template, fill in your deals, and upload to get started.</p>
-            <button @click="showUpload = true"
+            <button type="button" @click="showUpload = true"
                     class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                     style="background:#0D9488">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
@@ -154,7 +154,7 @@
                     <h2 class="text-base font-bold text-[#1E1B4B]">Upload Deal Import File</h2>
                     <p class="text-xs text-gray-400">Your deals will be assigned to you as the Referrer</p>
                 </div>
-                <button @click="showUpload = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <button type="button" @click="showUpload = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>

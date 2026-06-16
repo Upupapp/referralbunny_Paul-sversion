@@ -36,9 +36,9 @@
         <h2 id="rb-form-title" style="font-size:20px;font-weight:700;color:#1E1B4B;margin-bottom:6px"></h2>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:20px;line-height:1.6">Your form has been saved. Publish it and share the link below to start receiving requests.</p>
         <div style="display:flex;align-items:center;gap:8px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:12px;padding:10px 14px;margin-bottom:20px">
-            <a id="rb-public-url" href="#" target="_blank"
+            <a rel="noopener noreferrer" id="rb-public-url" href="#" target="_blank"
                style="flex:1;font-size:12px;color:#7B61FF;font-weight:600;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left"></a>
-            <button onclick="rbCopyUrl()"
+            <button type="button" onclick="rbCopyUrl()"
                     style="flex-shrink:0;padding:5px 12px;border-radius:8px;background:#7B61FF;color:white;border:none;font-size:11px;font-weight:700;cursor:pointer">Copy</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">

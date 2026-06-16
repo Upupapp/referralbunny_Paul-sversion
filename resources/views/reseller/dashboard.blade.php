@@ -61,7 +61,7 @@
                     <span class="text-xs font-semibold text-gray-600">My Commission</span>
                     {{-- Info popup --}}
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain My Commission" :aria-expanded="open.toString()"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-purple-100 hover:text-purple-600 transition-colors shrink-0">
                             i
@@ -72,7 +72,7 @@
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4"
                              role="tooltip">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">My Commission</p>
                             <p class="text-xs text-gray-500 leading-relaxed">Your estimated earnings from assigned deals. <strong>Pending</strong> may change if deal amounts, splits, or stages change. <strong>Locked</strong> means the deal reached the required stage for commission confirmation. <strong>Paid</strong> has been released.</p>
                             <p class="text-[10px] text-gray-400 mt-2">Amounts shown are gross estimates subject to applicable taxes, deductions, and final approval.</p>
@@ -88,7 +88,7 @@
                     <div class="flex items-center gap-1">
                         <span class="text-gray-400">Pending</span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                     class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Pending commission">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
@@ -106,7 +106,7 @@
                     <div class="flex items-center gap-1">
                         <span class="text-gray-400">Locked</span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                     class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Locked commission">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
@@ -124,7 +124,7 @@
                     <div class="flex items-center gap-1">
                         <span class="text-gray-400">Paid</span>
                         <div x-data="{ open: false }" class="relative">
-                            <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                            <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                     class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About Paid commission">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
@@ -156,7 +156,7 @@
                     </div>
                     <span class="text-xs font-semibold text-gray-600">My Deals</span>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain My Deals" :aria-expanded="open.toString()"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-teal-100 hover:text-teal-600 transition-colors shrink-0">
                             i
@@ -166,7 +166,7 @@
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">My Deals</p>
                             <p class="text-xs text-gray-500 leading-relaxed">The total number of deals currently assigned to you as a Referrer. These are deals you can view, update, add notes to, upload documents for, and move forward based on your permissions.</p>
                         </div>
@@ -202,7 +202,7 @@
                     </div>
                     <span class="text-xs font-semibold text-gray-600">My Pipeline</span>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain My Deal Pipeline Amount" :aria-expanded="open.toString()"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-amber-100 hover:text-amber-600 transition-colors shrink-0">
                             i
@@ -212,7 +212,7 @@
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">My Deal Pipeline Amount</p>
                             <p class="text-xs text-gray-500 leading-relaxed">The total contract value of your assigned active deals. This is <strong>not</strong> the same as your commission. Your commission depends on the deal amount, pricing breakdown, commission pool, and your split share.</p>
                         </div>
@@ -238,7 +238,7 @@
                     </div>
                     <span class="text-xs font-semibold text-gray-600">My Partners</span>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain My Partners" :aria-expanded="open.toString()"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-blue-100 hover:text-blue-600 transition-colors shrink-0">
                             i
@@ -248,7 +248,7 @@
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute right-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">My Partners</p>
                             <p class="text-xs text-gray-500 leading-relaxed">Partners connected to your assigned deals. Partners may help move a deal forward and may have their own split share if approved. Pending Partners are invited but not yet activated.</p>
                         </div>
@@ -297,7 +297,7 @@
                 <div class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></div>
                 <p class="text-sm font-bold" style="color:#1E1B4B">Actions Needed</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                             aria-label="Explain Actions Needed"
                             class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-orange-100 hover:text-orange-600 transition-colors">
                         i
@@ -307,7 +307,7 @@
                          x-transition:enter-start="opacity-0 scale-95"
                          x-transition:enter-end="opacity-100 scale-100"
                          class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                        <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                        <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                         <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">Actions Needed</p>
                         <p class="text-xs text-gray-500 leading-relaxed">Important items that need your attention to keep your deals moving. Completing them helps keep deals updated, documented, and progressing through the pipeline.</p>
                     </div>
@@ -315,7 +315,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{{ $actionItems->count() }} item{{ $actionItems->count() > 1 ? 's' : '' }}</span>
-                <button x-show="!markingDone"
+                <button type="button" x-show="!markingDone"
                         @click="fetch('{{ route('reseller.actions.mark-all-read', $tenant->id) }}', { method:'POST', credentials:'same-origin', headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} }).then(r=>{ if(r.ok) markingDone=true; }).catch(()=>{})"
                         class="text-[10px] text-gray-400 hover:text-emerald-600 transition-colors underline underline-offset-2">
                     Mark all seen
@@ -355,7 +355,7 @@
             <div class="flex items-center gap-1.5">
                 <p class="text-sm font-bold" style="color:#1E1B4B">Recent Deals</p>
                 <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" @keydown.escape.window="open = false"
+                    <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                             aria-label="Explain Recent Deals"
                             class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-gray-200 transition-colors">
                         i
@@ -365,7 +365,7 @@
                          x-transition:enter-start="opacity-0 scale-95"
                          x-transition:enter-end="opacity-100 scale-100"
                          class="absolute left-0 top-full mt-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                        <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                        <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                         <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">Recent Deals</p>
                         <p class="text-xs text-gray-500 leading-relaxed">Your most recently created or updated assigned deals. Open a deal to add notes, upload documents, add Partners, or request a stage move.</p>
                     </div>
@@ -439,7 +439,7 @@
                 <div class="flex items-center gap-1.5">
                     <p class="text-sm font-bold" style="color:#1E1B4B">Messages</p>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain Messages"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-gray-200 transition-colors">
                             i
@@ -449,7 +449,7 @@
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute left-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">Messages</p>
                             <p class="text-xs text-gray-500 leading-relaxed">Recent messages connected to your deals and team conversations, including updates from Admins, Managers, and Partners.</p>
                         </div>
@@ -484,7 +484,7 @@
                 <div class="flex items-center gap-1.5">
                     <p class="text-sm font-bold" style="color:#1E1B4B">Recent Activity</p>
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @keydown.escape.window="open = false"
                                 aria-label="Explain Recent Activity"
                                 class="w-4 h-4 rounded-full bg-gray-100 text-gray-400 text-[8px] font-bold flex items-center justify-center hover:bg-gray-200 transition-colors">
                             i
@@ -494,7 +494,7 @@
                              x-transition:enter-start="opacity-0 scale-95"
                              x-transition:enter-end="opacity-100 scale-100"
                              class="absolute right-0 top-full mt-2 z-50 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-4">
-                            <button @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
+                            <button type="button" @click="open = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-sm leading-none">✕</button>
                             <p class="text-xs font-bold text-[#1E1B4B] mb-1.5 pr-5">Recent Deal Activity</p>
                             <p class="text-xs text-gray-500 leading-relaxed">Recent actions from your assigned deals — stage moves, document uploads, note additions, partner changes, and commission updates.</p>
                         </div>

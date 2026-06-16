@@ -7,7 +7,7 @@
 
 @section('topbar-actions')
     @if($isAdmin || $actingRole === 'manager')
-        <button class="btn-primary" onclick="document.getElementById('invite-modal').classList.remove('hidden')">
+        <button type="button" class="btn-primary" onclick="document.getElementById('invite-modal').classList.remove('hidden')">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -117,7 +117,7 @@
                             @endif
 
                             <div class="relative" x-data="{ open: false }">
-                                <button @click="open = !open"
+                                <button type="button" @click="open = !open"
                                         aria-label="Member actions"
                                         class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
                                             </button>
                                         </form>
                                     @endif
-                                    <button @click="open = false; $dispatch('confirm-remove-{{ $u->id }}')"
+                                    <button type="button" @click="open = false; $dispatch('confirm-remove-{{ $u->id }}')"
                                             class="w-full text-left px-3.5 py-2 text-red-500 hover:bg-red-50 transition-colors text-sm">
                                         Remove from workspace
                                     </button>
@@ -157,7 +157,7 @@
                             <p class="text-sm text-red-700 font-medium">Remove <strong>{{ $u?->first_name }}</strong> from this workspace?</p>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <button @click="confirmRemove = false"
+                            <button type="button" @click="confirmRemove = false"
                                     class="text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-white transition-colors border border-gray-200">
                                 Keep
                             </button>
@@ -185,7 +185,7 @@
                     <h3 class="text-[#1E1B4B] font-semibold text-base">No team members yet</h3>
                     <p class="text-gray-400 text-sm mt-1 max-w-xs">Invite team members to collaborate on your referral program.</p>
                     @if($isAdmin)
-                        <button class="btn-primary mt-5" onclick="document.getElementById('invite-modal').classList.remove('hidden')">
+                        <button type="button" class="btn-primary mt-5" onclick="document.getElementById('invite-modal').classList.remove('hidden')">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
@@ -280,7 +280,7 @@
                 <p class="text-sm font-semibold text-gray-500">No pending invitations</p>
                 <p class="text-xs text-gray-400 mt-1">All invitations have been accepted or you haven't sent any yet.</p>
                 @if($isAdmin || $actingRole === 'manager')
-                    <button class="btn-primary mt-4 text-sm"
+                    <button type="button" class="btn-primary mt-4 text-sm"
                             onclick="document.getElementById('invite-modal').classList.remove('hidden')">
                         Invite a Team Member
                     </button>
@@ -371,7 +371,7 @@
                                         @endif
 
                                         {{-- Revoke trigger --}}
-                                        <button @click="revoking = true"
+                                        <button type="button" @click="revoking = true"
                                                 class="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                                             Cancel
                                         </button>
@@ -381,7 +381,7 @@
                                     <div x-show="revoking" x-cloak
                                          class="flex items-center justify-end gap-2">
                                         <span class="text-xs text-gray-500">Cancel this invite?</span>
-                                        <button @click="revoking = false"
+                                        <button type="button" @click="revoking = false"
                                                 class="text-xs px-2 py-1 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
                                             Keep
                                         </button>
@@ -455,7 +455,7 @@
                             </form>
                             @endif
 
-                            <button @click="revoking = true"
+                            <button type="button" @click="revoking = true"
                                     class="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                                 Cancel invite
                             </button>
@@ -463,7 +463,7 @@
 
                         <div x-show="revoking" x-cloak class="flex items-center gap-2 pt-1">
                             <span class="text-xs text-gray-500 flex-1">Cancel this invite?</span>
-                            <button @click="revoking = false"
+                            <button type="button" @click="revoking = false"
                                     class="text-xs px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
                                 Keep
                             </button>
@@ -516,7 +516,7 @@
                 </div>
                 <h3 class="font-bold text-[#1E1B4B] text-base">Invite Team Member</h3>
             </div>
-            <button onclick="document.getElementById('invite-modal').classList.add('hidden')"
+            <button type="button" onclick="document.getElementById('invite-modal').classList.add('hidden')"
                     class="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                     aria-label="Close">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

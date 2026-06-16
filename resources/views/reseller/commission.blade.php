@@ -39,7 +39,7 @@
                     <span class="text-xs font-semibold" style="color:#1E1B4B">{{ $card['label'] }}</span>
                     {{-- Info icon --}}
                     <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                        <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                 class="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors"
                                 aria-label="About {{ $card['label'] }} commission">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

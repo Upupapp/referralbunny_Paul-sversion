@@ -21,7 +21,7 @@
             </span>
             @endif
             {{-- Add Task button --}}
-            <button @click="createOpen = true"
+            <button type="button" @click="createOpen = true"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                     style="background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,.25)">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -160,7 +160,7 @@
 
                 {{-- Start Working (open → in_progress) --}}
                 <template x-if="status === 'open'">
-                    <button @click="updateStatus('in_progress')"
+                    <button type="button" @click="updateStatus('in_progress')"
                             :disabled="submitting"
                             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50">
                         <svg x-show="submitting" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -177,7 +177,7 @@
 
                 {{-- Pause (in_progress → waiting) --}}
                 <template x-if="status === 'in_progress'">
-                    <button @click="updateStatus('waiting')"
+                    <button type="button" @click="updateStatus('waiting')"
                             :disabled="submitting"
                             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +189,7 @@
 
                 {{-- Resume (waiting → in_progress) --}}
                 <template x-if="status === 'waiting'">
-                    <button @click="updateStatus('in_progress')"
+                    <button type="button" @click="updateStatus('in_progress')"
                             :disabled="submitting"
                             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +201,7 @@
                 </template>
 
                 {{-- Mark Complete (always shown for non-terminal tasks) --}}
-                <button @click="complete()"
+                <button type="button" @click="complete()"
                         :disabled="submitting"
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
                         style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 2px 8px rgba(16,185,129,.2)">
@@ -239,7 +239,7 @@
              role="dialog" aria-modal="true" aria-labelledby="create-task-title">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h3 id="create-task-title" class="text-base font-bold text-[#1E1B4B]">Add Task</h3>
-                <button @click="createOpen = false; resetCreate()"
+                <button type="button" @click="createOpen = false; resetCreate()"
                         :disabled="createSubmitting"
                         class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -285,9 +285,9 @@
                 <p class="text-[10px] text-gray-400">This task will be assigned to you. Admins and managers can also see and manage it.</p>
             </div>
             <div class="flex justify-end gap-2.5 px-5 py-4 border-t border-gray-100">
-                <button @click="createOpen = false; resetCreate()" :disabled="createSubmitting"
+                <button type="button" @click="createOpen = false; resetCreate()" :disabled="createSubmitting"
                         class="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Cancel</button>
-                <button @click="submitCreate()"
+                <button type="button" @click="submitCreate()"
                         :disabled="createSubmitting || !createForm.title.trim()"
                         class="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
                         style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
@@ -309,7 +309,7 @@
                  x-transition:enter-start="opacity-0 translate-y-2"
                  x-transition:enter-end="opacity-100 translate-y-0">
                 <span class="flex-1" x-text="t.msg"></span>
-                <button @click="toasts = toasts.filter(x => x.id !== t.id)" class="opacity-60 hover:opacity-100" aria-label="Dismiss">✕</button>
+                <button type="button" @click="toasts = toasts.filter(x => x.id !== t.id)" class="opacity-60 hover:opacity-100" aria-label="Dismiss">✕</button>
             </div>
         </template>
     </div>

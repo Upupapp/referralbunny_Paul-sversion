@@ -11,18 +11,18 @@
     </a>
     @if(!$dealIsArchived)
     {{-- Update Amount: opens the finance edit section directly --}}
-    <button onclick="window.dispatchEvent(new CustomEvent('open-update-amount-deal'))"
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-update-amount-deal'))"
             class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <span class="hidden sm:inline">Update Amount</span>
     </button>
-    <button onclick="rbOpenMoveStage()" class="btn-secondary text-sm">
+    <button type="button" onclick="rbOpenMoveStage()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
     </button>
-    <button onclick="rbOpenReassign()" class="btn-secondary text-sm">
+    <button type="button" onclick="rbOpenReassign()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
@@ -33,7 +33,7 @@
         Archived — read only
     </span>
     @endif
-    <button onclick="window.dispatchEvent(new CustomEvent('open-delete-deal'))"
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-delete-deal'))"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         <span class="hidden sm:inline">Delete Deal</span>
@@ -145,14 +145,14 @@
                            placeholder="Optional review note…"
                            class="w-full sm:w-48 text-xs border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400 bg-white">
                     <div class="flex gap-2">
-                        <button @click="approveApproval('{{ $approvalId }}')"
+                        <button type="button" @click="approveApproval('{{ $approvalId }}')"
                                 :disabled="apBusy"
                                 class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
                                 style="background:#10B981">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             Approve
                         </button>
-                        <button @click="rejectApproval('{{ $approvalId }}')"
+                        <button type="button" @click="rejectApproval('{{ $approvalId }}')"
                                 :disabled="apBusy"
                                 class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-700 bg-white border border-red-200 hover:bg-red-50 transition-all disabled:opacity-50">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -187,7 +187,7 @@
                     </p>
                     <p class="text-[10px] text-amber-600 mt-1">Deal amount affects financial breakdown, commission pool, pipeline value, and reports.</p>
                     <div class="flex flex-wrap items-center gap-2 mt-4">
-                        <button @click="confirm()"
+                        <button type="button" @click="confirm()"
                                 :disabled="busy"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all disabled:opacity-50"
                                 style="background:#D97706">
@@ -195,12 +195,12 @@
                             <svg x-show="!busy" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             <span x-text="busy ? 'Confirming…' : 'Confirm ₱4,000,000'"></span>
                         </button>
-                        <button @click="window.dispatchEvent(new CustomEvent('open-edit-finance'))"
+                        <button type="button" @click="window.dispatchEvent(new CustomEvent('open-edit-finance'))"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-white border border-amber-200 hover:bg-amber-50 transition-all">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             Change Amount
                         </button>
-                        <button @click="snooze()"
+                        <button type="button" @click="snooze()"
                                 class="text-xs text-amber-600 hover:text-amber-800 underline transition-colors">
                             Remind me later
                         </button>
@@ -267,7 +267,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     {{-- Move Stage button — disabled for archived deals, paid stage, or no lead --}}
-                    <button onclick="rbOpenMoveStage()"
+                    <button type="button" onclick="rbOpenMoveStage()"
                             :disabled="lead?.stage === 'paid' || !lead || lead?.status === 'archived'"
                             style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:12px;font-size:12px;font-weight:600;color:white;cursor:pointer;border:none;transition:opacity .15s,transform .1s;background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,0.3)"
                             :style="lead?.stage === 'paid' || !lead || lead?.status === 'archived' ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
@@ -437,7 +437,7 @@
 
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-[#1E1B4B] text-sm leading-snug">How this financial breakdown works</h4>
-                                <button @click="open = false" class="text-gray-300 hover:text-gray-500 ml-3 shrink-0">
+                                <button type="button" @click="open = false" class="text-gray-300 hover:text-gray-500 ml-3 shrink-0">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </div>
@@ -495,7 +495,7 @@
                         </div>
                     </div>
                 </div>
-                <button x-show="!editFinance && lead?.status !== 'archived'" @click="startEditFinance()"
+                <button type="button" x-show="!editFinance && lead?.status !== 'archived'" @click="startEditFinance()"
                         class="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     Edit
@@ -591,7 +591,7 @@
                         <div style="display:flex;align-items:center;gap:8px">
                             <p style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.05em;text-transform:uppercase">Referrer Commission Distribution</p>
                             <template x-if="lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid' && lead?.status !== 'archived'">
-                                <button @click="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
+                                <button type="button" @click="showAddCoRef = true; coRefEmail = ''; coRefPct = '0'; coRefErr = ''"
                                         style="padding:2px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
                                     + Co-Referrer
                                 </button>
@@ -631,11 +631,11 @@
                                         {{-- Edit % + Remove buttons — only for co-referrers (secondary role) --}}
                                         <template x-if="split.role === 'secondary' && lead?.commission_status !== 'locked' && lead?.commission_status !== 'paid'">
                                             <div style="display:flex;flex-direction:column;gap:4px">
-                                                <button @click="editSplitId = split.id; editPct = String(split.percentage); editErr = ''"
+                                                <button type="button" @click="editSplitId = split.id; editPct = String(split.percentage); editErr = ''"
                                                         style="padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe;background:white;font-size:10px;font-weight:600;color:#2563eb;cursor:pointer;white-space:nowrap">
                                                     Edit %
                                                 </button>
-                                                <button @click="adminRemoveCoRef(split.id, split.reseller_name)"
+                                                <button type="button" @click="adminRemoveCoRef(split.id, split.reseller_name)"
                                                         style="padding:3px 8px;border-radius:6px;border:1px solid #fecaca;background:white;font-size:10px;font-weight:600;color:#dc2626;cursor:pointer;white-space:nowrap">
                                                     Remove
                                                 </button>
@@ -651,11 +651,11 @@
                                             <input x-model="editPct" type="number" min="0.01" max="100" step="0.01"
                                                    style="width:80px;padding:5px 8px;border:1.5px solid #bfdbfe;border-radius:7px;font-size:12px;text-align:center;outline:none">
                                             <span style="font-size:11px;color:#6b7280">%</span>
-                                            <button @click="adminSaveSplit(split, '{{ url('tenant/'.$tenant->id.'/deals') }}/' + lead.id + '/splits/' + split.id, '{{ csrf_token() }}')"
+                                            <button type="button" @click="adminSaveSplit(split, '{{ url('tenant/'.$tenant->id.'/deals') }}/' + lead.id + '/splits/' + split.id, '{{ csrf_token() }}')"
                                                     :disabled="editSaving || !editPct"
                                                     style="padding:5px 12px;border-radius:7px;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;opacity:1"
                                                     x-text="editSaving ? 'Saving…' : 'Save'">Save</button>
-                                            <button @click="editSplitId = null; editPct = ''; editErr = ''"
+                                            <button type="button" @click="editSplitId = null; editPct = ''; editErr = ''"
                                                     style="padding:5px 10px;border-radius:7px;border:1px solid #e5e7eb;background:white;font-size:11px;font-weight:600;color:#374151;cursor:pointer">
                                                 Cancel
                                             </button>
@@ -741,7 +741,7 @@
                                             <p style="font-size:11px;color:#7B61FF;margin:2px 0 0;font-weight:500">Commission pool share assignment</p>
                                         </div>
                                     </div>
-                                    <button @click="showAddCoRef = false" style="width:28px;height:28px;border-radius:8px;background:rgba(123,97,255,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#7B61FF;flex-shrink:0">
+                                    <button type="button" @click="showAddCoRef = false" style="width:28px;height:28px;border-radius:8px;background:rgba(123,97,255,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#7B61FF;flex-shrink:0">
                                         <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                                     </button>
                                 </div>
@@ -865,13 +865,13 @@
 
                             {{-- Footer --}}
                             <div style="display:flex;gap:10px;padding:16px 24px 20px;border-top:1px solid #f3f4f6;background:#fafafa">
-                                <button @click="showAddCoRef = false"
+                                <button type="button" @click="showAddCoRef = false"
                                         style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s"
                                         @mouseenter="$event.target.style.background='#f9fafb'"
                                         @mouseleave="$event.target.style.background='white'">
                                     Cancel
                                 </button>
-                                <button @click="if (coRefType === 'fixed') {
+                                <button type="button" @click="if (coRefType === 'fixed') {
                                             var pool = (window.rbLead && window.rbLead.added_amount) ? parseFloat(window.rbLead.added_amount) * 0.70 : 0;
                                             coRefPct = pool > 0 ? String(Math.min(100, Math.round(parseFloat(coRefFixed || 0) / pool * 10000) / 100)) : '0';
                                         }; adminSaveCoRef('{{ $tenant->id }}', lead.id, '{{ csrf_token() }}')"
@@ -901,12 +901,12 @@
                             This co-referrer will be removed from the deal. Their commission share will be released back to the primary referrer.
                         </p>
                         <div style="display:flex;gap:10px">
-                            <button @click="removeCoRefId = null; removeCoRefName = ''"
+                            <button type="button" @click="removeCoRefId = null; removeCoRefName = ''"
                                     :disabled="removeCoRefing"
                                     style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                                 Cancel
                             </button>
-                            <button @click="confirmRemoveCoRef()"
+                            <button type="button" @click="confirmRemoveCoRef()"
                                     :disabled="removeCoRefing"
                                     style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;opacity:1"
                                     :style="removeCoRefing ? 'opacity:.6;cursor:not-allowed' : ''"
@@ -1033,11 +1033,11 @@
                 </div>
 
                 <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
-                    <button @click="cancelEditFinance()"
+                    <button type="button" @click="cancelEditFinance()"
                             style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s"
                             @mouseenter="$event.currentTarget.style.background='#f9fafb'"
                             @mouseleave="$event.currentTarget.style.background='white'">Cancel</button>
-                    <button @click="saveFinance()" :disabled="saving"
+                    <button type="button" @click="saveFinance()" :disabled="saving"
                             style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s"
                             :style="saving ? 'opacity:0.6;cursor:not-allowed' : 'opacity:1;cursor:pointer'"
                             x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
@@ -1125,13 +1125,13 @@
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Commission Split Share</h3>
                     <div class="flex items-center gap-2">
-                        <button x-show="!isArchived"
+                        <button type="button" x-show="!isArchived"
                                 @click="window.dispatchEvent(new CustomEvent('open-add-co-ref'))"
                                 class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             + Co-Referrer
                         </button>
-                        <button x-show="!isArchived"
+                        <button type="button" x-show="!isArchived"
                                 @click="showAdd = !showAdd" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             Add Partner
@@ -1194,7 +1194,7 @@
                                         <p style="font-size:14px;font-weight:700;color:#2563eb"
                                            x-text="'₱' + Math.round(commPool * parseFloat(r.percentage||0) / 100).toLocaleString('en-PH')"></p>
                                         <p style="font-size:10px;color:#9ca3af;margin-top:1px" x-text="parseFloat(r.percentage||0) + '% of pool'"></p>
-                                        <button @click="removeCoRef(r.id, r.reseller_name)"
+                                        <button type="button" @click="removeCoRef(r.id, r.reseller_name)"
                                                 style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:2px 6px;border-radius:6px;transition:all .15s"
                                                 onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
                                                 onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
@@ -1234,7 +1234,7 @@
                                            x-text="s.split_share_type === 'percentage'
                                                ? parseFloat(s.split_share_value) + '% of pool'
                                                : 'fixed'"></p>
-                                        <button @click="removeSplit(s.id, s.partner_name)"
+                                        <button type="button" @click="removeSplit(s.id, s.partner_name)"
                                                 style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:2px 6px;border-radius:6px;transition:all .15s"
                                                 onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
                                                 onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
@@ -1265,7 +1265,7 @@
                                 <p style="font-size:15px;font-weight:700;color:#1E1B4B">Add Partner</p>
                                 <p style="font-size:11px;color:#9ca3af;margin-top:2px">Email is optional — add without one to record for your files.</p>
                             </div>
-                            <button @click="showAdd = false; clearContact(); formError = ''" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
+                            <button type="button" @click="showAdd = false; clearContact(); formError = ''" style="color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px">
                                 <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
@@ -1412,9 +1412,9 @@
                     </div>
                     <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                     <div style="display:flex;gap:8px">
-                        <button @click="showAdd = false; clearContact(); formError = ''"
+                        <button type="button" @click="showAdd = false; clearContact(); formError = ''"
                                 style="flex:1;padding:9px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer">Cancel</button>
-                        <button @click="addSplit()" :disabled="saving || isDuplicate() || (!form.partner_name.trim() && !contactSelected) || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))"
+                        <button type="button" @click="addSplit()" :disabled="saving || isDuplicate() || (!form.partner_name.trim() && !contactSelected) || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))"
                                 style="flex:1;padding:9px;border-radius:12px;border:none;background:#7B61FF;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s"
                                 :style="(saving || isDuplicate() || (!form.partner_name.trim() && !contactSelected) || (form.split_share_value > 0 && (isOverCap() || remainingPool() <= 0))) ? 'opacity:0.4;cursor:not-allowed' : 'opacity:1'"
                                 x-text="saving ? 'Saving…' : (form.split_share_value > 0 ? 'Add Split' : 'Add (Record Only)')"></button>
@@ -1441,12 +1441,12 @@
                             This co-referrer will be removed from the deal. Their commission share will be released back to the primary referrer.
                         </p>
                         <div style="display:flex;gap:10px">
-                            <button @click="removeCoRefId = null; removeCoRefName = ''"
+                            <button type="button" @click="removeCoRefId = null; removeCoRefName = ''"
                                     :disabled="removeCoRefing"
                                     style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                                 Cancel
                             </button>
-                            <button @click="confirmRemoveCoRef()"
+                            <button type="button" @click="confirmRemoveCoRef()"
                                     :disabled="removeCoRefing"
                                     style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer"
                                     :style="removeCoRefing ? 'opacity:.6;cursor:not-allowed' : ''"
@@ -1469,7 +1469,7 @@
                               class="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                             Needs Review
                         </span>
-                        <button x-show="!showExtendForm" @click="showExtendForm = true"
+                        <button type="button" x-show="!showExtendForm" @click="showExtendForm = true"
                                 class="text-xs text-purple-600 hover:text-purple-700 font-medium">
                             + Extend
                         </button>
@@ -1489,8 +1489,8 @@
                               placeholder="Reason for extension (optional)…"></textarea>
                     <p x-show="extendError" class="text-xs text-red-600" x-text="extendError"></p>
                     <div class="flex gap-2">
-                        <button @click="showExtendForm = false; extendError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
-                        <button @click="adminExtend()" :disabled="saving"
+                        <button type="button" @click="showExtendForm = false; extendError = ''" class="btn-secondary text-xs flex-1">Cancel</button>
+                        <button type="button" @click="adminExtend()" :disabled="saving"
                                 class="btn-primary text-xs flex-1"
                                 x-text="saving ? 'Extending…' : 'Confirm Extension'"></button>
                     </div>
@@ -1523,13 +1523,13 @@
 
                             {{-- Approve / Deny buttons for pending requests --}}
                             <div x-show="r.status === 'pending_review'" class="flex gap-2 pt-1">
-                                <button @click="approveRequest(r.id, r.requested_days)"
+                                <button type="button" @click="approveRequest(r.id, r.requested_days)"
                                         :disabled="saving"
                                         class="btn-primary text-xs flex-1">
                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                     Approve
                                 </button>
-                                <button @click="rejectRequest(r.id)"
+                                <button type="button" @click="rejectRequest(r.id)"
                                         :disabled="saving"
                                         class="btn-secondary text-xs flex-1 !text-red-600 !border-red-200 hover:!bg-red-50">
                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1546,7 +1546,7 @@
             <div class="card space-y-3">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-[#1E1B4B] text-sm">Contacts</h3>
-                    <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                    <button type="button" @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Link
                     </button>
@@ -1559,7 +1559,7 @@
                     <template x-if="dealContacts.length === 0">
                         <div class="text-center py-5 rounded-xl border-2 border-dashed border-gray-100">
                             <p class="text-gray-400 text-xs">No contacts linked yet.</p>
-                            <button @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">Link a contact</button>
+                            <button type="button" @click="openLinkContact()" class="text-xs text-purple-600 hover:text-purple-700 font-medium mt-1">Link a contact</button>
                         </div>
                     </template>
                     <div x-show="dealContacts.length" class="space-y-1">
@@ -1574,7 +1574,7 @@
                                         <span x-text="c.org_name || c.job_title || c.email || ''"></span>
                                     </p>
                                 </div>
-                                <button @click="unlinkContact(c.id)"
+                                <button type="button" @click="unlinkContact(c.id)"
                                         class="p-1 rounded text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                                         title="Unlink">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1665,7 +1665,7 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                                           :class="{'bg-purple-100 text-purple-700':m.type==='tenant_admin','bg-blue-100 text-blue-700':m.type==='referrer','bg-orange-100 text-orange-700':m.type==='partner','bg-gray-100 text-gray-600':m.type==='contact'}">
                                         @<span x-text="m.name"></span>
-                                        <button @click="mentions.splice(i,1)" class="ml-0.5 opacity-60 hover:opacity-100">Ã—</button>
+                                        <button type="button" @click="mentions.splice(i,1)" class="ml-0.5 opacity-60 hover:opacity-100">Ã—</button>
                                     </span>
                                 </template>
                             </div>
@@ -1708,7 +1708,7 @@
                                     Attach files
                                     <span x-show="selectedFiles.length > 0" style="display:none" class="px-1.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700" x-text="selectedFiles.length"></span>
                                 </label>
-                                <button @click="postComment()"
+                                <button type="button" @click="postComment()"
                                         :disabled="(!newBody.trim() && selectedFiles.length === 0) || posting"
                                         class="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
                                     <svg x-show="posting" style="display:none" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -1725,7 +1725,7 @@
                     </div>
                     <div x-show="loadError" style="display:none" class="flex items-center gap-2 px-3 py-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600">
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Could not load notes. <button @click="loadComments()" class="underline font-medium">Try again</button></span>
+                        <span>Could not load notes. <button type="button" @click="loadComments()" class="underline font-medium">Try again</button></span>
                     </div>
                     <div x-show="!loadingComments && !loadError && comments.length === 0" style="display:none" class="flex flex-col items-center text-center py-8 px-4">
                         <img src="/images/mascots/r-bunny-rocket.webp" alt="" aria-hidden="true"
@@ -1764,7 +1764,7 @@
                                             </div>
                                             <div x-show="(c.attachments||[]).length > 0" class="space-y-1">
                                                 <template x-for="a in (c.attachments||[])" :key="a.id">
-                                                    <a :href="a.download_url" target="_blank"
+                                                    <a rel="noopener noreferrer" :href="a.download_url" target="_blank"
                                                        class="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg hover:bg-purple-50 hover:border-purple-100 transition-colors group/att">
                                                         <svg class="w-3.5 h-3.5 shrink-0" :class="a.file_type_group==='image'?'text-blue-400':'text-gray-400 group-hover/att:text-purple-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                                                         <span class="text-xs text-gray-600 truncate flex-1 group-hover/att:text-purple-700" x-text="a.original_filename"></span>
@@ -1774,14 +1774,14 @@
                                                 </template>
                                             </div>
                                             <div x-show="canEditComment(c)" class="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity mt-0.5">
-                                                <button @click="startEdit(c)" class="text-[11px] text-gray-400 hover:text-[#7B61FF]">Edit</button>
-                                                <button @click="deleteComment(c)" :disabled="deletingId === c.id" class="text-[11px] text-gray-400 hover:text-red-500 disabled:opacity-40" x-text="deletingId === c.id ? 'Deleting…' : 'Delete'">Delete</button>
+                                                <button type="button" @click="startEdit(c)" class="text-[11px] text-gray-400 hover:text-[#7B61FF]">Edit</button>
+                                                <button type="button" @click="deleteComment(c)" :disabled="deletingId === c.id" class="text-[11px] text-gray-400 hover:text-red-500 disabled:opacity-40" x-text="deletingId === c.id ? 'Deleting…' : 'Delete'">Delete</button>
                                             </div>
                                             <div x-show="editingId === c.id" class="mt-2 space-y-2">
                                                 <textarea x-model="editBody" rows="2" class="form-input text-sm resize-none"></textarea>
                                                 <div class="flex gap-2">
-                                                    <button @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'">Save</button>
-                                                    <button @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
+                                                    <button type="button" @click="saveEdit(c)" :disabled="posting" class="btn-primary text-xs py-1 px-2.5" x-text="posting ? 'Saving…' : 'Save'">Save</button>
+                                                    <button type="button" @click="editingId=null" class="btn-secondary text-xs py-1 px-2.5">Cancel</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1791,7 +1791,7 @@
                         </template>
                         {{-- Load older notes --}}
                         <div x-show="hasMore" style="display:none" class="flex justify-center pt-2">
-                            <button @click="loadMore()" :disabled="loadingMore"
+                            <button type="button" @click="loadMore()" :disabled="loadingMore"
                                     class="inline-flex items-center gap-1.5 text-xs text-[#7B61FF] hover:underline disabled:opacity-50">
                                 <svg x-show="loadingMore" style="display:none" class="w-3 h-3 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                 <span x-text="loadingMore ? 'Loading…' : 'Load older notes'">Load older notes</span>
@@ -1810,7 +1810,7 @@
                         <h3 class="font-semibold text-[#1E1B4B] text-sm">Activity History</h3>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <template x-for="f in ahFilters" :key="f.key">
-                                <button @click="ahFilter = f.key"
+                                <button type="button" @click="ahFilter = f.key"
                                         :style="ahFilter === f.key
                                             ? 'background:#7B61FF;color:white;border-color:#7B61FF'
                                             : 'background:white;color:#6b7280;border-color:#e5e7eb'"
@@ -1898,7 +1898,7 @@
                                     {{-- Old/New value change card --}}
                                     <template x-if="event.old_values || event.new_values">
                                         <div x-data="{ showChanges: false }">
-                                            <button @click="showChanges = !showChanges"
+                                            <button type="button" @click="showChanges = !showChanges"
                                                     style="font-size:10px;color:#7B61FF;cursor:pointer;background:none;border:none;padding:3px 0;font-weight:600;display:flex;align-items:center;gap:3px;margin-top:4px">
                                                 <svg style="width:10px;height:10px;transition:transform .15s" :style="showChanges ? 'transform:rotate(90deg)' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
@@ -1942,7 +1942,7 @@
                     {{-- View more / View less --}}
                     <template x-if="ahFiltered().length > ahPageSize">
                         <div style="text-align:center;padding-top:8px;border-top:1px solid #f3f4f6;margin-top:4px">
-                            <button @click="ahShowAll = !ahShowAll"
+                            <button type="button" @click="ahShowAll = !ahShowAll"
                                     style="font-size:12px;font-weight:600;color:#7B61FF;background:none;border:none;cursor:pointer"
                                     x-text="ahShowAll ? 'Show less' : 'View all ' + ahFiltered().length + ' events'">
                             </button>
@@ -1966,7 +1966,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">Link Contact to Deal</h3>
-                <button @click="showLinkContact = false; linkSearch = ''" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" @click="showLinkContact = false; linkSearch = ''" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -1997,7 +1997,7 @@
                     <template x-if="!loadingAllContacts && allTenantContacts.length === 0">
                         <div style="text-align:center;padding:24px 12px">
                             <p style="color:#9ca3af;font-size:13px;margin-bottom:10px">No contacts found.</p>
-                            <button @click="fetchAllContacts()"
+                            <button type="button" @click="fetchAllContacts()"
                                     style="font-size:12px;color:#7B61FF;background:#ede9fe;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:600">
                                 Retry
                             </button>
@@ -2013,7 +2013,7 @@
                     </template>
                     {{-- Contact list --}}
                     <template x-for="c in linkableContacts()" :key="c.id">
-                        <button @click="linkContact(c)"
+                        <button type="button" @click="linkContact(c)"
                                 :disabled="linkSaving"
                                 style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:12px;text-align:left;background:white;border:none;cursor:pointer;transition:background .15s"
                                 @mouseenter="$event.currentTarget.style.background='#F0EFFA'"
@@ -2057,7 +2057,7 @@
                         <p id="rb-modal-deal-name" style="font-size:11px;color:#9ca3af;margin:2px 0 0"></p>
                     </div>
                 </div>
-                <button onclick="rbCloseMoveStage()" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:none">
+                <button type="button" onclick="rbCloseMoveStage()" style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;cursor:pointer;border:none;background:none">
                     <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -2074,7 +2074,7 @@
                           style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:12px;font-size:13px;color:#1E1B4B;background:white;outline:none;resize:none;box-sizing:border-box;font-family:inherit"
                           placeholder="Optional note — reason for stage movement..."></textarea>
                 <p style="font-size:11px;color:#9ca3af;margin:0">Note is saved to the activity history.</p>
-                <button id="rb-move-confirm-btn"
+                <button type="button" id="rb-move-confirm-btn"
                         onclick="rbConfirmMove()"
                         style="display:none;padding:10px 20px;border-radius:12px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(123,97,255,0.3)">
                     Confirm Move
@@ -2090,7 +2090,7 @@
         <div style="background:white;border-radius:20px;width:100%;max-width:420px;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.2)" onclick="event.stopPropagation()">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
                 <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Reassign Deal</h3>
-                <button onclick="rbCloseReassign()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px;line-height:0">
+                <button type="button" onclick="rbCloseReassign()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px;line-height:0">
                     <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -2107,9 +2107,9 @@
                  style="max-height:220px;overflow-y:auto;border:1.5px solid #e5e7eb;border-radius:12px;margin-bottom:16px">
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px">
-                <button onclick="rbCloseReassign()"
+                <button type="button" onclick="rbCloseReassign()"
                         style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
-                <button id="rb-reassign-btn" onclick="rbConfirmReassign()" disabled
+                <button type="button" id="rb-reassign-btn" onclick="rbConfirmReassign()" disabled
                         style="display:inline-flex;align-items:center;padding:9px 20px;border-radius:12px;border:none;background:#FF5733;color:white;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.5;transition:opacity .15s;font-family:inherit">
                     Confirm Reassign
                 </button>
@@ -2130,12 +2130,12 @@
             <p class="text-sm text-gray-500 mb-1" x-text="lead?.name || 'This deal'"></p>
             <p class="text-xs text-gray-400 mb-6">This deal will be moved to the <strong>Deal Archive</strong> tab and permanently deleted after 10 days. You can restore it before then.</p>
             <div class="flex gap-3">
-                <button @click="showDeleteConfirm = false"
+                <button type="button" @click="showDeleteConfirm = false"
                         :disabled="deleting"
                         class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
-                <button @click="deleteDeal()"
+                <button type="button" @click="deleteDeal()"
                         :disabled="deleting"
                         class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
                     <svg x-show="deleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -3879,7 +3879,7 @@ function extensionReviewModal() {
                 <p class="text-xs text-gray-400 mt-0.5" x-show="request"
                    x-text="request?.deal_name ?? request?.lead?.name ?? ''"></p>
             </div>
-            <button @click="close()"
+            <button type="button" @click="close()"
                     class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
@@ -3967,11 +3967,11 @@ function extensionReviewModal() {
                                           placeholder="Internal note for this decision…"></textarea>
                             </div>
                             <div class="flex gap-2">
-                                <button @click="mode = 'view'"
+                                <button type="button" @click="mode = 'view'"
                                         class="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                                     Back
                                 </button>
-                                <button @click="approve()" :disabled="saving"
+                                <button type="button" @click="approve()" :disabled="saving"
                                         class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
                                         style="background:linear-gradient(135deg,#16a34a,#15803d)">
                                     <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -3993,11 +3993,11 @@ function extensionReviewModal() {
                                           placeholder="Explain why the extension is being denied…"></textarea>
                             </div>
                             <div class="flex gap-2">
-                                <button @click="mode = 'view'"
+                                <button type="button" @click="mode = 'view'"
                                         class="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                                     Back
                                 </button>
-                                <button @click="reject()" :disabled="saving"
+                                <button type="button" @click="reject()" :disabled="saving"
                                         class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-60"
                                         style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
                                     <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -4010,13 +4010,13 @@ function extensionReviewModal() {
                     {{-- Action buttons (main view, pending only) --}}
                     <template x-if="request.status === 'pending_review' && mode === 'view'">
                         <div class="flex gap-2.5 pt-1">
-                            <button @click="mode = 'approve'"
+                            <button type="button" @click="mode = 'approve'"
                                     class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
                                     style="background:linear-gradient(135deg,#16a34a,#15803d)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                 Approve
                             </button>
-                            <button @click="mode = 'reject'"
+                            <button type="button" @click="mode = 'reject'"
                                     class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
                                     style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

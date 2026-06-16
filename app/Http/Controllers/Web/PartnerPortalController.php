@@ -305,12 +305,13 @@ class PartnerPortalController extends Controller
             \App\Models\ActivityLog::create([
                 'id'        => (string) \Illuminate\Support\Str::uuid(),
                 'tenant_id' => $partner->tenant_id,
-                'user_id'   => (string) $partner->id,
+                'user_id'   => null,
                 'action'    => 'partner_note_added',
                 'entity'    => 'lead',
                 'entity_id' => $dealId,
                 'metadata'  => [
                     'note_id'      => $note->id,
+                    'partner_id'   => (string) $partner->id,
                     'partner_name' => $partner->full_name ?: $partner->email,
                     'has_body'     => $hasBody,
                     'has_files'    => $hasFiles,
@@ -603,7 +604,7 @@ class PartnerPortalController extends Controller
         $resellerId = null;
         if ($lead->reseller_name) {
             $reseller = Reseller::where('tenant_id', $partner->tenant_id)
-                ->where('name', $lead->reseller_name)
+                ->whereRaw('LOWER(name) = ?', [strtolower($lead->reseller_name)])
                 ->first();
             $resellerId = $reseller?->id;
         }
@@ -695,6 +696,9 @@ class PartnerPortalController extends Controller
     }
 
     // ── Send direct message to admin (no deal context) ──────────────────────
+    // No archived-deal guard here: direct messages carry no deal_id and are
+    // permitted regardless of any deal's archive status. Deal-scoped write
+    // blocks (addNote, sendMessage) are enforced on those methods separately.
 
     public function sendDirectMessage(Request $request)
     {

@@ -169,7 +169,7 @@ $actIcons = [
         {{-- Primary actions --}}
         <div class="task-hdr-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0">
             @if($canComplete && !$isTerminal)
-            <button @click="showCompleteModal = true"
+            <button type="button" @click="showCompleteModal = true"
                     style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 3px 12px rgba(123,97,255,.28)">
                 <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Mark as Done
@@ -181,7 +181,7 @@ $actIcons = [
             </span>
             @endif
             @if($canAssignToSelf && !$isCurrentAssignee && !$isTerminal)
-            <button @click="assignToSelf()" :disabled="assigning"
+            <button type="button" @click="assignToSelf()" :disabled="assigning"
                     style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;background:#ede9fe;color:#7B61FF;border:1.5px solid #c4b5fd;font-size:13px;font-weight:600;cursor:pointer"
                     :style="assigning ? 'opacity:.6;cursor:not-allowed' : ''"
                     x-text="assigning ? 'Assigning…' : '{{ $task->assigned_to_id ? 'Reassign to me' : 'Claim task' }}'">
@@ -349,7 +349,7 @@ $actIcons = [
                     </div>
                 </div>
                 @if($canComplete && !$isTerminal && $task->requestor_email && $completionEmailEnabled)
-                <button @click="showCompleteModal = true"
+                <button type="button" @click="showCompleteModal = true"
                         style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;background:#ede9fe;color:#7B61FF;border:none;font-size:12px;font-weight:600;cursor:pointer">
                     <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                     Send Reply
@@ -460,7 +460,7 @@ $actIcons = [
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px">
                 <h3 style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0">Assigned To</h3>
                 @if($canAssignToSelf && !$isCurrentAssignee && !$isTerminal)
-                <button @click="assignToSelf()" :disabled="assigning"
+                <button type="button" @click="assignToSelf()" :disabled="assigning"
                         style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;background:#ede9fe;color:#7B61FF;border:none;font-size:11px;font-weight:700;cursor:pointer"
                         :style="assigning ? 'opacity:.6;cursor:not-allowed' : ''"
                         x-text="assigning ? '…' : '{{ $task->assigned_to_id ? 'Reassign' : 'Claim' }}'"></button>
@@ -492,7 +492,7 @@ $actIcons = [
                 <div style="flex:1">
                     <p style="font-size:12px;font-weight:600;color:#d97706;margin:0">Unassigned</p>
                     @if($canAssignToSelf && !$isTerminal)
-                    <button @click="assignToSelf()" :disabled="assigning" style="font-size:11px;color:#7B61FF;background:none;border:none;cursor:pointer;padding:0;margin-top:3px;font-weight:600" x-text="assigning ? 'Assigning…' : 'Claim this task'"></button>
+                    <button type="button" @click="assignToSelf()" :disabled="assigning" style="font-size:11px;color:#7B61FF;background:none;border:none;cursor:pointer;padding:0;margin-top:3px;font-weight:600" x-text="assigning ? 'Assigning…' : 'Claim this task'"></button>
                     @endif
                 </div>
             </div>
@@ -554,7 +554,7 @@ $actIcons = [
             <div style="display:flex;flex-direction:column;gap:7px">
 
                 @if($canComplete && !$isTerminal)
-                <button @click="showCompleteModal = true"
+                <button type="button" @click="showCompleteModal = true"
                         style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,#7B61FF,#5b4cdb);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(123,97,255,.22)">
                     <svg style="width:13px;height:13px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     Mark as Done
@@ -562,7 +562,7 @@ $actIcons = [
                 @endif
 
                 @if($task->requestor_email && $completionEmailEnabled && !$isTerminal && $canComplete)
-                <button @click="showCompleteModal = true"
+                <button type="button" @click="showCompleteModal = true"
                         style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:12px;font-weight:600;cursor:pointer"
                         onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -662,7 +662,7 @@ $actIcons = [
                     <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Add a completion note and optionally reply to the requester.</p>
                 </div>
             </div>
-            <button @click="if(!completing){ showCompleteModal = false; resetModal(); }"
+            <button type="button" @click="if(!completing){ showCompleteModal = false; resetModal(); }"
                     aria-label="Close dialog"
                     style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:none;border:1px solid #e5e7eb;cursor:pointer;color:#6b7280;border-radius:8px"
                     onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
@@ -785,7 +785,7 @@ $actIcons = [
         <div x-show="!successState" class="rb-modal-footer">
 
             {{-- Cancel — ghost, left on desktop / bottom on mobile --}}
-            <button @click="if(!completing){ showCompleteModal = false; resetModal(); }"
+            <button type="button" @click="if(!completing){ showCompleteModal = false; resetModal(); }"
                     :disabled="completing"
                     class="rb-btn rb-btn-ghost rb-btn-cancel-mobile"
                     aria-label="Cancel and close modal">
@@ -795,7 +795,7 @@ $actIcons = [
             <span class="rb-modal-footer-spacer" aria-hidden="true"></span>
 
             {{-- Mark as Done Only — secondary purple, no email sent --}}
-            <button @click="markDoneOnly()"
+            <button type="button" @click="markDoneOnly()"
                     :disabled="completing"
                     class="rb-btn rb-btn-secondary"
                     :aria-busy="completing && !wantReply">
@@ -817,7 +817,7 @@ $actIcons = [
 
             {{-- Send Reply & Mark as Done — primary purple, only when requester exists --}}
             @if($hasRequester)
-            <button @click="sendReplyAndComplete()"
+            <button type="button" @click="sendReplyAndComplete()"
                     :disabled="completing"
                     class="rb-btn rb-btn-primary"
                     :aria-busy="completing && wantReply">

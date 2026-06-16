@@ -5,7 +5,7 @@
 @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-add-lead')" class="btn-primary">
+    <button type="button" x-data @click="$dispatch('open-add-lead')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">Add Lead</span>
     </button>
@@ -78,7 +78,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
                 <h3 class="font-semibold text-[#1E1B4B]">Add Lead</h3>
-                <button @click="showAdd = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button type="button" @click="showAdd = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
                 @if($showLocation)
@@ -124,8 +124,8 @@
                 <div><label class="form-label">Referrer Name *</label><input type="text" x-model="form.reseller_name" class="form-input" placeholder="Assigned referrer"></div>
                 <p x-show="formError" class="text-xs text-red-600 font-medium" x-text="formError"></p>
                 <div class="flex justify-end gap-3">
-                    <button @click="showAdd = false; formError = ''" class="btn-secondary">Cancel</button>
-                    <button @click="addLead()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Add Lead'"></button>
+                    <button type="button" @click="showAdd = false; formError = ''" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="addLead()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Add Lead'"></button>
                 </div>
             </div>
         </div>

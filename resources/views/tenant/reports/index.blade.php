@@ -28,7 +28,7 @@
                 <p class="font-semibold text-red-800 text-sm">Unable to load report data</p>
                 <p class="text-xs text-red-700 mt-0.5">Please check your connection and try again.</p>
             </div>
-            <button @click="init()" class="btn-secondary text-xs shrink-0">Retry</button>
+            <button type="button" @click="init()" class="btn-secondary text-xs shrink-0">Retry</button>
         </div>
     </template>
 

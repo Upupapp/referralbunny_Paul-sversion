@@ -47,7 +47,7 @@
                     @endif
                 </div>
                 @if(($result['total'] ?? 0) > 0)
-                <button x-data="{ done: false, loading: false }"
+                <button type="button" x-data="{ done: false, loading: false }"
                         @click="if(done||loading) return; loading=true;
                             fetch('{{ route('tenant.critical-actions.mark-all-read', $tenant->id) }}', {
                                 method:'POST', credentials:'same-origin',
@@ -273,7 +273,7 @@
                                             </a>
                                         @endif
                                         @if($action['dismissible'] ?? false)
-                                            <button x-data="{ dismissing: false, dismissed: false }"
+                                            <button type="button" x-data="{ dismissing: false, dismissed: false }"
                                                     x-show="!dismissed" x-cloak
                                                     @click.prevent="if(dismissing||dismissed) return; dismissing=true;
                                                         fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {
@@ -340,7 +340,7 @@
                                        class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800">{{ $action['action_label'] ?? 'Open' }} →</a>
                                 @endif
                                 @if($action['dismissible'] ?? false)
-                                    <button x-data="{ dismissing: false, dismissed: false }"
+                                    <button type="button" x-data="{ dismissing: false, dismissed: false }"
                                             x-show="!dismissed" x-cloak
                                             @click.prevent="if(dismissing||dismissed) return; dismissing=true;
                                                 fetch('{{ route('tenant.critical-actions.dismiss', $tenant->id) }}', {

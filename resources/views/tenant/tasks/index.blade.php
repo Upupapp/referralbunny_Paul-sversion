@@ -30,7 +30,7 @@
             <div x-show="{{ $tab !== 'responses' ? 1 : 0 }}"
                  class="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5"
                  role="group" aria-label="View options">
-                <button @click="switchView('list')"
+                <button type="button" @click="switchView('list')"
                         :aria-pressed="view === 'list' ? 'true' : 'false'"
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                         :class="view === 'list' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-500 hover:text-gray-700'">
@@ -39,7 +39,7 @@
                     </svg>
                     List
                 </button>
-                <button @click="switchView('kanban')"
+                <button type="button" @click="switchView('kanban')"
                         :aria-pressed="view === 'kanban' ? 'true' : 'false'"
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                         :class="view === 'kanban' ? 'bg-white shadow-sm text-[#1E1B4B]' : 'text-gray-500 hover:text-gray-700'">
@@ -52,7 +52,7 @@
 
             {{-- Create Task button --}}
             @if($isAdmin)
-            <button @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
+            <button type="button" @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                     style="background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,.25)">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -288,7 +288,7 @@
                     @endif
                 </p>
                 @if($isAdmin)
-                <button @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
+                <button type="button" @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
                         class="mt-4 px-4 py-2 rounded-xl text-xs font-semibold text-[#7B61FF] bg-purple-50 hover:bg-purple-100 transition-colors">
                     + Create your first task
                 </button>
@@ -396,7 +396,7 @@
                                   aria-live="polite"></span>
                             {{-- + New Task button on first column --}}
                             <template x-if="col.key === 'new_tasks' && isAdmin">
-                                <button @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
+                                <button type="button" @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
                                         class="w-6 h-6 rounded-lg bg-purple-100 text-[#7B61FF] flex items-center justify-center hover:bg-purple-200 transition-colors"
                                         title="Create new task" aria-label="Create new task">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
@@ -422,7 +422,7 @@
                                     <span x-text="col.key === 'new_tasks' ? 'No new tasks' : col.key === 'processing' ? 'No tasks in progress' : 'No completed tasks'"></span>
                                 </p>
                                 <template x-if="col.key === 'new_tasks' && isAdmin">
-                                    <button @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
+                                    <button type="button" @click="createOpen = true; if(assignees.length === 0) fetchAssignees()"
                                             class="mt-3 text-xs font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors">
                                         + Create task
                                     </button>
@@ -493,7 +493,7 @@
 
                                     {{-- Move to New Tasks --}}
                                     <template x-if="col.key !== 'new_tasks' && task.can_update_status">
-                                        <button @click="quickMove(task, col.key, 'new_tasks')"
+                                        <button type="button" @click="quickMove(task, col.key, 'new_tasks')"
                                                 :disabled="movingTaskId === task.id"
                                                 class="text-[10px] font-semibold px-2 py-1 rounded-lg bg-purple-50 text-[#7B61FF] hover:bg-purple-100 transition-colors disabled:opacity-40"
                                                 title="Move to New Tasks">
@@ -503,7 +503,7 @@
 
                                     {{-- Move to Processing --}}
                                     <template x-if="col.key !== 'processing' && task.can_update_status && task.status !== 'completed'">
-                                        <button @click="quickMove(task, col.key, 'processing')"
+                                        <button type="button" @click="quickMove(task, col.key, 'processing')"
                                                 :disabled="movingTaskId === task.id"
                                                 class="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-40"
                                                 title="Move to Processing">
@@ -513,7 +513,7 @@
 
                                     {{-- Mark Done --}}
                                     <template x-if="task.can_complete && col.key !== 'completed'">
-                                        <button @click="initiateComplete(task, col.key)"
+                                        <button type="button" @click="initiateComplete(task, col.key)"
                                                 :disabled="movingTaskId === task.id"
                                                 class="text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-40"
                                                 title="Mark as Done">
@@ -565,7 +565,7 @@
                 <svg x-show="t.type==='success'" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                 <svg x-show="t.type==='error'"   class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                 <span class="flex-1 leading-snug" x-text="t.msg"></span>
-                <button @click="toasts = toasts.filter(x => x.id !== t.id)" class="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">
+                <button type="button" @click="toasts = toasts.filter(x => x.id !== t.id)" class="shrink-0 opacity-60 hover:opacity-100" aria-label="Dismiss">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -587,7 +587,7 @@
                     <h2 id="completion-title" class="text-base font-bold text-[#1E1B4B]">Complete Task</h2>
                     <p class="text-xs text-gray-400 mt-0.5 line-clamp-1" x-text="completionTask?.title"></p>
                 </div>
-                <button @click="cancelCompletion()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
+                <button type="button" @click="cancelCompletion()" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -605,7 +605,7 @@
                         <p class="text-sm font-medium text-gray-600 line-clamp-2" x-text="completionTask?.title"></p>
                         <p class="text-xs text-emerald-600" x-text="completionSuccess || 'Task marked as completed.'"></p>
                     </div>
-                    <button @click="cancelCompletion()"
+                    <button type="button" @click="cancelCompletion()"
                             class="inline-flex items-center gap-2 px-7 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98]"
                             style="background:linear-gradient(135deg,#10b981,#059669)">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -677,12 +677,12 @@
                 </template>
 
                 <div class="flex gap-2.5 justify-end pt-1">
-                    <button @click="cancelCompletion()" :disabled="completionSubmitting"
+                    <button type="button" @click="cancelCompletion()" :disabled="completionSubmitting"
                             class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
                         Cancel
                     </button>
                     <template x-if="completionTask?.is_request_form_task && completionEmailEnabled && sendEmail">
-                        <button @click="submitCompletion(true)"
+                        <button type="button" @click="submitCompletion(true)"
                                 :disabled="completionSubmitting || !completionSubject.trim() || !completionBody.trim()"
                                 class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center gap-2"
                                 style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)">
@@ -691,7 +691,7 @@
                         </button>
                     </template>
                     <template x-if="!(completionTask?.is_request_form_task && completionEmailEnabled && sendEmail)">
-                        <button @click="submitCompletion(false)" :disabled="completionSubmitting"
+                        <button type="button" @click="submitCompletion(false)" :disabled="completionSubmitting"
                                 class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center gap-2"
                                 style="background:linear-gradient(135deg,#10b981,#059669)">
                             <svg x-show="completionSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -719,7 +719,7 @@
              @click.stop role="dialog" aria-modal="true" aria-labelledby="create-task-title">
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 id="create-task-title" class="text-base font-bold text-[#1E1B4B]">New Task</h2>
-                <button @click="createOpen = false" class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
+                <button type="button" @click="createOpen = false" class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors" aria-label="Close">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -822,11 +822,11 @@
                 </div>
 
                 <div class="flex gap-2.5 justify-end pt-1">
-                    <button @click="createOpen = false"
+                    <button type="button" @click="createOpen = false"
                             class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button @click="submitTask()"
+                    <button type="button" @click="submitTask()"
                             :disabled="createSubmitting || !createForm.title.trim() || createForm.assignee_ids.length === 0"
                             class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center gap-2"
                             style="background:linear-gradient(135deg,#7B61FF,#5b4cdb);box-shadow:0 4px 14px rgba(123,97,255,.25)">

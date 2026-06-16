@@ -12,7 +12,7 @@
         </svg>
         <span class="hidden sm:inline">Download Template</span>
     </a>
-    <button onclick="window.dispatchEvent(new CustomEvent('open-lgu-import'))" class="btn-primary">
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-lgu-import'))" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
         </svg>
@@ -234,7 +234,7 @@
             <x-r-bunny variant="sleeping" size="md" :decorative="true" class="mb-5 opacity-80" />
             <h3 class="text-[#1E1B4B] font-semibold text-base">No import history yet</h3>
             <p class="text-gray-400 text-sm mt-1 max-w-xs">Upload your first file to get started.</p>
-            <button @click="showUpload = true"
+            <button type="button" @click="showUpload = true"
                     class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors"
                     style="background: #10B981;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10B981'">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,7 +276,7 @@
                     </div>
                     <h2 class="text-[#1E1B4B] font-semibold text-base">Upload LGU IDS Deal Import File</h2>
                 </div>
-                <button @click="showUpload = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <button type="button" @click="showUpload = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>

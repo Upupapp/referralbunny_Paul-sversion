@@ -26,14 +26,14 @@
         @endif
     @endif
     @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
-    <button onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
             class="btn-secondary" title="Select deals to delete">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
         </svg>
         <span class="hidden sm:inline">Delete Deals</span>
     </button>
-    <button x-data @click="$dispatch('open-add-deal')" class="btn-primary">
+    <button type="button" x-data @click="$dispatch('open-add-deal')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Deal</span>
     </button>
@@ -67,7 +67,7 @@
     <template x-if="!loading && activeTab === 'deals' && (expiringCount > 0 || expiredCount > 0 || (canViewReferrers && missingReferrerCount > 0))">
         <div class="flex flex-wrap gap-2">
             <template x-if="expiredCount > 0">
-                <button @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expired'; applyFilters()"
+                <button type="button" @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expired'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
                     <span x-text="expiredCount + ' deal' + (expiredCount > 1 ? 's' : '') + ' expired'"></span>
@@ -75,7 +75,7 @@
                 </button>
             </template>
             <template x-if="expiringCount > 0">
-                <button @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expiring'; applyFilters()"
+                <button type="button" @click="search=''; filterReseller=''; filterStage=''; filterCommission=''; filterProvince=''; filterPartner=''; filterStatus = 'expiring'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0"></span>
                     <span x-text="expiringCount + ' deal' + (expiringCount > 1 ? 's' : '') + ' expiring soon'"></span>
@@ -83,7 +83,7 @@
                 </button>
             </template>
             <template x-if="canViewReferrers && missingReferrerCount > 0">
-                <button @click="search = ''; filterStatus = ''; filterStage = ''; filterCommission = ''; filterProvince = ''; filterPartner = ''; filterReseller = 'MISSING'; applyFilters()"
+                <button type="button" @click="search = ''; filterStatus = ''; filterStage = ''; filterCommission = ''; filterProvince = ''; filterPartner = ''; filterReseller = 'MISSING'; applyFilters()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold hover:bg-yellow-100 transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0"></span>
                     <span x-text="missingReferrerCount + ' deal' + (missingReferrerCount > 1 ? 's' : '') + ' missing Referrer'"></span>
@@ -117,17 +117,17 @@
             <div class="search-group flex-1">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search deals…">
-                <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+                <button type="button" x-show="search.length > 0" @click="search = ''; applyFilters()"
                         class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
-                <button @click="viewMode = 'table'" :class="viewMode==='table' ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'"
+                <button type="button" @click="viewMode = 'table'" :class="viewMode==='table' ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'"
                         class="p-2 rounded-xl border transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
                 </button>
-                <button @click="viewMode = 'kanban'" :class="viewMode==='kanban' ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'"
+                <button type="button" @click="viewMode = 'kanban'" :class="viewMode==='kanban' ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'text-gray-500 border-gray-200 hover:bg-gray-50'"
                         class="p-2 rounded-xl border transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
                 </button>
@@ -205,7 +205,7 @@
             </label>
             </template>
             <template x-if="filterStage || filterStatus || filterCommission || filterProvince || filterReseller || filterPartner || search">
-            <button @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
+            <button type="button" @click="filterStage=''; filterStatus=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
                     class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 Clear
@@ -225,7 +225,7 @@
         <svg class="w-10 h-10 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
         <p class="text-sm font-semibold text-gray-700">Couldn't load deals</p>
         <p class="text-xs text-gray-400">There was a problem fetching your pipeline. Please refresh or try again.</p>
-        <button @click="initError = false; loading = true; init()" class="mt-2 btn btn-sm btn-outline">Retry</button>
+        <button type="button" @click="initError = false; loading = true; init()" class="mt-2 btn btn-sm btn-outline">Retry</button>
     </div>
 
     {{-- Table view --}}
@@ -243,7 +243,7 @@
                         <template x-if="sortDir === 'desc'"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></template>
                     </svg>
                     <span x-text="{name:'Deal',stage:'Stage',reseller:'Referrer',value:'Value',created_at:'Date Added',days_left:'Days Left',status:'Status',last_activity_at:'Last Activity'}[sortCol] || sortCol"></span>
-                    <button @click="sortCol = 'created_at'; sortDir = 'desc'" class="ml-0.5 hover:text-purple-800" title="Clear sort">×</button>
+                    <button type="button" @click="sortCol = 'created_at'; sortDir = 'desc'" class="ml-0.5 hover:text-purple-800" title="Clear sort">×</button>
                 </span>
             </div>
             <div class="flex items-center gap-3 text-xs text-gray-400">
@@ -306,7 +306,7 @@
                                 </div>
                                 <p class="text-gray-400 text-sm" x-text="leads.length === 0 ? 'No deals yet. Add your first deal to get started.' : 'No deals match the current filters.'"></p>
                                 @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
-                                <button x-show="leads.length === 0" @click="showAdd = true; resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
+                                <button type="button" x-show="leads.length === 0" @click="showAdd = true; resetForm()" class="btn-primary mt-3 text-sm">Add First Deal</button>
                                 @endif
                             </td>
                         </tr>
@@ -418,7 +418,7 @@
             <div class="mb-3 flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18l-7 9.5V19l-4 2v-7.5L3 4z"/></svg>
                 <span>Kanban is showing filtered results.
-                    <button @click="filterStatus=''; filterStage=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
+                    <button type="button" @click="filterStatus=''; filterStage=''; filterCommission=''; filterProvince=''; filterReseller=''; filterPartner=''; search=''; applyFilters()"
                             class="underline font-semibold ml-1 hover:text-indigo-900">Clear all filters</button>
                 </span>
             </div>
@@ -500,7 +500,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
                 <h3 class="font-semibold text-[#1E1B4B]" x-text="showSuccessState ? 'Deal Created' : 'New Deal'"></h3>
-                <button @click="showAdd = false; showSuccessState = false; createdDeal = null; resetForm()" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showAdd = false; showSuccessState = false; createdDeal = null; resetForm()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -542,7 +542,7 @@
                         View Deal
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </a>
-                    <button @click="showSuccessState = false; createdDeal = null; resetForm()"
+                    <button type="button" @click="showSuccessState = false; createdDeal = null; resetForm()"
                             class="btn-secondary text-sm">
                         Create Another Deal
                     </button>
@@ -824,8 +824,8 @@
 
                 <p x-show="formError" class="text-xs text-red-600" x-text="formError"></p>
                 <div class="flex justify-end gap-3 pt-1">
-                    <button @click="showAdd = false; resetForm()" class="btn-secondary">Cancel</button>
-                    <button @click="if(!saving){saving=true;addRecord()}" :disabled="saving" class="btn-primary" x-text="saving ? 'Creating deal…' : 'Create Deal'"></button>
+                    <button type="button" @click="showAdd = false; resetForm()" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="if(!saving){saving=true;addRecord()}" :disabled="saving" class="btn-primary" x-text="saving ? 'Creating deal…' : 'Create Deal'"></button>
                 </div>
             </div>
 
@@ -854,11 +854,11 @@
                 A <strong>Delete</strong> button will appear once you've made your selection.
             </p>
             <div class="flex gap-3">
-                <button @click="showDeleteInstructions = false"
+                <button type="button" @click="showDeleteInstructions = false"
                         class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
-                <button @click="showDeleteInstructions = false; selectMode = true"
+                <button type="button" @click="showDeleteInstructions = false; selectMode = true"
                         class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">
                     Start Selecting
                 </button>
@@ -886,11 +886,11 @@
             <p class="text-red-600 font-bold text-lg mb-4" x-text="selectedDeals.length + ' deal' + (selectedDeals.length !== 1 ? 's' : '')"></p>
             <p class="text-gray-400 text-xs mb-6">Archived deals move to the <strong>Deal Archive</strong> tab and are permanently deleted after 10 days. You can restore them before then.</p>
             <div class="flex gap-3">
-                <button @click="showDeleteConfirm=false"
+                <button type="button" @click="showDeleteConfirm=false"
                         class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
                     Cancel
                 </button>
-                <button @click="deleteSelected()"
+                <button type="button" @click="deleteSelected()"
                         :disabled="deleting"
                         class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-1.5">
                     <svg x-show="deleting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
@@ -1418,12 +1418,12 @@ window.rbDelBarCount = rbDelBarCount;
             <p id="rb-del-label" style="font-size:14px;font-weight:600;color:#1E1B4B;margin:0;white-space:nowrap">Tap a deal row to select it</p>
             <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Tap again to deselect · Cancel to exit</p>
         </div>
-        <button onclick="window.dispatchEvent(new CustomEvent('rb-del-cancel'))"
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('rb-del-cancel'))"
                 style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:10px;white-space:nowrap;transition:background .15s"
                 onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
             Cancel
         </button>
-        <button id="rb-del-btn"
+        <button type="button" id="rb-del-btn"
                 onclick="window.dispatchEvent(new CustomEvent('rb-del-execute'))"
                 style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:#9ca3af;color:white;border:none;font-size:13px;font-weight:700;cursor:not-allowed;white-space:nowrap;transition:background .15s">
             <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>

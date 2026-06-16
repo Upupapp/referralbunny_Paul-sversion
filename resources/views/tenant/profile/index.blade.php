@@ -69,7 +69,7 @@
                     @if($photoUrl)
                     <form method="POST" action="{{ route('tenant.profile.photo.destroy', $tenantId) }}">
                         @csrf @method('DELETE')
-                        <button class="btn-secondary text-sm py-2 px-3 text-red-500 border-red-200 hover:bg-red-50">Remove</button>
+                        <button type="submit" class="btn-secondary text-sm py-2 px-3 text-red-500 border-red-200 hover:bg-red-50">Remove</button>
                     </form>
                     @endif
                 </div>

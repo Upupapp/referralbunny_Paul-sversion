@@ -9,7 +9,7 @@
     <div class="card p-1.5">
         <div class="flex gap-1 overflow-x-auto">
             @foreach(['My Plan','Usage','Health Score','Invoices'] as $ti => $tl)
-            <button @click="tab = {{ $ti }}"
+            <button type="button" @click="tab = {{ $ti }}"
                     :class="tab === {{ $ti }} ? 'tab-active' : 'text-gray-600 hover:bg-gray-100'"
                     class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5">
                 {{ $tl }}
@@ -90,7 +90,7 @@
                             <p class="font-semibold text-orange-800 text-sm">Payment Past Due</p>
                             <p class="text-xs text-orange-700 mt-0.5">Update your payment method to restore full access.</p>
                         </div>
-                        <button class="btn-primary ml-auto text-xs shrink-0">Add Payment Method</button>
+                        <button type="button" class="btn-primary ml-auto text-xs shrink-0">Add Payment Method</button>
                     </div>
                 </div>
 
@@ -100,7 +100,7 @@
                     <div class="p-4 rounded-2xl text-center space-y-3" style="background:linear-gradient(135deg,#F5F3FF,#FDF2F8);border:1px solid #EDE9FE">
                         <p class="text-xs font-semibold text-purple-700 uppercase tracking-wide">Upgrade Plan</p>
                         <p class="text-xs text-gray-500">Unlock more deals, referrers, and messaging</p>
-                        <button @click="document.getElementById('plans-comparison')?.scrollIntoView({behavior:'smooth'})" class="btn-primary w-full text-xs">
+                        <button type="button" @click="document.getElementById('plans-comparison')?.scrollIntoView({behavior:'smooth'})" class="btn-primary w-full text-xs">
                             View Plans
                         </button>
                     </div>
@@ -258,7 +258,7 @@
                 <p class="font-semibold text-orange-800 text-sm">Approaching Plan Limit</p>
                 <p class="text-xs text-orange-700 mt-0.5">One or more resources are at 80%+ usage. Consider upgrading to avoid interruptions.</p>
             </div>
-            <button @click="tab = 0" class="btn-primary text-xs shrink-0">Upgrade Plan</button>
+            <button type="button" @click="tab = 0" class="btn-primary text-xs shrink-0">Upgrade Plan</button>
         </div>
 
         {{-- No data state --}}
@@ -389,7 +389,7 @@
                                 <td class="text-gray-400 text-xs tabular-nums" x-text="inv.due_date ? new Date(inv.due_date).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—'"></td>
                                 <td class="text-right">
                                     <span x-show="inv.status === 'paid'" class="text-xs text-emerald-600 font-medium">Paid ✓</span>
-                                    <button x-show="inv.status === 'open' || inv.status === 'past_due'" class="btn-primary text-xs px-3 py-1.5">Pay Now</button>
+                                    <button type="button" x-show="inv.status === 'open' || inv.status === 'past_due'" class="btn-primary text-xs px-3 py-1.5">Pay Now</button>
                                 </td>
                             </tr>
                         </template>

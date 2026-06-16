@@ -3,11 +3,11 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-move-stage')" class="btn-secondary text-sm">
+    <button type="button" x-data @click="$dispatch('open-move-stage')" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
     </button>
-    <button x-data @click="$dispatch('open-reassign')" class="btn-secondary text-sm">
+    <button type="button" x-data @click="$dispatch('open-reassign')" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Reassign
     </button>
@@ -20,7 +20,7 @@
      @open-move-stage.window="showMoveStage = true"
      @open-reassign.window="showReassign = true">
 
-    <a href="{{ route('tenant.records', $tenant->id) }}"
+    <a href="{{ route('tenant.leads', $tenant->id) }}"
        class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         Back to Records
@@ -64,7 +64,7 @@
         <div class="card">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-[#1E1B4B] text-sm">Pipeline Progress</h3>
-                <button @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage →</button>
+                <button type="button" @click="showMoveStage = true" class="text-xs text-purple-600 hover:text-purple-700 font-medium">Move Stage →</button>
             </div>
             <div class="flex items-center">
                 <template x-for="(s, i) in allStages" :key="s.key">
@@ -101,7 +101,7 @@
                     </div>
                     <h3 class="font-semibold text-[#1E1B4B]">Financial Breakdown</h3>
                 </div>
-                <button x-show="!editFinance" @click="startEditFinance()"
+                <button type="button" x-show="!editFinance" @click="startEditFinance()"
                         class="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     Edit
@@ -268,8 +268,8 @@
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button @click="cancelEditFinance()" class="btn-secondary">Cancel</button>
-                    <button @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
+                    <button type="button" @click="cancelEditFinance()" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="saveFinance()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving…' : 'Save Financial Data'"></button>
                 </div>
             </div>
         </div>
@@ -309,14 +309,14 @@
                 <div class="card space-y-3">
                     <div class="flex items-center justify-between">
                         <h3 class="font-semibold text-[#1E1B4B] text-sm">Notes</h3>
-                        <button @click="showNoteForm = !showNoteForm" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add Note</button>
+                        <button type="button" @click="showNoteForm = !showNoteForm" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Add Note</button>
                     </div>
                     <div x-show="showNoteForm" class="space-y-2 p-3 bg-[#F0EFFA] rounded-xl">
                         <textarea x-model="noteText" rows="3" class="form-input text-sm" placeholder="Add a note…"></textarea>
                         <input type="text" x-model="noteAuthor" class="form-input text-sm" placeholder="Your name">
                         <div class="flex justify-end gap-2">
-                            <button @click="showNoteForm = false; noteText=''; noteAuthor=''" class="btn-secondary text-xs">Cancel</button>
-                            <button @click="addNote()" :disabled="saving || !noteText" class="btn-primary text-xs" x-text="saving ? 'Saving…' : 'Save Note'"></button>
+                            <button type="button" @click="showNoteForm = false; noteText=''; noteAuthor=''" class="btn-secondary text-xs">Cancel</button>
+                            <button type="button" @click="addNote()" :disabled="saving || !noteText" class="btn-primary text-xs" x-text="saving ? 'Saving…' : 'Save Note'"></button>
                         </div>
                     </div>
                     <div class="space-y-2">
@@ -382,14 +382,14 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B]">Move to Stage</h3>
-                <button @click="showMoveStage = false" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showMoveStage = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <p class="text-sm text-gray-500">Currently: <span class="font-semibold" x-text="stageLabel(lead?.stage)"></span></p>
             <div class="space-y-2">
                 <template x-for="s in allStages" :key="s.key">
-                    <button @click="moveToStage(s.key)"
+                    <button type="button" @click="moveToStage(s.key)"
                             :disabled="s.key === lead?.stage || saving"
                             :class="s.key === lead?.stage ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-[#F0EFFA] hover:border-purple-200 cursor-pointer'"
                             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all text-left">
@@ -408,7 +408,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" @click.stop>
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[#1E1B4B]">Reassign Record</h3>
-                <button @click="showReassign = false; reassignName = ''" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showReassign = false; reassignName = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -420,8 +420,8 @@
                 <input type="text" x-model="reassignName" class="form-input" placeholder="Referrer full name">
             </div>
             <div class="flex justify-end gap-3">
-                <button @click="showReassign = false; reassignName = ''" class="btn-secondary">Cancel</button>
-                <button @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
+                <button type="button" @click="showReassign = false; reassignName = ''" class="btn-secondary">Cancel</button>
+                <button type="button" @click="reassign()" :disabled="!reassignName || saving" class="btn-primary" x-text="saving ? 'Reassigning…' : 'Confirm Reassign'"></button>
             </div>
         </div>
     </div>

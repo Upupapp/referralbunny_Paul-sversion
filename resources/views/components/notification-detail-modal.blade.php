@@ -62,7 +62,7 @@
                 </div>
 
                 {{-- Close --}}
-                <button @click="close()"
+                <button type="button" @click="close()"
                         class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 -mt-0.5 -mr-0.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -102,7 +102,7 @@
             <div class="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
                 <p class="text-[10px] text-gray-400">You are already viewing the relevant page.</p>
                 <div class="flex gap-2 shrink-0">
-                    <button @click="close()"
+                    <button type="button" @click="close()"
                             class="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all active:scale-95"
                             style="background:linear-gradient(135deg,#7B61FF,#9B8BFF)">
                         Got it

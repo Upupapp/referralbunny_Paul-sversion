@@ -10,7 +10,7 @@
         </svg>
         <span class="hidden sm:inline">Import Deals</span>
     </a>
-    <button onclick="window.dispatchEvent(new CustomEvent('open-claim-deal'))" class="rs-btn-primary">
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-claim-deal'))" class="rs-btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">Create a Deal</span>
     </button>
@@ -27,7 +27,7 @@
         <div class="search-group">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="text" x-model="search" @input.debounce.300ms="applyFilters()" placeholder="Search my deals…">
-            <button x-show="search" @click="search=''; applyFilters()" class="text-gray-400 hover:text-gray-600 shrink-0">
+            <button type="button" x-show="search" @click="search=''; applyFilters()" class="text-gray-400 hover:text-gray-600 shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -67,7 +67,7 @@
             </template>
             {{-- No Notes Yet — LGU IDS referrers see this pill when ?filter=no_notes or toggled --}}
             <template x-if="hasNoNotesDeals && !filterArchived">
-                <button @click="filterNoNotes = !filterNoNotes; applyFilters()"
+                <button type="button" @click="filterNoNotes = !filterNoNotes; applyFilters()"
                         :class="filterNoNotes ? 'filter-pill active !border-violet-400 !text-violet-700' : 'filter-pill'"
                         :aria-pressed="filterNoNotes.toString()">
                     <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@
                 </button>
             </template>
             <template x-if="filterStatus || filterStage || filterPartner || search || filterNoNotes">
-                <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
+                <button type="button" @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
                         class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     Clear
@@ -85,7 +85,7 @@
             </template>
 
             {{-- Archived toggle — right-aligned, mutually exclusive with status/stage filters --}}
-            <button @click="toggleArchived()"
+            <button type="button" @click="toggleArchived()"
                     :class="filterArchived ? 'active !border-gray-400 !text-gray-700' : ''"
                     :aria-pressed="filterArchived.toString()"
                     class="filter-pill gap-1.5 ml-auto shrink-0">
@@ -125,7 +125,7 @@
                             <div class="inline-flex items-center gap-1">
                                 Commission
                                 <div x-data="{ open: false }" class="relative">
-                                    <button @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
+                                    <button type="button" @click="open = !open" @click.outside="open = false" @keydown.escape.window="open = false"
                                             class="w-3.5 h-3.5 flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors" aria-label="About commission status">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </button>
@@ -159,7 +159,7 @@
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">All caught up!</p>
                                     <p class="text-xs text-gray-400 mt-1">All your active deals already have at least one note.</p>
-                                    <button @click="filterNoNotes=false; applyFilters()"
+                                    <button type="button" @click="filterNoNotes=false; applyFilters()"
                                             class="rs-btn-secondary rs-btn-sm mt-3">Show All Deals</button>
                                 </div>
                             </template>
@@ -177,7 +177,7 @@
                                         <template x-if="!filterStatus && filterNoNotes && (filterStage || filterPartner || search)"><span>No matching deals without notes.</span></template>
                                         <template x-if="!filterStatus && !filterNoNotes"><span>Try adjusting or clearing your filters.</span></template>
                                     </p>
-                                    <button @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
+                                    <button type="button" @click="filterStatus=''; filterStage=''; filterPartner=''; search=''; filterNoNotes=false; applyFilters()"
                                             class="rs-btn-secondary rs-btn-sm mt-3">Clear Filters</button>
                                 </div>
                             </template>
@@ -185,7 +185,7 @@
                                 <div>
                                     <p class="text-gray-400 text-sm font-medium">No deals yet</p>
                                     <p class="text-xs text-gray-400 mt-1">Claim your first municipality to get started.</p>
-                                    <button @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Create a Deal</button>
+                                    <button type="button" @click="showClaim = true" class="rs-btn-primary mt-4 text-xs">Create a Deal</button>
                                 </div>
                             </template>
                         </td></tr>
@@ -300,7 +300,7 @@
 
     {{-- ── Sub-tabs: My Imported Deals + Bulk Extension Request ──── --}}
     <div x-data="{ openImports: false }" class="card p-0 overflow-hidden">
-        <button @click="openImports = !openImports"
+        <button type="button" @click="openImports = !openImports"
                 aria-controls="subtab-imports"
                 :aria-expanded="openImports.toString()"
                 class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
@@ -332,7 +332,7 @@
     </div>
 
     <div x-data="{ openExtension: false }" class="card p-0 overflow-hidden">
-        <button @click="openExtension = !openExtension"
+        <button type="button" @click="openExtension = !openExtension"
                 aria-controls="subtab-extension"
                 :aria-expanded="openExtension.toString()"
                 class="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
@@ -378,7 +378,7 @@
                     </h3>
                     <p class="text-xs text-gray-400 mt-0.5" x-show="dealMode === 'standard' && claimStep === 1">Select a province, then pick an available municipality.</p>
                 </div>
-                <button @click="showClaim = false; claimStep = 1; dealMode = 'standard'; selectedOrg = null; customError = ''" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showClaim = false; claimStep = 1; dealMode = 'standard'; selectedOrg = null; customError = ''" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -486,7 +486,7 @@
                     <input type="number" x-model="customForm.deal_value" class="form-input" placeholder="0">
                 </div>
                 <p x-show="customError" class="text-xs text-red-600 font-medium" x-text="customError"></p>
-                <button @click="confirmCustomDeal()" :disabled="savingCustom"
+                <button type="button" @click="confirmCustomDeal()" :disabled="savingCustom"
                         class="rs-btn-primary w-full justify-center">
                     <svg x-show="savingCustom" class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     <span x-text="savingCustom ? 'Creating…' : 'Create Custom Deal'"></span>
@@ -528,8 +528,8 @@
                 <p x-show="claimError" class="text-xs text-red-600 font-medium mt-3" x-text="claimError"></p>
 
                 <div class="flex gap-3 mt-5">
-                    <button @click="claimStep = 1; selectedOrg = null" class="btn-secondary flex-1">Back</button>
-                    <button @click="confirmClaim()" :disabled="saving" class="rs-btn-primary flex-1 justify-center"
+                    <button type="button" @click="claimStep = 1; selectedOrg = null" class="btn-secondary flex-1">Back</button>
+                    <button type="button" @click="confirmClaim()" :disabled="saving" class="rs-btn-primary flex-1 justify-center"
                             x-text="saving ? 'Claiming…' : 'Claim This Deal'"></button>
                 </div>
             </div>
@@ -549,7 +549,7 @@
             <h2 class="text-xl font-bold mb-2" style="color:#1E1B4B">Deal Claimed!</h2>
             <p class="text-gray-500 text-sm mb-1" x-text="successOrgName"></p>
             <p class="text-base font-semibold mb-6" style="color:#0D9488" x-text="successPrompt"></p>
-            <button @click="showSuccessPrompt = false" class="rs-btn-primary w-full justify-center">
+            <button type="button" @click="showSuccessPrompt = false" class="rs-btn-primary w-full justify-center">
                 Let's Go 🚀
             </button>
         </div>

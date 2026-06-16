@@ -6,7 +6,7 @@
 @endsection
 
 @section('topbar-actions')
-    <button id="markAllReadBtn"
+    <button type="button" id="markAllReadBtn"
             class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-2 focus:ring-gray-300/50"
             aria-label="Mark all notifications as read">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -61,7 +61,7 @@
         <div class="px-5 sm:px-6 pt-4 pb-3 border-b border-gray-100">
             <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5" role="tablist" aria-label="Notification filters">
                 <template x-for="tab in tabs" :key="tab.key">
-                    <button
+                    <button type="button"
                         role="tab"
                         :aria-selected="activeTab === tab.key ? 'true' : 'false'"
                         @click="activeTab = tab.key; page = 1; load()"
@@ -126,7 +126,7 @@
             </label>
 
             {{-- Clear filters --}}
-            <button x-show="filterCategory || filterPriority"
+            <button type="button" x-show="filterCategory || filterPriority"
                     @click="filterCategory=''; filterPriority=''; page=1; load()"
                     class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 hover:border-red-300 transition-all focus:outline-none focus:ring-2 focus:ring-red-300/40 min-h-[36px]"
                     aria-label="Clear all filters">
@@ -176,7 +176,7 @@
                     <div>
                         <h3 class="text-[#1E1B4B] font-bold text-base mb-1">No notifications found</h3>
                         <p class="text-gray-400 text-sm max-w-xs mx-auto mb-4">Try changing or clearing your filters to see more results.</p>
-                        <button @click="filterCategory=''; filterPriority=''; page=1; load()"
+                        <button type="button" @click="filterCategory=''; filterPriority=''; page=1; load()"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-[#7B61FF]/40"
                                 style="background:linear-gradient(135deg,#7B61FF,#6d28d9)">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -192,7 +192,7 @@
                     <div>
                         <h3 class="text-[#1E1B4B] font-bold text-base mb-1">No unread notifications</h3>
                         <p class="text-gray-400 text-sm max-w-xs mx-auto mb-4">New updates will appear here when they need your attention.</p>
-                        <button @click="activeTab='all'; page=1; load()"
+                        <button type="button" @click="activeTab='all'; page=1; load()"
                                 class="text-xs font-semibold text-[#7B61FF] hover:text-purple-800 transition-colors underline">
                             View all notifications
                         </button>
@@ -296,7 +296,7 @@
 
                                 {{-- Row actions (hover reveal) --}}
                                 <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button x-show="!n.is_read"
+                                    <button type="button" x-show="!n.is_read"
                                             @click.stop="markRead(n)"
                                             title="Mark as read"
                                             aria-label="Mark as read"
@@ -305,7 +305,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                         </svg>
                                     </button>
-                                    <button @click.stop="archive(n)"
+                                    <button type="button" @click.stop="archive(n)"
                                             title="Archive"
                                             aria-label="Archive notification"
                                             class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-1 focus:ring-gray-300 min-h-[36px] min-w-[36px] flex items-center justify-center">
@@ -324,7 +324,7 @@
         {{-- ── Pagination ──────────────────────────────────────────────────────── --}}
         <template x-if="!loading && totalPages > 1">
             <div class="flex items-center justify-between px-5 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/80">
-                <button @click="page--; load()"
+                <button type="button" @click="page--; load()"
                         :disabled="page <= 1"
                         class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#7B61FF] disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:underline"
                         aria-label="Previous page">
@@ -338,7 +338,7 @@
                     of <span class="font-semibold text-gray-600" x-text="totalPages"></span>
                     <span class="hidden sm:inline"> · <span x-text="total"></span> total</span>
                 </span>
-                <button @click="page++; load()"
+                <button type="button" @click="page++; load()"
                         :disabled="page >= totalPages"
                         class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#7B61FF] disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus:outline-none focus:underline"
                         aria-label="Next page">

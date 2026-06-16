@@ -168,7 +168,7 @@
                     @if($photoUrl)
                     <form method="POST" action="{{ route('reseller.profile.photo.destroy', $tenantId) }}">
                         @csrf @method('DELETE')
-                        <button class="px-3 py-2 rounded-xl text-sm font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors">Remove</button>
+                        <button type="submit" class="px-3 py-2 rounded-xl text-sm font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors">Remove</button>
                     </form>
                     @endif
                 </div>

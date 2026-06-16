@@ -3,7 +3,7 @@
 @section('nav') @include('platform._nav') @endsection
 
 @section('topbar-actions')
-    <button x-data @click="$dispatch('open-compose')" class="btn-primary">
+    <button type="button" x-data @click="$dispatch('open-compose')" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         <span class="hidden sm:inline">New Message</span>
     </button>
@@ -100,7 +100,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]">New Message</h3>
-                <button @click="showCompose = false" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="showCompose = false" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -131,8 +131,8 @@
                     <textarea x-model="compose.body" rows="4" class="form-input" placeholder="Write your message..."></textarea>
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="showCompose = false" class="btn-secondary">Cancel</button>
-                    <button @click="send()" :disabled="sending" class="btn-primary">
+                    <button type="button" @click="showCompose = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="send()" :disabled="sending" class="btn-primary">
                         <span x-text="sending ? 'Sending...' : 'Send Message'"></span>
                     </button>
                 </div>

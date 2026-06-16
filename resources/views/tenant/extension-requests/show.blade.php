@@ -164,7 +164,7 @@ window.__bulkExtBatch = {
                     <p class="text-xs text-gray-400 mt-0.5">Act on all pending items at once, or select deals below for mixed decisions.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
-                    <button @click="openBulkModal('approve_all')"
+                    <button type="button" @click="openBulkModal('approve_all')"
                             :disabled="busy || pendingCount === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,7 +172,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Approve All
                     </button>
-                    <button @click="openBulkModal('skip_all')"
+                    <button type="button" @click="openBulkModal('skip_all')"
                             :disabled="busy || pendingCount === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +180,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Skip All
                     </button>
-                    <button @click="openBulkModal('decline_all')"
+                    <button type="button" @click="openBulkModal('decline_all')"
                             :disabled="busy || pendingCount === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,11 +198,11 @@ window.__bulkExtBatch = {
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-100 text-violet-700 rounded-lg text-xs font-semibold">
                         <span x-text="selectedIds.length"></span> selected
                     </span>
-                    <button @click="selectedIds = []" class="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
-                    <button @click="selectAllPending()" class="text-xs text-gray-400 hover:text-gray-600 underline">Select all pending &amp; skipped</button>
+                    <button type="button" @click="selectedIds = []" class="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
+                    <button type="button" @click="selectAllPending()" class="text-xs text-gray-400 hover:text-gray-600 underline">Select all pending &amp; skipped</button>
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
-                    <button @click="openBulkModal('approve_selected')"
+                    <button type="button" @click="openBulkModal('approve_selected')"
                             :disabled="busy || selectedIds.length === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +210,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Approve Selected
                     </button>
-                    <button @click="openBulkModal('decline_selected')"
+                    <button type="button" @click="openBulkModal('decline_selected')"
                             :disabled="busy || selectedIds.length === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +218,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Reject Selected
                     </button>
-                    <button @click="openBulkModal('reject_selected_approve_rest')"
+                    <button type="button" @click="openBulkModal('reject_selected_approve_rest')"
                             :disabled="busy || selectedIds.length === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,7 +226,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Reject Selected + Approve Rest
                     </button>
-                    <button @click="openBulkModal('approve_selected_reject_rest')"
+                    <button type="button" @click="openBulkModal('approve_selected_reject_rest')"
                             :disabled="busy || selectedIds.length === 0"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors disabled:opacity-50">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,7 +349,7 @@ window.__bulkExtBatch = {
                     <input type="text" x-model="note" placeholder="Optional note to referrer…"
                            class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-violet-400">
                     <div class="flex gap-2">
-                        <button @click="submitApprove()"
+                        <button type="button" @click="submitApprove()"
                                 :disabled="busy || approvedDays < 1 || approvedDays > 90"
                                 class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg x-show="!busy" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,7 +361,7 @@ window.__bulkExtBatch = {
                             </svg>
                             <span x-text="busy ? 'Approving…' : 'Confirm Approve'"></span>
                         </button>
-                        <button @click="action = null" class="px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
+                        <button type="button" @click="action = null" class="px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
                     </div>
                 </div>
 
@@ -371,7 +371,7 @@ window.__bulkExtBatch = {
                               placeholder="Reason for declining (required, sent to referrer)…"
                               class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-red-400 resize-none"></textarea>
                     <div class="flex gap-2">
-                        <button @click="submitDecline()"
+                        <button type="button" @click="submitDecline()"
                                 :disabled="busy || note.trim().length < 5"
                                 class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg x-show="busy" x-cloak class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -380,20 +380,20 @@ window.__bulkExtBatch = {
                             </svg>
                             <span x-text="busy ? 'Declining…' : 'Confirm Decline'"></span>
                         </button>
-                        <button @click="action = null" class="px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
+                        <button type="button" @click="action = null" class="px-3 py-2 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
                     </div>
                 </div>
 
                 {{-- Default action buttons --}}
                 <div x-show="action === null" class="flex flex-wrap gap-2">
-                    <button @click="action = 'approve'"
+                    <button type="button" @click="action = 'approve'"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
                         Approve
                     </button>
-                    <button @click="submitSkip()"
+                    <button type="button" @click="submitSkip()"
                             :disabled="busy"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,7 +401,7 @@ window.__bulkExtBatch = {
                         </svg>
                         Skip for Now
                     </button>
-                    <button @click="action = 'decline'"
+                    <button type="button" @click="action = 'decline'"
                             class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -534,7 +534,7 @@ window.__bulkExtBatch = {
             </div>
 
             <div class="flex gap-2 pt-1" x-show="!modal.result">
-                <button @click="submitModal()"
+                <button type="button" @click="submitModal()"
                         :disabled="modal.busy || !isModalValid()"
                         class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         :class="['approve_all','approve_selected','approve_selected_reject_rest'].includes(modal.action)
@@ -548,13 +548,13 @@ window.__bulkExtBatch = {
                     </svg>
                     <span x-text="modal.busy ? 'Processing…' : modal.confirmLabel"></span>
                 </button>
-                <button @click="closeModal()" :disabled="modal.busy"
+                <button type="button" @click="closeModal()" :disabled="modal.busy"
                         class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50">
                     Cancel
                 </button>
             </div>
             <div class="flex gap-2 pt-1" x-show="modal.result">
-                <button @click="closeModal(); location.reload()"
+                <button type="button" @click="closeModal(); location.reload()"
                         class="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-violet-600 text-white hover:bg-violet-700 transition-colors">
                     Done — Refresh
                 </button>

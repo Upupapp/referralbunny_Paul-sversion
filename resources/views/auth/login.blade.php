@@ -122,7 +122,7 @@
         .error-box p { margin: 0; font-size: .875rem; color: #dc2626; }
     </style>
 </head>
-<body>
+<body data-stitch-page="login" data-stitch-fallback="{{ route('public.home') }}">
 
 <div class="login-page">
     <div class="login-card">
@@ -130,7 +130,15 @@
         {{-- LEFT — form --}}
         <div class="card-left">
             <div style="margin-bottom:2rem">
-                <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
+                <a href="{{ route('public.home') }}"
+                   data-stitch-action="navigate"
+                   data-stitch-target="{{ route('public.home') }}"
+                   data-stitch-fallback="{{ route('public.home') }}"
+                   data-stitch-loading="none"
+                   aria-label="ReferralBunny.ai home"
+                   style="display:inline-block">
+                    <x-rb-logo variant="horizontal" size="sm" :priority="true" :decorative="true" />
+                </a>
             </div>
 
             <h1 style="margin:0 0 .25rem;font-size:1.5rem;font-weight:700;color:#111827">Sign in to your account</h1>

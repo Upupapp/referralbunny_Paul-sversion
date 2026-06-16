@@ -9,7 +9,7 @@
     <div class="card p-1.5">
         <div class="flex gap-1 overflow-x-auto">
             @foreach(['Overview','Plans & Pricing','Promo Codes','Promotions','Pricing History','Performance','Approvals'] as $i => $tab)
-            <button @click="activeTab = {{ $i }}"
+            <button type="button" @click="activeTab = {{ $i }}"
                     :class="activeTab === {{ $i }} ? 'tab-active' : 'text-gray-600 hover:bg-gray-100'"
                     class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5">
                 {{ $tab }}
@@ -155,7 +155,7 @@
                         </div>
 
                         {{-- Edit button --}}
-                        <button @click="editPlan = {...plan, update_rule: 'new_subscriptions_only', change_reason: ''}; showPlanModal = true"
+                        <button type="button" @click="editPlan = {...plan, update_rule: 'new_subscriptions_only', change_reason: ''}; showPlanModal = true"
                                 class="mt-auto w-full py-2 rounded-xl text-xs font-semibold bg-[#F0EFFA] text-purple-700 hover:bg-purple-100 transition-colors flex items-center justify-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             Edit Pricing
@@ -229,7 +229,7 @@
     {{-- ── Tab 2: Promo Codes ── --}}
     <div x-show="activeTab === 2" class="space-y-4">
         <div class="flex justify-end">
-            <button @click="showPromoModal = true" class="btn-primary">
+            <button type="button" @click="showPromoModal = true" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 New Promo Code
             </button>
@@ -260,7 +260,7 @@
     {{-- ── Tab 3: Promotions ── --}}
     <div x-show="activeTab === 3" class="space-y-4">
         <div class="flex justify-end">
-            <button @click="showPromotionModal = true" class="btn-primary">
+            <button type="button" @click="showPromotionModal = true" class="btn-primary">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 New Promotion
             </button>
@@ -355,8 +355,8 @@
     {{-- ── Tab 6: Approvals ── --}}
     <div x-show="activeTab === 6" class="space-y-4">
         <div class="flex gap-2">
-            <button @click="approvalTab = 'pending'" :class="approvalTab==='pending' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Pending (<span x-text="approvalCount"></span>)</button>
-            <button @click="approvalTab = 'history'; loadApprovalHistory()" :class="approvalTab==='history' ? 'btn-primary' : 'btn-secondary'" class="text-sm">History</button>
+            <button type="button" @click="approvalTab = 'pending'" :class="approvalTab==='pending' ? 'btn-primary' : 'btn-secondary'" class="text-sm">Pending (<span x-text="approvalCount"></span>)</button>
+            <button type="button" @click="approvalTab = 'history'; loadApprovalHistory()" :class="approvalTab==='history' ? 'btn-primary' : 'btn-secondary'" class="text-sm">History</button>
         </div>
 
         <div x-show="approvalTab === 'pending'" class="space-y-3">
@@ -372,8 +372,8 @@
                         <p class="text-xs text-gray-300 mt-0.5" x-text="new Date(req.created_at).toLocaleString()"></p>
                     </div>
                     <div class="flex gap-2 shrink-0">
-                        <button @click="approve(req.id)" class="btn-primary text-xs px-3 py-1.5">Approve</button>
-                        <button @click="reject(req.id)" class="btn-danger text-xs px-3 py-1.5">Reject</button>
+                        <button type="button" @click="approve(req.id)" class="btn-primary text-xs px-3 py-1.5">Approve</button>
+                        <button type="button" @click="reject(req.id)" class="btn-danger text-xs px-3 py-1.5">Reject</button>
                     </div>
                 </div>
             </template>
@@ -401,7 +401,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <h3 class="font-semibold text-[#1E1B4B]" x-text="'Edit ' + editPlan.name + ' Pricing'"></h3>
-                <button @click="showPlanModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button type="button" @click="showPlanModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="grid grid-cols-2 gap-4">
@@ -419,8 +419,8 @@
                 </div>
                 <div><label class="form-label">Reason for change</label><input type="text" x-model="editPlan.change_reason" class="form-input" placeholder="e.g. Annual pricing review"></div>
                 <div class="flex justify-end gap-3">
-                    <button @click="showPlanModal = false" class="btn-secondary">Cancel</button>
-                    <button @click="savePlan()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
+                    <button type="button" @click="showPlanModal = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="savePlan()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </div>
         </div>
@@ -431,7 +431,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
                 <h3 class="font-semibold text-[#1E1B4B]">New Promo Code</h3>
-                <button @click="showPromoModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button type="button" @click="showPromoModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="grid grid-cols-2 gap-4">
@@ -473,8 +473,8 @@
                     Discounts above 30% require approval before activation.
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="showPromoModal = false" class="btn-secondary">Cancel</button>
-                    <button @click="savePromo()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Create Code'"></button>
+                    <button type="button" @click="showPromoModal = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="savePromo()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Create Code'"></button>
                 </div>
             </div>
         </div>
@@ -485,7 +485,7 @@
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" @click.stop>
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
                 <h3 class="font-semibold text-[#1E1B4B]">New Promotion</h3>
-                <button @click="showPromotionModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                <button type="button" @click="showPromotionModal = false" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
             <div class="p-6 space-y-4">
                 <div><label class="form-label">Promotion Name *</label><input type="text" x-model="newPromotion.name" class="form-input" placeholder="e.g. Beauty Industry Launch"></div>
@@ -539,8 +539,8 @@
                     <label class="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" x-model="newPromotion.allow_stacking" class="rounded accent-purple-600"> Allow stacking</label>
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="showPromotionModal = false" class="btn-secondary">Cancel</button>
-                    <button @click="savePromotion()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Create Promotion'"></button>
+                    <button type="button" @click="showPromotionModal = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="savePromotion()" :disabled="saving" class="btn-primary" x-text="saving ? 'Saving...' : 'Create Promotion'"></button>
                 </div>
             </div>
         </div>

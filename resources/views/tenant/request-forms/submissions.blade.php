@@ -252,11 +252,11 @@
         <h3 id="rb-del-sub-name" style="font-size:16px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently remove this submission. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
-            <button onclick="document.getElementById('rb-del-sub-modal').style.display='none'"
+            <button type="button" onclick="document.getElementById('rb-del-sub-modal').style.display='none'"
                     style="flex:1;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                 Cancel
             </button>
-            <button id="rb-del-sub-btn"
+            <button type="button" id="rb-del-sub-btn"
                     style="flex:1;padding:10px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
                 Delete
             </button>

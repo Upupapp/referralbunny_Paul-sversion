@@ -14,7 +14,7 @@
                        @keydown.enter="runSearch()" autofocus
                        placeholder="Search tenants, invoices, promos… or type a command">
             </div>
-            <button @click="saveCurrentSearch()" x-show="query && results.length" style="display:none" class="btn-secondary text-sm shrink-0">
+            <button type="button" @click="saveCurrentSearch()" x-show="query && results.length" style="display:none" class="btn-secondary text-sm shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                 Save Search
             </button>
@@ -52,7 +52,7 @@
                    class="form-input sm:w-40" aria-label="From date">
             <input type="date" x-model="filters.to" @change="runSearch()"
                    class="form-input sm:w-40" aria-label="To date">
-            <button @click="clearFilters()"
+            <button type="button" @click="clearFilters()"
                     x-show="filters.status || filters.from || filters.to || filters.type"
                     class="btn-secondary shrink-0">
                 Clear filters
@@ -75,10 +75,10 @@
                     <a :href="command.url" class="btn-primary text-xs">Go →</a>
                 </template>
                 <template x-if="command.sensitive">
-                    <button @click="confirmAction(command)" class="btn-primary text-xs">Execute</button>
+                    <button type="button" @click="confirmAction(command)" class="btn-primary text-xs">Execute</button>
                 </template>
                 <template x-if="command.filter">
-                    <button @click="applyCommandFilter(command)" class="btn-primary text-xs">Apply Filter</button>
+                    <button type="button" @click="applyCommandFilter(command)" class="btn-primary text-xs">Apply Filter</button>
                 </template>
             </div>
         </div>
@@ -95,7 +95,7 @@
                 </div>
                 <div class="space-y-1.5">
                     <template x-for="s in savedSearches" :key="s.id">
-                        <button @click="loadSaved(s)"
+                        <button type="button" @click="loadSaved(s)"
                                 class="w-full text-left px-3 py-2 rounded-xl hover:bg-[#F0EFFA] transition-colors">
                             <div class="flex items-center gap-2">
                                 <svg x-show="s.is_pinned" class="w-3 h-3 text-purple-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
@@ -112,7 +112,7 @@
                 <h3 class="font-semibold text-[#1E1B4B] text-sm mb-3">Recent Searches</h3>
                 <div class="space-y-1">
                     <template x-for="r in recentSearches" :key="r.query + r.created_at">
-                        <button @click="query = r.query; runSearch()"
+                        <button type="button" @click="query = r.query; runSearch()"
                                 class="w-full text-left px-3 py-1.5 rounded-xl hover:bg-[#F0EFFA] transition-colors flex items-center justify-between">
                             <span class="text-sm text-gray-600 truncate" x-text="r.query"></span>
                             <span class="text-xs text-gray-400 ml-2 shrink-0" x-text="r.result_count + ' results'"></span>
@@ -139,8 +139,8 @@
                     </label>
                     <template x-if="bulkMode && selected.length > 0">
                         <div class="flex gap-2">
-                            <button @click="bulkApprove()" class="btn-primary text-xs py-1">Approve (<span x-text="selected.length"></span>)</button>
-                            <button @click="bulkSuspend()" class="btn-danger text-xs py-1">Suspend (<span x-text="selected.length"></span>)</button>
+                            <button type="button" @click="bulkApprove()" class="btn-primary text-xs py-1">Approve (<span x-text="selected.length"></span>)</button>
+                            <button type="button" @click="bulkSuspend()" class="btn-danger text-xs py-1">Suspend (<span x-text="selected.length"></span>)</button>
                         </div>
                     </template>
                 </div>
@@ -151,7 +151,7 @@
                 <svg class="w-5 h-5 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 Search index is empty. Run <code class="bg-orange-100 px-1 rounded">php artisan search:reindex</code> to build the index, then search again.
                 @if(Auth::guard('web')->check())
-                <button @click="triggerReindex()" :disabled="reindexing" class="btn-primary text-xs ml-auto" x-text="reindexing ? 'Indexing...' : 'Reindex Now'"></button>
+                <button type="button" @click="triggerReindex()" :disabled="reindexing" class="btn-primary text-xs ml-auto" x-text="reindexing ? 'Indexing...' : 'Reindex Now'"></button>
                 @endif
             </div>
 
@@ -214,13 +214,13 @@
                         {{-- Quick actions --}}
                         <div class="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                             <template x-for="action in result.quick_actions" :key="action.action">
-                                <button @click="action.sensitive ? confirmAction({...action, entity_type: result.entity_type, entity_id: result.id, entity_title: result.title}) : navigateTo(result.url)"
+                                <button type="button" @click="action.sensitive ? confirmAction({...action, entity_type: result.entity_type, entity_id: result.id, entity_title: result.title}) : navigateTo(result.url)"
                                         :class="action.sensitive ? 'btn-secondary' : 'btn-primary'"
                                         class="text-xs py-1 px-2.5"
                                         x-text="action.label">
                                 </button>
                             </template>
-                            <button @click="toggleFavorite(result)"
+                            <button type="button" @click="toggleFavorite(result)"
                                     class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-purple-600 transition-colors"
                                     title="Add to favorites">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
@@ -232,9 +232,9 @@
 
             {{-- Pagination --}}
             <div class="flex items-center justify-between" x-show="total > limit">
-                <button @click="prevPage()" :disabled="offset === 0" class="btn-secondary text-sm">← Previous</button>
+                <button type="button" @click="prevPage()" :disabled="offset === 0" class="btn-secondary text-sm">← Previous</button>
                 <span class="text-sm text-gray-500" x-text="'Showing ' + (offset+1) + '–' + Math.min(offset+limit, total) + ' of ' + total"></span>
-                <button @click="nextPage()" :disabled="offset + limit >= total" class="btn-secondary text-sm">Next →</button>
+                <button type="button" @click="nextPage()" :disabled="offset + limit >= total" class="btn-secondary text-sm">Next →</button>
             </div>
         </div>
     </div>
@@ -259,8 +259,8 @@
                     <input type="text" x-model="confirmModal.reason" class="form-input" placeholder="Reason for this action">
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="confirmModal.open = false" class="btn-secondary">Cancel</button>
-                    <button @click="executeConfirmed()" :disabled="actionLoading" class="btn-primary"
+                    <button type="button" @click="confirmModal.open = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="executeConfirmed()" :disabled="actionLoading" class="btn-primary"
                             x-text="actionLoading ? 'Executing...' : 'Confirm'"></button>
                 </div>
             </div>
@@ -277,8 +277,8 @@
                 <div><label class="form-label">Name *</label><input type="text" x-model="saveName" class="form-input" placeholder="e.g. Unpaid invoices"></div>
                 <div class="flex items-center gap-2"><input type="checkbox" x-model="savePin" class="rounded accent-purple-600"><label class="text-sm text-gray-600">Pin to sidebar</label></div>
                 <div class="flex justify-end gap-3">
-                    <button @click="saveModal = false" class="btn-secondary">Cancel</button>
-                    <button @click="doSaveSearch()" class="btn-primary">Save</button>
+                    <button type="button" @click="saveModal = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="doSaveSearch()" class="btn-primary">Save</button>
                 </div>
             </div>
         </div>
@@ -300,8 +300,8 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3">
-                    <button @click="bulkModal.open = false" class="btn-secondary">Cancel</button>
-                    <button @click="executeBulk()" class="btn-primary" x-text="'Confirm ' + bulkModal.label"></button>
+                    <button type="button" @click="bulkModal.open = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="executeBulk()" class="btn-primary" x-text="'Confirm ' + bulkModal.label"></button>
                 </div>
             </div>
         </div>

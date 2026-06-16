@@ -16,14 +16,14 @@
             <template x-if="selectMode">
                 <div style="display:flex;align-items:center;gap:8px">
                     <span x-text="selected.length + ' selected'" style="font-size:13px;color:#9ca3af;font-weight:500"></span>
-                    <button @click="selected.length > 0 && (showBulkConfirm = true)"
+                    <button type="button" @click="selected.length > 0 && (showBulkConfirm = true)"
                             :disabled="selected.length === 0"
                             :style="selected.length === 0 ? 'opacity:.45;cursor:not-allowed' : ''"
                             style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;background:#dc2626;color:white;font-size:13px;font-weight:600;border:none;cursor:pointer">
                         <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Delete Selected
                     </button>
-                    <button @click="selectMode = false; selected = []"
+                    <button type="button" @click="selectMode = false; selected = []"
                             style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">
                         Cancel
                     </button>
@@ -32,7 +32,7 @@
             {{-- Normal-mode actions --}}
             <template x-if="!selectMode">
                 <div style="display:flex;align-items:center;gap:8px">
-                    <button @click="selectMode = true"
+                    <button type="button" @click="selectMode = true"
                             style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;border:1.5px solid #fca5a5;background:white;color:#dc2626;font-size:13px;font-weight:600;cursor:pointer">
                         <svg style="width:13px;height:13px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Delete
@@ -191,7 +191,7 @@
                     </td>
                     <td style="padding:14px 16px;text-align:right">
                         <div style="display:inline-block">
-                            <button @click.stop="toggle($el)"
+                            <button type="button" @click.stop="toggle($el)"
                                     style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1.5px solid #e5e7eb;background:white;font-size:12px;font-weight:600;color:#374151;cursor:pointer">
                                 Actions
                                 <svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -232,7 +232,7 @@
                                 </button>
                                 @endif
 
-                                <a href="{{ $form->publicUrl() }}" target="_blank"
+                                <a rel="noopener noreferrer" href="{{ $form->publicUrl() }}" target="_blank"
                                    style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;text-decoration:none;white-space:nowrap"
                                    onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
                                     <svg style="width:13px;height:13px;color:#6b7280;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -312,9 +312,9 @@
         <h3 id="rb-delete-form-title" style="font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:8px"></h3>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete the form, all its fields, and all submitted responses. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
-            <button onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
+            <button type="button" onclick="document.getElementById('rb-delete-form-modal').style.display='none'"
                     style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
-            <button id="rb-delete-form-btn"
+            <button type="button" id="rb-delete-form-btn"
                     style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">Delete Form</button>
         </div>
     </div>
@@ -336,9 +336,9 @@
         </h3>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:24px;line-height:1.6">This will permanently delete all selected forms, their fields, and all submitted responses. This cannot be undone.</p>
         <div style="display:flex;gap:10px">
-            <button @click="showBulkConfirm = false"
+            <button type="button" @click="showBulkConfirm = false"
                     style="flex:1;padding:11px;border-radius:12px;border:1.5px solid #e5e7eb;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
-            <button @click="executeBulkDelete()"
+            <button type="button" @click="executeBulkDelete()"
                     style="flex:1;padding:11px;border-radius:12px;background:#dc2626;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer">
                 Delete All Selected
             </button>

@@ -32,12 +32,16 @@
         .err { color:#ef4444;font-size:12px;margin-top:4px; }
     </style>
 </head>
-<body>
+<body data-stitch-page="build-program" data-stitch-fallback="{{ route('public.home') }}">
 <div x-data="buildWizard()" x-init="init()" class="min-h-screen py-8 px-4">
 
     {{-- Logo --}}
     <div class="text-center mb-8">
-        <a href="/"><img src="/images/logos/referralbunny-logo-white-horizontal.webp" alt="Referral Bunny" class="h-9 object-contain mx-auto"></a>
+        <a href="/"
+           data-stitch-action="navigate"
+           data-stitch-target="{{ route('public.home') }}"
+           data-stitch-fallback="{{ route('public.home') }}"
+           data-stitch-loading="none"><img src="/images/logos/referralbunny-logo-white-horizontal.webp" alt="Referral Bunny" class="h-9 object-contain mx-auto"></a>
     </div>
 
     <div class="max-w-3xl mx-auto">
@@ -153,12 +157,12 @@
                 <label class="flex items-start gap-2.5 cursor-pointer">
                     <input x-model="form.terms" type="checkbox" class="mt-0.5 w-4 h-4 accent-purple-600 flex-shrink-0">
                     <span class="text-xs text-gray-500 leading-relaxed">
-                        I agree to the <a href="#" class="text-[#7B61FF] hover:underline">Terms of Service</a> and <a href="#" class="text-[#7B61FF] hover:underline">Privacy Policy</a>.
+                        I agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener noreferrer" class="text-[#7B61FF] hover:underline">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" rel="noopener noreferrer" class="text-[#7B61FF] hover:underline">Privacy Policy</a>.
                     </span>
                 </label>
                 <p x-show="errors.terms" class="err" x-text="errors.terms"></p>
                 <div class="flex justify-end pt-1">
-                    <button @click="nextStep()" class="bp">
+                    <button type="button" @click="nextStep()" class="bp">
                         Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
@@ -172,7 +176,7 @@
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <template x-for="ind in industries" :key="ind.key">
-                        <button @click="form.industry = ind.key"
+                        <button type="button" @click="form.industry = ind.key"
                                 :class="form.industry === ind.key ? 'sel' : ''"
                                 class="ind-card">
                             <span class="text-2xl" x-text="ind.emoji"></span>
@@ -191,8 +195,8 @@
                     </div>
                 </template>
                 <div class="flex justify-between pt-1">
-                    <button @click="step = 1" class="bs">Back</button>
-                    <button @click="applyTemplateAndNext()" :disabled="!form.industry" class="bp">
+                    <button type="button" @click="step = 1" class="bs">Back</button>
+                    <button type="button" @click="applyTemplateAndNext()" :disabled="!form.industry" class="bp">
                         Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
@@ -222,7 +226,7 @@
                             <div class="flex justify-center">
                                 <input type="checkbox" x-model="stage.is_won" class="w-4 h-4 accent-green-500">
                             </div>
-                            <button @click="form.pipeline_stages.splice(idx, 1)"
+                            <button type="button" @click="form.pipeline_stages.splice(idx, 1)"
                                     class="flex justify-center text-gray-300 hover:text-red-400 transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
@@ -230,7 +234,7 @@
                     </template>
                 </div>
                 </div>
-                <button @click="addStage()" class="flex items-center gap-2 text-sm text-[#7B61FF] font-semibold hover:opacity-75 transition-opacity">
+                <button type="button" @click="addStage()" class="flex items-center gap-2 text-sm text-[#7B61FF] font-semibold hover:opacity-75 transition-opacity">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     Add stage
                 </button>
@@ -238,8 +242,8 @@
                     <strong>Days limit</strong> — how many days a deal can sit in this stage before being flagged as expiring. Leave blank for no limit. Check <strong>Won</strong> for the final success stage.
                 </div>
                 <div class="flex justify-between pt-1">
-                    <button @click="step = 2" class="bs">Back</button>
-                    <button @click="step = 4" :disabled="form.pipeline_stages.length === 0" class="bp">
+                    <button type="button" @click="step = 2" class="bs">Back</button>
+                    <button type="button" @click="step = 4" :disabled="form.pipeline_stages.length === 0" class="bp">
                         Continue <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
@@ -266,21 +270,21 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-2">Commission type *</label>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <button @click="form.commission_type = 'percentage_of_value'"
+                        <button type="button" @click="form.commission_type = 'percentage_of_value'"
                                 :class="form.commission_type === 'percentage_of_value' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
                                 class="border-2 rounded-xl p-3 text-left transition-all">
                             <div class="text-xl mb-1">%</div>
                             <p class="text-xs font-bold text-[#1E1B4B]">% of Value</p>
                             <p class="text-[11px] text-gray-400 mt-0.5">Percentage of the deal value</p>
                         </button>
-                        <button @click="form.commission_type = 'fixed_amount'"
+                        <button type="button" @click="form.commission_type = 'fixed_amount'"
                                 :class="form.commission_type === 'fixed_amount' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
                                 class="border-2 rounded-xl p-3 text-left transition-all">
                             <div class="text-xl mb-1">💵</div>
                             <p class="text-xs font-bold text-[#1E1B4B]">Fixed Amount</p>
                             <p class="text-[11px] text-gray-400 mt-0.5">Fixed payout per closed deal</p>
                         </button>
-                        <button @click="form.commission_type = 'placement_fee'"
+                        <button type="button" @click="form.commission_type = 'placement_fee'"
                                 :class="form.commission_type === 'placement_fee' ? 'border-[#7B61FF] bg-purple-50' : 'border-gray-200 bg-white'"
                                 class="border-2 rounded-xl p-3 text-left transition-all">
                             <div class="text-xl mb-1">💼</div>
@@ -313,8 +317,8 @@
                     </div>
                 </div>
                 <div class="flex justify-between pt-1">
-                    <button @click="step = 3" class="bs">Back</button>
-                    <button @click="submitForm()" :disabled="submitting" class="bp">
+                    <button type="button" @click="step = 3" class="bs">Back</button>
+                    <button type="button" @click="submitForm()" :disabled="submitting" class="bp">
                         <svg x-show="submitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4z"/>

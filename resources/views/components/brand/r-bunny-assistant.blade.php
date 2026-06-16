@@ -43,7 +43,7 @@
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
                 {{-- Settings button --}}
-                <button @click="showPrefs = !showPrefs"
+                <button type="button" @click="showPrefs = !showPrefs"
                         class="text-white/40 hover:text-white/70 transition-colors p-1 rounded-lg"
                         :class="showPrefs ? 'bg-white/10' : ''"
                         aria-label="R Bunny preferences">
@@ -53,7 +53,7 @@
                     </svg>
                 </button>
                 {{-- Close --}}
-                <button @click="open = false"
+                <button type="button" @click="open = false"
                         class="text-white/40 hover:text-white transition-colors p-1 rounded-lg"
                         aria-label="Close R Bunny">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +66,7 @@
         {{-- ── Mode tabs ───────────────────────────────────────────── --}}
         <div class="flex border-b border-gray-100 shrink-0 bg-gray-50" role="tablist">
             <template x-for="tab in tabs" :key="tab.id">
-                <button
+                <button type="button"
                     @click="mode = tab.id"
                     :class="mode === tab.id ? 'border-b-2 border-[#7B61FF] text-[#7B61FF] bg-white' : 'text-gray-400 hover:text-gray-600'"
                     class="flex-1 py-2.5 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
@@ -144,11 +144,11 @@
                                        x-text="suggestions[0].action.label">
                                     </a>
                                 </template>
-                                <button @click="dismissSuggestion(suggestions[0].key)"
+                                <button type="button" @click="dismissSuggestion(suggestions[0].key)"
                                         class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium rounded-lg transition-colors">
                                     Not now
                                 </button>
-                                <button @click="snoozeSuggestion(suggestions[0].key)"
+                                <button type="button" @click="snoozeSuggestion(suggestions[0].key)"
                                         class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium rounded-lg transition-colors">
                                     Snooze 24h
                                 </button>
@@ -261,12 +261,12 @@
                                     </a>
                                 </template>
                                 <template x-if="!nextTask.action">
-                                    <button @click="completeOnboardingTask(nextTask.key)"
+                                    <button type="button" @click="completeOnboardingTask(nextTask.key)"
                                             class="px-3 py-1.5 bg-[#7B61FF] hover:bg-[#6D4FE8] text-white text-xs font-semibold rounded-lg transition-colors">
                                         Mark done ✓
                                     </button>
                                 </template>
-                                <button @click="dismissOnboardingTask(nextTask.key)"
+                                <button type="button" @click="dismissOnboardingTask(nextTask.key)"
                                         class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors">
                                     Skip for now
                                 </button>
@@ -277,7 +277,7 @@
 
                 {{-- Task checklist --}}
                 <div class="p-4">
-                    <button @click="showTasks = !showTasks"
+                    <button type="button" @click="showTasks = !showTasks"
                             class="flex items-center justify-between w-full text-[10px] font-bold text-gray-400 uppercase tracking-widest py-1 mb-1"
                             :aria-expanded="showTasks">
                         <span>All steps (<span x-text="`${onboardingDone}/${onboardingTotal}`"></span>)</span>
@@ -314,7 +314,7 @@
                 {{-- Profile progress footer --}}
                 <div class="px-4 pb-4 flex items-center justify-between">
                     <span class="text-[10px] text-gray-400">Profile: <span class="font-semibold text-[#7B61FF]" x-text="`${profilePercent}%`"></span> complete</span>
-                    <button @click="snoozeOnboarding()"
+                    <button type="button" @click="snoozeOnboarding()"
                             class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
                         Snooze 24h
                     </button>
@@ -366,7 +366,7 @@
                             maxlength="300"
                             aria-label="Describe your issue"
                         ></textarea>
-                        <button @click="requestHandoff()"
+                        <button type="button" @click="requestHandoff()"
                                 :disabled="!handoffIssue.trim()"
                                 class="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
                                 :class="handoffIssue.trim() ? 'bg-[#1E1B4B] hover:bg-[#2D2A6E] text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed'">
@@ -383,7 +383,7 @@
     </div>
 
     {{-- ══ COLLAPSED BUTTON ══════════════════════════════════════════ --}}
-    <button
+    <button type="button"
         x-show="!open"
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0 scale-90"

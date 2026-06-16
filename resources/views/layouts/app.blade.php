@@ -43,7 +43,7 @@
         .rb-bar-wrap:hover .rb-bar-solid { opacity: 1 !important; }
     </style>
 </head>
-<body class="bg-[#F0EFFA] font-sans antialiased">
+<body class="bg-[#F0EFFA] font-sans antialiased" data-stitch-page="@yield('stitch_page', isset($tenant) ? 'tenant-dashboard' : 'platform-dashboard')">
 
 <div class="flex min-h-screen">
 
@@ -71,7 +71,7 @@
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
-            <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
+            <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -192,7 +192,7 @@
                             <div class="p-2">
                                 <p class="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Recent</p>
                                 <template x-for="(r, i) in recent.slice(0,5)" :key="r.query">
-                                    <button @click="query = r.query; liveSearch()"
+                                    <button type="button" @click="query = r.query; liveSearch()"
                                             class="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#F0EFFA] transition-colors text-left">
                                         <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         <span class="text-sm text-gray-700" x-text="r.query"></span>
@@ -210,9 +210,9 @@
                                     <span class="text-sm text-purple-800 flex-1" x-text="'Command: ' + command.action?.replace(/_/g,' ')"></span>
                                     <a x-show="command.action === 'navigate'" :href="command.url"
                                        class="text-xs font-medium text-purple-700 hover:text-purple-900">Go →</a>
-                                    <button x-show="command.sensitive" @click="openConfirm(command)"
+                                    <button type="button" x-show="command.sensitive" @click="openConfirm(command)"
                                             class="text-xs font-medium text-purple-700 hover:text-purple-900">Execute</button>
-                                    <button x-show="command.filter" @click="applyFilter(command.filter)"
+                                    <button type="button" x-show="command.filter" @click="applyFilter(command.filter)"
                                             class="text-xs font-medium text-purple-700 hover:text-purple-900">Filter</button>
                                 </div>
                             </div>
@@ -300,8 +300,8 @@
                     <p class="font-semibold text-[#1E1B4B]" x-text="'Confirm: ' + (pendingAction?.label || pendingAction?.action)"></p>
                     <input type="text" x-model="confirmReason" class="form-input text-sm" placeholder="Reason (optional)">
                     <div class="flex justify-end gap-3">
-                        <button @click="confirmOpen = false" class="btn-secondary text-sm">Cancel</button>
-                        <button @click="doAction()" :disabled="actionBusy" class="btn-primary text-sm" x-text="actionBusy ? 'Executing...' : 'Confirm'"></button>
+                        <button type="button" @click="confirmOpen = false" class="btn-secondary text-sm">Cancel</button>
+                        <button type="button" @click="doAction()" :disabled="actionBusy" class="btn-primary text-sm" x-text="actionBusy ? 'Executing...' : 'Confirm'"></button>
                     </div>
                 </div>
             </div>
@@ -311,7 +311,7 @@
         <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-40">
 
             {{-- Mobile: sidebar toggle --}}
-            <button @click="sidebarOpen = true"
+            <button type="button" @click="sidebarOpen = true"
                     class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -328,7 +328,7 @@
 
             {{-- Desktop search button --}}
             <div class="hidden lg:flex flex-1 max-w-lg mx-4">
-                <button @click="$dispatch('open-search')"
+                <button type="button" @click="$dispatch('open-search')"
                         class="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-purple-300 hover:shadow-sm transition-all text-sm text-gray-400 group">
                     <svg class="w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -345,7 +345,7 @@
                 @yield('topbar-actions')
 
                 {{-- Mobile search icon --}}
-                <button @click="$dispatch('open-search')"
+                <button type="button" @click="$dispatch('open-search')"
                         class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -397,7 +397,7 @@
                 <div x-data="notifPanel('{{ $layoutTenantId ?? '' }}')" x-init="init()"
                      x-effect="if(open && count > 0) markAllRead()"
                      class="relative">
-                    <button @click="open = !open"
+                    <button type="button" @click="open = !open"
                             aria-label="Notifications"
                             :aria-label="'Notifications' + (count > 0 ? ` (${count} unread)` : '')"
                             class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
@@ -418,7 +418,7 @@
                          class="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                             <h3 class="font-semibold text-[#1E1B4B] text-sm">Notifications</h3>
-                            <button x-show="count > 0" @click.stop="markAllRead()"
+                            <button type="button" x-show="count > 0" @click.stop="markAllRead()"
                                     class="text-[10px] text-purple-500 hover:text-purple-700 font-medium">
                                 Mark all read
                             </button>
@@ -486,7 +486,7 @@
                 @endphp
 
                 <div x-data="{ open: false }" class="relative ml-1">
-                    <button @click="open = !open"
+                    <button type="button" @click="open = !open"
                             class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 transition-colors">
                         @if($displayPhotoUrl)
                             <img src="{{ $displayPhotoUrl }}" alt="{{ $displayName }}"
@@ -626,7 +626,7 @@
                 <svg x-show="toast.type==='info'"    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <span class="flex-1 leading-relaxed" x-text="toast.message"></span>
-            <button @click="remove(toast.id)" class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1">
+            <button type="button" @click="remove(toast.id)" class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>

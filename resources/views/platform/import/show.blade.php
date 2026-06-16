@@ -81,7 +81,7 @@
     <div class="card p-1.5">
         <div class="flex gap-1 overflow-x-auto">
             @foreach(['Summary','Errors','Rows'] as $ti => $tl)
-            <button @click="detailTab = {{ $ti }}"
+            <button type="button" @click="detailTab = {{ $ti }}"
                     :class="detailTab === {{ $ti }} ? 'tab-active' : 'text-gray-600 hover:bg-gray-100'"
                     class="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors">
                 {{ $tl }}

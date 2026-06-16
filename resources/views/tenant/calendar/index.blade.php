@@ -10,15 +10,15 @@
 
         <div class="flex items-center gap-2">
             {{-- Prev/Today/Next --}}
-            <button @click="prevMonth()" :disabled="loading"
+            <button type="button" @click="prevMonth()" :disabled="loading"
                     class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <button @click="nextMonth()" :disabled="loading"
+            <button type="button" @click="nextMonth()" :disabled="loading"
                     class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
-            <button @click="goToToday()" :disabled="loading"
+            <button type="button" @click="goToToday()" :disabled="loading"
                     class="px-4 py-1.5 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40">
                 Today
             </button>
@@ -31,15 +31,15 @@
 
         {{-- Filter chips --}}
         <div class="flex items-center gap-2">
-            <button @click="setFilter('all')"
+            <button type="button" @click="setFilter('all')"
                     :class="filter==='all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
                     class="px-3 py-1 rounded-full border text-xs font-medium transition-all">All</button>
-            <button @click="setFilter('task')"
+            <button type="button" @click="setFilter('task')"
                     :class="filter==='task' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
                     class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium transition-all">
                 <span class="w-2 h-2 rounded-full bg-current opacity-70"></span>Tasks
             </button>
-            <button @click="setFilter('deal')"
+            <button type="button" @click="setFilter('deal')"
                     :class="filter==='deal' ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
                     class="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium transition-all">
                 <span class="w-2 h-2 rounded-full bg-orange-400"></span>Deal Expiry
@@ -51,7 +51,7 @@
     <div x-show="fetchError" class="mx-4 sm:mx-6 mt-3 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 shrink-0">
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span>Couldn't load events.</span>
-        <button @click="fetchEvents()" class="underline font-semibold ml-1">Retry</button>
+        <button type="button" @click="fetchEvents()" class="underline font-semibold ml-1">Retry</button>
     </div>
 
     {{-- ── Calendar + Detail panel ──────────────────────────────────────────── --}}
@@ -92,7 +92,7 @@
                         {{-- Event pills — click opens day panel; navigate from panel --}}
                         <div class="px-1 pb-1 space-y-0.5">
                             <template x-for="evt in cell.visibleEvents" :key="evt.id">
-                                <button @click.stop="selectDay(cell)"
+                                <button type="button" @click.stop="selectDay(cell)"
                                         :class="pillClass(evt)"
                                         :title="evt.title"
                                         class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium leading-snug truncate w-full text-left hover:opacity-80 transition-opacity">
@@ -100,7 +100,7 @@
                                     <span class="truncate" x-text="evt.title"></span>
                                 </button>
                             </template>
-                            <button x-show="cell.moreCount > 0"
+                            <button type="button" x-show="cell.moreCount > 0"
                                     @click.stop="selectDay(cell)"
                                     class="text-[11px] text-blue-600 hover:text-blue-800 font-medium px-1.5 w-full text-left"
                                     x-text="'+' + cell.moreCount + ' more'"></button>
@@ -125,12 +125,12 @@
                 </div>
                 <div class="flex items-center gap-1.5">
                     {{-- Add Task button --}}
-                    <button @click="openNewTask()"
+                    <button type="button" @click="openNewTask()"
                             title="Add task on this day"
                             class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 hover:bg-purple-200 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     </button>
-                    <button @click="selectedDay = null"
+                    <button type="button" @click="selectedDay = null"
                             class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
@@ -152,11 +152,11 @@
                 </select>
                 <p x-show="newTaskError" class="text-[10px] text-red-500" x-text="newTaskError"></p>
                 <div class="flex gap-1.5">
-                    <button @click="newTaskOpen = false; newTaskError = ''"
+                    <button type="button" @click="newTaskOpen = false; newTaskError = ''"
                             class="flex-1 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button @click="submitNewTask()" :disabled="newTaskSaving"
+                    <button type="button" @click="submitNewTask()" :disabled="newTaskSaving"
                             class="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-60"
                             style="background:linear-gradient(135deg,#7B61FF,#5b4cdb)"
                             x-text="newTaskSaving ? 'Adding…' : 'Add Task'">
@@ -169,7 +169,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
                 <p class="text-sm text-gray-400 mb-2">Nothing scheduled</p>
-                <button @click="openNewTask()"
+                <button type="button" @click="openNewTask()"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     Add a task

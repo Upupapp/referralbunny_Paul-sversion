@@ -3,7 +3,7 @@
 @section('nav') @include('tenant._nav') @endsection
 
 @section('topbar-actions')
-    <button onclick="rbInviteOpen()" class="btn-primary">
+    <button type="button" onclick="rbInviteOpen()" class="btn-primary">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
         <span class="hidden sm:inline">Invite Referrer</span>
     </button>
@@ -88,7 +88,7 @@
         <div class="search-group">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             <input type="text" x-model="search" @input.debounce.250ms="applyFilters()" placeholder="Search referrers…" autocomplete="off" spellcheck="false">
-            <button x-show="search.length > 0" @click="search = ''; applyFilters()"
+            <button type="button" x-show="search.length > 0" @click="search = ''; applyFilters()"
                     class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
@@ -139,7 +139,7 @@
                 <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </label>
             <template x-if="filterStatus || filterAgreement || filterDoc || search">
-                <button @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
+                <button type="button" @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
                         class="filter-pill !border-red-200 !text-red-500 hover:!bg-red-50">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     Clear
@@ -169,14 +169,14 @@
              class="flex flex-wrap items-center gap-3 px-5 py-3 bg-red-50 border-b border-red-100">
             <span class="text-sm font-medium text-red-700"
                   x-text="`${selectedForDelete.length} deactivated referrer${selectedForDelete.length === 1 ? '' : 's'} selected`"></span>
-            <button @click="deleteSelectedReferrers()"
+            <button type="button" @click="deleteSelectedReferrers()"
                     :disabled="deletingBulk"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 <svg x-show="deletingBulk" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 <svg x-show="!deletingBulk" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 <span x-text="deletingBulk ? 'Deleting…' : 'Delete Selected'"></span>
             </button>
-            <button @click="selectedForDelete = []"
+            <button type="button" @click="selectedForDelete = []"
                     class="text-xs text-red-600 hover:text-red-800 underline font-medium transition-colors">
                 Clear selection
             </button>
@@ -214,13 +214,13 @@
                                 <template x-if="referrers.length === 0">
                                     <div>
                                         <p class="text-gray-400 text-sm">No referrers yet. Invite your first referrer.</p>
-                                        <button onclick="rbInviteOpen()" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
+                                        <button type="button" onclick="rbInviteOpen()" class="btn-primary mt-3 text-sm">Invite First Referrer</button>
                                     </div>
                                 </template>
                                 <template x-if="referrers.length > 0">
                                     <div>
                                         <p class="text-gray-400 text-sm">No referrers match the current filters.</p>
-                                        <button @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
+                                        <button type="button" @click="filterStatus=''; filterAgreement=''; filterDoc=''; search=''; applyFilters()"
                                                 class="mt-2 text-sm text-[#7B61FF] hover:underline font-medium">
                                             Clear filters to see all <span x-text="referrers.length"></span> referrers
                                         </button>
@@ -314,7 +314,7 @@
 
                             {{-- Agreements column (only shown when agreements exist) --}}
                             <td class="hidden lg:table-cell" x-show="totalRequiredAgreements > 0">
-                                <button @click="openAgreements(r)"
+                                <button type="button" @click="openAgreements(r)"
                                         class="flex items-center gap-1.5 group/agr"
                                         :title="agreementTooltip(r.id)">
                                     <template x-if="isCompliant(r.id)">
@@ -334,7 +334,7 @@
 
                             {{-- Documents column --}}
                             <td class="hidden lg:table-cell" x-show="totalRequiredDocs > 0">
-                                <button @click="openDocuments(r)"
+                                <button type="button" @click="openDocuments(r)"
                                         class="flex items-center gap-1.5 group/doc"
                                         :title="docTooltip(r.id)">
                                     <template x-if="isDocCompliant(r.id)">
@@ -362,20 +362,20 @@
                                        title="View Referrer details">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </a>
-                                    <button x-show="r.status === 'invited'" @click.stop="updateStatus(r.id, 'active')"
+                                    <button type="button" x-show="r.status === 'invited'" @click.stop="updateStatus(r.id, 'active')"
                                             class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
                                         Activate
                                     </button>
-                                    <button x-show="r.status === 'active'" @click.stop="updateStatus(r.id, 'nda_signed')"
+                                    <button type="button" x-show="r.status === 'active'" @click.stop="updateStatus(r.id, 'nda_signed')"
                                             class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
                                         Mark NDA
                                     </button>
-                                    <button x-show="totalRequiredDocs > 0" @click.stop="openDocuments(r)"
+                                    <button type="button" x-show="totalRequiredDocs > 0" @click.stop="openDocuments(r)"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors"
                                             title="Manage documents">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"/></svg>
                                     </button>
-                                    <button x-show="totalRequiredAgreements > 0" @click.stop="openAgreements(r)"
+                                    <button type="button" x-show="totalRequiredAgreements > 0" @click.stop="openAgreements(r)"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#7B61FF] transition-colors"
                                             title="Manage agreements">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,7 +383,7 @@
                                         </svg>
                                     </button>
                                     {{-- Anonymity toggle — tenant admin only --}}
-                                    <button @click.stop="toggleAnonymous(r)"
+                                    <button type="button" @click.stop="toggleAnonymous(r)"
                                             :title="r.is_anonymous ? 'Remove anonymity' : 'Make anonymous'"
                                             :class="r.is_anonymous ? 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'"
                                             class="p-1.5 rounded-lg transition-colors">
@@ -392,7 +392,7 @@
                                         </svg>
                                     </button>
                                     {{-- Deactivate — only for non-deactivated referrers --}}
-                                    <button x-show="r.status !== 'deactivated'"
+                                    <button type="button" x-show="r.status !== 'deactivated'"
                                             @click.stop="Alpine.store('deactivateConfirm').show(r)"
                                             title="Deactivate this Referrer"
                                             class="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
@@ -408,7 +408,7 @@
                                                    x-model="selectedForDelete"
                                                    class="w-3.5 h-3.5 rounded accent-red-500"
                                                    title="Select for bulk delete">
-                                            <button @click.stop="deleteSingleReferrer(r)"
+                                            <button type="button" @click.stop="deleteSingleReferrer(r)"
                                                     title="Permanently delete this deactivated Referrer"
                                                     class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -431,7 +431,7 @@
             <p class="text-xs text-gray-400">
                 Showing <span x-text="referrers.length"></span> of <span x-text="referrers.length + ((lastPage - currentPage) * 50)"></span> Referrers
             </p>
-            <button @click="loadMore()"
+            <button type="button" @click="loadMore()"
                     :disabled="loadingMore"
                     class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-[#EDE9FE] text-[#7B61FF] hover:bg-purple-100 transition-colors disabled:opacity-50">
                 <svg x-show="loadingMore" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -450,7 +450,7 @@
                     <h3 class="font-semibold text-[#1E1B4B]">Required Documents</h3>
                     <p class="text-xs text-gray-400 mt-0.5" x-text="activeDocReseller?.name"></p>
                 </div>
-                <button @click="showDocuments = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" @click="showDocuments = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -518,7 +518,7 @@
                                            x-text="d.is_required ? 'Not yet submitted — required' : 'Not yet submitted (optional)'"></p>
                                     </template>
 
-                                    <a x-show="d.file_url" :href="d.file_url" target="_blank"
+                                    <a rel="noopener noreferrer" x-show="d.file_url" :href="d.file_url" target="_blank"
                                        class="text-xs text-purple-600 hover:text-purple-700 inline-flex items-center gap-1 mt-1">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                         View File
@@ -527,22 +527,22 @@
                                 {{-- Actions --}}
                                 <div class="shrink-0 flex flex-col gap-1.5 items-end">
                                     <template x-if="!d.submission_status || d.submission_status === 'not_submitted'">
-                                        <button @click="markSubmitted(d)" :disabled="docSaving === d.id"
+                                        <button type="button" @click="markSubmitted(d)" :disabled="docSaving === d.id"
                                                 class="btn-secondary text-xs py-1.5 px-2.5"
                                                 x-text="docSaving === d.id ? '…' : 'Mark Submitted'"></button>
                                     </template>
                                     <template x-if="d.submission_status === 'submitted'">
                                         <div class="flex gap-1.5">
-                                            <button @click="approveDoc(d)" :disabled="docSaving === d.id"
+                                            <button type="button" @click="approveDoc(d)" :disabled="docSaving === d.id"
                                                     class="btn-primary text-xs py-1.5 px-2.5"
                                                     x-text="docSaving === d.id ? '…' : 'Approve'"></button>
-                                            <button @click="rejectDoc(d)" :disabled="docSaving === d.id"
+                                            <button type="button" @click="rejectDoc(d)" :disabled="docSaving === d.id"
                                                     class="text-xs py-1.5 px-2.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                                                     x-text="docSaving === d.id ? '…' : 'Reject'"></button>
                                         </div>
                                     </template>
                                     <template x-if="d.submission_status === 'approved' || d.submission_status === 'rejected'">
-                                        <button @click="resetDocSubmission(d)" :disabled="docSaving === d.id"
+                                        <button type="button" @click="resetDocSubmission(d)" :disabled="docSaving === d.id"
                                                 class="text-xs text-gray-400 hover:text-red-500 underline transition-colors"
                                                 x-text="docSaving === d.id ? '…' : 'Reset'"></button>
                                     </template>
@@ -555,7 +555,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end mt-5 pt-4 border-t border-gray-100">
-                    <button @click="showDocuments = false" class="btn-secondary">Close</button>
+                    <button type="button" @click="showDocuments = false" class="btn-secondary">Close</button>
                 </div>
             </div>
         </div>
@@ -571,7 +571,7 @@
                     <h3 class="font-semibold text-[#1E1B4B]">Agreement Status</h3>
                     <p class="text-xs text-gray-400 mt-0.5" x-text="activeReseller?.name"></p>
                 </div>
-                <button @click="showAgreements = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" @click="showAgreements = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -635,7 +635,7 @@
                                        x-text="a.is_required ? 'Not yet signed — required before referring deals' : 'Not yet signed (optional)'"></p>
                                 </template>
 
-                                <a x-show="a.file_url" :href="a.file_url" target="_blank"
+                                <a rel="noopener noreferrer" x-show="a.file_url" :href="a.file_url" target="_blank"
                                    class="text-xs text-purple-600 hover:text-purple-700 inline-flex items-center gap-1 mt-1.5 transition-colors">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -645,12 +645,12 @@
                             </div>
 
                             <div class="shrink-0 self-center">
-                                <button x-show="!a.agreed_at" @click="markAcknowledged(a)"
+                                <button type="button" x-show="!a.agreed_at" @click="markAcknowledged(a)"
                                         :disabled="ackSaving === a.id"
                                         class="btn-primary text-xs py-1.5 px-3"
                                         x-text="ackSaving === a.id ? 'Saving…' : 'Mark Signed'">
                                 </button>
-                                <button x-show="a.agreed_at" @click="revokeAcknowledged(a)"
+                                <button type="button" x-show="a.agreed_at" @click="revokeAcknowledged(a)"
                                         :disabled="ackSaving === a.id"
                                         class="text-xs text-gray-400 hover:text-red-500 transition-colors underline"
                                         x-text="ackSaving === a.id ? '…' : 'Revoke'">
@@ -665,7 +665,7 @@
                 </div>
 
                 <div class="flex justify-end mt-5 pt-4 border-t border-gray-100">
-                    <button @click="showAgreements = false" class="btn-secondary">Close</button>
+                    <button type="button" @click="showAgreements = false" class="btn-secondary">Close</button>
                 </div>
             </div>
         </div>
@@ -691,7 +691,7 @@
                     <h3 class="font-bold text-[#1E1B4B] text-base">Deactivate Referrer?</h3>
                     <p class="text-xs text-gray-400 mt-0.5">This is a sensitive action and requires double authentication.</p>
                 </div>
-                <button @click="$store.deactivateConfirm.cancel()" class="text-gray-400 hover:text-gray-600">
+                <button type="button" @click="$store.deactivateConfirm.cancel()" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -738,8 +738,8 @@
 
                 {{-- Actions --}}
                 <div class="flex justify-end gap-3 pt-1">
-                    <button @click="$store.deactivateConfirm.cancel()" class="btn-secondary">Cancel</button>
-                    <button @click="$store.deactivateConfirm.confirm()"
+                    <button type="button" @click="$store.deactivateConfirm.cancel()" class="btn-secondary">Cancel</button>
+                    <button type="button" @click="$store.deactivateConfirm.confirm()"
                             :disabled="!$store.deactivateConfirm.canSubmit"
                             class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                         <svg x-show="$store.deactivateConfirm.saving" class="w-4 h-4 animate-spin inline mr-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -1529,11 +1529,11 @@ function referrersModule(tenantId) {
 
                 {{-- Step 1 Actions --}}
                 <div class="flex gap-3 pt-1">
-                    <button @click="$store.anonConfirm.cancel()"
+                    <button type="button" @click="$store.anonConfirm.cancel()"
                             class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button @click="$store.anonConfirm.next()"
+                    <button type="button" @click="$store.anonConfirm.next()"
                             :class="$store.anonConfirm.enabling
                                 ? 'bg-gray-800 hover:bg-gray-900 text-white'
                                 : 'bg-amber-500 hover:bg-amber-600 text-white'"
@@ -1617,12 +1617,12 @@ function referrersModule(tenantId) {
 
                 {{-- Step 2 Actions --}}
                 <div class="flex gap-3 pt-1">
-                    <button @click="$store.anonConfirm.step = 1; $store.anonConfirm.typeInput = ''"
+                    <button type="button" @click="$store.anonConfirm.step = 1; $store.anonConfirm.typeInput = ''"
                             class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                         Back
                     </button>
-                    <button @click="$store.anonConfirm.confirm()"
+                    <button type="button" @click="$store.anonConfirm.confirm()"
                             :disabled="!$store.anonConfirm.canConfirm || $store.anonConfirm.saving"
                             :class="$store.anonConfirm.enabling
                                 ? 'bg-gray-800 hover:bg-gray-900 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'
@@ -1636,7 +1636,7 @@ function referrersModule(tenantId) {
 
                 <p class="text-center text-xs text-gray-400">
                     Changed your mind?
-                    <button @click="$store.anonConfirm.cancel()" class="text-[#7B61FF] hover:underline">Cancel entirely</button>
+                    <button type="button" @click="$store.anonConfirm.cancel()" class="text-[#7B61FF] hover:underline">Cancel entirely</button>
                 </p>
             </div>
         </div>
@@ -1652,7 +1652,7 @@ function referrersModule(tenantId) {
          onclick="event.stopPropagation()">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f3f4f6">
             <h3 style="margin:0;font-size:15px;font-weight:600;color:#1E1B4B">Invite Referrer</h3>
-            <button onclick="rbInviteClose()" style="background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;line-height:0">
+            <button type="button" onclick="rbInviteClose()" style="background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;line-height:0">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>

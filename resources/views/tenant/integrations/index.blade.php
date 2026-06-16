@@ -153,7 +153,7 @@
                     First time? Setup guide
                 </summary>
                 <ol class="mt-3 space-y-2 text-xs text-gray-500 list-decimal list-inside pl-1">
-                    <li>Go to <a href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 hover:underline">Google Cloud Console</a> and create a project.</li>
+                    <li>Go to <a rel="noopener noreferrer" href="https://console.cloud.google.com/" target="_blank" class="text-blue-600 hover:underline">Google Cloud Console</a> and create a project.</li>
                     <li>Enable the <strong>Google Calendar API</strong> in APIs &amp; Services.</li>
                     <li>Create OAuth 2.0 credentials (Web application type).</li>
                     <li>Add <code class="bg-gray-100 px-1 rounded font-mono">{{ config('services.google_calendar.redirect_uri') }}</code> as an authorized redirect URI.</li>
