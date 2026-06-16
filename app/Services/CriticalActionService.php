@@ -1157,7 +1157,7 @@ class CriticalActionService
                 ->where('tenant_id', $tenantId)
                 ->where('created_at', '>', $since)
                 ->whereRaw("COALESCE(metadata->>'audit_event', 'false') != 'true'")
-                ->select('id', 'user_id', 'action', 'entity', 'entity_id', 'created_at')
+                ->select('id', 'user_id', 'action', 'entity', 'entity_id', 'created_at', 'metadata')
                 ->orderByDesc('created_at')
                 ->limit($limit)
                 ->get();
@@ -1174,7 +1174,9 @@ class CriticalActionService
             }
 
             return $rows->map(function ($r) use ($tenantId, $actorMap) {
-                $actorName = isset($r->user_id) ? ($actorMap[(string)$r->user_id] ?? 'Team member') : 'System';
+                $actorName = $r->user_id
+                    ? ($actorMap[(string)$r->user_id] ?? 'Team member')
+                    : (json_decode($r->metadata ?? '{}', true)['partner_name'] ?? 'Partner');
 
                 $actionUrl = match($r->entity ?? '') {
                     'lead'           => "/tenant/{$tenantId}/deals/{$r->entity_id}",

@@ -41,7 +41,7 @@
            data-stitch-action="navigate"
            data-stitch-target="{{ route('public.home') }}"
            data-stitch-fallback="{{ route('public.home') }}"
-           data-stitch-loading="none"><img src="/images/logos/referralbunny-logo-white-horizontal.webp" alt="Referral Bunny" class="h-9 object-contain mx-auto"></a>
+           data-stitch-loading="none"><img src="/images/logos/referralbunny-horizontal-logo.webp" alt="Referral Bunny" class="h-9 object-contain mx-auto"></a>
     </div>
 
     <div class="max-w-3xl mx-auto">
@@ -331,7 +331,7 @@
 
             {{-- STEP 5: Done --}}
             <div x-show="step === 5" class="p-10 text-center space-y-6">
-                <img src="/images/mascots/r-rocket.webp" alt="" class="w-24 h-24 object-contain mx-auto" onerror="this.style.display='none'">
+                <img src="/images/mascots/r-bunny-rocket.webp" alt="" class="w-24 h-24 object-contain mx-auto" onerror="this.style.display='none'">
                 <div>
                     <h1 class="text-2xl font-bold text-[#1E1B4B]">Your program is live! 🎉</h1>
                     <p class="text-gray-500 text-sm mt-2 max-w-sm mx-auto" x-text="'Welcome, ' + form.first_name + '! ' + form.workspace_name + ' is ready. Start by inviting your first Referrers.'"></p>
@@ -355,7 +355,6 @@
     </div>
 </div>
 
-@push('scripts')
 <script>
 const S_COLORS = ['#9CA3AF','#3B82F6','#F59E0B','#8B5CF6','#10B981','#EF4444','#F97316','#06B6D4','#84CC16','#EC4899'];
 const TEMPLATES = {
@@ -450,6 +449,5 @@ function buildWizard() {
     };
 }
 </script>
-@endpush
 </body>
 </html>

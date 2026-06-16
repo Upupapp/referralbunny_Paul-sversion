@@ -27,7 +27,7 @@
 <body>
 <div class="wrap">
     <div class="header">
-        <img src="https://referralbunny.ai/images/logos/referralbunny-logo-white-horizontal.webp" alt="ReferralBunny.ai">
+        <img src="https://referralbunny.ai/images/logos/referralbunny-horizontal-logo.webp" alt="ReferralBunny.ai">
         <h1>
             @php $count = count($digest->items ?? []); @endphp
             {{ $count }} {{ $digest->topic_label ?? ucwords(str_replace('_', ' ', $digest->topic)) }} Update{{ $count !== 1 ? 's' : '' }}
