@@ -108,8 +108,9 @@ class LguIdsPricingService
         $rangeBaseCost = self::lookupBaseCost($dealAmount);
         $displayPct    = self::lookupDisplayPct($dealAmount);
 
-        // Use supplied base_cost if provided; otherwise auto-compute from range
-        $finalBaseCost = $has_bc ? $rawBaseCost : $rangeBaseCost;
+        // Use supplied base_cost if provided; otherwise auto-compute from range.
+        // Cast to int (matching lookupBaseCost return type) — base costs are whole-peso amounts.
+        $finalBaseCost = $has_bc ? (int) round($rawBaseCost) : $rangeBaseCost;
 
         // Flag deviation from range calculation (allowed, but noted)
         if ($has_bc && abs($rawBaseCost - $rangeBaseCost) > 1) {
@@ -132,7 +133,7 @@ class LguIdsPricingService
                 $issues[]     = "Base cost + added amount (" . number_format($sum) . ") does not equal deal amount (" . number_format($dealAmount) . ").";
                 $status       = 'amount_mismatch';
             }
-            $computedFrom = 'full_values';
+            $computedFrom = $computedFrom ?: 'full_values';
         } elseif ($has_da && $has_bc) {
             $computedFrom = $computedFrom ?: 'deal_amount_base_cost';
         } elseif ($has_da && $has_aa) {

@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * Generic deal import service for non-LGU-IDS tenants.
  *
  * CRITICAL RULES:
- * - No municipality_or_city / province fields.
+ * - No LGU IDS-specific geographic fields.
  * - No LGU IDS pricing table — deal_amount stored as-is.
  * - No base_cost / added_amount computation.
  * - No one-deal-per-organization rule (uses tenant duplicate_handling setting).
