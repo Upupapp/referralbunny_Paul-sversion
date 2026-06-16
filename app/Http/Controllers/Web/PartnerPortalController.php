@@ -56,16 +56,18 @@ class PartnerPortalController extends Controller
         $partner    = $this->partner();
         $dealIds    = $this->authorizedDealIds();
 
-        $dealCount     = Lead::whereIn('id', $dealIds)
-            ->where('tenant_id', $partner->tenant_id)
-            ->count();
         $unreadCount   = (int) PartnerThread::where('partner_id', $partner->id)
             ->where('tenant_id', $partner->tenant_id)->sum('partner_unread');
         $completion    = UserDisplayNameService::completionPercent($partner);
-        $recentDeals   = Lead::whereIn('id', $dealIds)
+        $activeRows    = Lead::whereIn('id', $dealIds)
             ->where('tenant_id', $partner->tenant_id)
-            ->orderByDesc('created_at')->limit(5)
-            ->get(['id', 'name', 'stage', 'status', 'reseller_name', 'deal_value']);
+            ->whereNotIn('status', ['archived'])
+            ->selectRaw('id, name, stage, status, reseller_name, deal_value, COUNT(*) OVER () AS total_count')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+        $dealCount     = (int) ($activeRows->first()?->total_count ?? 0);
+        $recentDeals   = $activeRows;
 
         // Expiring deals the partner is associated with (for Needs Attention panel)
         $expiringDeals = Lead::whereIn('id', $dealIds)
@@ -132,6 +134,7 @@ class PartnerPortalController extends Controller
 
         $query = Lead::whereIn('id', $this->authorizedDealIds())
             ->where('tenant_id', $partner->tenant_id)
+            ->whereNotIn('status', ['archived'])
             ->orderByDesc('created_at');
 
         if ($search) {
@@ -223,6 +226,8 @@ class PartnerPortalController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
+        // Intentionally no archived check here — partners may read notes on archived deals (view-only).
+        // Write operations (addNote, sendMessage) enforce the 422 archived guard separately.
         $notes = \App\Models\DealComment::with('attachments')
             ->where('deal_id', $dealId)
             ->where('tenant_id', $partner->tenant_id)
@@ -262,6 +267,10 @@ class PartnerPortalController extends Controller
         }
 
         $lead = Lead::where('id', $dealId)->where('tenant_id', $partner->tenant_id)->firstOrFail();
+
+        if ($lead->status === 'archived') {
+            return response()->json(['error' => 'This deal has been archived and can no longer receive notes.'], 422);
+        }
 
         $data = $request->validate([
             'body'    => 'nullable|string|max:10000',
@@ -478,6 +487,7 @@ class PartnerPortalController extends Controller
                 return DB::table('leads')
                     ->whereIn('id', $dealIds)
                     ->where('tenant_id', $tenantId)
+                    ->whereNotIn('status', ['archived'])
                     ->whereNotNull('reseller_name')
                     ->select('reseller_name')
                     ->distinct()
@@ -584,6 +594,10 @@ class PartnerPortalController extends Controller
         $lead = Lead::where('id', $data['deal_id'])
             ->where('tenant_id', $partner->tenant_id)
             ->firstOrFail();
+
+        if ($lead->status === 'archived') {
+            return response()->json(['error' => 'This deal has been archived and can no longer receive messages.'], 422);
+        }
 
         // Resolve reseller_id from the lead's reseller_name
         $resellerId = null;

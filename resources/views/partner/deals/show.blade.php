@@ -27,6 +27,7 @@
     $statusBadge = match($dealStatus) {
         'active'   => 'bg-green-100 text-green-700',
         'expiring' => 'bg-amber-100 text-amber-700',
+        'archived' => 'bg-gray-100 text-gray-500',
         default    => 'bg-red-100 text-red-700',
     };
 
@@ -65,6 +66,15 @@
         </svg>
         <span class="text-[#1E1B4B] font-semibold truncate max-w-[220px] sm:max-w-none">{{ $dealName }}</span>
     </nav>
+
+    @if($dealStatus === 'archived')
+    <div class="mb-5 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+        <svg class="mt-0.5 w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/>
+        </svg>
+        <p>This deal has been archived. It is read-only and will not appear in your active deal list.</p>
+    </div>
+    @endif
 
     {{-- ── HERO CARD — full width ──────────────────────────────────────── --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6 mb-5">
@@ -112,11 +122,14 @@
                         {{ $dlLabel }}
                     </span>
                     @endif
-                    {{-- Read-only indicator --}}
-                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
+                    {{-- Read-only indicator — only shown when archived so the badge doesn't
+                         appear alongside the active-deal "Add Note" button and confuse partners --}}
+                    @if($dealStatus === 'archived')
+                    <span data-testid="hero-readonly-badge" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                         Read-only
                     </span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -359,7 +372,8 @@
                         <h2 class="text-sm font-bold text-[#1E1B4B]">Notes</h2>
                         <p class="text-xs text-gray-400 mt-0.5">Shared notes on this deal</p>
                     </div>
-                    <button @click="showForm = !showForm"
+                    @if($dealStatus !== 'archived')
+                    <button type="button" @click="showForm = !showForm"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
                             style="background:linear-gradient(135deg,#2563EB,#1D4ED8)"
                             :aria-expanded="showForm ? 'true' : 'false'"
@@ -369,9 +383,22 @@
                         </svg>
                         Add Note
                     </button>
+                    @else
+                    <span data-testid="notes-readonly-badge" class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-400">Read-only</span>
+                    @endif
                 </div>
 
+                @if($dealStatus === 'archived')
+                <div class="px-5 sm:px-6 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2.5">
+                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8"/>
+                    </svg>
+                    <p class="text-xs text-gray-500">This deal has been archived. Notes and messages are read-only.</p>
+                </div>
+                @endif
+
                 {{-- Add note form --}}
+                @if($dealStatus !== 'archived')
                 <div x-show="showForm" id="partner-note-form"
                      class="px-5 sm:px-6 py-4 border-b border-gray-100 bg-blue-50/30">
                     <textarea x-model="noteBody" rows="3"
@@ -400,17 +427,18 @@
                     </template>
                     <div x-show="noteError" role="alert" class="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg mb-3" x-text="noteError"></div>
                     <div class="flex gap-2 justify-end">
-                        <button @click="showForm = false; noteBody = ''; noteFiles = []; noteError = ''"
+                        <button type="button" @click="showForm = false; noteBody = ''; noteFiles = []; noteError = ''"
                                 class="px-3.5 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors min-h-[44px]">
                             Cancel
                         </button>
-                        <button @click="save()"
+                        <button type="button" @click="save()"
                                 :disabled="(!noteBody.trim() && noteFiles.length === 0) || saving"
                                 class="px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all active:scale-95 min-h-[44px]"
                                 style="background:linear-gradient(135deg,#2563EB,#1D4ED8)"
                                 x-text="saving ? 'Saving…' : 'Save Note'">Save Note</button>
                     </div>
                 </div>
+                @endif
 
                 {{-- Notes list --}}
                 <div>
@@ -488,6 +516,7 @@
                         <p class="text-xs text-gray-400">Referrer</p>
                     </div>
                 </div>
+                @if($dealStatus !== 'archived')
                 <a href="{{ route('partner.messages') }}?deal_id={{ $dealId }}"
                    class="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400/50 min-h-[44px]"
                    style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -496,6 +525,7 @@
                     </svg>
                     Message Referrer
                 </a>
+                @endif
             </div>
             @endif
 
@@ -503,7 +533,7 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <h2 class="text-sm font-bold text-[#1E1B4B] mb-4">Actions</h2>
                 <div class="space-y-2.5">
-                    @if(!$referrerName)
+                    @if(!$referrerName && $dealStatus !== 'archived')
                     <a href="{{ route('partner.messages') }}?deal_id={{ $dealId }}"
                        class="flex items-center gap-2.5 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 min-h-[44px]"
                        style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -566,6 +596,7 @@
 
     {{-- Mobile-only action strip (below grid) --}}
     <div class="mt-5 flex flex-col sm:flex-row gap-3 lg:hidden">
+        @if($dealStatus !== 'archived')
         <a href="{{ route('partner.messages') }}?deal_id={{ $dealId }}"
            class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 min-h-[44px]"
            style="background:linear-gradient(135deg,#2563EB,#1D4ED8)">
@@ -574,6 +605,7 @@
             </svg>
             Message Referrer
         </a>
+        @endif
         <a href="{{ route('partner.deals') }}"
            class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all min-h-[44px]">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

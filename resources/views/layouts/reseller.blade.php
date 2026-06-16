@@ -81,7 +81,7 @@
         }
     </style>
 </head>
-<body class="rs-page-bg font-sans antialiased">
+<body class="rs-page-bg font-sans antialiased" data-stitch-page="@yield('stitch_page', 'referrer-dashboard')" data-stitch-fallback="referrer-dashboard">
 
 <div class="flex h-screen overflow-hidden">
 
@@ -101,7 +101,7 @@
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">{{ $tenant->name }}</p>
             </div>
-            <button @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
+            <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -154,7 +154,7 @@
         {{-- Topbar --}}
         <header class="bg-white border-b border-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
-                <button @click="sidebarOpen = true" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                <button type="button" @click="sidebarOpen = true" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <h1 class="text-sm font-semibold" style="color:#1E1B4B">@yield('title', 'Dashboard')</h1>
@@ -267,7 +267,7 @@
                                : 'Your profile is visible to other referrers. Enable to hide your name and photo.'">
                         </p>
 
-                        <button @click="toggle()"
+                        <button type="button" @click="toggle()"
                                 :disabled="busy"
                                 class="w-full px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
                                 :class="isAnon ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-amber-500 text-white hover:bg-amber-600'"
@@ -360,7 +360,7 @@
                 <svg x-show="toast.type==='info'"    class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <span class="flex-1 leading-relaxed" x-text="toast.message"></span>
-            <button @click="remove(toast.id)" class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1">
+            <button type="button" @click="remove(toast.id)" class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>

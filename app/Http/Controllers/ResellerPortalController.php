@@ -53,6 +53,7 @@ class ResellerPortalController extends Controller
         try {
             $recent = Lead::where('tenant_id', $tenantId)
                 ->forResellerOrSplit($reseller->name)
+                ->whereNotIn('status', ['archived'])
                 ->orderByDesc('created_at')
                 ->limit(6)
                 ->select('id', 'name', 'stage', 'status', 'deal_value', 'base_cost', 'added_amount', 'commission_status', 'days_left', 'reseller_name', 'created_at')
@@ -154,6 +155,7 @@ class ResellerPortalController extends Controller
             $statusCountRows = DB::table('leads')
                 ->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
+                ->whereNotIn('status', ['archived'])
                 ->where(fn($q) => $q
                     ->whereRaw('LOWER(reseller_name) = ?', [strtolower($reseller->name)])
                     ->orWhereExists(fn($sub) => $sub

@@ -170,6 +170,7 @@ class CriticalActionService
                 ->whereIn('stage', ['signed', 'paid'])
                 ->where('commission_status', 'pending')
                 ->whereNull('deleted_at')
+                ->whereNotIn('status', ['archived', 'declined', 'expired'])
                 ->count();
         } catch (\Throwable) {}
 
@@ -644,6 +645,7 @@ class CriticalActionService
                 $commRows = DB::table('leads')
                     ->where('tenant_id', $tenantId)
                     ->whereNull('deleted_at')
+                    ->whereNotIn('status', ['archived'])
                     ->whereIn('id', $dealIds)
                     ->whereIn('commission_status', ['locked', 'paid'])
                     ->where('updated_at', '>', now()->subDays(7))
@@ -861,6 +863,7 @@ class CriticalActionService
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
             ->whereNull('l.deleted_at')
+            ->whereNotIn('l.status', ['archived'])
             ->where('h.created_at', '>', $since)
             ->whereIn('h.type', ['stage', 'assignment', 'commission'])
             ->select('h.id', 'h.action', 'h.type', 'h.reseller', 'h.date', 'h.created_at', 'l.id as lead_id', 'l.name as lead_name')
@@ -1220,7 +1223,7 @@ class CriticalActionService
             )
             ->where('l.tenant_id', $tenantId)
             ->whereNull('l.deleted_at')
-            ->where('l.status', '!=', 'archived')
+            ->whereNotIn('l.status', ['archived'])
             ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
             ->select('l.id', 'l.name', 'l.stage', 'h.created_at as assigned_at')
             ->orderByDesc('h.created_at')
@@ -1297,6 +1300,7 @@ class CriticalActionService
             ->join('leads as l', 'l.id', '=', 'h.lead_id')
             ->where('l.tenant_id', $tenantId)
             ->whereNull('l.deleted_at')
+            ->whereNotIn('l.status', ['archived'])
             ->where(fn($q) => $q
                 ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
                 ->orWhereExists(fn($sub) => $sub
@@ -1344,7 +1348,7 @@ class CriticalActionService
                 ->join('leads as l', 'l.id', '=', 'dar.deal_id')
                 ->where('dar.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
-                ->where('l.status', '!=', 'archived')
+                ->whereNotIn('l.status', ['archived'])
                 ->whereIn('dar.status', ['pending', 'clarification_requested'])
                 ->where('dar.requested_by_type', 'reseller')
                 ->where('dar.requested_by_id', $reseller)
@@ -1432,6 +1436,7 @@ class CriticalActionService
         $rows = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
+            ->whereNotIn('status', ['archived'])
             ->where(fn($q) => $q
                 ->whereRaw('LOWER(reseller_name) = ?', [$lower])
                 ->orWhereExists(fn($sub) => $sub
@@ -2046,6 +2051,7 @@ class CriticalActionService
                 ->join('leads as l', 'l.id', '=', 'r.deal_id')
                 ->where('r.tenant_id', $tenantId)
                 ->whereNull('l.deleted_at')
+                ->whereNotIn('l.status', ['archived'])
                 ->where(fn($q) => $q
                     ->whereRaw('LOWER(l.reseller_name) = ?', [$lower])
                     ->orWhereExists(fn($sub) => $sub
@@ -2259,6 +2265,7 @@ class CriticalActionService
                 ->where('lh.created_at', '>=', $cutoff)
                 ->where('l.commission_status', 'pending') // only pending — locked/paid are finalised
                 ->whereNull('l.deleted_at')
+                ->whereNotIn('l.status', ['archived'])
                 ->select('lh.lead_id', 'lh.actor_name', 'lh.created_at', 'lh.metadata',
                          'l.name as lead_name', 'l.stage', 'l.deal_value')
                 ->orderByDesc('lh.created_at')
@@ -2363,6 +2370,7 @@ class CriticalActionService
                 ->whereIn('stage', ['signed', 'paid'])
                 ->where('commission_status', 'pending')
                 ->whereNull('deleted_at')
+                ->whereNotIn('status', ['archived', 'declined', 'expired'])
                 ->select('id', 'name', 'stage', 'deal_value', 'reseller_name', 'updated_at')
                 ->orderByRaw("CASE stage WHEN 'paid' THEN 0 ELSE 1 END")
                 ->orderBy('updated_at')
@@ -2458,7 +2466,7 @@ class CriticalActionService
                     ->from('leads')
                     ->where('leads.tenant_id', $tenantId)
                     ->whereNull('leads.deleted_at')
-                    ->whereNotIn('leads.status', ['expired', 'declined'])
+                    ->whereNotIn('leads.status', ['expired', 'declined', 'archived'])
                     ->whereRaw('LOWER(leads.reseller_name) = LOWER(resellers.name)')
                 )
                 ->select('id', 'name', 'email', 'created_at')
@@ -2499,6 +2507,7 @@ class CriticalActionService
                 ->where('dps.tenant_id', $tenantId)
                 ->whereNull('dps.deleted_at')
                 ->whereNull('l.deleted_at')
+                ->whereNotIn('l.status', ['archived'])
                 ->where('dps.status', '!=', 'removed')
                 ->where('dps.created_at', '>', now()->subDays(7))
                 ->select('dps.id', 'dps.partner_name', 'dps.partner_email', 'dps.created_at', 'l.name as deal_name', 'l.id as deal_id')
