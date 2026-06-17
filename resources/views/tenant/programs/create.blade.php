@@ -31,6 +31,7 @@
     @endif
 
     <form method="POST" action="{{ route('tenant.programs.store', $tenant->id) }}"
+          x-data="{ submitting: false }" @submit="submitting = true"
           class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
 
         @csrf
@@ -77,7 +78,7 @@
 
         <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
             <a href="{{ route('tenant.programs.index', $tenant->id) }}" class="btn btn-ghost">Cancel</a>
-            <button type="submit" class="btn btn-primary">Create Program</button>
+            <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Creating…' : 'Create Program'"></button>
         </div>
 
     </form>

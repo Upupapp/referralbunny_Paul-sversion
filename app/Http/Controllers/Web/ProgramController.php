@@ -66,6 +66,12 @@ class ProgramController extends Controller
             'evergreen'         => ['nullable', 'boolean'],
         ]);
 
+        $cap = config('programs.max_programs_per_tenant', 25);
+        $active = Program::forTenant($tenantId)->whereNotIn('status', ['archived'])->count();
+        if ($active >= $cap) {
+            return back()->withErrors(['name' => "You have reached the maximum of {$cap} active programs."]);
+        }
+
         $program = Program::create([
             ...$data,
             'tenant_id'  => $tenantId,   // always from route, never from request

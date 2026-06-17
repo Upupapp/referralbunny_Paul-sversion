@@ -9,7 +9,7 @@
     @if($program->public_visibility === 'unlisted')
     <meta name="robots" content="noindex,nofollow">
     @endif
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-full bg-gray-50 antialiased">
 

@@ -101,6 +101,7 @@
 
             <form method="POST"
                   action="{{ route('tenant.programs.update', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false }" @submit="submitting = true"
                   class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
                 @csrf @method('PATCH')
 
@@ -149,7 +150,7 @@
                         Last updated {{ $program->updated_at->diffForHumans() }}
                     </div>
                     @can('update', $program)
-                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Saving…' : 'Save changes'"></button>
                     @endcan
                 </div>
             </form>

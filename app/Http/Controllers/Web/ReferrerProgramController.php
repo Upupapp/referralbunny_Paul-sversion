@@ -62,7 +62,7 @@ class ReferrerProgramController extends Controller
             ->first();
 
         if (!$membership && !$program->isPubliclyVisible()) {
-            abort(403, 'You are not enrolled in this program.');
+            abort(404);
         }
 
         return view('reseller.programs.show', compact(

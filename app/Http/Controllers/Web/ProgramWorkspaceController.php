@@ -18,6 +18,9 @@ use Illuminate\Http\Request;
  */
 class ProgramWorkspaceController extends Controller
 {
+    /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
+    private const IMPLEMENTED_TABS = ['overview'];
+
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
         'action-items', 'settings', 'notifications', 'intake',
@@ -83,7 +86,7 @@ class ProgramWorkspaceController extends Controller
 
     private function resolveTab(mixed $tab): string
     {
-        if (is_string($tab) && in_array($tab, self::VALID_TABS, true)) {
+        if (is_string($tab) && in_array($tab, self::IMPLEMENTED_TABS, true)) {
             return $tab;
         }
         return 'overview';

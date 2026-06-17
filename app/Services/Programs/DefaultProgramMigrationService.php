@@ -6,7 +6,6 @@ use App\Models\Program;
 use App\Models\Tenant;
 use App\Models\TenantReferralProgramDraft;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Creates a default V4 Program for a tenant on first V4 activation.
@@ -53,17 +52,10 @@ class DefaultProgramMigrationService
         $v3Draft = TenantReferralProgramDraft::where('tenant_id', $tenant->id)->first();
         $name    = $v3Draft?->program_name ?? $tenant->program_name ?? $tenant->name . ' Referral Program';
 
-        $slug = Str::slug($name);
-        // Ensure slug uniqueness within tenant
-        $existing = Program::where('tenant_id', $tenant->id)->where('slug', $slug)->exists();
-        if ($existing) {
-            $slug = $slug . '-default';
-        }
-
+        // Omit 'slug' — Program::boot() handles unique slug generation per tenant.
         $data = [
             'tenant_id'    => $tenant->id,
             'name'         => $name,
-            'slug'         => $slug,
             'status'       => 'active',
             'program_type' => 'referral',
             'is_default'   => true,
