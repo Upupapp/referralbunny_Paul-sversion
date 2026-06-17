@@ -12,8 +12,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @isset($tenant)
     @php
-        $_rsBrand     = \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
-                            ->where('status', 'published')->first();
+        $_rsBrand     = \Illuminate\Support\Facades\Cache::remember(
+                            "brand_profile_published:{$tenant->id}", 3600,
+                            fn() => \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
+                                        ->where('status', 'published')->first()
+                        );
         $_rsSafeHex   = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
         $_rsAccent    = $_rsSafeHex($_rsBrand?->accent_color  ?? $tenant->accent_color);
         $_rsSidebar   = $_rsSafeHex($_rsBrand?->sidebar_color);

@@ -17,8 +17,11 @@
             $_ptUser = auth('partner')->user();
             if ($_ptUser?->tenant_id) {
                 $_ptTenant = \App\Models\Tenant::find($_ptUser->tenant_id);
-                $_ptBrand  = \App\Models\TenantBrandProfile::where('tenant_id', $_ptUser->tenant_id)
-                                 ->where('status', 'published')->first();
+                $_ptBrand  = \Illuminate\Support\Facades\Cache::remember(
+                                 "brand_profile_published:{$_ptUser->tenant_id}", 3600,
+                                 fn() => \App\Models\TenantBrandProfile::where('tenant_id', $_ptUser->tenant_id)
+                                             ->where('status', 'published')->first()
+                             );
                 $_ptSafeHex      = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
                 $_ptBrandLogoUrl = $_ptBrand?->logo_url ?? $_ptTenant?->logo_url;
                 $_ptBrandAccent  = $_ptSafeHex($_ptBrand?->accent_color ?? $_ptTenant?->accent_color);

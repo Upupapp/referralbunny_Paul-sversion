@@ -89,6 +89,7 @@ class TenantBrandingController extends Controller
         ]);
 
         Cache::forget("tenant_config:{$tenantId}");
+        Cache::forget("brand_profile_published:{$tenantId}");
 
         $freshTenant = $tenant->fresh();
         $healthScore = TenantBrandProfile::computeHealthScore($freshTenant, $profile);

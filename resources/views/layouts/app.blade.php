@@ -28,8 +28,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @isset($tenant)
     @php
-        $_brandProfile    = \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
-                                ->where('status', 'published')->first();
+        $_brandProfile    = \Illuminate\Support\Facades\Cache::remember(
+                                "brand_profile_published:{$tenant->id}", 3600,
+                                fn() => \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
+                                            ->where('status', 'published')->first()
+                            );
         $_brandAccentRaw  = $_brandProfile?->accent_color  ?? $tenant->accent_color  ?? null;
         $_brandSidebarRaw = $_brandProfile?->sidebar_color ?? null;
         $_brandLogoUrl    = $_brandProfile?->logo_url      ?? $tenant->logo_url      ?? null;
