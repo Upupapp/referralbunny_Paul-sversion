@@ -26,6 +26,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @isset($tenant)
+    @php
+        $_brandProfile    = \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
+                                ->where('status', 'published')->first();
+        $_brandAccentRaw  = $_brandProfile?->accent_color  ?? $tenant->accent_color  ?? null;
+        $_brandSidebarRaw = $_brandProfile?->sidebar_color ?? null;
+        $_brandLogoUrl    = $_brandProfile?->logo_url      ?? $tenant->logo_url      ?? null;
+        // Defense-in-depth: strip to valid hex only before CSS interpolation,
+        // even though the controller already validates with regex on save.
+        $_safeHex = fn(?string $v) => (preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v)) ? $v : null;
+        $_brandAccent  = $_safeHex($_brandAccentRaw);
+        $_brandSidebar = $_safeHex($_brandSidebarRaw);
+    @endphp
+    @if($_brandAccent || $_brandSidebar)
+    <style>
+        :root {
+            @if($_brandAccent)
+            --color-brand: {{ $_brandAccent }};
+            @endif
+            @if($_brandSidebar)
+            --color-sidebar: {{ $_brandSidebar }};
+            @endif
+        }
+    </style>
+    @endif
+    @endisset
     <style>
         /* Guaranteed x-cloak — inline so it never depends on compiled CSS */
         [x-cloak] { display: none !important; }
@@ -66,9 +92,16 @@
         {{-- Logo --}}
         <a href="@isset($tenant){{ route('tenant.dashboard', $tenant->id) }}@else{{ route('platform.dashboard') }}@endisset"
            class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
+            @isset($_brandLogoUrl)
+            <img src="{{ $_brandLogoUrl }}" alt="{{ $tenant->name }} logo"
+                 class="w-8 h-8 rounded object-contain shrink-0 bg-white/10 p-0.5">
+            @else
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
+            @endisset
             <div class="flex-1 min-w-0">
-                <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
+                <p class="text-white text-sm font-semibold leading-none tracking-tight">
+                    @isset($tenant){{ $tenant->program_name ?: 'referralbunny.ai' }}@else{{ 'referralbunny.ai' }}@endisset
+                </p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">@isset($tenant){{ $tenant->name }}@else{{ $platformLabel ?? 'Super Admin' }}@endisset</p>
             </div>
             <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">

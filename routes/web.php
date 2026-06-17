@@ -358,6 +358,16 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::get('/settings',        [TenantAdminController::class, 'settings'])->name('settings');
     Route::post('/settings',       [TenantAdminController::class, 'updateSettings'])->middleware('throttle:20,1')->name('settings.update');
 
+    // ── Brand Studio ──────────────────────────────────────────────
+    Route::prefix('settings/branding')->name('settings.branding.')->group(function () {
+        Route::get('/',         [\App\Http\Controllers\Web\TenantBrandingController::class, 'index'])->name('index');
+        Route::post('/draft',   [\App\Http\Controllers\Web\TenantBrandingController::class, 'saveDraft'])->middleware('throttle:30,1')->name('save-draft');
+        Route::post('/publish', [\App\Http\Controllers\Web\TenantBrandingController::class, 'publish'])->middleware('throttle:10,1')->name('publish');
+        Route::post('/logo',    [\App\Http\Controllers\Web\TenantBrandingController::class, 'uploadLogo'])->middleware('throttle:20,1')->name('upload-logo');
+        Route::delete('/logo',  [\App\Http\Controllers\Web\TenantBrandingController::class, 'deleteLogo'])->middleware('throttle:10,1')->name('delete-logo');
+        Route::post('/revert',  [\App\Http\Controllers\Web\TenantBrandingController::class, 'revertDraft'])->middleware('throttle:10,1')->name('revert');
+    });
+
     // ── Referral Program Setup Wizard ─────────────────────────────
     Route::prefix('settings/referral-program')->name('settings.referral-program.')->group(function () {
         Route::get('/',              [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'overview'])->name('overview');
