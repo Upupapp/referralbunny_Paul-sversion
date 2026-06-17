@@ -597,6 +597,7 @@ function brandStudio(config) {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (!res.ok) return;
                 this.brandVersions = await res.json();
             } catch {}
             finally { this.loadingVersions = false; }

@@ -294,7 +294,7 @@ class TenantBrandingController extends Controller
     private function logEvent(string $event, string $tenantId, array $extra): void
     {
         try {
-            $actorId = auth('tenant')->id();
+            $actorId = auth('tenant')->id() ?? auth('web')->id();
             \DB::table('activity_logs')->insert([
                 'description' => $event,
                 'tenant_id'   => $tenantId,

@@ -113,12 +113,12 @@
         {{-- Logo --}}
         <a href="{{ route('reseller.dashboard', $tenant->id) }}"
            class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
-            @isset($_rsLogoUrl)
+            @if($_rsLogoUrl)
             <img src="{{ $_rsLogoUrl }}" alt="{{ $tenant->name }} logo"
                  class="w-8 h-8 rounded object-contain shrink-0 bg-white/10 p-0.5">
             @else
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
-            @endisset
+            @endif
             <div class="flex-1 min-w-0">
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">
                     {{ $_rsBrandName ?? 'referralbunny.ai' }}
