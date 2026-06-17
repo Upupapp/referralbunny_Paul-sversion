@@ -11,14 +11,30 @@ jobs:
     name: STITCH Release Gate + Test Suite
     runs-on: ubuntu-latest
 
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      BROADCAST_CONNECTION: "null"
+      BCRYPT_ROUNDS: 4
+      PROGRAMS_V4_ENABLED: true
+      PULSE_ENABLED: false
+      TELESCOPE_ENABLED: false
+      NIGHTWATCH_ENABLED: false
+      DB_URL: ""
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP 8.3
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: "8.4"
           extensions: pdo, pdo_sqlite, sqlite3, mbstring, xml, curl, zip
           coverage: none
 
@@ -34,39 +50,9 @@ jobs:
 
       - name: Prepare environment
         run: cp .env.example .env && php artisan key:generate
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-          SESSION_DRIVER: array
-          CACHE_STORE: array
-          QUEUE_CONNECTION: sync
-          MAIL_MAILER: array
-          BROADCAST_CONNECTION: "null"
-          BCRYPT_ROUNDS: 4
 
       - name: STITCH release gate
         run: php artisan stitch:release-gate --ci --fail-on=P1
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-          SESSION_DRIVER: array
-          CACHE_STORE: array
-          QUEUE_CONNECTION: sync
-          MAIL_MAILER: array
-          BROADCAST_CONNECTION: "null"
-          BCRYPT_ROUNDS: 4
 
       - name: PHP test suite
         run: php artisan test
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-          SESSION_DRIVER: array
-          CACHE_STORE: array
-          QUEUE_CONNECTION: sync
-          MAIL_MAILER: array
-          BROADCAST_CONNECTION: "null"
-          BCRYPT_ROUNDS: 4

@@ -44,6 +44,12 @@ async function contextForSession(
     () => !document.location.pathname.endsWith('/login'),
     { timeout: 15_000 }
   );
+  const finalUrl = page.url();
+  if (!finalUrl.includes(session.dashboardUrl)) {
+    throw new Error(
+      `Fallback login failed for ${session.email}: landed on ${finalUrl}, expected path containing ${session.dashboardUrl}`
+    );
+  }
   return ctx;
 }
 
