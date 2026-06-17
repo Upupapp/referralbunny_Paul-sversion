@@ -179,6 +179,12 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::get('/contacts/imports/{batchId}/report',            [ContactsImportController::class, 'show'])->name('contacts.imports.show');
         Route::get('/contacts/imports/{batchId}/failed',            [ContactsImportController::class, 'downloadFailed'])->name('contacts.imports.failed');
 
+        // ── Programs V4 (referrer portal) ────────────────────────────
+        Route::prefix('programs')->name('programs.')->group(function () {
+            Route::get('/',           [\App\Http\Controllers\Web\ReferrerProgramController::class, 'index'])->name('index');
+            Route::get('/{programId}',[\App\Http\Controllers\Web\ReferrerProgramController::class, 'show'])->name('show');
+        });
+
         // ── Note Attachment Download (session auth — opens inline in new tab) ──
         Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
             [\App\Http\Controllers\DealNoteAttachmentController::class, 'downloadForWeb'])
@@ -231,6 +237,12 @@ Route::middleware(['auth:partner', 'partner.access', 'legal.agreements'])
         Route::get('/notifications',                  [PartnerPortalController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/mark-all-read',   [PartnerPortalController::class, 'markNotificationsRead'])->name('notifications.mark-all-read');
         Route::post('/notifications/{id}/read',       [\App\Http\Controllers\Web\NotificationsController::class, 'markReadForPartner'])->name('notifications.read');
+
+        // ── Programs V4 (partner portal) ──────────────────────────
+        Route::prefix('programs')->name('programs.')->group(function () {
+            Route::get('/',           [\App\Http\Controllers\Web\PartnerProgramController::class, 'index'])->name('index');
+            Route::get('/{programId}',[\App\Http\Controllers\Web\PartnerProgramController::class, 'show'])->name('show');
+        });
 
         // ── Note Attachment Download (session auth — opens inline in new tab) ──
         Route::get('/deals/{dealId}/comments/{commentId}/attachments/{attachmentId}',
@@ -379,6 +391,20 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::post('/wizard/simulate', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'simulate'])->middleware('throttle:30,1')->name('wizard.simulate');
         Route::post('/wizard/publish', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'publish'])->middleware('throttle:10,1')->name('wizard.publish');
         Route::post('/versions/{versionId}/restore', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'restoreVersion'])->middleware('throttle:10,1')->name('versions.restore');
+    });
+
+    // ── Programs V4 (admin) ───────────────────────────────────────
+    Route::prefix('programs')->name('programs.')->group(function () {
+        Route::get('/',                                   [\App\Http\Controllers\Web\ProgramController::class, 'index'])->name('index');
+        Route::get('/create',                             [\App\Http\Controllers\Web\ProgramController::class, 'create'])->name('create');
+        Route::post('/',                                  [\App\Http\Controllers\Web\ProgramController::class, 'store'])->middleware('throttle:20,1')->name('store');
+        Route::get('/{programId}',                        [\App\Http\Controllers\Web\ProgramWorkspaceController::class, 'show'])->name('workspace');
+        Route::patch('/{programId}',                      [\App\Http\Controllers\Web\ProgramWorkspaceController::class, 'update'])->middleware('throttle:30,1')->name('update');
+        Route::post('/{programId}/launch',                [\App\Http\Controllers\Web\ProgramController::class, 'launch'])->middleware('throttle:10,1')->name('launch');
+        Route::post('/{programId}/pause',                 [\App\Http\Controllers\Web\ProgramController::class, 'pause'])->middleware('throttle:10,1')->name('pause');
+        Route::post('/{programId}/end',                   [\App\Http\Controllers\Web\ProgramController::class, 'end'])->middleware('throttle:10,1')->name('end');
+        Route::post('/{programId}/archive',               [\App\Http\Controllers\Web\ProgramController::class, 'archive'])->middleware('throttle:10,1')->name('archive');
+        Route::delete('/{programId}',                     [\App\Http\Controllers\Web\ProgramController::class, 'destroy'])->middleware('throttle:10,1')->name('destroy');
     });
 
     // ── Export Approval Center ────────────────────────────────────
@@ -552,4 +578,9 @@ Route::domain('{subdomain}.' . config('app.domain', 'referralbunny.ai'))
 Route::middleware(['throttle:30,1'])->group(function () {
     Route::get('/request/{token}',        [\App\Http\Controllers\PublicRequestFormController::class, 'show'])->name('public.request-form');
     Route::post('/request/{token}/submit',[\App\Http\Controllers\PublicRequestFormController::class, 'submit'])->name('public.request-form.submit')->middleware('throttle:5,1');
+});
+
+// ── Public Program Pages (no auth required) ───────────────────────────────────
+Route::middleware(['throttle:60,1'])->group(function () {
+    Route::get('/p/{tenantSlug}/{programSlug}', [\App\Http\Controllers\Web\PublicProgramController::class, 'show'])->name('public.programs.show');
 });

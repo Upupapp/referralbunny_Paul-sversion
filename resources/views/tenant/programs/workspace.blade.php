@@ -1,0 +1,186 @@
+@extends('layouts.app')
+
+@section('title', $program->name . ' — Program Workspace')
+@section('stitch_page', 'tenant-program-workspace')
+
+@section('nav')
+    @include('tenant._nav', ['tenant' => $tenant])
+@endsection
+
+@section('content')
+@php
+    $tabs = [
+        'overview'     => ['label' => 'Overview',      'icon' => 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        'offers'       => ['label' => 'Offers',         'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        'members'      => ['label' => 'Members',        'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'],
+        'contracts'    => ['label' => 'Contracts',      'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+        'analytics'    => ['label' => 'Analytics',      'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'],
+        'action-items' => ['label' => 'Action Items',   'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
+        'settings'     => ['label' => 'Settings',       'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'],
+        'intake'       => ['label' => 'Intake',         'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 17h.01'],
+        'public-page'  => ['label' => 'Public Page',    'icon' => 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'],
+        'notifications'=> ['label' => 'Notifications',  'icon' => 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'],
+        'access'       => ['label' => 'Access',         'icon' => 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
+    ];
+@endphp
+<div class="flex flex-col h-full" x-data="{ activeTab: @js($activeTab) }">
+
+    {{-- ── Workspace Header ────────────────────────────────────────────────── --}}
+    <div class="bg-white border-b border-gray-200 px-6 pt-5 pb-0">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <a href="{{ route('tenant.programs.index', $tenant->id) }}"
+                   class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Programs
+                </a>
+                <h1 class="text-xl font-bold text-heading">{{ $program->name }}</h1>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                {{-- Status badge --}}
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                    {{ $program->status === 'active'    ? 'bg-green-100 text-green-700'   : '' }}
+                    {{ $program->status === 'draft'     ? 'bg-gray-100 text-gray-600'     : '' }}
+                    {{ $program->status === 'paused'    ? 'bg-amber-100 text-amber-700'   : '' }}
+                    {{ $program->status === 'scheduled' ? 'bg-blue-100 text-blue-700'     : '' }}
+                    {{ $program->status === 'ended'     ? 'bg-red-100 text-red-700'       : '' }}
+                    {{ $program->status === 'archived'  ? 'bg-gray-100 text-gray-400'     : '' }}
+                ">{{ ucfirst($program->status) }}</span>
+
+                {{-- Lifecycle actions --}}
+                @can('launch', $program)
+                    @if(in_array($program->status, ['draft', 'scheduled', 'paused']))
+                    <form method="POST" action="{{ route('tenant.programs.launch', [$tenant->id, $program->id]) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            {{ $program->status === 'paused' ? 'Resume' : 'Launch' }}
+                        </button>
+                    </form>
+                    @endif
+                @endcan
+
+                @can('pause', $program)
+                    @if($program->status === 'active')
+                    <form method="POST" action="{{ route('tenant.programs.pause', [$tenant->id, $program->id]) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm">Pause</button>
+                    </form>
+                    @endif
+                @endcan
+            </div>
+        </div>
+
+        {{-- ── Tab bar ──────────────────────────────────────────────────────── --}}
+        <nav class="flex gap-0.5 -mb-px overflow-x-auto" aria-label="Program workspace tabs">
+            @foreach($tabs as $key => $tab)
+            <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}?tab={{ $key }}"
+               @click.prevent="activeTab = '{{ $key }}'; history.replaceState(null, '', '?tab={{ $key }}')"
+               :aria-current="activeTab === '{{ $key }}' ? 'page' : 'false'"
+               :class="activeTab === '{{ $key }}' ? 'tab-active' : 'tab'"
+               class="tab whitespace-nowrap">
+                {{ $tab['label'] }}
+            </a>
+            @endforeach
+        </nav>
+    </div>
+
+    {{-- ── Tab content panels ───────────────────────────────────────────────── --}}
+    <div class="flex-1 overflow-auto">
+
+        {{-- ── Overview tab ──────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'overview'" x-cloak class="p-6 max-w-4xl mx-auto space-y-6">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                {{ session('success') }}
+            </div>
+            @endif
+
+            <form method="POST"
+                  action="{{ route('tenant.programs.update', [$tenant->id, $program->id]) }}"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf @method('PATCH')
+
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">Program details</h2>
+
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input type="text" name="name" value="{{ old('name', $program->name) }}"
+                                   class="input w-full" maxlength="120" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                            <select name="program_type" class="input w-full">
+                                @foreach(\App\Models\Program::allTypes() as $type)
+                                <option value="{{ $type }}" {{ $program->program_type === $type ? 'selected' : '' }}>
+                                    {{ ucfirst(str_replace('_', ' ', $type)) }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                            <select name="public_visibility" class="input w-full">
+                                <option value="private"  {{ $program->public_visibility === 'private'  ? 'selected' : '' }}>Private</option>
+                                <option value="unlisted" {{ $program->public_visibility === 'unlisted' ? 'selected' : '' }}>Unlisted</option>
+                                <option value="public"   {{ $program->public_visibility === 'public'   ? 'selected' : '' }}>Public</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Short description</label>
+                            <textarea name="short_description" rows="2"
+                                      class="input w-full resize-none" maxlength="500">{{ old('short_description', $program->short_description) }}</textarea>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Full description</label>
+                            <textarea name="full_description" rows="4"
+                                      class="input w-full resize-none" maxlength="5000">{{ old('full_description', $program->full_description) }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-between gap-3">
+                    <div class="text-xs text-gray-400">
+                        Last updated {{ $program->updated_at->diffForHumans() }}
+                    </div>
+                    @can('update', $program)
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    @endcan
+                </div>
+            </form>
+
+            {{-- Danger zone (delete draft) --}}
+            @can('delete', $program)
+            <div class="rounded-xl border border-red-200 bg-red-50 p-5">
+                <h3 class="text-sm font-semibold text-red-800">Danger zone</h3>
+                <p class="text-xs text-red-700 mt-1">Deleting a draft program is permanent. Only draft programs with no operational history can be deleted.</p>
+                <form method="POST"
+                      action="{{ route('tenant.programs.destroy', [$tenant->id, $program->id]) }}"
+                      class="mt-3"
+                      onsubmit="return confirm('Delete program \'{{ addslashes($program->name) }}\'? This cannot be undone.')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger btn-sm">Delete program</button>
+                </form>
+            </div>
+            @endcan
+        </div>
+
+        {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
+        @foreach(array_keys($tabs) as $tabKey)
+            @if($tabKey !== 'overview')
+            <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
+                <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
+                    <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>
+                </div>
+            </div>
+            @endif
+        @endforeach
+
+    </div>
+</div>
+@endsection

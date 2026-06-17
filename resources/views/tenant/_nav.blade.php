@@ -52,6 +52,10 @@ if (request()->routeIs([
 ])) {
     $activeGroup = 'data';
 } elseif (request()->routeIs([
+    'tenant.programs', 'tenant.programs.*',
+])) {
+    $activeGroup = 'admin';
+} elseif (request()->routeIs([
     'tenant.users',
     'tenant.agreements',
     'tenant.billing',
@@ -607,6 +611,18 @@ $workspaceBadge += $criticalBadge;
                 </svg>
                 Settings
             </a>
+
+            @if(config('programs.enabled'))
+            <a href="{{ route('tenant.programs.index', $tenantId) }}"
+               aria-current="{{ request()->routeIs('tenant.programs*') ? 'page' : 'false' }}"
+               @click="window.dispatchEvent(new CustomEvent('sidebar-close'))"
+               class="nav-child {{ request()->routeIs('tenant.programs*') ? 'nav-child-active' : '' }}">
+                <svg class="nav-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+                Programs
+            </a>
+            @endif
 
             <a href="{{ route('tenant.settings.referral-program.overview', $tenantId) }}"
                aria-current="{{ request()->routeIs('tenant.settings.referral-program.*') ? 'page' : 'false' }}"
