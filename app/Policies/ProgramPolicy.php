@@ -89,14 +89,21 @@ class ProgramPolicy
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /** Per-request membership cache to avoid N+1 on pages with multiple @can() calls. */
+    private static array $membershipCache = [];
+
     private function hasPermission(TenantUser $actor, string $permission, ?string $tenantId): bool
     {
         if (!$tenantId) return false;
         try {
-            $membership = TenantMembership::where('tenant_user_id', $actor->id)
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->first();
+            $cacheKey = $actor->id . ':' . $tenantId;
+            if (!array_key_exists($cacheKey, self::$membershipCache)) {
+                self::$membershipCache[$cacheKey] = TenantMembership::where('tenant_user_id', $actor->id)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first();
+            }
+            $membership = self::$membershipCache[$cacheKey];
             if (!$membership) return false;
             return (new PermissionService)->can($membership, $permission);
         } catch (\Throwable) {

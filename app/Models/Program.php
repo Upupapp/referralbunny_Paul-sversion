@@ -68,7 +68,13 @@ class Program extends Model
                 $model->id = (string) Str::uuid();
             }
             if (empty($model->slug) && $model->name) {
-                $model->slug = Str::slug($model->name);
+                $base = Str::slug($model->name);
+                $slug = $base;
+                $i    = 2;
+                while (static::where('tenant_id', $model->tenant_id)->where('slug', $slug)->exists()) {
+                    $slug = $base . '-' . $i++;
+                }
+                $model->slug = $slug;
             }
         });
     }
