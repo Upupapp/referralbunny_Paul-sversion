@@ -10,6 +10,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @isset($tenant)
+    @php
+        $_rsBrand     = \App\Models\TenantBrandProfile::where('tenant_id', $tenant->id)
+                            ->where('status', 'published')->first();
+        $_rsSafeHex   = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
+        $_rsAccent    = $_rsSafeHex($_rsBrand?->accent_color  ?? $tenant->accent_color);
+        $_rsSidebar   = $_rsSafeHex($_rsBrand?->sidebar_color);
+        $_rsLogoUrl   = $_rsBrand?->logo_url ?? $tenant->logo_url ?? null;
+        $_rsBrandName = $tenant->program_name ?? null;
+    @endphp
+    @if($_rsAccent || $_rsSidebar)
+    <style>
+        @if($_rsAccent):root { --color-brand: {{ $_rsAccent }}; }@endif
+        @if($_rsSidebar).rs-sidebar { background: {{ $_rsSidebar }} !important; }@endif
+    </style>
+    @endif
+    @endisset
     <style>
         .rs-sidebar { background: #0C3D38; }
 
@@ -96,9 +113,16 @@
         {{-- Logo --}}
         <a href="{{ route('reseller.dashboard', $tenant->id) }}"
            class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
+            @isset($_rsLogoUrl)
+            <img src="{{ $_rsLogoUrl }}" alt="{{ $tenant->name }} logo"
+                 class="w-8 h-8 rounded object-contain shrink-0 bg-white/10 p-0.5">
+            @else
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
+            @endisset
             <div class="flex-1 min-w-0">
-                <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
+                <p class="text-white text-sm font-semibold leading-none tracking-tight">
+                    {{ $_rsBrandName ?? 'referralbunny.ai' }}
+                </p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">{{ $tenant->name }}</p>
             </div>
             <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">

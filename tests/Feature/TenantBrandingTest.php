@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\TenantBrandProfile;
+use App\Models\TenantBrandVersion;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Database\Schema\Blueprint;
@@ -191,6 +192,92 @@ class TenantBrandingTest extends TestCase
         $this->assertStringContainsString('2 MB', $response->json('error') ?? '');
     }
 
+    // ── Version History (Phase 2) ─────────────────────────────────────────────
+
+    public function test_publish_creates_version_snapshot(): void
+    {
+        TenantBrandProfile::updateOrCreate(
+            ['tenant_id' => self::TENANT_ID],
+            ['accent_color' => '#112233', 'status' => 'draft']
+        );
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->postJson(route('tenant.settings.branding.publish', self::TENANT_ID))
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('tenant_brand_versions', [
+            'tenant_id'    => self::TENANT_ID,
+            'accent_color' => '#112233',
+        ]);
+    }
+
+    public function test_versions_endpoint_returns_list(): void
+    {
+        TenantBrandVersion::create([
+            'tenant_id'    => self::TENANT_ID,
+            'accent_color' => '#AABBCC',
+            'health_score' => 55,
+            'created_at'   => now(),
+        ]);
+
+        $response = $this->actingAs($this->ownerUser, 'tenant')
+            ->getJson(route('tenant.settings.branding.versions', self::TENANT_ID));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([['id', 'accent_color', 'health_score', 'created_at']]);
+        $this->assertSame('#AABBCC', $response->json('0.accent_color'));
+    }
+
+    public function test_restore_version_sets_draft(): void
+    {
+        $version = TenantBrandVersion::create([
+            'tenant_id'    => self::TENANT_ID,
+            'accent_color' => '#DDEEFF',
+            'sidebar_color'=> '#001122',
+            'health_score' => 75,
+            'created_at'   => now(),
+        ]);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->postJson(route('tenant.settings.branding.restore-version', [self::TENANT_ID, $version->id]))
+            ->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('tenant_brand_profiles', [
+            'tenant_id'    => self::TENANT_ID,
+            'accent_color' => '#DDEEFF',
+            'sidebar_color'=> '#001122',
+            'status'       => 'draft',
+        ]);
+    }
+
+    public function test_publish_trims_versions_to_ten(): void
+    {
+        // Pre-seed 10 existing versions
+        for ($i = 0; $i < 10; $i++) {
+            TenantBrandVersion::create([
+                'tenant_id'    => self::TENANT_ID,
+                'health_score' => 50,
+                'created_at'   => now()->subMinutes(10 - $i),
+            ]);
+        }
+
+        // Publish to trigger the 11th snapshot + trim
+        TenantBrandProfile::updateOrCreate(
+            ['tenant_id' => self::TENANT_ID],
+            ['accent_color' => '#FFFFFF', 'status' => 'draft']
+        );
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->postJson(route('tenant.settings.branding.publish', self::TENANT_ID))
+            ->assertStatus(200);
+
+        $this->assertSame(
+            10,
+            TenantBrandVersion::where('tenant_id', self::TENANT_ID)->count()
+        );
+    }
+
     // ── Schema ────────────────────────────────────────────────────────────────
 
     private function buildSchema(): void
@@ -241,6 +328,17 @@ class TenantBrandingTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('tenant_brand_versions', function (Blueprint $table) {
+            $table->id();
+            $table->string('tenant_id');
+            $table->string('logo_url')->nullable();
+            $table->string('logo_path')->nullable();
+            $table->string('accent_color', 7)->nullable();
+            $table->string('sidebar_color', 7)->nullable();
+            $table->unsignedTinyInteger('health_score')->default(0);
+            $table->timestamp('created_at')->useCurrent();
+        });
+
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->string('description')->nullable();
@@ -253,6 +351,7 @@ class TenantBrandingTest extends TestCase
     private function dropSchema(): void
     {
         Schema::dropIfExists('activity_logs');
+        Schema::dropIfExists('tenant_brand_versions');
         Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('tenant_memberships');
         Schema::dropIfExists('tenant_users');

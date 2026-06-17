@@ -366,6 +366,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::post('/logo',    [\App\Http\Controllers\Web\TenantBrandingController::class, 'uploadLogo'])->middleware('throttle:20,1')->name('upload-logo');
         Route::delete('/logo',  [\App\Http\Controllers\Web\TenantBrandingController::class, 'deleteLogo'])->middleware('throttle:10,1')->name('delete-logo');
         Route::post('/revert',  [\App\Http\Controllers\Web\TenantBrandingController::class, 'revertDraft'])->middleware('throttle:10,1')->name('revert');
+        Route::get('/versions', [\App\Http\Controllers\Web\TenantBrandingController::class, 'versions'])->middleware('throttle:20,1')->name('versions');
+        Route::post('/versions/{version}/restore', [\App\Http\Controllers\Web\TenantBrandingController::class, 'restoreVersion'])->middleware('throttle:10,1')->name('restore-version');
     });
 
     // ── Referral Program Setup Wizard ─────────────────────────────

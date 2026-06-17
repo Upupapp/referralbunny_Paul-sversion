@@ -1,3 +1,9 @@
+@php
+    $_safeHex      = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
+    $_emailAccent  = $_safeHex($emailBrandAccent ?? null);
+    $_emailLogoUrl = $emailBrandLogoUrl ?? null;
+    $_emailName    = $emailBrandName ?? null;
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,18 +49,24 @@
 </head>
 <body>
 <div class="wrapper">
-    <div class="header">
+    <div class="header"@if($_emailAccent) style="background:{{ $_emailAccent }}"@endif>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
                 <td align="center" style="padding-bottom:8px">
+                    @if($_emailLogoUrl)
+                    <img src="{{ $_emailLogoUrl }}"
+                         alt="{{ $_emailName ?? 'Brand logo' }}" width="56" height="56"
+                         style="width:56px;height:56px;border-radius:50%;display:block;margin:0 auto;object-fit:contain;border:3px solid rgba(255,255,255,0.2)">
+                    @else
                     <img src="https://referralbunny.ai/images/logos/referralbunny-social-avatar.png"
                          alt="ReferralBunny.ai" width="56" height="56"
                          style="width:56px;height:56px;border-radius:50%;display:block;margin:0 auto;border:3px solid rgba(255,255,255,0.2)">
+                    @endif
                 </td>
             </tr>
             <tr>
                 <td align="center" style="padding-bottom:6px">
-                    <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.02em">referralbunny.ai</div>
+                    <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.02em">{{ $_emailName ?? 'referralbunny.ai' }}</div>
                 </td>
             </tr>
             @if(isset($headerLabel))

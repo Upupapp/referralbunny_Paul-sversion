@@ -51,6 +51,22 @@ class EmailLogger
             return true;
         }
 
+        if ($tenantId) {
+            try {
+                $tenant = \App\Models\Tenant::find($tenantId);
+                $brand  = \App\Models\TenantBrandProfile::where('tenant_id', $tenantId)
+                              ->where('status', 'published')->first();
+                $safeHex = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
+                $mailable->with([
+                    'emailBrandLogoUrl' => $brand?->logo_url ?? $tenant?->logo_url,
+                    'emailBrandAccent'  => $safeHex($brand?->accent_color ?? $tenant?->accent_color),
+                    'emailBrandName'    => $tenant?->program_name,
+                ]);
+            } catch (\Throwable) {
+                // Never block email sending for brand resolution failures
+            }
+        }
+
         try {
             Mail::to($recipientEmail)->queue($mailable);
             $log->update(['status' => 'sent']);

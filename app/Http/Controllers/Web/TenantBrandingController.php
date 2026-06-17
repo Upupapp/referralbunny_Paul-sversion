@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantBrandProfile;
+use App\Models\TenantBrandVersion;
 use App\Models\TenantMembership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -89,9 +90,11 @@ class TenantBrandingController extends Controller
 
         Cache::forget("tenant_config:{$tenantId}");
 
-        $this->logEvent('brand.published', $tenantId, [
-            'health_score' => TenantBrandProfile::computeHealthScore($tenant->fresh(), $profile),
-        ]);
+        $freshTenant = $tenant->fresh();
+        $healthScore = TenantBrandProfile::computeHealthScore($freshTenant, $profile);
+
+        $this->snapshotVersion($tenantId, $profile, $healthScore);
+        $this->logEvent('brand.published', $tenantId, ['health_score' => $healthScore]);
 
         return response()->json(['success' => true, 'published_at' => $profile->published_at->toIso8601String()]);
     }
@@ -203,6 +206,42 @@ class TenantBrandingController extends Controller
         return response()->json(['success' => true]);
     }
 
+    // ── Version History ───────────────────────────────────────────────────────
+
+    public function versions(Request $request, string $tenantId)
+    {
+        $this->requireEditAccess($tenantId);
+
+        $versions = TenantBrandVersion::where('tenant_id', $tenantId)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get(['id', 'logo_url', 'accent_color', 'sidebar_color', 'health_score', 'created_at']);
+
+        return response()->json($versions);
+    }
+
+    public function restoreVersion(Request $request, string $tenantId, int $versionId)
+    {
+        $this->requireEditAccess($tenantId);
+
+        $version = TenantBrandVersion::where('tenant_id', $tenantId)->findOrFail($versionId);
+
+        TenantBrandProfile::updateOrCreate(
+            ['tenant_id' => $tenantId],
+            [
+                'logo_url'     => $version->logo_url,
+                'logo_path'    => $version->logo_path,
+                'accent_color' => $version->accent_color,
+                'sidebar_color'=> $version->sidebar_color,
+                'status'       => 'draft',
+            ]
+        );
+
+        $this->logEvent('brand.version_restored', $tenantId, ['version_id' => $versionId]);
+
+        return response()->json(['success' => true]);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function canEdit(string $tenantId): bool
@@ -225,6 +264,31 @@ class TenantBrandingController extends Controller
         if (!$this->canEdit($tenantId)) {
             abort(403, 'Only Owners and Admins can modify brand settings.');
         }
+    }
+
+    private function snapshotVersion(string $tenantId, TenantBrandProfile $profile, int $healthScore): void
+    {
+        try {
+            TenantBrandVersion::create([
+                'tenant_id'    => $tenantId,
+                'logo_url'     => $profile->logo_url,
+                'logo_path'    => $profile->logo_path,
+                'accent_color' => $profile->accent_color,
+                'sidebar_color'=> $profile->sidebar_color,
+                'health_score' => $healthScore,
+                'created_at'   => now(),
+            ]);
+
+            // Trim to last 10
+            $overflow = TenantBrandVersion::where('tenant_id', $tenantId)
+                ->orderByDesc('created_at')
+                ->get(['id'])
+                ->pluck('id')
+                ->slice(10);
+            if ($overflow->isNotEmpty()) {
+                TenantBrandVersion::whereIn('id', $overflow)->delete();
+            }
+        } catch (\Throwable) {}
     }
 
     private function logEvent(string $event, string $tenantId, array $extra): void

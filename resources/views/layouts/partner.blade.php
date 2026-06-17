@@ -10,6 +10,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @php
+        $_ptBrandLogoUrl = null; $_ptBrandAccent = null;
+        $_ptBrandSidebar = null; $_ptBrandName   = null;
+        try {
+            $_ptUser = auth('partner')->user();
+            if ($_ptUser?->tenant_id) {
+                $_ptTenant = \App\Models\Tenant::find($_ptUser->tenant_id);
+                $_ptBrand  = \App\Models\TenantBrandProfile::where('tenant_id', $_ptUser->tenant_id)
+                                 ->where('status', 'published')->first();
+                $_ptSafeHex      = fn(?string $v) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string)$v) ? $v : null;
+                $_ptBrandLogoUrl = $_ptBrand?->logo_url ?? $_ptTenant?->logo_url;
+                $_ptBrandAccent  = $_ptSafeHex($_ptBrand?->accent_color ?? $_ptTenant?->accent_color);
+                $_ptBrandSidebar = $_ptSafeHex($_ptBrand?->sidebar_color);
+                $_ptBrandName    = $_ptTenant?->program_name;
+            }
+        } catch (\Throwable) {}
+    @endphp
+    @if($_ptBrandAccent || $_ptBrandSidebar)
+    <style>
+        @if($_ptBrandAccent):root { --color-brand: {{ $_ptBrandAccent }}; }@endif
+        @if($_ptBrandSidebar).pt-sidebar { background: {{ $_ptBrandSidebar }} !important; }@endif
+    </style>
+    @endif
     <style>
         .pt-sidebar { background: #1A2F50; }
         .pt-sidebar-link {
@@ -39,9 +62,16 @@
         {{-- Logo --}}
         <a href="{{ route('partner.dashboard') }}"
            class="flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition-colors">
+            @if($_ptBrandLogoUrl)
+            <img src="{{ $_ptBrandLogoUrl }}" alt="Portal logo"
+                 class="w-8 h-8 rounded object-contain shrink-0 bg-white/10 p-0.5">
+            @else
             <x-rb-logo variant="icon" size="sm" :priority="true" :decorative="true" class="shrink-0" />
+            @endif
             <div class="flex-1 min-w-0">
-                <p class="text-white text-sm font-semibold leading-none tracking-tight">referralbunny.ai</p>
+                <p class="text-white text-sm font-semibold leading-none tracking-tight">
+                    {{ $_ptBrandName ?? 'referralbunny.ai' }}
+                </p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">Partner Portal</p>
             </div>
             <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">

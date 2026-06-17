@@ -10,19 +10,21 @@
 @section('content')
 <div class="p-6 max-w-4xl mx-auto space-y-6"
      x-data="brandStudio(@js([
-        'accentColor'    => $profile?->accent_color  ?? $tenant->accent_color  ?? '#FF5733',
-        'sidebarColor'   => $profile?->sidebar_color ?? '#2D2B6E',
-        'logoUrl'        => $profile?->logo_url       ?? $tenant->logo_url      ?? null,
-        'status'         => $profile?->status         ?? 'draft',
-        'publishedAt'    => $profile?->published_at?->toIso8601String() ?? null,
-        'accentPasses'   => $accentPasses,
-        'canEdit'        => $canEdit,
-        'saveDraftUrl'   => route('tenant.settings.branding.save-draft', $tenant->id),
-        'publishUrl'     => route('tenant.settings.branding.publish', $tenant->id),
-        'uploadLogoUrl'  => route('tenant.settings.branding.upload-logo', $tenant->id),
-        'deleteLogoUrl'  => route('tenant.settings.branding.delete-logo', $tenant->id),
-        'revertUrl'      => route('tenant.settings.branding.revert', $tenant->id),
-        'csrfToken'      => csrf_token(),
+        'accentColor'          => $profile?->accent_color  ?? $tenant->accent_color  ?? '#FF5733',
+        'sidebarColor'         => $profile?->sidebar_color ?? '#2D2B6E',
+        'logoUrl'              => $profile?->logo_url       ?? $tenant->logo_url      ?? null,
+        'status'               => $profile?->status         ?? 'draft',
+        'publishedAt'          => $profile?->published_at?->toIso8601String() ?? null,
+        'accentPasses'         => $accentPasses,
+        'canEdit'              => $canEdit,
+        'saveDraftUrl'         => route('tenant.settings.branding.save-draft', $tenant->id),
+        'publishUrl'           => route('tenant.settings.branding.publish', $tenant->id),
+        'uploadLogoUrl'        => route('tenant.settings.branding.upload-logo', $tenant->id),
+        'deleteLogoUrl'        => route('tenant.settings.branding.delete-logo', $tenant->id),
+        'revertUrl'            => route('tenant.settings.branding.revert', $tenant->id),
+        'versionsUrl'          => route('tenant.settings.branding.versions', $tenant->id),
+        'restoreVersionBaseUrl'=> route('tenant.settings.branding.restore-version', [$tenant->id, '__ID__']),
+        'csrfToken'            => csrf_token(),
      ]))">
 
     {{-- ── Header ─────────────────────────────────────────────────────────── --}}
@@ -241,6 +243,122 @@
         </div>
     </div>
 
+    {{-- ── Live Preview ────────────────────────────────────────────────────── --}}
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 class="font-semibold text-heading text-base mb-4">Live Preview</h2>
+        <div class="rounded-xl overflow-hidden border border-gray-100 flex h-40 shadow-sm">
+            {{-- Mini sidebar --}}
+            <div class="w-36 flex flex-col shrink-0 transition-colors duration-200"
+                 :style="'background:' + sidebarColor">
+                <div class="flex items-center gap-2 px-3 py-3 border-b border-white/10">
+                    <template x-if="logoUrl">
+                        <img :src="logoUrl" alt="Logo" class="w-6 h-6 rounded object-contain bg-white/10 p-0.5">
+                    </template>
+                    <template x-if="!logoUrl">
+                        <div class="w-6 h-6 rounded bg-white/20 flex items-center justify-center">
+                            <svg class="w-3.5 h-3.5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01"/>
+                            </svg>
+                        </div>
+                    </template>
+                    <span class="text-white text-[10px] font-semibold leading-none truncate opacity-90">Your Portal</span>
+                </div>
+                <div class="px-2 py-2 space-y-1">
+                    <div class="h-1.5 rounded-full bg-white/30 w-3/4"></div>
+                    <div class="h-1.5 rounded-full bg-white/20 w-1/2"></div>
+                    <div class="h-1.5 rounded-full bg-white/20 w-2/3"></div>
+                </div>
+            </div>
+            {{-- Mini content area --}}
+            <div class="flex-1 bg-[#F0EFFA] p-4 flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <div class="h-3 bg-gray-300 rounded w-24"></div>
+                    <div class="ml-auto h-6 rounded-lg px-3 flex items-center text-[9px] font-semibold text-white transition-colors duration-200"
+                         :style="'background:' + accentColor">Button</div>
+                </div>
+                <div class="space-y-1.5">
+                    <div class="h-2 bg-white rounded-md w-full"></div>
+                    <div class="h-2 bg-white rounded-md w-5/6"></div>
+                    <div class="h-2 bg-white rounded-md w-3/4"></div>
+                </div>
+                <div class="flex items-center gap-1.5 mt-auto">
+                    <div class="h-4 rounded px-2 flex items-center text-[8px] font-medium text-white transition-colors duration-200"
+                         :style="'background:' + accentColor">Link</div>
+                    <div class="h-4 bg-gray-200 rounded px-2 flex items-center text-[8px] text-gray-500">Cancel</div>
+                </div>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">Preview updates as you change colors and upload a logo.</p>
+    </div>
+
+    {{-- ── Version History ─────────────────────────────────────────────────── --}}
+    @if($canEdit)
+    <div class="bg-white rounded-xl border border-gray-200 p-5"
+         x-init="loadVersions()">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-heading text-base">Version History</h2>
+            <button type="button" @click="loadVersions()" :disabled="loadingVersions"
+                    class="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40">
+                <svg class="w-4 h-4 inline" :class="loadingVersions ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+
+        <template x-if="!loadingVersions && brandVersions.length === 0">
+            <p class="text-sm text-gray-400 italic">No versions yet — publish your brand to create a snapshot.</p>
+        </template>
+
+        <template x-if="loadingVersions">
+            <div class="space-y-2">
+                <div class="h-10 bg-gray-50 rounded-lg animate-pulse"></div>
+                <div class="h-10 bg-gray-50 rounded-lg animate-pulse"></div>
+            </div>
+        </template>
+
+        <template x-if="!loadingVersions && brandVersions.length > 0">
+            <div class="divide-y divide-gray-100">
+                <template x-for="v in brandVersions" :key="v.id">
+                    <div class="flex items-center gap-3 py-3">
+                        {{-- Color swatches --}}
+                        <div class="flex items-center gap-1 shrink-0">
+                            <template x-if="v.sidebar_color">
+                                <span class="w-4 h-4 rounded-full ring-1 ring-black/10 inline-block"
+                                      :style="'background:' + v.sidebar_color"
+                                      :title="'Sidebar: ' + v.sidebar_color"></span>
+                            </template>
+                            <template x-if="v.accent_color">
+                                <span class="w-4 h-4 rounded-full ring-1 ring-black/10 inline-block"
+                                      :style="'background:' + v.accent_color"
+                                      :title="'Accent: ' + v.accent_color"></span>
+                            </template>
+                            <template x-if="v.logo_url">
+                                <img :src="v.logo_url" alt="Logo" class="w-4 h-4 rounded object-contain ring-1 ring-black/10">
+                            </template>
+                        </div>
+                        {{-- Score --}}
+                        <span class="text-xs font-bold w-9 shrink-0 text-right"
+                              :style="'color:' + (v.health_score >= 70 ? '#22c55e' : v.health_score >= 40 ? '#f59e0b' : '#ef4444')"
+                              x-text="v.health_score + '%'"></span>
+                        {{-- Date --}}
+                        <span class="text-xs text-gray-400 flex-1 truncate"
+                              x-text="new Date(v.created_at).toLocaleString()"></span>
+                        {{-- Restore --}}
+                        <button type="button"
+                                @click="restoreVersion(v.id)"
+                                :disabled="restoringVersion === v.id"
+                                class="text-xs text-brand hover:underline disabled:opacity-40 shrink-0">
+                            <span x-show="restoringVersion !== v.id">Restore</span>
+                            <span x-show="restoringVersion === v.id" x-cloak>Restoring…</span>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+    @endif
+
     {{-- ── Status Strip ────────────────────────────────────────────────────── --}}
     <div class="text-xs text-gray-400 flex items-center justify-between">
         <span>
@@ -326,6 +444,11 @@ function brandStudio(config) {
         showRevertModal:  false,
         logoError:        null,
         toast:            { show: false, message: '', type: 'success' },
+
+        // Version history
+        brandVersions:    [],
+        loadingVersions:  false,
+        restoringVersion: null,
 
         // Helpers
         markDirty() { this.isDirty = true; },
@@ -465,6 +588,41 @@ function brandStudio(config) {
             } finally {
                 this.deletingLogo = false;
             }
+        },
+
+        async loadVersions() {
+            this.loadingVersions = true;
+            try {
+                const res = await fetch(config.versionsUrl, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.brandVersions = await res.json();
+            } catch {}
+            finally { this.loadingVersions = false; }
+        },
+
+        async restoreVersion(id) {
+            if (!confirm('Restore this version as a draft?')) return;
+            this.restoringVersion = id;
+            try {
+                const url = config.restoreVersionBaseUrl.replace('__ID__', id);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': config.csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? 'Restore failed.');
+                this.showToast('Version restored as draft.');
+                setTimeout(() => window.location.reload(), 800);
+            } catch (e) {
+                this.showToast(e.message, 'error');
+            } finally { this.restoringVersion = null; }
         },
 
         async revertDraft() {
