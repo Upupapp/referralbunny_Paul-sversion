@@ -666,18 +666,11 @@ function partnerNotes(dealId, postUrl, csrf) {
                 });
                 const d = await r.json();
                 if (!r.ok) { this.noteError = d.error || 'Could not save note.'; return; }
-                this.notes.unshift({
-                    id:               d.note.id,
-                    body:             d.note.body,
-                    author_name:      d.note.author,
-                    author_role:      'partner',
-                    author_role_label:'Partner',
-                    created_ago:      'just now',
-                    attachments:      [],
-                });
                 this.showForm = false;
                 this.noteBody  = '';
                 this.noteFiles = [];
+                // Reload from server so attachment metadata is correct (optimistic insert has no attachment objects)
+                await this.load();
             } catch(e) {
                 this.noteError = 'Network error. Please try again.';
             } finally {

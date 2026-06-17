@@ -1483,6 +1483,25 @@ class ResellerDealController extends Controller
                 $notified = true;
             } catch (\Throwable) {}
 
+            // Email the co-referrer to confirm their addition
+            try {
+                EmailLogger::send(
+                    mailable:      new \App\Mail\CoReferrerAddedMail(
+                        resellerName:  $targetReseller->name,
+                        resellerEmail: $targetReseller->email,
+                        dealName:      $lead->name,
+                        primaryName:   $reseller->name,
+                        percentage:    $percentage,
+                    ),
+                    recipientEmail: $targetReseller->email,
+                    recipientType:  'reseller',
+                    emailKey:       'coreferrer_added.' . $lead->id . '.' . $targetReseller->id,
+                    subject:        "You've been added as a co-referrer on \"{$lead->name}\"",
+                    recipientId:    (string) $targetReseller->id,
+                    tenantId:       $tenantId,
+                );
+            } catch (\Throwable) {}
+
         } elseif ($tenantUserByEmail) {
             // Tenant admin/manager — send in-app notification
             try {
@@ -2179,6 +2198,7 @@ class ResellerDealController extends Controller
             return response()->json(['error' => 'Commission splits cannot be modified after commission is locked or paid.'], 422);
         }
 
+        // Captured before the transaction: used only for post-commit notifications; the authoritative delete is inside.
         $removedName = $split->reseller_name;
 
         // Lock all splits for this lead + re-read lead under lock to prevent a race
