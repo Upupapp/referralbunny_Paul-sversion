@@ -7,6 +7,7 @@ use App\Models\Program;
 use App\Models\ProgramOffer;
 use App\Models\ProgramOfferVersion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -41,7 +42,7 @@ class ProgramOfferController extends Controller
 
         $actorId = (string) (auth('tenant')->id() ?? auth('web')->id());
 
-        \DB::transaction(function () use ($data, $tenantId, $program, $actorId) {
+        DB::transaction(function () use ($data, $tenantId, $program, $actorId) {
             $offer = ProgramOffer::create([
                 'tenant_id'        => $tenantId,
                 'program_id'       => $program->id,
