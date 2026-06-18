@@ -47,23 +47,39 @@ class ProgramMembershipController extends Controller
             'reseller_id' => ['required', 'string', 'exists:resellers,id'],
         ]);
 
-        $exists = ReferrerProgramMembership::forProgram($program->id)
+        // (program_id, reseller_id) has a flat DB-level unique constraint — at most
+        // one membership row can ever exist per program+reseller, regardless of
+        // status. So a previously removed/expired membership must be revived in
+        // place rather than inserted fresh, or the INSERT would violate the
+        // constraint.
+        $membership = ReferrerProgramMembership::forProgram($program->id)
             ->forReseller($data['reseller_id'])
-            ->whereNotIn('status', ['removed', 'expired'])
-            ->exists();
+            ->first();
 
-        abort_if($exists, 422, 'This referrer is already a member of this program.');
+        abort_if(
+            $membership && !in_array($membership->status, ['removed', 'expired'], true),
+            422,
+            'This referrer is already a member of this program.'
+        );
 
-        ReferrerProgramMembership::create([
-            'tenant_id'        => $tenantId,
-            'program_id'       => $program->id,
-            'reseller_id'      => $data['reseller_id'],
+        $attributes = [
             'status'           => 'active',
             'source'           => 'direct',
             'joined_at'        => now(),
             'activated_at'     => now(),
             'last_activity_at' => now(),
-        ]);
+        ];
+
+        if ($membership) {
+            $membership->update($attributes);
+        } else {
+            ReferrerProgramMembership::create([
+                'tenant_id'   => $tenantId,
+                'program_id'  => $program->id,
+                'reseller_id' => $data['reseller_id'],
+                ...$attributes,
+            ]);
+        }
 
         return back()->with('success', 'Referrer added to program.');
     }
@@ -79,23 +95,36 @@ class ProgramMembershipController extends Controller
             'partner_id' => ['required', 'string', 'exists:partner_users,id'],
         ]);
 
-        $exists = PartnerProgramMembership::forProgram($program->id)
+        // Same flat (program_id, partner_id) unique constraint as the referrer
+        // side — revive a removed/expired row in place rather than inserting.
+        $membership = PartnerProgramMembership::forProgram($program->id)
             ->forPartner($data['partner_id'])
-            ->whereNotIn('status', ['removed', 'expired'])
-            ->exists();
+            ->first();
 
-        abort_if($exists, 422, 'This partner is already a member of this program.');
+        abort_if(
+            $membership && !in_array($membership->status, ['removed', 'expired'], true),
+            422,
+            'This partner is already a member of this program.'
+        );
 
-        PartnerProgramMembership::create([
-            'tenant_id'        => $tenantId,
-            'program_id'       => $program->id,
-            'partner_id'       => $data['partner_id'],
+        $attributes = [
             'status'           => 'active',
             'source'           => 'direct',
             'joined_at'        => now(),
             'activated_at'     => now(),
             'last_activity_at' => now(),
-        ]);
+        ];
+
+        if ($membership) {
+            $membership->update($attributes);
+        } else {
+            PartnerProgramMembership::create([
+                'tenant_id'  => $tenantId,
+                'program_id' => $program->id,
+                'partner_id' => $data['partner_id'],
+                ...$attributes,
+            ]);
+        }
 
         return back()->with('success', 'Partner added to program.');
     }

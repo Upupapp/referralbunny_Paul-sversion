@@ -90,6 +90,24 @@ class ProgramMembershipTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_re_attaching_a_removed_referrer_revives_the_existing_row(): void
+    {
+        // (program_id, reseller_id) has a DB-level unique constraint, so a
+        // removed membership must be revived in place rather than re-inserted.
+        $membership = $this->makeReferrerMembership('removed');
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.members.referrers.attach', [self::TENANT_ID, $this->program->id]), [
+                'reseller_id' => $this->resellerId,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, ReferrerProgramMembership::forProgram($this->program->id)
+            ->forReseller($this->resellerId)->count());
+        $membership->refresh();
+        $this->assertSame('active', $membership->status);
+    }
+
     public function test_program_from_other_tenant_returns_404_on_attach(): void
     {
         $otherProgram = Program::create([
@@ -359,6 +377,7 @@ class ProgramMembershipTest extends TestCase
             $table->timestamp('expired_at')->nullable();
             $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
+            $table->unique(['program_id', 'reseller_id']);
         });
 
         Schema::create('partner_program_memberships', function (Blueprint $table) {
@@ -382,6 +401,7 @@ class ProgramMembershipTest extends TestCase
             $table->timestamp('expired_at')->nullable();
             $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
+            $table->unique(['program_id', 'partner_id']);
         });
     }
 
