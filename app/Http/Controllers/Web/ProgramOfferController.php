@@ -41,34 +41,36 @@ class ProgramOfferController extends Controller
 
         $actorId = (string) (auth('tenant')->id() ?? auth('web')->id());
 
-        $offer = ProgramOffer::create([
-            'tenant_id'        => $tenantId,
-            'program_id'       => $program->id,
-            'program_group_id' => $data['program_group_id'] ?? null,
-            'name'             => $data['name'],
-            'code'             => $data['code'] ?? null,
-            'status'           => 'active',
-            'visibility'       => $data['visibility'] ?? 'public',
-            'created_by'       => $actorId,
-            'updated_by'       => $actorId,
-        ]);
+        \DB::transaction(function () use ($data, $tenantId, $program, $actorId) {
+            $offer = ProgramOffer::create([
+                'tenant_id'        => $tenantId,
+                'program_id'       => $program->id,
+                'program_group_id' => $data['program_group_id'] ?? null,
+                'name'             => $data['name'],
+                'code'             => $data['code'] ?? null,
+                'status'           => 'active',
+                'visibility'       => $data['visibility'] ?? 'public',
+                'created_by'       => $actorId,
+                'updated_by'       => $actorId,
+            ]);
 
-        $version = ProgramOfferVersion::create([
-            'tenant_id'        => $tenantId,
-            'program_id'       => $program->id,
-            'offer_id'         => $offer->id,
-            'version_number'   => 1,
-            'status'           => 'published',
-            'currency'         => $data['currency'] ?? $program->default_currency,
-            'reward_model'     => $data['reward_model'],
-            'qualifying_event' => 'deal_closed',
-            'fixed_amount'     => $data['fixed_amount'] ?? null,
-            'percentage_rate'  => $data['percentage_rate'] ?? null,
-            'published_by'     => $actorId,
-            'published_at'     => now(),
-        ]);
+            $version = ProgramOfferVersion::create([
+                'tenant_id'        => $tenantId,
+                'program_id'       => $program->id,
+                'offer_id'         => $offer->id,
+                'version_number'   => 1,
+                'status'           => 'published',
+                'currency'         => $data['currency'] ?? $program->default_currency,
+                'reward_model'     => $data['reward_model'],
+                'qualifying_event' => 'deal_closed',
+                'fixed_amount'     => $data['fixed_amount'] ?? null,
+                'percentage_rate'  => $data['percentage_rate'] ?? null,
+                'published_by'     => $actorId,
+                'published_at'     => now(),
+            ]);
 
-        $offer->update(['current_version_id' => $version->id]);
+            $offer->update(['current_version_id' => $version->id]);
+        });
 
         return back()->with('success', 'Offer created.');
     }

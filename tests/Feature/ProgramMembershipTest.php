@@ -141,6 +141,30 @@ class ProgramMembershipTest extends TestCase
         ]);
     }
 
+    public function test_re_attaching_a_removed_partner_revives_the_existing_row(): void
+    {
+        // Mirrors test_re_attaching_a_removed_referrer_revives_the_existing_row —
+        // (program_id, partner_id) has the same DB-level unique constraint.
+        $membership = PartnerProgramMembership::create([
+            'tenant_id'  => self::TENANT_ID,
+            'program_id' => $this->program->id,
+            'partner_id' => $this->partnerId,
+            'status'     => 'removed',
+            'source'     => 'direct',
+        ]);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.members.partners.attach', [self::TENANT_ID, $this->program->id]), [
+                'partner_id' => $this->partnerId,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, PartnerProgramMembership::forProgram($this->program->id)
+            ->forPartner($this->partnerId)->count());
+        $membership->refresh();
+        $this->assertSame('active', $membership->status);
+    }
+
     // ── status transitions: referrer ─────────────────────────────────────────
 
     public function test_owner_can_approve_invited_referrer(): void
