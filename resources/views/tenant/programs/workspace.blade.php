@@ -171,9 +171,402 @@
             @endcan
         </div>
 
+        {{-- ── Members tab ───────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'members'" x-cloak class="p-6 max-w-5xl mx-auto space-y-6" x-data="{ memberType: 'referrers' }">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+            @if($errors->any())
+            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+            </div>
+            @endif
+
+            @php
+                $memberTransitions = [
+                    'invited'   => ['approved', 'removed'],
+                    'applied'   => ['approved', 'removed'],
+                    'approved'  => ['active', 'suspended', 'removed'],
+                    'active'    => ['paused', 'suspended', 'removed'],
+                    'paused'    => ['active', 'suspended', 'removed'],
+                    'suspended' => ['active', 'removed'],
+                ];
+                $statusBadge = fn (string $status) => match ($status) {
+                    'active'    => 'bg-green-100 text-green-700',
+                    'approved'  => 'bg-blue-100 text-blue-700',
+                    'paused'    => 'bg-amber-100 text-amber-700',
+                    'suspended', 'removed', 'expired' => 'bg-red-100 text-red-700',
+                    default     => 'bg-gray-100 text-gray-600',
+                };
+            @endphp
+
+            <div class="flex gap-2">
+                <button type="button" @click="memberType = 'referrers'"
+                        :class="memberType === 'referrers' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'">Referrers</button>
+                <button type="button" @click="memberType = 'partners'"
+                        :class="memberType === 'partners' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'">Partners</button>
+            </div>
+
+            {{-- Referrers --}}
+            <div x-show="memberType === 'referrers'" x-cloak class="space-y-4">
+                @can('managePeople', $program)
+                <form method="POST" action="{{ route('tenant.programs.members.referrers.attach', [$tenant->id, $program->id]) }}"
+                      class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex items-end gap-3">
+                    @csrf
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Add referrer</label>
+                        <select name="reseller_id" class="input w-full" required>
+                            <option value="">Select a referrer…</option>
+                            @foreach($tenantResellers ?? [] as $reseller)
+                            <option value="{{ $reseller->id }}">{{ $reseller->name }} ({{ $reseller->email }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                </form>
+                @endcan
+
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2">Referrer</th>
+                                <th class="px-4 py-2">Status</th>
+                                <th class="px-4 py-2">Source</th>
+                                <th class="px-4 py-2">Joined</th>
+                                <th class="px-4 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse($referrerMemberships ?? [] as $membership)
+                            <tr>
+                                <td class="px-4 py-3">{{ $membership->reseller?->name ?? '—' }}<div class="text-xs text-gray-400">{{ $membership->reseller?->email }}</div></td>
+                                <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $statusBadge($membership->status) }}">{{ ucfirst($membership->status) }}</span></td>
+                                <td class="px-4 py-3 text-gray-500">{{ ucfirst($membership->source) }}</td>
+                                <td class="px-4 py-3 text-gray-500">{{ $membership->joined_at?->format('M j, Y') ?? '—' }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    @can('managePeople', $program)
+                                    @foreach($memberTransitions[$membership->status] ?? [] as $next)
+                                    <form method="POST" action="{{ route('tenant.programs.members.referrers.status', [$tenant->id, $program->id, $membership->id]) }}" class="inline">
+                                        @csrf
+                                        <input type="hidden" name="status" value="{{ $next }}">
+                                        <button type="submit" class="btn btn-ghost btn-xs">{{ ucfirst($next) }}</button>
+                                    </form>
+                                    @endforeach
+                                    @endcan
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No referrers yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                {{ $referrerMemberships?->links() }}
+            </div>
+
+            {{-- Partners --}}
+            <div x-show="memberType === 'partners'" x-cloak class="space-y-4">
+                @can('managePeople', $program)
+                <form method="POST" action="{{ route('tenant.programs.members.partners.attach', [$tenant->id, $program->id]) }}"
+                      class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex items-end gap-3">
+                    @csrf
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Add partner</label>
+                        <select name="partner_id" class="input w-full" required>
+                            <option value="">Select a partner…</option>
+                            @foreach($tenantPartners ?? [] as $partner)
+                            <option value="{{ $partner->id }}">{{ trim($partner->first_name . ' ' . $partner->last_name) }} ({{ $partner->email }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                </form>
+                @endcan
+
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                            <tr>
+                                <th class="px-4 py-2">Partner</th>
+                                <th class="px-4 py-2">Status</th>
+                                <th class="px-4 py-2">Source</th>
+                                <th class="px-4 py-2">Joined</th>
+                                <th class="px-4 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse($partnerMemberships ?? [] as $membership)
+                            <tr>
+                                <td class="px-4 py-3">{{ trim(($membership->partner?->first_name ?? '') . ' ' . ($membership->partner?->last_name ?? '')) ?: '—' }}<div class="text-xs text-gray-400">{{ $membership->partner?->email }}</div></td>
+                                <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $statusBadge($membership->status) }}">{{ ucfirst($membership->status) }}</span></td>
+                                <td class="px-4 py-3 text-gray-500">{{ ucfirst($membership->source) }}</td>
+                                <td class="px-4 py-3 text-gray-500">{{ $membership->joined_at?->format('M j, Y') ?? '—' }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    @can('managePeople', $program)
+                                    @foreach($memberTransitions[$membership->status] ?? [] as $next)
+                                    <form method="POST" action="{{ route('tenant.programs.members.partners.status', [$tenant->id, $program->id, $membership->id]) }}" class="inline">
+                                        @csrf
+                                        <input type="hidden" name="status" value="{{ $next }}">
+                                        <button type="submit" class="btn btn-ghost btn-xs">{{ ucfirst($next) }}</button>
+                                    </form>
+                                    @endforeach
+                                    @endcan
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No partners yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                {{ $partnerMemberships?->links() }}
+            </div>
+        </div>
+
+        {{-- ── Settings tab ──────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'settings'" x-cloak class="p-6 max-w-4xl mx-auto space-y-6">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+
+            <form method="POST"
+                  action="{{ route('tenant.programs.update', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false }" @submit="submitting = true"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf @method('PATCH')
+
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">Attribution &amp; eligibility</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Attribution model</label>
+                            <select name="attribution_model" class="input w-full">
+                                @foreach(['first_touch','last_touch','manual','code','link','deal_registration'] as $model)
+                                <option value="{{ $model }}" {{ $program->attribution_model === $model ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ',$model)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Attribution window (days)</label>
+                            <input type="number" name="attribution_window_days" min="1" max="365"
+                                   value="{{ old('attribution_window_days', $program->attribution_window_days) }}" class="input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referral expiry (days)</label>
+                            <input type="number" name="referral_expiry_days" min="1" max="730"
+                                   value="{{ old('referral_expiry_days', $program->referral_expiry_days) }}" class="input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Duplicate referral policy</label>
+                            <select name="duplicate_referral_policy" class="input w-full">
+                                @foreach(['reject','allow','flag'] as $policy)
+                                <option value="{{ $policy }}" {{ $program->duplicate_referral_policy === $policy ? 'selected' : '' }}>{{ ucfirst($policy) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Organization uniqueness</label>
+                            <select name="organization_uniqueness_policy" class="input w-full">
+                                <option value="one_per_org"    {{ $program->organization_uniqueness_policy === 'one_per_org'    ? 'selected' : '' }}>One referral per organization</option>
+                                <option value="allow_multiple" {{ $program->organization_uniqueness_policy === 'allow_multiple' ? 'selected' : '' }}>Allow multiple</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Existing customer policy</label>
+                            <select name="existing_customer_policy" class="input w-full">
+                                @foreach(['reject','allow','flag'] as $policy)
+                                <option value="{{ $policy }}" {{ $program->existing_customer_policy === $policy ? 'selected' : '' }}>{{ ucfirst($policy) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Self-referral policy</label>
+                            <select name="self_referral_policy" class="input w-full">
+                                @foreach(['reject','allow'] as $policy)
+                                <option value="{{ $policy }}" {{ $program->self_referral_policy === $policy ? 'selected' : '' }}>{{ ucfirst($policy) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">Locale</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                            <select name="default_currency" class="input w-full">
+                                @foreach(['PHP'=>'Philippine Peso','USD'=>'US Dollar','EUR'=>'Euro','GBP'=>'British Pound','SGD'=>'Singapore Dollar','AUD'=>'Australian Dollar','CAD'=>'Canadian Dollar','JPY'=>'Japanese Yen'] as $code => $label)
+                                <option value="{{ $code }}" {{ $program->default_currency === $code ? 'selected' : '' }}>{{ $code }} — {{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                            <select name="timezone" class="input w-full">
+                                @foreach(['Asia/Manila','Asia/Singapore','Asia/Hong_Kong','Asia/Tokyo','Australia/Sydney','Europe/London','America/New_York','America/Los_Angeles','UTC'] as $tz)
+                                <option value="{{ $tz }}" {{ $program->timezone === $tz ? 'selected' : '' }}>{{ $tz }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">Enrollment &amp; referral windows</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Enrollment opens</label>
+                            <input type="datetime-local" name="enrollment_opens_at"
+                                   value="{{ old('enrollment_opens_at', $program->enrollment_opens_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Enrollment closes</label>
+                            <input type="datetime-local" name="enrollment_closes_at"
+                                   value="{{ old('enrollment_closes_at', $program->enrollment_closes_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referral period opens</label>
+                            <input type="datetime-local" name="referral_period_opens_at"
+                                   value="{{ old('referral_period_opens_at', $program->referral_period_opens_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referral period closes</label>
+                            <input type="datetime-local" name="referral_period_closes_at"
+                                   value="{{ old('referral_period_closes_at', $program->referral_period_closes_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+                    @can('update', $program)
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Saving…' : 'Save changes'"></button>
+                    @endcan
+                </div>
+            </form>
+        </div>
+
+        {{-- ── Offers tab ────────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'offers'" x-cloak class="p-6 max-w-4xl mx-auto space-y-6">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+            @if($errors->any())
+            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+            </div>
+            @endif
+
+            @can('update', $program)
+            <form method="POST" action="{{ route('tenant.programs.offers.store', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false, rewardModel: 'fixed' }" @submit="submitting = true"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">New offer</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input type="text" name="name" class="input w-full" maxlength="120" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Code (optional)</label>
+                            <input type="text" name="code" class="input w-full" maxlength="60">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                            <select name="visibility" class="input w-full">
+                                <option value="public">Public</option>
+                                <option value="group_only">Group only</option>
+                                <option value="hidden">Hidden</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Reward model</label>
+                            <select name="reward_model" class="input w-full" x-model="rewardModel">
+                                <option value="fixed">Fixed amount</option>
+                                <option value="percentage">Percentage</option>
+                            </select>
+                        </div>
+                        <div x-show="rewardModel === 'fixed'">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fixed amount</label>
+                            <input type="number" name="fixed_amount" min="0" step="0.01" class="input w-full">
+                        </div>
+                        <div x-show="rewardModel === 'percentage'" x-cloak>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Percentage rate</label>
+                            <input type="number" name="percentage_rate" min="0" max="100" step="0.01" class="input w-full">
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Creating…' : 'Create offer'"></button>
+                </div>
+            </form>
+            @endcan
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Name</th>
+                            <th class="px-4 py-2">Code</th>
+                            <th class="px-4 py-2">Reward</th>
+                            <th class="px-4 py-2">Visibility</th>
+                            <th class="px-4 py-2">Status</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($offers ?? [] as $offer)
+                        <tr>
+                            <td class="px-4 py-3">{{ $offer->name }}</td>
+                            <td class="px-4 py-3 text-gray-500">{{ $offer->code ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-500">
+                                @if($offer->currentVersion)
+                                    {{ $offer->currentVersion->reward_model === 'fixed'
+                                        ? $offer->currentVersion->currency . ' ' . $offer->currentVersion->fixed_amount
+                                        : $offer->currentVersion->percentage_rate . '%' }}
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-gray-500">{{ str_replace('_', ' ', ucfirst($offer->visibility)) }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    {{ $offer->status === 'active'   ? 'bg-green-100 text-green-700' : '' }}
+                                    {{ $offer->status === 'inactive' ? 'bg-gray-100 text-gray-600'   : '' }}
+                                    {{ $offer->status === 'archived' ? 'bg-red-100 text-red-700'     : '' }}">
+                                    {{ ucfirst($offer->status) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                @can('update', $program)
+                                <form method="POST" action="{{ route('tenant.programs.offers.update', [$tenant->id, $program->id, $offer->id]) }}" class="inline">
+                                    @csrf @method('PATCH')
+                                    <select name="status" onchange="this.form.submit()" class="input input-sm">
+                                        <option value="active"   {{ $offer->status === 'active'   ? 'selected' : '' }}>Active</option>
+                                        <option value="inactive" {{ $offer->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                        <option value="archived" {{ $offer->status === 'archived' ? 'selected' : '' }}>Archived</option>
+                                    </select>
+                                </form>
+                                @endcan
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No offers yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if($tabKey !== 'overview')
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>

@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -38,8 +38,36 @@ class ProgramWorkspaceController extends Controller
 
         $activeTab = $this->resolveTab($request->query('tab'));
 
+        $referrerMemberships = $partnerMemberships = $offers = $tenantResellers = $tenantPartners = null;
+
+        if ($activeTab === 'members') {
+            $referrerMemberships = $program->referrerMemberships()
+                ->with(['reseller:id,name,email', 'group:id,name'])
+                ->latest('joined_at')
+                ->paginate(20, ['*'], 'referrers');
+
+            $partnerMemberships = $program->partnerMemberships()
+                ->with(['partner:id,first_name,last_name,email', 'group:id,name'])
+                ->latest('joined_at')
+                ->paginate(20, ['*'], 'partners');
+
+            $tenantResellers = \App\Models\Reseller::where('tenant_id', $tenantId)
+                ->orderBy('name')->get(['id', 'name', 'email']);
+            $tenantPartners = \App\Models\Partner::where('tenant_id', $tenantId)
+                ->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'email']);
+        }
+
+        if ($activeTab === 'offers') {
+            $offers = $program->offers()
+                ->with('currentVersion')
+                ->latest()
+                ->get();
+        }
+
         return view('tenant.programs.workspace', compact(
-            'tenant', 'program', 'activeTab'
+            'tenant', 'program', 'activeTab',
+            'referrerMemberships', 'partnerMemberships', 'offers',
+            'tenantResellers', 'tenantPartners'
         ));
     }
 
@@ -62,12 +90,17 @@ class ProgramWorkspaceController extends Controller
             'attribution_window_days'    => ['sometimes', 'integer', 'min:1', 'max:365'],
             'referral_expiry_days'       => ['nullable', 'integer', 'min:1', 'max:730'],
             'duplicate_referral_policy'  => ['sometimes', 'in:reject,allow,flag'],
+            'organization_uniqueness_policy' => ['sometimes', 'in:one_per_org,allow_multiple'],
             'existing_customer_policy'   => ['sometimes', 'in:reject,allow,flag'],
             'self_referral_policy'       => ['sometimes', 'in:reject,allow'],
             'timezone'                   => ['sometimes', 'timezone'],
             'default_currency'           => ['sometimes', 'string', 'size:3'],
             'starts_at'                  => ['nullable', 'date'],
             'ends_at'                    => ['nullable', 'date', 'after:starts_at'],
+            'enrollment_opens_at'        => ['nullable', 'date'],
+            'enrollment_closes_at'       => ['nullable', 'date', 'after:enrollment_opens_at'],
+            'referral_period_opens_at'   => ['nullable', 'date'],
+            'referral_period_closes_at'  => ['nullable', 'date', 'after:referral_period_opens_at'],
             'evergreen'                  => ['sometimes', 'boolean'],
         ]);
 

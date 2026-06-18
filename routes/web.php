@@ -405,6 +405,16 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::post('/{programId}/end',                   [\App\Http\Controllers\Web\ProgramController::class, 'end'])->middleware('throttle:10,1')->name('end');
         Route::post('/{programId}/archive',               [\App\Http\Controllers\Web\ProgramController::class, 'archive'])->middleware('throttle:10,1')->name('archive');
         Route::delete('/{programId}',                     [\App\Http\Controllers\Web\ProgramController::class, 'destroy'])->middleware('throttle:10,1')->name('destroy');
+
+        // Members tab
+        Route::post('/{programId}/members/referrers',                       [\App\Http\Controllers\Web\ProgramMembershipController::class, 'attachReferrer'])->middleware('throttle:30,1')->name('members.referrers.attach');
+        Route::post('/{programId}/members/partners',                        [\App\Http\Controllers\Web\ProgramMembershipController::class, 'attachPartner'])->middleware('throttle:30,1')->name('members.partners.attach');
+        Route::post('/{programId}/members/referrers/{membershipId}/status', [\App\Http\Controllers\Web\ProgramMembershipController::class, 'transitionReferrer'])->middleware('throttle:30,1')->name('members.referrers.status');
+        Route::post('/{programId}/members/partners/{membershipId}/status',  [\App\Http\Controllers\Web\ProgramMembershipController::class, 'transitionPartner'])->middleware('throttle:30,1')->name('members.partners.status');
+
+        // Offers tab
+        Route::post('/{programId}/offers',                [\App\Http\Controllers\Web\ProgramOfferController::class, 'store'])->middleware('throttle:20,1')->name('offers.store');
+        Route::patch('/{programId}/offers/{offerId}',      [\App\Http\Controllers\Web\ProgramOfferController::class, 'update'])->middleware('throttle:30,1')->name('offers.update');
     });
 
     // ── Export Approval Center ────────────────────────────────────
