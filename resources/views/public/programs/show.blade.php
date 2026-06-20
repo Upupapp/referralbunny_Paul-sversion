@@ -42,7 +42,7 @@
                 @if($program->status === 'active')
                     @if($program->application_mode !== 'invite_only')
                     <div class="pt-4">
-                        <p class="text-sm text-gray-500 mb-3">Interested in joining? Contact {{ $tenant->name }} to learn more.</p>
+                        <p class="text-sm text-gray-500 mb-3">{{ $program->public_cta_text ?: "Interested in joining? Contact {$tenant->name} to learn more." }}</p>
                     </div>
                     @endif
                 @elseif($program->status === 'scheduled')

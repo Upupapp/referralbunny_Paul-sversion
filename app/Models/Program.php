@@ -26,7 +26,7 @@ class Program extends Model
         'starts_at', 'ends_at',
         'enrollment_opens_at', 'enrollment_closes_at',
         'referral_period_opens_at', 'referral_period_closes_at',
-        'evergreen', 'public_visibility',
+        'evergreen', 'public_visibility', 'public_cta_text',
         'application_mode', 'approval_mode',
         'attribution_model', 'attribution_window_days',
         'referral_expiry_days',

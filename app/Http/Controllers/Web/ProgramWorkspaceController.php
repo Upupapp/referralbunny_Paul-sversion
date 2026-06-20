@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -166,6 +166,7 @@ class ProgramWorkspaceController extends Controller
             'full_description'           => ['nullable', 'string', 'max:5000'],
             'program_type'               => ['sometimes', 'in:' . implode(',', Program::allTypes())],
             'public_visibility'          => ['sometimes', 'in:private,unlisted,public'],
+            'public_cta_text'            => ['nullable', 'string', 'max:160'],
             'application_mode'           => ['sometimes', 'in:invite_only,application,both,direct,import,api'],
             'approval_mode'              => ['sometimes', 'in:manual,auto'],
             'attribution_model'          => ['sometimes', 'in:first_touch,last_touch,manual,code,link,deal_registration'],

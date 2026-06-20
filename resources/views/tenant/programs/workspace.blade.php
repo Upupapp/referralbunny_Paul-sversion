@@ -988,9 +988,63 @@
             {{ $programNotifications?->links() }}
         </div>
 
+        {{-- ── Public Page tab ───────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'public-page'" x-cloak class="p-6 max-w-3xl mx-auto space-y-6">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+                <div>
+                    <h2 class="text-base font-semibold text-heading">Live public page</h2>
+                    @if($tenant->slug && $program->slug)
+                    <div class="mt-2 flex items-center gap-2">
+                        <input type="text" readonly
+                               value="{{ route('public.programs.show', [$tenant->slug, $program->slug]) }}"
+                               class="input w-full font-mono text-xs" onclick="this.select()">
+                        <a href="{{ route('public.programs.show', [$tenant->slug, $program->slug]) }}" target="_blank"
+                           class="btn btn-ghost btn-sm whitespace-nowrap">Open ↗</a>
+                    </div>
+                    @else
+                    <p class="text-sm text-gray-400 mt-2">A live URL isn't available yet — both the tenant and program need a slug.</p>
+                    @endif
+                </div>
+
+                <div class="pt-2 border-t border-gray-100">
+                    <p class="text-xs text-gray-500">
+                        Visibility: <span class="font-medium text-gray-700">{{ ucfirst($program->public_visibility) }}</span>
+                        — change this on the
+                        <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}?tab=overview" class="underline">Overview tab</a>.
+                    </p>
+                </div>
+            </div>
+
+            <form method="POST"
+                  action="{{ route('tenant.programs.update', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false }" @submit="submitting = true"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf @method('PATCH')
+
+                <div class="p-6 space-y-3">
+                    <h2 class="text-base font-semibold text-heading">Call-to-action text</h2>
+                    <p class="text-xs text-gray-500">Shown on the public page instead of the default "Interested in joining? Contact {{ $tenant->name }} to learn more."</p>
+                    <textarea name="public_cta_text" rows="2" maxlength="160"
+                              class="input w-full resize-none"
+                              placeholder="e.g. Apply now — spots are limited!">{{ old('public_cta_text', $program->public_cta_text) }}</textarea>
+                </div>
+
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+                    @can('update', $program)
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Saving…' : 'Save changes'"></button>
+                    @endcan
+                </div>
+            </form>
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>
