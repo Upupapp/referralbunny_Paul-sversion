@@ -7,6 +7,7 @@ use App\Models\MemberActionItem;
 use App\Models\PartnerProgramMembership;
 use App\Models\Program;
 use App\Models\ProgramContract;
+use App\Models\ProgramOfferVersion;
 use App\Models\ReferrerProgramMembership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,8 +47,19 @@ class ProgramContractController extends Controller
         $data = $request->validate([
             'membership_type'  => ['required', 'in:referrer,partner'],
             'membership_id'    => ['required', 'string'],
+            // 'exists' alone only checks the row is present anywhere — it does NOT
+            // confirm the offer version belongs to this program. Scope it below.
             'offer_version_id' => ['nullable', 'string', 'exists:program_offer_versions,id'],
         ]);
+
+        if (!empty($data['offer_version_id'])) {
+            abort_unless(
+                ProgramOfferVersion::where('id', $data['offer_version_id'])
+                    ->where('program_id', $program->id)
+                    ->exists(),
+                404
+            );
+        }
 
         $membership = $this->resolveMembership($program, $data['membership_type'], $data['membership_id']);
 

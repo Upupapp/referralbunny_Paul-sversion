@@ -169,6 +169,44 @@ class ProgramContractTest extends TestCase
             ->assertStatus(404);
     }
 
+    public function test_proposing_contract_with_offer_version_from_another_program_is_rejected(): void
+    {
+        $otherProgram = Program::create([
+            'tenant_id'    => self::TENANT_ID,
+            'name'         => 'Other Program',
+            'program_type' => 'referral',
+            'status'       => 'active',
+        ]);
+        $offer = \App\Models\ProgramOffer::create([
+            'tenant_id'  => self::TENANT_ID,
+            'program_id' => $otherProgram->id,
+            'name'       => 'Other Program Offer',
+            'status'     => 'active',
+            'visibility' => 'public',
+        ]);
+        $version = \App\Models\ProgramOfferVersion::create([
+            'tenant_id'      => self::TENANT_ID,
+            'program_id'     => $otherProgram->id,
+            'offer_id'       => $offer->id,
+            'version_number' => 1,
+            'status'         => 'published',
+            'reward_model'   => 'fixed',
+            'fixed_amount'   => 100,
+        ]);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.contracts.propose', [self::TENANT_ID, $this->program->id]), [
+                'membership_type'  => 'referrer',
+                'membership_id'    => $this->referrerMembershipId,
+                'offer_version_id' => $version->id,
+            ])
+            ->assertStatus(404);
+
+        $this->assertDatabaseMissing('program_contracts', [
+            'membership_id' => $this->referrerMembershipId,
+        ]);
+    }
+
     // ── transition ────────────────────────────────────────────────────────────
 
     public function test_owner_can_transition_proposed_contract_to_active(): void
