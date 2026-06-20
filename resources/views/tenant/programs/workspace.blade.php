@@ -1003,7 +1003,7 @@
                         <input type="text" readonly
                                value="{{ route('public.programs.show', [$tenant->slug, $program->slug]) }}"
                                class="input w-full font-mono text-xs" onclick="this.select()">
-                        <a href="{{ route('public.programs.show', [$tenant->slug, $program->slug]) }}" target="_blank"
+                        <a href="{{ route('public.programs.show', [$tenant->slug, $program->slug]) }}" target="_blank" rel="noopener noreferrer"
                            class="btn btn-ghost btn-sm whitespace-nowrap">Open ↗</a>
                     </div>
                     @else
