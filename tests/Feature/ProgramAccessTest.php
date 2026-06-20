@@ -97,6 +97,36 @@ class ProgramAccessTest extends TestCase
         $this->assertFalse($service->can($membership, 'manage_programs'));
     }
 
+    public function test_member_without_view_programs_gets_403_on_access_tab(): void
+    {
+        $member = $this->makeMember('member');
+
+        $this->actingAs($member, 'tenant')
+            ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=access')
+            ->assertStatus(403);
+    }
+
+    public function test_membership_from_another_tenant_never_appears_in_access_list(): void
+    {
+        $owner = $this->makeMember('owner');
+
+        $otherTenant = Tenant::create(['id' => 'test-access-other', 'name' => 'Other Tenant', 'status' => 'active']);
+        $otherUser   = $this->makeTenantUser('other-tenant-user@access-test.com');
+        TenantMembership::create([
+            'id'             => (string) Str::uuid(),
+            'tenant_id'      => $otherTenant->id,
+            'tenant_user_id' => $otherUser->id,
+            'role'           => 'owner',
+            'status'         => 'active',
+        ]);
+
+        $response = $this->actingAs($owner, 'tenant')
+            ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=access');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('other-tenant-user@access-test.com');
+    }
+
     public function test_suspended_membership_excluded_from_access_list(): void
     {
         $owner = $this->makeMember('owner');
