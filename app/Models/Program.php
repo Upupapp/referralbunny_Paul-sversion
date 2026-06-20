@@ -131,6 +131,11 @@ class Program extends Model
         return $this->hasMany(MemberActionItem::class);
     }
 
+    public function requestForms(): HasMany
+    {
+        return $this->hasMany(RequestForm::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     public function scopeForTenant($query, string $tenantId)

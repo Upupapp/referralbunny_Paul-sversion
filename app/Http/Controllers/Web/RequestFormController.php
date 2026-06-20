@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Program;
 use App\Models\RequestForm;
 use App\Models\RequestFormField;
 use App\Models\RequestFormRecipientOption;
@@ -58,13 +59,21 @@ class RequestFormController extends Controller
 
     // ── Create / Store ────────────────────────────────────────────────────────
 
-    public function create(string $tenantId): \Illuminate\View\View
+    public function create(Request $request, string $tenantId): \Illuminate\View\View
     {
         $this->authorizeAdmin($tenantId);
-        $tenant      = Tenant::findOrFail($tenantId);
+        $tenant = Tenant::findOrFail($tenantId);
+
+        $programId = $request->query('program_id');
+        if ($programId) {
+            // Never trust the query param blindly — confirm it belongs to this tenant.
+            // Resolved before eligibleRecipients() so a bad id fails fast.
+            $programId = Program::forTenant($tenantId)->findOrFail($programId)->id;
+        }
+
         $teamMembers = $this->eligibleRecipients($tenantId);
 
-        return view('tenant.request-forms.create', compact('tenant', 'teamMembers'));
+        return view('tenant.request-forms.create', compact('tenant', 'teamMembers', 'programId'));
     }
 
     public function store(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
@@ -75,6 +84,7 @@ class RequestFormController extends Controller
             'title'                     => 'required|string|max:120',
             'description'               => 'nullable|string|max:500',
             'success_message'           => 'nullable|string|max:300',
+            'program_id'                => 'nullable|string',
             'allow_multiple_recipients' => 'boolean',
             'max_recipients'            => 'integer|min:1|max:10',
             'fields'                    => 'required|array|min:1',
@@ -94,9 +104,17 @@ class RequestFormController extends Controller
 
         [$actorType, $actorId] = $this->resolveActor();
 
-        try { $form = DB::transaction(function () use ($data, $tenantId, $actorType, $actorId, $request) {
+        // 'nullable|string' alone doesn't confirm tenant ownership — never trust
+        // a client-supplied program_id without re-deriving it from this tenant.
+        $programId = null;
+        if (!empty($data['program_id'])) {
+            $programId = Program::forTenant($tenantId)->findOrFail($data['program_id'])->id;
+        }
+
+        try { $form = DB::transaction(function () use ($data, $tenantId, $programId, $actorType, $actorId, $request) {
             $form = RequestForm::create([
                 'tenant_id'                 => $tenantId,
+                'program_id'                => $programId,
                 'created_by_type'           => $actorType,
                 'created_by_id'             => $actorId,
                 'title'                     => $data['title'],

@@ -1042,9 +1042,62 @@
             </form>
         </div>
 
+        {{-- ── Intake tab ────────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'intake'" x-cloak class="p-6 max-w-4xl mx-auto space-y-4">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+
+            @can('managePeople', $program)
+            <div class="flex justify-end">
+                <a href="{{ route('tenant.request-forms.create', $tenant->id) }}?program_id={{ $program->id }}"
+                   class="btn btn-primary btn-sm">New intake form</a>
+            </div>
+            @endcan
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Form</th>
+                            <th class="px-4 py-2">Status</th>
+                            <th class="px-4 py-2">Responses</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($intakeForms ?? [] as $form)
+                        <tr>
+                            <td class="px-4 py-3">{{ $form->title }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    {{ $form->status === 'published'   ? 'bg-green-100 text-green-700' : '' }}
+                                    {{ $form->status === 'draft'       ? 'bg-gray-100 text-gray-600'   : '' }}
+                                    {{ $form->status === 'unpublished' ? 'bg-amber-100 text-amber-700' : '' }}
+                                    {{ $form->status === 'archived'    ? 'bg-red-100 text-red-700'     : '' }}">
+                                    {{ ucfirst($form->status) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-500">{{ $form->submissions_count }}</td>
+                            <td class="px-4 py-3 text-right space-x-2">
+                                <a href="{{ route('tenant.request-forms.submissions', [$tenant->id, $form->id]) }}" class="text-sm text-blue-600 hover:underline">View responses</a>
+                                @can('managePeople', $program)
+                                <a href="{{ route('tenant.request-forms.edit', [$tenant->id, $form->id]) }}" class="text-sm text-blue-600 hover:underline">Edit</a>
+                                @endcan
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No intake forms yet for this program.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>

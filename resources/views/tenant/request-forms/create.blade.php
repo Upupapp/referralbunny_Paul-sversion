@@ -74,6 +74,9 @@
 
     <form method="POST" action="{{ route('tenant.request-forms.store', $tenant->id) }}" @submit.prevent="submitForm($event)">
         @csrf
+        @if($programId ?? null)
+        <input type="hidden" name="program_id" value="{{ $programId }}">
+        @endif
 
         {{-- ── Two-column grid ──────────────────────────────────────────────── --}}
         <div class="rf-create-grid" style="display:grid;grid-template-columns:1fr 280px;gap:22px;align-items:start">

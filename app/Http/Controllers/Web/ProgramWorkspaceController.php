@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -110,6 +110,11 @@ class ProgramWorkspaceController extends Controller
             $analytics = app(ProgramAnalyticsService::class)->compute($program);
         }
 
+        $intakeForms = null;
+        if ($activeTab === 'intake') {
+            $intakeForms = $program->requestForms()->withCount('submissions')->latest()->get();
+        }
+
         $accessRows = null;
         if ($activeTab === 'access') {
             $permissionService = new PermissionService();
@@ -149,7 +154,8 @@ class ProgramWorkspaceController extends Controller
             'contracts', 'actionItems', 'referrerMembershipsById', 'partnerMembershipsById',
             'programReferrerMemberships', 'programPartnerMemberships',
             'analytics', 'accessRows',
-            'programNotifications', 'notificationRecipientsById'
+            'programNotifications', 'notificationRecipientsById',
+            'intakeForms'
         ));
     }
 
