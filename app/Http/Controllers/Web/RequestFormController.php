@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Services\TenantContext;
+use App\Support\ProtectedTenants;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +69,11 @@ class RequestFormController extends Controller
         if ($programId) {
             // Never trust the query param blindly — confirm it belongs to this
             // tenant and isn't archived. Resolved before eligibleRecipients()
-            // so a bad id fails fast.
+            // so a bad id fails fast. Protected tenants (lgu-ids) must never
+            // get a program_id resolved here either, even though Programs V4
+            // itself is already blocked for them by ProgramPolicy -- this is
+            // the same choke point applied to this side door.
+            abort_if(ProtectedTenants::isProtected($tenantId), 404);
             $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($programId)->id;
         }
 
@@ -109,6 +114,11 @@ class RequestFormController extends Controller
         // a client-supplied program_id without re-deriving it from this tenant.
         // Archived programs are excluded -- a program that's done shouldn't
         // accept new intake forms.
+        // Same protected-tenant choke point as create() -- a side door into
+        // Program-linked data must not exist just because this controller
+        // predates Programs V4's ProgramPolicy guardrail.
+        abort_if(!empty($data['program_id']) && ProtectedTenants::isProtected($tenantId), 404);
+
         $programId = null;
         if (!empty($data['program_id'])) {
             $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($data['program_id'])->id;

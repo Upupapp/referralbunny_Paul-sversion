@@ -21,12 +21,15 @@ use Tests\TestCase;
  */
 class RequestFormProgramScopingTest extends TestCase
 {
-    private const TENANT_ID    = 'test-rf-scoping-tenant';
-    private const OTHER_TENANT = 'test-rf-scoping-other';
+    private const TENANT_ID        = 'test-rf-scoping-tenant';
+    private const OTHER_TENANT     = 'test-rf-scoping-other';
+    private const PROTECTED_TENANT = 'lgu-ids';
 
     private Tenant     $tenant;
     private TenantUser $ownerUser;
     private Program    $program;
+    private TenantUser $protectedOwnerUser;
+    private Program    $protectedProgram;
 
     protected function setUp(): void
     {
@@ -108,6 +111,29 @@ class RequestFormProgramScopingTest extends TestCase
 
         $this->actingAs($this->ownerUser, 'tenant')
             ->get(route('tenant.request-forms.create', self::TENANT_ID) . '?program_id=' . $this->program->id)
+            ->assertStatus(404);
+    }
+
+    public function test_protected_tenant_program_id_is_rejected_on_store(): void
+    {
+        // RequestFormController predates Programs V4's ProtectedTenants
+        // guardrail in ProgramPolicy -- this is the same choke point applied
+        // to this side door, so an lgu-ids program_id must be rejected here too.
+        $this->actingAs($this->protectedOwnerUser, 'tenant')
+            ->post(route('tenant.request-forms.store', self::PROTECTED_TENANT), $this->storePayload([
+                'program_id' => $this->protectedProgram->id,
+            ]))
+            ->assertStatus(404);
+
+        $this->assertDatabaseMissing('request_forms', [
+            'title' => 'Test Intake Form',
+        ]);
+    }
+
+    public function test_protected_tenant_program_id_is_rejected_on_create_page(): void
+    {
+        $this->actingAs($this->protectedOwnerUser, 'tenant')
+            ->get(route('tenant.request-forms.create', self::PROTECTED_TENANT) . '?program_id=' . $this->protectedProgram->id)
             ->assertStatus(404);
     }
 
@@ -298,6 +324,33 @@ class RequestFormProgramScopingTest extends TestCase
         $this->program = Program::create([
             'tenant_id'    => self::TENANT_ID,
             'name'         => 'Test Program',
+            'program_type' => 'referral',
+            'status'       => 'active',
+        ]);
+
+        Tenant::create([
+            'id'     => self::PROTECTED_TENANT,
+            'name'   => 'LGU IDS',
+            'status' => 'active',
+        ]);
+
+        $this->protectedOwnerUser = TenantUser::create([
+            'id'       => (string) Str::uuid(),
+            'email'    => 'owner@protected-rf-scoping-test.com',
+            'password' => bcrypt('password'),
+            'status'   => 'active',
+        ]);
+        TenantMembership::create([
+            'id'             => (string) Str::uuid(),
+            'tenant_id'      => self::PROTECTED_TENANT,
+            'tenant_user_id' => $this->protectedOwnerUser->id,
+            'role'           => 'owner',
+            'status'         => 'active',
+        ]);
+
+        $this->protectedProgram = Program::create([
+            'tenant_id'    => self::PROTECTED_TENANT,
+            'name'         => 'Protected Tenant Program',
             'program_type' => 'referral',
             'status'       => 'active',
         ]);
