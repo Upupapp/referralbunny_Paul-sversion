@@ -6,6 +6,7 @@ use App\Models\Program;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
+use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
@@ -32,6 +33,7 @@ class ProgramProtectedTenantTest extends TestCase
 
     private TenantUser $protectedOwnerUser;
     private TenantUser $normalOwnerUser;
+    private User       $superAdminUser;
     private Program    $protectedProgram;
 
     protected function setUp(): void
@@ -74,6 +76,29 @@ class ProgramProtectedTenantTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_super_admin_cannot_view_lgu_ids_program_workspace(): void
+    {
+        // The guardrail must block even the platform Super Admin (web guard),
+        // who otherwise bypasses every other ProgramPolicy check unconditionally.
+        $this->actingAs($this->superAdminUser, 'web')
+            ->get(route('tenant.programs.workspace', [self::PROTECTED_TENANT_ID, $this->protectedProgram->id]))
+            ->assertStatus(403);
+    }
+
+    public function test_super_admin_unaffected_by_guardrail_on_normal_tenant(): void
+    {
+        $program = Program::create([
+            'tenant_id'    => self::NORMAL_TENANT_ID,
+            'name'         => 'Normal Program For SA',
+            'program_type' => 'referral',
+            'status'       => 'draft',
+        ]);
+
+        $this->actingAs($this->superAdminUser, 'web')
+            ->get(route('tenant.programs.workspace', [self::NORMAL_TENANT_ID, $program->id]))
+            ->assertStatus(200);
+    }
+
     public function test_normal_tenant_owner_unaffected_by_guardrail(): void
     {
         $program = Program::create([
@@ -104,6 +129,15 @@ class ProgramProtectedTenantTest extends TestCase
             $table->string('email')->unique();
             $table->string('password');
             $table->string('status')->default('active');
+            $table->string('remember_token')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
             $table->string('remember_token')->nullable();
             $table->timestamps();
         });
@@ -146,6 +180,7 @@ class ProgramProtectedTenantTest extends TestCase
         Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('programs');
         Schema::dropIfExists('tenant_memberships');
+        Schema::dropIfExists('users');
         Schema::dropIfExists('tenant_users');
         Schema::dropIfExists('tenants');
     }
@@ -181,6 +216,12 @@ class ProgramProtectedTenantTest extends TestCase
             'tenant_user_id' => $this->normalOwnerUser->id,
             'role'           => 'owner',
             'status'         => 'active',
+        ]);
+
+        $this->superAdminUser = User::create([
+            'name'     => 'Test Super Admin',
+            'email'    => 'superadmin@protected-test.com',
+            'password' => bcrypt('password'),
         ]);
 
         $this->protectedProgram = Program::create([
