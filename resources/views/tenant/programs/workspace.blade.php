@@ -901,7 +901,7 @@
                         @forelse($accessRows ?? [] as $row)
                         <tr>
                             <td class="px-4 py-3">
-                                {{ $row['membership']->tenantUser?->nickname ?: (trim(($row['membership']->tenantUser?->first_name ?? '') . ' ' . ($row['membership']->tenantUser?->last_name ?? '')) ?: '—') }}
+                                {{ $row['membership']->tenantUser?->display_name ?? '—' }}
                                 <div class="text-xs text-gray-400">{{ $row['membership']->tenantUser?->email }}</div>
                             </td>
                             <td class="px-4 py-3">
