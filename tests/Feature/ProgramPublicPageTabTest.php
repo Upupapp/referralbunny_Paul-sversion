@@ -25,6 +25,7 @@ class ProgramPublicPageTabTest extends TestCase
 
     private Tenant     $tenant;
     private TenantUser $ownerUser;
+    private TenantUser $managerUser;
     private Program    $program;
 
     protected function setUp(): void
@@ -52,6 +53,20 @@ class ProgramPublicPageTabTest extends TestCase
         $this->assertDatabaseHas('programs', [
             'id'               => $this->program->id,
             'public_cta_text'  => 'Apply now — spots are limited!',
+        ]);
+    }
+
+    public function test_manager_without_manage_programs_cannot_save_public_cta_text(): void
+    {
+        $this->actingAs($this->managerUser, 'tenant')
+            ->patch(route('tenant.programs.update', [self::TENANT_ID, $this->program->id]), [
+                'public_cta_text' => 'Apply now!',
+            ])
+            ->assertStatus(403);
+
+        $this->assertDatabaseMissing('programs', [
+            'id'              => $this->program->id,
+            'public_cta_text' => 'Apply now!',
         ]);
     }
 
@@ -168,6 +183,20 @@ class ProgramPublicPageTabTest extends TestCase
             'tenant_id'      => self::TENANT_ID,
             'tenant_user_id' => $this->ownerUser->id,
             'role'           => 'owner',
+            'status'         => 'active',
+        ]);
+
+        $this->managerUser = TenantUser::create([
+            'id'       => (string) Str::uuid(),
+            'email'    => 'manager@public-page-test.com',
+            'password' => bcrypt('password'),
+            'status'   => 'active',
+        ]);
+        TenantMembership::create([
+            'id'             => (string) Str::uuid(),
+            'tenant_id'      => self::TENANT_ID,
+            'tenant_user_id' => $this->managerUser->id,
+            'role'           => 'manager',
             'status'         => 'active',
         ]);
 

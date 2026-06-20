@@ -1028,8 +1028,8 @@
 
                 <div class="p-6 space-y-3">
                     <h2 class="text-base font-semibold text-heading">Call-to-action text</h2>
-                    <p class="text-xs text-gray-500">Shown on the public page instead of the default "Interested in joining? Contact {{ $tenant->name }} to learn more."</p>
-                    <textarea name="public_cta_text" rows="2" maxlength="160"
+                    <label for="public_cta_text" class="block text-xs text-gray-500">Shown on the public page instead of the default "Interested in joining? Contact {{ $tenant->name }} to learn more."</label>
+                    <textarea id="public_cta_text" name="public_cta_text" rows="2" maxlength="160"
                               class="input w-full resize-none"
                               placeholder="e.g. Apply now — spots are limited!">{{ old('public_cta_text', $program->public_cta_text) }}</textarea>
                 </div>
