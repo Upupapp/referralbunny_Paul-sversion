@@ -415,6 +415,14 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         // Offers tab
         Route::post('/{programId}/offers',                [\App\Http\Controllers\Web\ProgramOfferController::class, 'store'])->middleware('throttle:20,1')->name('offers.store');
         Route::patch('/{programId}/offers/{offerId}',      [\App\Http\Controllers\Web\ProgramOfferController::class, 'update'])->middleware('throttle:30,1')->name('offers.update');
+
+        // Contracts tab
+        Route::post('/{programId}/contracts',                     [\App\Http\Controllers\Web\ProgramContractController::class, 'propose'])->middleware('throttle:30,1')->name('contracts.propose');
+        Route::post('/{programId}/contracts/{contractId}/status', [\App\Http\Controllers\Web\ProgramContractController::class, 'transition'])->middleware('throttle:30,1')->name('contracts.status');
+
+        // Action Items tab
+        Route::post('/{programId}/action-items',                       [\App\Http\Controllers\Web\ProgramActionItemController::class, 'store'])->middleware('throttle:30,1')->name('action-items.store');
+        Route::post('/{programId}/action-items/{actionItemId}/status', [\App\Http\Controllers\Web\ProgramActionItemController::class, 'transition'])->middleware('throttle:30,1')->name('action-items.status');
     });
 
     // ── Export Approval Center ────────────────────────────────────

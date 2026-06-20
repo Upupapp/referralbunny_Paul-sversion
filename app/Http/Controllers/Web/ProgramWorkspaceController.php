@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\PartnerProgramMembership;
 use App\Models\Program;
+use App\Models\ReferrerProgramMembership;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Serves the program workspace shell and each workspace tab via AJAX or
@@ -19,7 +22,7 @@ use Illuminate\Http\Request;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -64,10 +67,45 @@ class ProgramWorkspaceController extends Controller
                 ->get();
         }
 
+        $contracts = $actionItems = $referrerMembershipsById = $partnerMembershipsById = null;
+        $programReferrerMemberships = $programPartnerMemberships = null;
+
+        if ($activeTab === 'contracts' || $activeTab === 'action-items') {
+            $programReferrerMemberships = $program->referrerMemberships()
+                ->whereIn('status', ['active', 'approved'])
+                ->with('reseller:id,name,email')
+                ->get();
+            $programPartnerMemberships = $program->partnerMemberships()
+                ->whereIn('status', ['active', 'approved'])
+                ->with('partner:id,first_name,last_name,email')
+                ->get();
+        }
+
+        if ($activeTab === 'contracts') {
+            $offers ??= $program->offers()->with('currentVersion')->latest()->get();
+
+            $contracts = $program->contracts()
+                ->with('offerVersion.offer')
+                ->latest('proposed_at')
+                ->paginate(20, ['*'], 'contracts');
+
+            [$referrerMembershipsById, $partnerMembershipsById] = $this->batchLoadMembershipNames($contracts);
+        }
+
+        if ($activeTab === 'action-items') {
+            $actionItems = $program->memberActionItems()
+                ->latest('due_at')
+                ->paginate(20, ['*'], 'action_items');
+
+            [$referrerMembershipsById, $partnerMembershipsById] = $this->batchLoadMembershipNames($actionItems);
+        }
+
         return view('tenant.programs.workspace', compact(
             'tenant', 'program', 'activeTab',
             'referrerMemberships', 'partnerMemberships', 'offers',
-            'tenantResellers', 'tenantPartners'
+            'tenantResellers', 'tenantPartners',
+            'contracts', 'actionItems', 'referrerMembershipsById', 'partnerMembershipsById',
+            'programReferrerMemberships', 'programPartnerMemberships'
         ));
     }
 
@@ -116,6 +154,41 @@ class ProgramWorkspaceController extends Controller
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * membership_type/membership_id on ProgramContract/MemberActionItem are
+     * loose columns (literal 'referrer'/'partner' strings), not a real
+     * Eloquent morphTo. Batch-fetch both membership tables by id instead of
+     * resolving a display name per row, to avoid N+1.
+     *
+     * @param iterable $rows Rows with membership_type/membership_id columns.
+     * @return array{0: Collection, 1: Collection}
+     */
+    private function batchLoadMembershipNames(iterable $rows): array
+    {
+        $referrerIds = [];
+        $partnerIds  = [];
+
+        foreach ($rows as $row) {
+            if ($row->membership_type === 'referrer') {
+                $referrerIds[] = $row->membership_id;
+            } else {
+                $partnerIds[] = $row->membership_id;
+            }
+        }
+
+        $referrerMembershipsById = ReferrerProgramMembership::with('reseller:id,name,email')
+            ->whereIn('id', $referrerIds)
+            ->get()
+            ->keyBy('id');
+
+        $partnerMembershipsById = PartnerProgramMembership::with('partner:id,first_name,last_name,email')
+            ->whereIn('id', $partnerIds)
+            ->get()
+            ->keyBy('id');
+
+        return [$referrerMembershipsById, $partnerMembershipsById];
+    }
 
     private function resolveTab(mixed $tab): string
     {

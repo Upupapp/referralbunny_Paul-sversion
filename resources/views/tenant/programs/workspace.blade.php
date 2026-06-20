@@ -564,9 +564,254 @@
             </div>
         </div>
 
+        {{-- ── Contracts & Action Items shared helpers ─────────────────────────── --}}
+        @php
+            $resolveMemberName = function ($row) use ($referrerMembershipsById, $partnerMembershipsById) {
+                if ($row->membership_type === 'referrer') {
+                    return (($referrerMembershipsById ?? [])[$row->membership_id] ?? null)?->reseller?->name ?? '—';
+                }
+                $partner = (($partnerMembershipsById ?? [])[$row->membership_id] ?? null)?->partner;
+                return $partner ? (trim($partner->first_name . ' ' . $partner->last_name) ?: '—') : '—';
+            };
+            $contractStatusBadge = fn (string $status) => match ($status) {
+                'active'              => 'bg-green-100 text-green-700',
+                'proposed'            => 'bg-blue-100 text-blue-700',
+                'declined', 'ended', 'expired' => 'bg-red-100 text-red-700',
+                default               => 'bg-gray-100 text-gray-600',
+            };
+            $contractTransitions = [
+                'proposed' => ['active', 'declined'],
+                'active'   => ['ended', 'superseded'],
+            ];
+        @endphp
+
+        {{-- ── Contracts tab ─────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'contracts'" x-cloak class="p-6 max-w-5xl mx-auto space-y-6" x-data="{ memberType: 'referrer' }">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+            @if($errors->any())
+            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+            </div>
+            @endif
+
+            @can('managePeople', $program)
+            <form method="POST" action="{{ route('tenant.programs.contracts.propose', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false }" @submit="submitting = true"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">Propose contract</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Member type</label>
+                            <select name="membership_type" class="input w-full" x-model="memberType">
+                                <option value="referrer">Referrer</option>
+                                <option value="partner">Partner</option>
+                            </select>
+                        </div>
+                        <div x-show="memberType === 'referrer'">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referrer</label>
+                            <select name="membership_id" class="input w-full">
+                                <option value="">Select a referrer…</option>
+                                @foreach($programReferrerMemberships ?? [] as $membership)
+                                <option value="{{ $membership->id }}">{{ $membership->reseller?->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div x-show="memberType === 'partner'" x-cloak>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Partner</label>
+                            <select name="membership_id" class="input w-full">
+                                <option value="">Select a partner…</option>
+                                @foreach($programPartnerMemberships ?? [] as $membership)
+                                <option value="{{ $membership->id }}">{{ trim(($membership->partner?->first_name ?? '') . ' ' . ($membership->partner?->last_name ?? '')) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Offer (optional)</label>
+                            <select name="offer_version_id" class="input w-full">
+                                <option value="">No offer</option>
+                                @foreach($offers ?? [] as $offer)
+                                    @if($offer->currentVersion)
+                                    <option value="{{ $offer->currentVersion->id }}">{{ $offer->name }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Proposing…' : 'Propose contract'"></button>
+                </div>
+            </form>
+            @endcan
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Member</th>
+                            <th class="px-4 py-2">Type</th>
+                            <th class="px-4 py-2">Status</th>
+                            <th class="px-4 py-2">Offer</th>
+                            <th class="px-4 py-2">Proposed</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($contracts ?? [] as $contract)
+                        <tr>
+                            <td class="px-4 py-3">{{ $resolveMemberName($contract) }}</td>
+                            <td class="px-4 py-3 text-gray-500">{{ ucfirst($contract->membership_type) }}</td>
+                            <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $contractStatusBadge($contract->status) }}">{{ ucfirst($contract->status) }}</span></td>
+                            <td class="px-4 py-3 text-gray-500">{{ $contract->offerVersion?->offer?->name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-500">{{ $contract->proposed_at?->format('M j, Y') ?? '—' }}</td>
+                            <td class="px-4 py-3 text-right">
+                                @can('managePeople', $program)
+                                @foreach($contractTransitions[$contract->status] ?? [] as $next)
+                                <form method="POST" action="{{ route('tenant.programs.contracts.status', [$tenant->id, $program->id, $contract->id]) }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="status" value="{{ $next }}">
+                                    <button type="submit" class="btn btn-ghost btn-xs">{{ ucfirst($next) }}</button>
+                                </form>
+                                @endforeach
+                                @endcan
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400">No contracts yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            {{ $contracts?->links() }}
+        </div>
+
+        {{-- ── Action Items tab ──────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'action-items'" x-cloak class="p-6 max-w-5xl mx-auto space-y-6" x-data="{ memberType: 'referrer' }">
+
+            @if(session('success'))
+            <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+            @endif
+            @if($errors->any())
+            <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+            </div>
+            @endif
+
+            @can('managePeople', $program)
+            <form method="POST" action="{{ route('tenant.programs.action-items.store', [$tenant->id, $program->id]) }}"
+                  x-data="{ submitting: false }" @submit="submitting = true"
+                  class="rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100">
+                @csrf
+                <div class="p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-heading">New action item</h2>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Member type</label>
+                            <select name="membership_type" class="input w-full" x-model="memberType">
+                                <option value="referrer">Referrer</option>
+                                <option value="partner">Partner</option>
+                            </select>
+                        </div>
+                        <div x-show="memberType === 'referrer'">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Referrer</label>
+                            <select name="membership_id" class="input w-full">
+                                <option value="">Select a referrer…</option>
+                                @foreach($programReferrerMemberships ?? [] as $membership)
+                                <option value="{{ $membership->id }}">{{ $membership->reseller?->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div x-show="memberType === 'partner'" x-cloak>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Partner</label>
+                            <select name="membership_id" class="input w-full">
+                                <option value="">Select a partner…</option>
+                                @foreach($programPartnerMemberships ?? [] as $membership)
+                                <option value="{{ $membership->id }}">{{ trim(($membership->partner?->first_name ?? '') . ' ' . ($membership->partner?->last_name ?? '')) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Action type</label>
+                            <select name="action_type" class="input w-full">
+                                @foreach(['accept_terms','review_contract','upload_document','complete_profile','resolve_application','acknowledge_program_ending'] as $type)
+                                <option value="{{ $type }}">{{ ucfirst(str_replace('_', ' ', $type)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Due (optional)</label>
+                            <input type="datetime-local" name="due_at" class="input w-full">
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+                    <button type="submit" class="btn btn-primary" :disabled="submitting" x-text="submitting ? 'Creating…' : 'Create action item'"></button>
+                </div>
+            </form>
+            @endcan
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Member</th>
+                            <th class="px-4 py-2">Action</th>
+                            <th class="px-4 py-2">Status</th>
+                            <th class="px-4 py-2">Due</th>
+                            <th class="px-4 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($actionItems ?? [] as $item)
+                        <tr>
+                            <td class="px-4 py-3">{{ $resolveMemberName($item) }}</td>
+                            <td class="px-4 py-3 text-gray-500">{{ ucfirst(str_replace('_', ' ', $item->action_type)) }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    {{ $item->status === 'pending'   ? 'bg-blue-100 text-blue-700'  : '' }}
+                                    {{ $item->status === 'completed' ? 'bg-green-100 text-green-700' : '' }}
+                                    {{ $item->status === 'dismissed' ? 'bg-gray-100 text-gray-600'  : '' }}
+                                    {{ $item->status === 'expired'   ? 'bg-red-100 text-red-700'    : '' }}">
+                                    {{ ucfirst($item->status) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 {{ $item->isOverdue() ? 'text-red-600 font-medium' : 'text-gray-500' }}">
+                                {{ $item->due_at?->format('M j, Y') ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                @can('managePeople', $program)
+                                @if($item->status === 'pending')
+                                <form method="POST" action="{{ route('tenant.programs.action-items.status', [$tenant->id, $program->id, $item->id]) }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="status" value="completed">
+                                    <button type="submit" class="btn btn-ghost btn-xs">Complete</button>
+                                </form>
+                                <form method="POST" action="{{ route('tenant.programs.action-items.status', [$tenant->id, $program->id, $item->id]) }}" class="inline">
+                                    @csrf
+                                    <input type="hidden" name="status" value="dismissed">
+                                    <button type="submit" class="btn btn-ghost btn-xs">Dismiss</button>
+                                </form>
+                                @endif
+                                @endcan
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No action items yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            {{ $actionItems?->links() }}
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>
