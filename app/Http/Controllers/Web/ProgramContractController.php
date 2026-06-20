@@ -142,7 +142,8 @@ class ProgramContractController extends Controller
             if ($data['status'] === 'active') {
                 $membership->update(['active_contract_id' => $contract->id]);
 
-                ProgramContract::where('program_id', $program->id)
+                ProgramContract::where('tenant_id', $contract->tenant_id)
+                    ->where('program_id', $program->id)
                     ->where('membership_type', $contract->membership_type)
                     ->where('membership_id', $contract->membership_id)
                     ->where('status', 'active')
@@ -150,12 +151,13 @@ class ProgramContractController extends Controller
                     ->update(['status' => 'superseded']);
             }
 
-            if ($data['status'] === 'ended' && $membership->active_contract_id === $contract->id) {
+            if (in_array($data['status'], ['ended', 'superseded'], true) && $membership->active_contract_id === $contract->id) {
                 $membership->update(['active_contract_id' => null]);
             }
 
             if (in_array($data['status'], ['active', 'declined'], true)) {
-                MemberActionItem::where('target_type', 'contract')
+                MemberActionItem::where('tenant_id', $contract->tenant_id)
+                    ->where('target_type', 'contract')
                     ->where('target_id', $contract->id)
                     ->where('status', 'pending')
                     ->update(['status' => 'completed', 'completed_at' => now()]);

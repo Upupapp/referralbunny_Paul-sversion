@@ -7,6 +7,7 @@ use App\Models\PartnerProgramMembership;
 use App\Models\Program;
 use App\Models\ReferrerProgramMembership;
 use App\Models\Tenant;
+use App\Services\ProgramAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Collection;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -100,12 +101,18 @@ class ProgramWorkspaceController extends Controller
             [$referrerMembershipsById, $partnerMembershipsById] = $this->batchLoadMembershipNames($actionItems);
         }
 
+        $analytics = null;
+        if ($activeTab === 'analytics') {
+            $analytics = app(ProgramAnalyticsService::class)->compute($program);
+        }
+
         return view('tenant.programs.workspace', compact(
             'tenant', 'program', 'activeTab',
             'referrerMemberships', 'partnerMemberships', 'offers',
             'tenantResellers', 'tenantPartners',
             'contracts', 'actionItems', 'referrerMembershipsById', 'partnerMembershipsById',
-            'programReferrerMemberships', 'programPartnerMemberships'
+            'programReferrerMemberships', 'programPartnerMemberships',
+            'analytics'
         ));
     }
 

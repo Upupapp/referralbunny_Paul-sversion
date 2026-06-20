@@ -809,9 +809,80 @@
             {{ $actionItems?->links() }}
         </div>
 
+        {{-- ── Analytics tab ─────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'analytics'" x-cloak class="p-6 max-w-5xl mx-auto space-y-6">
+            @php $a = $analytics ?? []; @endphp
+
+            <div>
+                <h2 class="text-base font-semibold text-heading mb-3">Deals</h2>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Total deals</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['total_deals'] ?? 0 }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Active deals</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['active_deals'] ?? 0 }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Closed won</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['closed_won_deals'] ?? 0 }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Conversion rate</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ isset($a['conversion_rate']) ? $a['conversion_rate'] . '%' : '—' }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Expiring deals</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['expiring_deals'] ?? 0 }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Total deal value</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ number_format($a['total_deal_value'] ?? 0, 2) }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Average deal value</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ number_format($a['average_deal_value'] ?? 0, 2) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-base font-semibold text-heading mb-3">Commission</h2>
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Pending</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ number_format($a['pending_commission'] ?? 0, 2) }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Locked</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ number_format($a['locked_commission'] ?? 0, 2) }}</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Paid</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ number_format($a['paid_commission'] ?? 0, 2) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-base font-semibold text-heading mb-3">Members</h2>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Active referrers</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['referrer_active'] ?? 0 }}<span class="text-sm text-gray-400 font-normal"> / {{ $a['referrer_total'] ?? 0 }}</span></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+                        <p class="text-xs text-gray-500">Active partners</p>
+                        <p class="text-2xl font-bold text-heading mt-1">{{ $a['partner_active'] ?? 0 }}<span class="text-sm text-gray-400 font-normal"> / {{ $a['partner_total'] ?? 0 }}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>

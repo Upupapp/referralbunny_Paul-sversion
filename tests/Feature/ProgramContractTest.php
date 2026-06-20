@@ -270,6 +270,25 @@ class ProgramContractTest extends TestCase
         $this->assertSame('active', $second->status);
     }
 
+    public function test_manually_transitioning_to_superseded_clears_membership_active_contract(): void
+    {
+        $contract = $this->makeContract('active');
+        ReferrerProgramMembership::find($this->referrerMembershipId)
+            ->update(['active_contract_id' => $contract->id]);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.contracts.status', [self::TENANT_ID, $this->program->id, $contract->id]), [
+                'status' => 'superseded',
+            ])
+            ->assertRedirect();
+
+        $contract->refresh();
+        $this->assertSame('superseded', $contract->status);
+
+        $membership = ReferrerProgramMembership::find($this->referrerMembershipId);
+        $this->assertNull($membership->active_contract_id);
+    }
+
     public function test_owner_can_decline_proposed_contract(): void
     {
         $contract = $this->makeContract('proposed');
