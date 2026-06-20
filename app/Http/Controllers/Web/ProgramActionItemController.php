@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Events\ProgramActionItemCreated;
 use App\Http\Controllers\Controller;
 use App\Models\MemberActionItem;
 use App\Models\PartnerProgramMembership;
@@ -40,7 +41,7 @@ class ProgramActionItemController extends Controller
 
         $this->resolveMembership($program, $data['membership_type'], $data['membership_id']);
 
-        MemberActionItem::create([
+        $item = MemberActionItem::create([
             'tenant_id'           => $tenantId,
             'program_id'          => $program->id,
             'membership_type'     => $data['membership_type'],
@@ -50,6 +51,8 @@ class ProgramActionItemController extends Controller
             'due_at'              => $data['due_at'] ?? null,
             'notification_status' => 'not_sent',
         ]);
+
+        ProgramActionItemCreated::dispatch($item->id);
 
         return back()->with('success', 'Action item created.');
     }

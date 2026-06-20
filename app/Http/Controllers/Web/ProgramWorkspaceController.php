@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\PartnerProgramMembership;
 use App\Models\Program;
 use App\Models\ReferrerProgramMembership;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
+use App\Models\TenantUser;
 use App\Services\PermissionService;
 use App\Services\ProgramAnalyticsService;
 use Illuminate\Http\Request;
@@ -25,7 +27,7 @@ use Illuminate\Support\Collection;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access'];
+    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications'];
 
     private const VALID_TABS = [
         'overview', 'offers', 'members', 'contracts', 'analytics',
@@ -123,13 +125,31 @@ class ProgramWorkspaceController extends Controller
                 ]);
         }
 
+        $programNotifications = $notificationRecipientsById = null;
+        if ($activeTab === 'notifications') {
+            $programNotifications = Notification::where('tenant_id', $tenantId)
+                ->where('metadata_json->program_id', $program->id)
+                ->latest('sent_at')
+                ->paginate(20, ['*'], 'notifications');
+
+            $recipientIds = $programNotifications->getCollection()
+                ->where('notifiable_type', 'tenant_admin')
+                ->pluck('notifiable_id')
+                ->unique();
+
+            $notificationRecipientsById = TenantUser::whereIn('id', $recipientIds)
+                ->get(['id', 'first_name', 'last_name', 'nickname', 'email'])
+                ->keyBy('id');
+        }
+
         return view('tenant.programs.workspace', compact(
             'tenant', 'program', 'activeTab',
             'referrerMemberships', 'partnerMemberships', 'offers',
             'tenantResellers', 'tenantPartners',
             'contracts', 'actionItems', 'referrerMembershipsById', 'partnerMembershipsById',
             'programReferrerMemberships', 'programPartnerMemberships',
-            'analytics', 'accessRows'
+            'analytics', 'accessRows',
+            'programNotifications', 'notificationRecipientsById'
         ));
     }
 

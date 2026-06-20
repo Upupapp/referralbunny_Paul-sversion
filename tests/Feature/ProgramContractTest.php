@@ -597,10 +597,41 @@ class ProgramContractTest extends TestCase
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
         });
+
+        // QUEUE_CONNECTION=sync in tests means the ProgramActionItemCreated/
+        // ProgramContractStatusChanged ShouldQueue listeners run inline during
+        // propose()/transition() — needs this table. 'id' nullable:
+        // Notification::$fillable doesn't include 'id', see
+        // ProgramActionItemNotificationTest for the full explanation.
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->string('id')->nullable();
+            $table->string('tenant_id')->nullable();
+            $table->string('notifiable_type')->nullable();
+            $table->string('notifiable_id')->nullable();
+            $table->string('category')->nullable();
+            $table->string('type')->nullable();
+            $table->string('priority')->default('normal');
+            $table->string('title')->nullable();
+            $table->text('message')->nullable();
+            $table->string('action_url')->nullable();
+            $table->string('action_label')->nullable();
+            $table->string('channel')->nullable();
+            $table->string('frequency_type')->nullable();
+            $table->integer('escalation_level')->nullable();
+            $table->boolean('is_read')->default(false);
+            $table->boolean('is_dismissed')->default(false);
+            $table->string('deduplication_key')->nullable();
+            $table->text('metadata_json')->nullable();
+            $table->timestamp('archived_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('sent_at')->nullable();
+            $table->timestamp('created_at')->nullable();
+        });
     }
 
     private function dropSchema(): void
     {
+        Schema::dropIfExists('notifications');
         Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('member_action_items');
         Schema::dropIfExists('program_contracts');

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Events\ProgramActionItemCreated;
+use App\Events\ProgramContractStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Models\MemberActionItem;
 use App\Models\PartnerProgramMembership;
@@ -78,7 +80,7 @@ class ProgramContractController extends Controller
 
         abort_if($duplicate, 422, 'A proposed or active contract already exists for this member.');
 
-        DB::transaction(function () use ($data, $tenantId, $program) {
+        $actionItemId = DB::transaction(function () use ($data, $tenantId, $program) {
             $contract = ProgramContract::create([
                 'tenant_id'        => $tenantId,
                 'program_id'       => $program->id,
@@ -89,7 +91,7 @@ class ProgramContractController extends Controller
                 'proposed_at'      => now(),
             ]);
 
-            MemberActionItem::create([
+            $actionItem = MemberActionItem::create([
                 'tenant_id'       => $tenantId,
                 'program_id'      => $program->id,
                 'membership_type' => $data['membership_type'],
@@ -99,7 +101,13 @@ class ProgramContractController extends Controller
                 'target_id'       => $contract->id,
                 'status'          => 'pending',
             ]);
+
+            return $actionItem->id;
         });
+
+        // Fired after the transaction commits — a queued listener running
+        // before the commit is visible could find nothing to act on.
+        ProgramActionItemCreated::dispatch($actionItemId);
 
         return back()->with('success', 'Contract proposed.');
     }
@@ -163,6 +171,10 @@ class ProgramContractController extends Controller
                     ->update(['status' => 'completed', 'completed_at' => now()]);
             }
         });
+
+        if (in_array($data['status'], ['active', 'declined'], true)) {
+            ProgramContractStatusChanged::dispatch($contract->id, $data['status']);
+        }
 
         return back()->with('success', 'Contract status updated.');
     }

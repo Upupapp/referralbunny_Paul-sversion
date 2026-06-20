@@ -938,9 +938,59 @@
             </div>
         </div>
 
+        {{-- ── Notifications tab ─────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'notifications'" x-cloak class="p-6 max-w-4xl mx-auto space-y-4">
+            <div class="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                A read-only history of notifications sent to your team about this program. Use the bell icon to mark notifications as read.
+            </div>
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Notification</th>
+                            <th class="px-4 py-2">Recipient</th>
+                            <th class="px-4 py-2">Priority</th>
+                            <th class="px-4 py-2">Sent</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($programNotifications ?? [] as $notification)
+                        <tr>
+                            <td class="px-4 py-3">
+                                {{ $notification->display_title }}
+                                <div class="text-xs text-gray-400">{{ $notification->message }}</div>
+                            </td>
+                            <td class="px-4 py-3 text-gray-500">
+                                @if($notification->notifiable_type === 'tenant_admin')
+                                    {{ ($notificationRecipientsById ?? [])[$notification->notifiable_id]->display_name ?? '—' }}
+                                @else
+                                    {{ ucfirst($notification->notifiable_type ?? '') }}
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium
+                                    {{ $notification->priority_color === 'red'    ? 'bg-red-100 text-red-700'     : '' }}
+                                    {{ $notification->priority_color === 'orange' ? 'bg-amber-100 text-amber-700' : '' }}
+                                    {{ $notification->priority_color === 'blue'   ? 'bg-blue-100 text-blue-700'   : '' }}
+                                    {{ $notification->priority_color === 'gray'   ? 'bg-gray-100 text-gray-600'   : '' }}">
+                                    {{ ucfirst($notification->priority) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-500">{{ $notification->sent_at?->diffForHumans() ?? '—' }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No notifications yet for this program.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            {{ $programNotifications?->links() }}
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>

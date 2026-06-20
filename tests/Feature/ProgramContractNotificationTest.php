@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\MemberActionItem;
-use App\Models\PartnerProgramMembership;
+use App\Events\ProgramActionItemCreated;
+use App\Events\ProgramContractStatusChanged;
+use App\Listeners\HandleProgramContractStatusChanged;
 use App\Models\Program;
 use App\Models\ProgramContract;
 use App\Models\ReferrerProgramMembership;
@@ -12,29 +13,29 @@ use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Feature tests for the Programs V4 "Action Items" tab (manual creation +
- * completion/dismissal), plus an integration test of the Contracts→Action
- * Items linkage.
+ * Feature tests for the Programs V4 notification wiring on contract
+ * proposal/transition: propose() fires ProgramActionItemCreated (for the
+ * auto-created linked action item), and transition() fires
+ * ProgramContractStatusChanged for active/declined transitions, handled by
+ * the queued HandleProgramContractStatusChanged listener.
  *
  * Does NOT use RefreshDatabase — builds/drops schema in setUp/tearDown.
  */
-class ProgramActionItemTest extends TestCase
+class ProgramContractNotificationTest extends TestCase
 {
-    private const TENANT_ID = 'test-action-items-tenant';
+    private const TENANT_ID = 'test-contract-notif-tenant';
 
     private Tenant     $tenant;
     private TenantUser $ownerUser;
-    private TenantUser $managerUser;
     private Program    $program;
     private string     $resellerId;
-    private string     $partnerId;
     private string     $referrerMembershipId;
-    private string     $partnerMembershipId;
 
     protected function setUp(): void
     {
@@ -50,163 +51,10 @@ class ProgramActionItemTest extends TestCase
         parent::tearDown();
     }
 
-    // ── create ────────────────────────────────────────────────────────────────
-
-    public function test_owner_can_create_action_item_for_referrer_membership(): void
+    public function test_propose_fires_program_action_item_created_event(): void
     {
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.store', [self::TENANT_ID, $this->program->id]), [
-                'membership_type' => 'referrer',
-                'membership_id'   => $this->referrerMembershipId,
-                'action_type'     => 'complete_profile',
-            ])
-            ->assertRedirect();
+        Event::fake([ProgramActionItemCreated::class]);
 
-        $this->assertDatabaseHas('member_action_items', [
-            'membership_id' => $this->referrerMembershipId,
-            'action_type'   => 'complete_profile',
-            'status'        => 'pending',
-            // Phase 5: ProgramActionItemCreated's listener runs synchronously
-            // under the test queue driver and flips this to 'sent' immediately.
-            'notification_status' => 'sent',
-        ]);
-    }
-
-    public function test_owner_can_create_action_item_for_partner_membership(): void
-    {
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.store', [self::TENANT_ID, $this->program->id]), [
-                'membership_type' => 'partner',
-                'membership_id'   => $this->partnerMembershipId,
-                'action_type'     => 'upload_document',
-            ])
-            ->assertRedirect();
-
-        $this->assertDatabaseHas('member_action_items', [
-            'membership_id' => $this->partnerMembershipId,
-            'action_type'   => 'upload_document',
-        ]);
-    }
-
-    public function test_owner_can_create_action_item_with_due_at(): void
-    {
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.store', [self::TENANT_ID, $this->program->id]), [
-                'membership_type' => 'referrer',
-                'membership_id'   => $this->referrerMembershipId,
-                'action_type'     => 'accept_terms',
-                'due_at'          => '2026-08-01 00:00:00',
-            ])
-            ->assertRedirect();
-
-        $item = MemberActionItem::where('membership_id', $this->referrerMembershipId)->first();
-        $this->assertSame('2026-08-01 00:00:00', $item->due_at->format('Y-m-d H:i:s'));
-    }
-
-    public function test_manager_without_manage_programs_cannot_create_action_item(): void
-    {
-        $this->actingAs($this->managerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.store', [self::TENANT_ID, $this->program->id]), [
-                'membership_type' => 'referrer',
-                'membership_id'   => $this->referrerMembershipId,
-                'action_type'     => 'complete_profile',
-            ])
-            ->assertStatus(403);
-    }
-
-    public function test_create_action_item_for_membership_from_other_program_returns_404(): void
-    {
-        $otherProgram = Program::create([
-            'tenant_id'    => self::TENANT_ID,
-            'name'         => 'Other Program',
-            'program_type' => 'referral',
-            'status'       => 'active',
-        ]);
-
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.store', [self::TENANT_ID, $otherProgram->id]), [
-                'membership_type' => 'referrer',
-                'membership_id'   => $this->referrerMembershipId,
-                'action_type'     => 'complete_profile',
-            ])
-            ->assertStatus(404);
-    }
-
-    // ── transition ────────────────────────────────────────────────────────────
-
-    public function test_owner_can_complete_pending_action_item(): void
-    {
-        $item = $this->makeActionItem('pending');
-
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.status', [self::TENANT_ID, $this->program->id, $item->id]), [
-                'status' => 'completed',
-            ])
-            ->assertRedirect();
-
-        $item->refresh();
-        $this->assertSame('completed', $item->status);
-        $this->assertNotNull($item->completed_at);
-    }
-
-    public function test_owner_can_dismiss_pending_action_item(): void
-    {
-        $item = $this->makeActionItem('pending');
-
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.status', [self::TENANT_ID, $this->program->id, $item->id]), [
-                'status' => 'dismissed',
-            ])
-            ->assertRedirect();
-
-        $item->refresh();
-        $this->assertSame('dismissed', $item->status);
-        $this->assertNull($item->completed_at);
-    }
-
-    public function test_completing_an_already_completed_action_item_is_rejected(): void
-    {
-        $item = $this->makeActionItem('completed');
-
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.status', [self::TENANT_ID, $this->program->id, $item->id]), [
-                'status' => 'completed',
-            ])
-            ->assertStatus(422);
-    }
-
-    public function test_manager_without_manage_programs_cannot_transition_action_item(): void
-    {
-        $item = $this->makeActionItem('pending');
-
-        $this->actingAs($this->managerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.status', [self::TENANT_ID, $this->program->id, $item->id]), [
-                'status' => 'completed',
-            ])
-            ->assertStatus(403);
-    }
-
-    public function test_action_item_scoped_to_wrong_program_returns_404(): void
-    {
-        $otherProgram = Program::create([
-            'tenant_id'    => self::TENANT_ID,
-            'name'         => 'Other Program',
-            'program_type' => 'referral',
-            'status'       => 'active',
-        ]);
-        $item = $this->makeActionItem('pending');
-
-        $this->actingAs($this->ownerUser, 'tenant')
-            ->post(route('tenant.programs.action-items.status', [self::TENANT_ID, $otherProgram->id, $item->id]), [
-                'status' => 'completed',
-            ])
-            ->assertStatus(404);
-    }
-
-    // ── Contracts → Action Items linkage (integration) ──────────────────────────
-
-    public function test_action_item_auto_created_by_contract_proposal_links_back_via_target(): void
-    {
         $this->actingAs($this->ownerUser, 'tenant')
             ->post(route('tenant.programs.contracts.propose', [self::TENANT_ID, $this->program->id]), [
                 'membership_type' => 'referrer',
@@ -214,12 +62,13 @@ class ProgramActionItemTest extends TestCase
             ])
             ->assertRedirect();
 
-        $contract = ProgramContract::where('membership_id', $this->referrerMembershipId)->first();
-        $item     = MemberActionItem::where('target_type', 'contract')->where('target_id', $contract->id)->first();
+        Event::assertDispatched(ProgramActionItemCreated::class);
+    }
 
-        $this->assertNotNull($item);
-        $this->assertSame('review_contract', $item->action_type);
-        $this->assertSame('pending', $item->status);
+    public function test_transition_to_active_fires_status_changed_event(): void
+    {
+        Event::fake([ProgramContractStatusChanged::class]);
+        $contract = $this->makeContract('proposed');
 
         $this->actingAs($this->ownerUser, 'tenant')
             ->post(route('tenant.programs.contracts.status', [self::TENANT_ID, $this->program->id, $contract->id]), [
@@ -227,36 +76,59 @@ class ProgramActionItemTest extends TestCase
             ])
             ->assertRedirect();
 
-        $item->refresh();
-        $this->assertSame('completed', $item->status);
-        $this->assertNotNull($item->completed_at);
+        Event::assertDispatched(ProgramContractStatusChanged::class, fn ($e) => $e->contractId === $contract->id && $e->newStatus === 'active');
     }
 
-    // ── workspace rendering ──────────────────────────────────────────────────
-
-    public function test_get_workspace_action_items_tab_renders(): void
+    public function test_transition_to_superseded_does_not_fire_status_changed_event(): void
     {
-        $this->makeActionItem('pending');
+        // Per design, only active/declined represent a decision worth notifying about.
+        Event::fake([ProgramContractStatusChanged::class]);
+        $contract = $this->makeContract('active');
 
         $this->actingAs($this->ownerUser, 'tenant')
-            ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=action-items')
-            ->assertStatus(200)
-            ->assertSee('New action item');
+            ->post(route('tenant.programs.contracts.status', [self::TENANT_ID, $this->program->id, $contract->id]), [
+                'status' => 'superseded',
+            ])
+            ->assertRedirect();
+
+        Event::assertNotDispatched(ProgramContractStatusChanged::class);
+    }
+
+    public function test_listener_creates_notification_for_active_admin(): void
+    {
+        $contract = $this->makeContract('active');
+
+        (new HandleProgramContractStatusChanged())->handle(new ProgramContractStatusChanged($contract->id, 'active'));
+
+        $this->assertDatabaseHas('notifications', [
+            'tenant_id'       => self::TENANT_ID,
+            'notifiable_type' => 'tenant_admin',
+            'notifiable_id'   => $this->ownerUser->id,
+            'category'        => 'program_contract',
+        ]);
+    }
+
+    public function test_listener_does_nothing_if_contract_status_no_longer_matches(): void
+    {
+        // Stale queued job: contract moved on to a different status before this ran.
+        $contract = $this->makeContract('declined');
+
+        (new HandleProgramContractStatusChanged())->handle(new ProgramContractStatusChanged($contract->id, 'active'));
+
+        $this->assertDatabaseMissing('notifications', ['category' => 'program_contract']);
     }
 
     // ── Schema / Fixtures ─────────────────────────────────────────────────────
 
-    private function makeActionItem(string $status): MemberActionItem
+    private function makeContract(string $status): ProgramContract
     {
-        return MemberActionItem::create([
-            'tenant_id'           => self::TENANT_ID,
-            'program_id'          => $this->program->id,
-            'membership_type'     => 'referrer',
-            'membership_id'       => $this->referrerMembershipId,
-            'action_type'         => 'complete_profile',
-            'status'              => $status,
-            'notification_status' => 'not_sent',
-            'completed_at'        => $status === 'completed' ? now() : null,
+        return ProgramContract::create([
+            'tenant_id'       => self::TENANT_ID,
+            'program_id'      => $this->program->id,
+            'membership_type' => 'referrer',
+            'membership_id'   => $this->referrerMembershipId,
+            'status'          => $status,
+            'proposed_at'     => now(),
         ]);
     }
 
@@ -273,6 +145,9 @@ class ProgramActionItemTest extends TestCase
             $table->string('id')->primary();
             $table->string('email')->unique();
             $table->string('password');
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->string('nickname')->nullable();
             $table->string('status')->default('active');
             $table->string('remember_token')->nullable();
             $table->timestamps();
@@ -363,6 +238,43 @@ class ProgramActionItemTest extends TestCase
             $table->unique(['program_id', 'partner_id']);
         });
 
+        Schema::create('program_offers', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('tenant_id');
+            $table->string('program_id');
+            $table->string('program_group_id')->nullable();
+            $table->string('name');
+            $table->string('code')->nullable();
+            $table->string('status')->default('active');
+            $table->string('visibility')->default('public');
+            $table->string('current_version_id')->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('program_offer_versions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('tenant_id');
+            $table->string('program_id');
+            $table->string('offer_id');
+            $table->unsignedInteger('version_number')->default(1);
+            $table->string('status')->default('published');
+            $table->string('currency')->nullable();
+            $table->string('reward_model')->nullable();
+            $table->string('qualifying_event')->nullable();
+            $table->decimal('fixed_amount', 12, 4)->nullable();
+            $table->decimal('percentage_rate', 12, 4)->nullable();
+            $table->decimal('cap_amount', 12, 4)->nullable();
+            $table->text('reward_rules')->nullable();
+            $table->timestamp('effective_from')->nullable();
+            $table->timestamp('effective_until')->nullable();
+            $table->string('published_by')->nullable();
+            $table->timestamp('published_at')->nullable();
+            $table->text('immutable_snapshot')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('program_contracts', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('tenant_id');
@@ -405,21 +317,9 @@ class ProgramActionItemTest extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('tenant_brand_profiles', function (Blueprint $table) {
-            $table->id();
-            $table->string('tenant_id');
-            $table->string('logo_url')->nullable();
-            $table->string('accent_color', 7)->nullable();
-            $table->string('sidebar_color', 7)->nullable();
-            $table->string('status')->default('draft');
-            $table->timestamp('published_at')->nullable();
-            $table->timestamps();
-        });
-
-        // QUEUE_CONNECTION=sync in tests means ProgramActionItemCreated's
-        // ShouldQueue listener runs inline during store() — needs this table.
-        // 'id' nullable: Notification::$fillable doesn't include 'id', see
-        // ProgramActionItemNotificationTest for the full explanation.
+        // See ProgramActionItemNotificationTest for why 'id' is nullable here:
+        // Notification::$fillable doesn't include 'id', and production
+        // apparently relies on a DB-side default that sqlite lacks.
         Schema::create('notifications', function (Blueprint $table) {
             $table->string('id')->nullable();
             $table->string('tenant_id')->nullable();
@@ -444,14 +344,27 @@ class ProgramActionItemTest extends TestCase
             $table->timestamp('sent_at')->nullable();
             $table->timestamp('created_at')->nullable();
         });
+
+        Schema::create('tenant_brand_profiles', function (Blueprint $table) {
+            $table->id();
+            $table->string('tenant_id');
+            $table->string('logo_url')->nullable();
+            $table->string('accent_color', 7)->nullable();
+            $table->string('sidebar_color', 7)->nullable();
+            $table->string('status')->default('draft');
+            $table->timestamp('published_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     private function dropSchema(): void
     {
-        Schema::dropIfExists('notifications');
         Schema::dropIfExists('tenant_brand_profiles');
+        Schema::dropIfExists('notifications');
         Schema::dropIfExists('member_action_items');
         Schema::dropIfExists('program_contracts');
+        Schema::dropIfExists('program_offer_versions');
+        Schema::dropIfExists('program_offers');
         Schema::dropIfExists('partner_program_memberships');
         Schema::dropIfExists('referrer_program_memberships');
         Schema::dropIfExists('partner_users');
@@ -466,35 +379,23 @@ class ProgramActionItemTest extends TestCase
     {
         $this->tenant = Tenant::create([
             'id'     => self::TENANT_ID,
-            'name'   => 'Test Action Items Tenant',
+            'name'   => 'Test Contract Notif Tenant',
             'status' => 'active',
         ]);
 
         $this->ownerUser = TenantUser::create([
-            'id'       => (string) Str::uuid(),
-            'email'    => 'owner@action-items-test.com',
-            'password' => bcrypt('password'),
-            'status'   => 'active',
+            'id'         => (string) Str::uuid(),
+            'email'      => 'owner@contract-notif-test.com',
+            'password'   => bcrypt('password'),
+            'status'     => 'active',
+            'first_name' => 'Test',
+            'last_name'  => 'Owner',
         ]);
         TenantMembership::create([
             'id'             => (string) Str::uuid(),
             'tenant_id'      => self::TENANT_ID,
             'tenant_user_id' => $this->ownerUser->id,
             'role'           => 'owner',
-            'status'         => 'active',
-        ]);
-
-        $this->managerUser = TenantUser::create([
-            'id'       => (string) Str::uuid(),
-            'email'    => 'manager@action-items-test.com',
-            'password' => bcrypt('password'),
-            'status'   => 'active',
-        ]);
-        TenantMembership::create([
-            'id'             => (string) Str::uuid(),
-            'tenant_id'      => self::TENANT_ID,
-            'tenant_user_id' => $this->managerUser->id,
-            'role'           => 'manager',
             'status'         => 'active',
         ]);
 
@@ -508,20 +409,10 @@ class ProgramActionItemTest extends TestCase
         $reseller = \App\Models\Reseller::create([
             'tenant_id' => self::TENANT_ID,
             'name'      => 'Test Referrer',
-            'email'     => 'referrer@action-items-test.com',
+            'email'     => 'referrer@contract-notif-test.com',
             'status'    => 'active',
         ]);
         $this->resellerId = $reseller->id;
-
-        $this->partnerId = (string) Str::uuid();
-        \App\Models\Partner::create([
-            'id'         => $this->partnerId,
-            'tenant_id'  => self::TENANT_ID,
-            'first_name' => 'Test',
-            'last_name'  => 'Partner',
-            'email'      => 'partner@action-items-test.com',
-            'status'     => 'active',
-        ]);
 
         $referrerMembership = ReferrerProgramMembership::create([
             'tenant_id'   => self::TENANT_ID,
@@ -531,14 +422,5 @@ class ProgramActionItemTest extends TestCase
             'source'      => 'direct',
         ]);
         $this->referrerMembershipId = $referrerMembership->id;
-
-        $partnerMembership = PartnerProgramMembership::create([
-            'tenant_id'  => self::TENANT_ID,
-            'program_id' => $this->program->id,
-            'partner_id' => $this->partnerId,
-            'status'     => 'active',
-            'source'     => 'direct',
-        ]);
-        $this->partnerMembershipId = $partnerMembership->id;
     }
 }
