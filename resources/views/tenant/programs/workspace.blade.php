@@ -880,9 +880,67 @@
             </div>
         </div>
 
+        {{-- ── Access tab ────────────────────────────────────────────────────── --}}
+        <div x-show="activeTab === 'access'" x-cloak class="p-6 max-w-4xl mx-auto space-y-4">
+            <div class="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+                Permissions are managed tenant-wide, not per program. This shows what your current team can do with <strong>any</strong> program based on their role.
+                <a href="{{ route('tenant.users', $tenant->id) }}" class="underline font-medium">Manage team &amp; roles</a>.
+            </div>
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                        <tr>
+                            <th class="px-4 py-2">Member</th>
+                            <th class="px-4 py-2">Role</th>
+                            <th class="px-4 py-2">Can view programs</th>
+                            <th class="px-4 py-2">Can manage programs</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($accessRows ?? [] as $row)
+                        <tr>
+                            <td class="px-4 py-3">
+                                {{ trim(($row['membership']->tenantUser?->first_name ?? '') . ' ' . ($row['membership']->tenantUser?->last_name ?? '')) ?: '—' }}
+                                <div class="text-xs text-gray-400">{{ $row['membership']->tenantUser?->email }}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                @php
+                                    $roleBadge = [
+                                        'owner'   => 'bg-amber-100 text-amber-800',
+                                        'admin'   => 'bg-violet-100 text-violet-700',
+                                        'manager' => 'bg-sky-100 text-sky-700',
+                                        'member'  => 'bg-green-100 text-green-700',
+                                    ][$row['membership']->role] ?? 'bg-gray-100 text-gray-600';
+                                @endphp
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $roleBadge }}">{{ ucfirst($row['membership']->role) }}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($row['can_view'])
+                                <span class="text-green-600">&check; Yes</span>
+                                @else
+                                <span class="text-gray-400">&cross; No</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($row['can_manage'])
+                                <span class="text-green-600">&check; Yes</span>
+                                @else
+                                <span class="text-gray-400">&cross; No</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No active team members.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics'], true))
+            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>
