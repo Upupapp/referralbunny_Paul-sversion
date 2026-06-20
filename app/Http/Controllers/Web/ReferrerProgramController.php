@@ -6,12 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Program;
 use App\Models\ReferrerProgramMembership;
 use App\Models\Tenant;
+use App\Support\ProtectedTenants;
 use Illuminate\Http\Request;
 
 /**
  * Referrer (reseller guard) portal — program browsing, detail view, and
  * membership management. Read-only: referrers join via invite links or
  * self-application; they never mutate Program records directly.
+ *
+ * This controller never goes through ProgramPolicy (see that class's
+ * doc-block — referrers/partners use their own portal controllers instead),
+ * so the ProtectedTenants check below is this controller's own copy of that
+ * guardrail, not an authorize() call.
  */
 class ReferrerProgramController extends Controller
 {
@@ -20,6 +26,7 @@ class ReferrerProgramController extends Controller
     public function index(Request $request, string $tenantId)
     {
         abort_unless(config('programs.enabled'), 404);
+        abort_if(ProtectedTenants::isProtected($tenantId), 404);
 
         $referrer = auth('reseller')->user();
         $this->ensureBelongsToTenant($referrer, $tenantId);
@@ -49,6 +56,7 @@ class ReferrerProgramController extends Controller
     public function show(Request $request, string $tenantId, string $programId)
     {
         abort_unless(config('programs.enabled'), 404);
+        abort_if(ProtectedTenants::isProtected($tenantId), 404);
 
         $referrer = auth('reseller')->user();
         $this->ensureBelongsToTenant($referrer, $tenantId);
