@@ -76,11 +76,21 @@ class ProgramAnalyticsService
 
     private function memberCounts(Program $program): array
     {
+        // One query per table (total + active via conditional aggregation)
+        // instead of two, matching dealMetrics()'s single-query style.
+        $referrers = ReferrerProgramMembership::forProgram($program->id)
+            ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active")
+            ->first();
+
+        $partners = PartnerProgramMembership::forProgram($program->id)
+            ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active")
+            ->first();
+
         return [
-            'referrer_total'  => ReferrerProgramMembership::forProgram($program->id)->count(),
-            'referrer_active' => ReferrerProgramMembership::forProgram($program->id)->active()->count(),
-            'partner_total'   => PartnerProgramMembership::forProgram($program->id)->count(),
-            'partner_active'  => PartnerProgramMembership::forProgram($program->id)->active()->count(),
+            'referrer_total'  => (int) ($referrers->total  ?? 0),
+            'referrer_active' => (int) ($referrers->active ?? 0),
+            'partner_total'   => (int) ($partners->total  ?? 0),
+            'partner_active'  => (int) ($partners->active ?? 0),
         ];
     }
 }
