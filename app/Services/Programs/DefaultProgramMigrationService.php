@@ -5,19 +5,21 @@ namespace App\Services\Programs;
 use App\Models\Program;
 use App\Models\Tenant;
 use App\Models\TenantReferralProgramDraft;
+use App\Support\ProtectedTenants;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Creates a default V4 Program for a tenant on first V4 activation.
  *
- * For most tenants: derives name/slug from the existing V3 TenantReferralProgramDraft
- * (or falls back to the tenant name). All existing leads with no program_id are
+ * Derives name/slug from the existing V3 TenantReferralProgramDraft (or falls
+ * back to the tenant name). All existing leads with no program_id are
  * retroactively linked to this default program.
  *
- * For LGU IDS: same process, but the resulting program carries locked metadata so
- * the V4 UI respects the same pipeline/rewards/import locks as the V3 wizard does.
- * The commission formula (30/70) is never re-read from program config — it remains
- * global in CommissionCalculationService env vars.
+ * ProtectedTenants (lgu-ids) are blocked entirely, same as everywhere else in
+ * Programs V4 — there is no scoped exception. lgu-ids's V3 pipeline/rewards/
+ * import locks and 30/70 commission formula stay exactly where they are
+ * today (CommissionCalculationService env vars); they are never meant to be
+ * re-expressed as a V4 Program.
  */
 class DefaultProgramMigrationService
 {
@@ -29,6 +31,8 @@ class DefaultProgramMigrationService
      */
     public function ensureDefault(Tenant $tenant): Program
     {
+        abort_if(ProtectedTenants::isProtected($tenant->id), 404);
+
         $existing = Program::where('tenant_id', $tenant->id)
             ->where('is_default', true)
             ->first();

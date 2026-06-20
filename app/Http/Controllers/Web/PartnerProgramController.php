@@ -29,6 +29,9 @@ class PartnerProgramController extends Controller
 
         $partner  = auth('partner')->user();
         $tenantId = $partner->tenant_id;
+        // Guard runs immediately after tenantId is known -- unlike
+        // ReferrerProgramController, there's no {tenantId} route segment to
+        // check earlier than this (see class doc-block).
         abort_if(ProtectedTenants::isProtected($tenantId), 404);
         $tenant   = Tenant::findOrFail($tenantId);
 
@@ -48,6 +51,9 @@ class PartnerProgramController extends Controller
 
         $partner  = auth('partner')->user();
         $tenantId = $partner->tenant_id;
+        // Guard runs immediately after tenantId is known -- unlike
+        // ReferrerProgramController, there's no {tenantId} route segment to
+        // check earlier than this (see class doc-block).
         abort_if(ProtectedTenants::isProtected($tenantId), 404);
         $tenant   = Tenant::findOrFail($tenantId);
 

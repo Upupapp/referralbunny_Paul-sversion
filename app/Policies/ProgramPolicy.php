@@ -20,7 +20,10 @@ use App\Support\ProtectedTenants;
  *   - auth('tenant') → TenantUser (tenant admin/manager)
  *
  * Referrers and Partners never interact with Programs through this policy;
- * they use scoped read-model queries in their own portal controllers.
+ * they use scoped read-model queries in their own portal controllers
+ * (ReferrerProgramController, PartnerProgramController). The fully
+ * unauthenticated public program page (PublicProgramController) doesn't go
+ * through any policy either, by nature.
  *
  * Note: TenantUser has no tenant_id column. Tenant context comes from:
  *   - $program->tenant_id  (for resource-scoped methods)
@@ -31,8 +34,15 @@ use App\Support\ProtectedTenants;
  * entirely, including for User (super-admin) actors who otherwise bypass
  * every other check here — Programs V4 must never touch a protected
  * tenant's data regardless of who's driving it. PROGRAMS_V4_ENABLED is a
- * global, not per-tenant, flag, so this is the single choke point that
- * keeps a protected tenant out even if the flag is ever turned on.
+ * global, not per-tenant, flag.
+ *
+ * This is NOT the single choke point, despite the temptation to call it
+ * that — every controller/service above that never calls authorize() here
+ * (the three named above, plus DefaultProgramMigrationService) carries its
+ * own identical ProtectedTenants::isProtected() check instead. No scoped
+ * exception exists anywhere for lgu-ids; if a new Program-reading code path
+ * is ever added outside this policy, it needs the same guard repeated, not
+ * assumed.
  */
 class ProgramPolicy
 {
