@@ -184,14 +184,8 @@
             @endif
 
             @php
-                $memberTransitions = [
-                    'invited'   => ['approved', 'removed'],
-                    'applied'   => ['approved', 'removed'],
-                    'approved'  => ['active', 'suspended', 'removed'],
-                    'active'    => ['paused', 'suspended', 'removed'],
-                    'paused'    => ['active', 'suspended', 'removed'],
-                    'suspended' => ['active', 'removed'],
-                ];
+                // Single source of truth — same map the controller enforces server-side.
+                $memberTransitions = \App\Http\Controllers\Web\ProgramMembershipController::ALLOWED_TRANSITIONS;
                 $statusBadge = fn (string $status) => match ($status) {
                     'active'    => 'bg-green-100 text-green-700',
                     'approved'  => 'bg-blue-100 text-blue-700',
@@ -562,6 +556,7 @@
                     </tbody>
                 </table>
             </div>
+            {{ $offers?->links() }}
         </div>
 
         {{-- ── Contracts & Action Items shared helpers ─────────────────────────── --}}
@@ -579,10 +574,8 @@
                 'declined', 'ended', 'expired' => 'bg-red-100 text-red-700',
                 default               => 'bg-gray-100 text-gray-600',
             };
-            $contractTransitions = [
-                'proposed' => ['active', 'declined'],
-                'active'   => ['ended', 'superseded'],
-            ];
+            // Single source of truth — same map the controller enforces server-side.
+            $contractTransitions = \App\Http\Controllers\Web\ProgramContractController::ALLOWED_TRANSITIONS;
         @endphp
 
         {{-- ── Contracts tab ─────────────────────────────────────────────────── --}}
@@ -634,7 +627,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Offer (optional)</label>
                             <select name="offer_version_id" class="input w-full">
                                 <option value="">No offer</option>
-                                @foreach($offers ?? [] as $offer)
+                                @foreach($offerOptions ?? [] as $offer)
                                     @if($offer->currentVersion)
                                     <option value="{{ $offer->currentVersion->id }}">{{ $offer->name }}</option>
                                     @endif

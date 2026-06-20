@@ -66,9 +66,10 @@ class RequestFormController extends Controller
 
         $programId = $request->query('program_id');
         if ($programId) {
-            // Never trust the query param blindly — confirm it belongs to this tenant.
-            // Resolved before eligibleRecipients() so a bad id fails fast.
-            $programId = Program::forTenant($tenantId)->findOrFail($programId)->id;
+            // Never trust the query param blindly — confirm it belongs to this
+            // tenant and isn't archived. Resolved before eligibleRecipients()
+            // so a bad id fails fast.
+            $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($programId)->id;
         }
 
         $teamMembers = $this->eligibleRecipients($tenantId);
@@ -106,9 +107,11 @@ class RequestFormController extends Controller
 
         // 'nullable|string' alone doesn't confirm tenant ownership — never trust
         // a client-supplied program_id without re-deriving it from this tenant.
+        // Archived programs are excluded -- a program that's done shouldn't
+        // accept new intake forms.
         $programId = null;
         if (!empty($data['program_id'])) {
-            $programId = Program::forTenant($tenantId)->findOrFail($data['program_id'])->id;
+            $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($data['program_id'])->id;
         }
 
         try { $form = DB::transaction(function () use ($data, $tenantId, $programId, $actorType, $actorId, $request) {
@@ -682,14 +685,21 @@ class RequestFormController extends Controller
 
     private function eligibleRecipients(string $tenantId): \Illuminate\Support\Collection
     {
+        // Name built in PHP rather than via SQL CONCAT() -- CONCAT() is
+        // Postgres/MySQL syntax, not supported by sqlite (used in tests),
+        // and this is otherwise behaviorally identical.
         return DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
             ->where('tm.tenant_id', $tenantId)
             ->where('tm.status', 'active')
             ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, tm.role")
+            ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
             ->orderBy('tm.role')
             ->orderBy('tu.first_name')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $row->name = trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
+                return $row;
+            });
     }
 }

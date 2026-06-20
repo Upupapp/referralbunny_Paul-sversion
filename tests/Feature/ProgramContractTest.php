@@ -116,16 +116,38 @@ class ProgramContractTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_proposing_second_contract_while_one_already_active_is_rejected(): void
+    public function test_proposing_renewal_while_one_already_active_is_allowed_and_linked(): void
     {
-        $this->makeContract('active');
+        // Renewal path: proposing a new contract while one is active is
+        // allowed (only a duplicate *proposal* is blocked) -- the new
+        // contract links back via previous_contract_id, and accepting it
+        // later supersedes the old one via the existing supersede logic.
+        $activeContract = $this->makeContract('active');
 
         $this->actingAs($this->ownerUser, 'tenant')
             ->post(route('tenant.programs.contracts.propose', [self::TENANT_ID, $this->program->id]), [
                 'membership_type' => 'referrer',
                 'membership_id'   => $this->referrerMembershipId,
             ])
-            ->assertStatus(422);
+            ->assertRedirect();
+
+        $renewal = ProgramContract::where('membership_id', $this->referrerMembershipId)
+            ->where('status', 'proposed')->first();
+
+        $this->assertNotNull($renewal);
+        $this->assertSame($activeContract->id, $renewal->previous_contract_id);
+
+        // Accepting the renewal supersedes the old active contract.
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.contracts.status', [self::TENANT_ID, $this->program->id, $renewal->id]), [
+                'status' => 'active',
+            ])
+            ->assertRedirect();
+
+        $activeContract->refresh();
+        $this->assertSame('superseded', $activeContract->status);
+        $renewal->refresh();
+        $this->assertSame('active', $renewal->status);
     }
 
     public function test_proposing_contract_after_previous_was_declined_is_allowed(): void
@@ -150,6 +172,37 @@ class ProgramContractTest extends TestCase
                 'membership_id'   => $this->referrerMembershipId,
             ])
             ->assertStatus(403);
+    }
+
+    public function test_propose_contract_failure_rolls_back_all_writes(): void
+    {
+        // One-shot DB::listen() hook simulating a mid-transaction failure
+        // right after the contract row's INSERT completes -- proves the
+        // linked MemberActionItem creation is atomic with the contract
+        // creation, without touching model internals or leaking state into
+        // other tests (the flag disarms itself after firing once).
+        $armed = true;
+        \Illuminate\Support\Facades\DB::listen(function ($query) use (&$armed) {
+            if ($armed && str_contains($query->sql, 'insert into "program_contracts"')) {
+                $armed = false;
+                throw new \RuntimeException('Simulated mid-transaction failure');
+            }
+        });
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.contracts.propose', [self::TENANT_ID, $this->program->id]), [
+                'membership_type' => 'referrer',
+                'membership_id'   => $this->referrerMembershipId,
+            ])
+            ->assertStatus(500);
+
+        $this->assertDatabaseMissing('program_contracts', [
+            'membership_id' => $this->referrerMembershipId,
+        ]);
+        $this->assertDatabaseMissing('member_action_items', [
+            'membership_id' => $this->referrerMembershipId,
+            'action_type'   => 'review_contract',
+        ]);
     }
 
     public function test_propose_contract_for_membership_from_other_program_returns_404(): void

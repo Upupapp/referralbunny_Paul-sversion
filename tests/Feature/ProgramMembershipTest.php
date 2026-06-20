@@ -165,6 +165,31 @@ class ProgramMembershipTest extends TestCase
         $this->assertSame('active', $membership->status);
     }
 
+    public function test_manager_without_manage_programs_cannot_attach_partner(): void
+    {
+        $this->actingAs($this->managerUser, 'tenant')
+            ->post(route('tenant.programs.members.partners.attach', [self::TENANT_ID, $this->program->id]), [
+                'partner_id' => $this->partnerId,
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_program_from_other_tenant_returns_404_on_attach_partner(): void
+    {
+        $otherProgram = Program::create([
+            'tenant_id'    => self::OTHER_TENANT,
+            'name'         => 'Other Tenant Program',
+            'program_type' => 'referral',
+            'status'       => 'draft',
+        ]);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.members.partners.attach', [self::TENANT_ID, $otherProgram->id]), [
+                'partner_id' => $this->partnerId,
+            ])
+            ->assertStatus(404);
+    }
+
     // ── status transitions: referrer ─────────────────────────────────────────
 
     public function test_owner_can_approve_invited_referrer(): void

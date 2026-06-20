@@ -69,7 +69,7 @@ class ProgramWorkspaceController extends Controller
             $offers = $program->offers()
                 ->with('currentVersion')
                 ->latest()
-                ->get();
+                ->paginate(20, ['*'], 'offers');
         }
 
         $contracts = $actionItems = $referrerMembershipsById = $partnerMembershipsById = null;
@@ -86,8 +86,11 @@ class ProgramWorkspaceController extends Controller
                 ->get();
         }
 
+        $offerOptions = null;
         if ($activeTab === 'contracts') {
-            $offers ??= $program->offers()->with('currentVersion')->latest()->get();
+            // Full (unpaginated) list for the propose-contract offer picker --
+            // distinct from $offers, which is paginated for the Offers tab itself.
+            $offerOptions = $program->offers()->with('currentVersion')->latest()->get();
 
             $contracts = $program->contracts()
                 ->with('offerVersion.offer')
@@ -149,7 +152,7 @@ class ProgramWorkspaceController extends Controller
 
         return view('tenant.programs.workspace', compact(
             'tenant', 'program', 'activeTab',
-            'referrerMemberships', 'partnerMemberships', 'offers',
+            'referrerMemberships', 'partnerMemberships', 'offers', 'offerOptions',
             'tenantResellers', 'tenantPartners',
             'contracts', 'actionItems', 'referrerMembershipsById', 'partnerMembershipsById',
             'programReferrerMemberships', 'programPartnerMemberships',

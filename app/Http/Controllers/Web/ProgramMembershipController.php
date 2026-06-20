@@ -18,8 +18,12 @@ use Illuminate\Http\Request;
  */
 class ProgramMembershipController extends Controller
 {
-    /** Legal status transitions, keyed by current status. */
-    private const ALLOWED_TRANSITIONS = [
+    /**
+     * Legal status transitions, keyed by current status.
+     * Public so the workspace view can render only the transition buttons
+     * the server will actually accept, instead of hand-duplicating this map.
+     */
+    public const ALLOWED_TRANSITIONS = [
         'invited'   => ['approved', 'removed'],
         'applied'   => ['approved', 'removed'],
         'approved'  => ['active', 'suspended', 'removed'],
@@ -52,7 +56,8 @@ class ProgramMembershipController extends Controller
         // status. So a previously removed/expired membership must be revived in
         // place rather than inserted fresh, or the INSERT would violate the
         // constraint.
-        $membership = ReferrerProgramMembership::forProgram($program->id)
+        $membership = ReferrerProgramMembership::where('tenant_id', $program->tenant_id)
+            ->forProgram($program->id)
             ->forReseller($data['reseller_id'])
             ->first();
 
@@ -97,7 +102,8 @@ class ProgramMembershipController extends Controller
 
         // Same flat (program_id, partner_id) unique constraint as the referrer
         // side — revive a removed/expired row in place rather than inserting.
-        $membership = PartnerProgramMembership::forProgram($program->id)
+        $membership = PartnerProgramMembership::where('tenant_id', $program->tenant_id)
+            ->forProgram($program->id)
             ->forPartner($data['partner_id'])
             ->first();
 

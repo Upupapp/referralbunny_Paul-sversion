@@ -78,11 +78,13 @@ class ProgramAnalyticsService
     {
         // One query per table (total + active via conditional aggregation)
         // instead of two, matching dealMetrics()'s single-query style.
-        $referrers = ReferrerProgramMembership::forProgram($program->id)
+        $referrers = ReferrerProgramMembership::where('tenant_id', $program->tenant_id)
+            ->forProgram($program->id)
             ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active")
             ->first();
 
-        $partners = PartnerProgramMembership::forProgram($program->id)
+        $partners = PartnerProgramMembership::where('tenant_id', $program->tenant_id)
+            ->forProgram($program->id)
             ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active")
             ->first();
 

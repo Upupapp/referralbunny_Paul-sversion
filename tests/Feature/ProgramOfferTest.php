@@ -167,6 +167,69 @@ class ProgramOfferTest extends TestCase
         ]);
     }
 
+    public function test_offers_tab_paginates_at_20_per_page(): void
+    {
+        // created_at isn't in ProgramOffer::$fillable, so it's set explicitly
+        // via a raw update after creation for deterministic, distinct
+        // timestamps -- otherwise every row would share the same now() value
+        // and ->latest() ordering among ties would be undefined.
+        for ($i = 0; $i < 25; $i++) {
+            $offer = ProgramOffer::create([
+                'tenant_id'  => self::TENANT_ID,
+                'program_id' => $this->program->id,
+                'name'       => "Offer {$i}",
+                'status'     => 'active',
+                'visibility' => 'public',
+            ]);
+            \Illuminate\Support\Facades\DB::table('program_offers')
+                ->where('id', $offer->id)
+                ->update(['created_at' => now()->subMinutes(25 - $i)]); // Offer 24 newest
+        }
+
+        // Page 1 (default) shows the 20 newest: Offer 24 down to Offer 5.
+        $page1 = $this->actingAs($this->ownerUser, 'tenant')
+            ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=offers');
+        $page1->assertStatus(200);
+        $page1->assertSee('Offer 24');
+        $page1->assertDontSee('Offer 0</td>', false);
+
+        // Page 2 shows the remaining 5 oldest: Offer 4 down to Offer 0.
+        // paginate()'s 3rd arg ('offers') is the literal query key, not
+        // suffixed with "_page".
+        $page2 = $this->actingAs($this->ownerUser, 'tenant')
+            ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=offers&offers=2');
+        $page2->assertStatus(200);
+        $page2->assertSee('Offer 0');
+    }
+
+    public function test_offer_creation_failure_rolls_back_all_writes(): void
+    {
+        // One-shot DB::listen() hook simulating a mid-transaction failure
+        // right after the offer row's INSERT completes, without touching
+        // model internals or leaking state into other tests (the flag
+        // disarms itself after firing once).
+        $armed = true;
+        \Illuminate\Support\Facades\DB::listen(function ($query) use (&$armed) {
+            if ($armed && str_contains($query->sql, 'insert into "program_offers"')) {
+                $armed = false;
+                throw new \RuntimeException('Simulated mid-transaction failure');
+            }
+        });
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.programs.offers.store', [self::TENANT_ID, $this->program->id]), [
+                'name'         => 'Should Roll Back',
+                'reward_model' => 'fixed',
+                'fixed_amount' => 100,
+            ])
+            ->assertStatus(500);
+
+        // The offer INSERT executed (then we threw) -- if the transaction is
+        // truly atomic, it must not be visible after rollback.
+        $this->assertDatabaseMissing('program_offers', ['name' => 'Should Roll Back']);
+        $this->assertDatabaseMissing('program_offer_versions', ['reward_model' => 'fixed']);
+    }
+
     public function test_offer_from_other_program_returns_404(): void
     {
         $otherProgram = Program::create([
@@ -276,10 +339,22 @@ class ProgramOfferTest extends TestCase
             $table->text('immutable_snapshot')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('tenant_brand_profiles', function (Blueprint $table) {
+            $table->id();
+            $table->string('tenant_id');
+            $table->string('logo_url')->nullable();
+            $table->string('accent_color', 7)->nullable();
+            $table->string('sidebar_color', 7)->nullable();
+            $table->string('status')->default('draft');
+            $table->timestamp('published_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     private function dropSchema(): void
     {
+        Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('program_offer_versions');
         Schema::dropIfExists('program_offers');
         Schema::dropIfExists('program_groups');

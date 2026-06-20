@@ -28,7 +28,11 @@ use Illuminate\Support\Facades\DB;
  */
 class ProgramContractController extends Controller
 {
-    private const ALLOWED_TRANSITIONS = [
+    /**
+     * Public so the workspace view can render only the transition buttons
+     * the server will actually accept, instead of hand-duplicating this map.
+     */
+    public const ALLOWED_TRANSITIONS = [
         'proposed' => ['active', 'declined'],
         'active'   => ['ended', 'superseded'],
     ];
@@ -71,24 +75,37 @@ class ProgramContractController extends Controller
             'This member must be active or approved before a contract can be proposed.'
         );
 
-        $duplicate = ProgramContract::where('tenant_id', $tenantId)
+        // Only a duplicate *proposal* is blocked. An ACTIVE contract does not
+        // block a new proposal — this is the renewal path: a second contract
+        // can be proposed while one is active, linked via previous_contract_id,
+        // and accepting it (transition to 'active') automatically supersedes
+        // the old one via the existing supersede logic in transition() below.
+        $duplicateProposal = ProgramContract::where('tenant_id', $tenantId)
             ->where('program_id', $program->id)
             ->where('membership_type', $data['membership_type'])
             ->where('membership_id', $data['membership_id'])
-            ->whereIn('status', ['proposed', 'active'])
+            ->where('status', 'proposed')
             ->exists();
 
-        abort_if($duplicate, 422, 'A proposed or active contract already exists for this member.');
+        abort_if($duplicateProposal, 422, 'A proposed contract already exists for this member.');
 
-        $actionItemId = DB::transaction(function () use ($data, $tenantId, $program) {
+        $currentActiveContractId = ProgramContract::where('tenant_id', $tenantId)
+            ->where('program_id', $program->id)
+            ->where('membership_type', $data['membership_type'])
+            ->where('membership_id', $data['membership_id'])
+            ->where('status', 'active')
+            ->value('id');
+
+        $actionItemId = DB::transaction(function () use ($data, $tenantId, $program, $currentActiveContractId) {
             $contract = ProgramContract::create([
-                'tenant_id'        => $tenantId,
-                'program_id'       => $program->id,
-                'membership_type'  => $data['membership_type'],
-                'membership_id'    => $data['membership_id'],
-                'offer_version_id' => $data['offer_version_id'] ?? null,
-                'status'           => 'proposed',
-                'proposed_at'      => now(),
+                'tenant_id'            => $tenantId,
+                'program_id'           => $program->id,
+                'membership_type'      => $data['membership_type'],
+                'membership_id'        => $data['membership_id'],
+                'offer_version_id'     => $data['offer_version_id'] ?? null,
+                'status'               => 'proposed',
+                'proposed_at'          => now(),
+                'previous_contract_id' => $currentActiveContractId,
             ]);
 
             $actionItem = MemberActionItem::create([

@@ -87,6 +87,30 @@ class RequestFormProgramScopingTest extends TestCase
         ]);
     }
 
+    public function test_archived_program_id_is_rejected_on_store(): void
+    {
+        $this->program->update(['status' => 'archived']);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->post(route('tenant.request-forms.store', self::TENANT_ID), $this->storePayload([
+                'program_id' => $this->program->id,
+            ]))
+            ->assertStatus(404);
+
+        $this->assertDatabaseMissing('request_forms', [
+            'title' => 'Test Intake Form',
+        ]);
+    }
+
+    public function test_archived_program_id_is_rejected_on_create_page(): void
+    {
+        $this->program->update(['status' => 'archived']);
+
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->get(route('tenant.request-forms.create', self::TENANT_ID) . '?program_id=' . $this->program->id)
+            ->assertStatus(404);
+    }
+
     public function test_creating_form_with_no_program_id_still_works_as_general_tenant_form(): void
     {
         $this->actingAs($this->ownerUser, 'tenant')
@@ -100,13 +124,12 @@ class RequestFormProgramScopingTest extends TestCase
         ]);
     }
 
-    // Note: a GET-200 test for create() with a valid program_id is not
-    // included here. RequestFormController::eligibleRecipients() (pre-existing,
-    // unrelated to this phase) uses a raw CONCAT() SQL function that Postgres
-    // supports but sqlite does not -- create() has never been exercised by a
-    // test before this phase, so this gap was previously latent. The negative
-    // case below (rejecting a foreign-tenant program_id) is fully testable
-    // because that check now runs before eligibleRecipients() is ever called.
+    public function test_create_page_with_valid_program_id_query_param_renders(): void
+    {
+        $this->actingAs($this->ownerUser, 'tenant')
+            ->get(route('tenant.request-forms.create', self::TENANT_ID) . '?program_id=' . $this->program->id)
+            ->assertStatus(200);
+    }
 
     public function test_create_page_with_program_id_from_another_tenant_404s(): void
     {
