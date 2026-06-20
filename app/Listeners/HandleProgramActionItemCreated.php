@@ -33,7 +33,7 @@ class HandleProgramActionItemCreated implements ShouldQueue
         try {
             app(NotificationDispatchService::class)->dispatchToTenantAdmins(
                 tenantId:     $item->tenant_id,
-                category:     'program_action_item',
+                category:     'task_approval',
                 priority:     'normal',
                 title:        "Action needed: {$actionLabel} for {$memberName}",
                 body:         "An action item was created for {$memberName} in your program.",

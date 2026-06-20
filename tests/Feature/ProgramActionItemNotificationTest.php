@@ -82,7 +82,7 @@ class ProgramActionItemNotificationTest extends TestCase
             'tenant_id'       => self::TENANT_ID,
             'notifiable_type' => 'tenant_admin',
             'notifiable_id'   => $this->ownerUser->id,
-            'category'        => 'program_action_item',
+            'category'        => 'task_approval',
         ]);
 
         $item->refresh();
@@ -96,7 +96,7 @@ class ProgramActionItemNotificationTest extends TestCase
 
         (new HandleProgramActionItemCreated())->handle(new ProgramActionItemCreated($missingId));
 
-        $this->assertDatabaseMissing('notifications', ['category' => 'program_action_item']);
+        $this->assertDatabaseMissing('notifications', ['category' => 'task_approval']);
     }
 
     // ── Schema / Fixtures ─────────────────────────────────────────────────────

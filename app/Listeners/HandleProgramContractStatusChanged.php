@@ -38,7 +38,7 @@ class HandleProgramContractStatusChanged implements ShouldQueue
 
         app(NotificationDispatchService::class)->dispatchToTenantAdmins(
             tenantId:     $contract->tenant_id,
-            category:     'program_contract',
+            category:     'approvals',
             priority:     'normal',
             title:        $title,
             body:         "A contract status changed to \"{$event->newStatus}\" in your program.",

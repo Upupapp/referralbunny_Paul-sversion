@@ -85,7 +85,7 @@ class ProgramNotificationsTabTest extends TestCase
             'tenant_id'       => self::TENANT_ID,
             'notifiable_type' => 'tenant_admin',
             'notifiable_id'   => $this->ownerUser->id,
-            'category'        => 'program_action_item',
+            'category'        => 'task_approval',
             'priority'        => 'normal',
             'title'           => $title,
             'message'         => 'Body text',
