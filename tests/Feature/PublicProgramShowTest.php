@@ -81,6 +81,33 @@ class PublicProgramShowTest extends TestCase
             ->assertStatus(404);
     }
 
+    public function test_protected_tenant_program_returns_404(): void
+    {
+        // PublicProgramController is fully unauthenticated and never goes
+        // through ProgramPolicy, so it needs its own ProtectedTenants check --
+        // lgu-ids's slug is the literal, well-known string 'lgu-ids', making
+        // this route trivially guessable if unguarded.
+        $protectedTenant = Tenant::create([
+            'id'     => 'lgu-ids',
+            'name'   => 'LGU IDS',
+            'slug'   => 'lgu-ids',
+            'status' => 'active',
+        ]);
+
+        $program = Program::create([
+            'tenant_id'         => 'lgu-ids',
+            'name'              => 'Protected Tenant Program',
+            'slug'              => 'protected-program',
+            'program_type'      => 'referral',
+            'status'            => 'active',
+            'public_visibility' => 'public',
+            'application_mode'  => 'application',
+        ]);
+
+        $this->get(route('public.programs.show', [$protectedTenant->slug, $program->slug]))
+            ->assertStatus(404);
+    }
+
     // ── Schema / Fixtures ─────────────────────────────────────────────────────
 
     private function makeProgram(array $overrides = []): Program
