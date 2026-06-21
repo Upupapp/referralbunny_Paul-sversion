@@ -44,6 +44,17 @@ class ProgramProtectedTenantGuardCoverageTest extends TestCase
         'app/Services/Programs/DefaultProgramMigrationService.php',
     ];
 
+    /**
+     * Matches both direct static calls (Program::forTenant(/Program::where('tenant_id')
+     * AND relationship-closure resolution (->whereHas('program', fn($q) =>
+     * $q->where('tenant_id', ...))), which exists live in
+     * Referrer/PartnerProgramController and contains no `Program::` token at
+     * all -- a purely Program::-keyed regex would silently miss it.
+     */
+    private const RESOLVES_BY_TENANT = '/Program::forTenant\(|Program::where\(\s*[\'"]tenant_id|whereHas\(\s*[\'"]program/';
+
+    private const HAS_REAL_GUARD = '/\$this->authorize\(|ProtectedTenants::isProtected\(/';
+
     public function test_every_program_resolving_file_is_guarded_or_allowlisted(): void
     {
         $basePath = base_path();
@@ -54,8 +65,8 @@ class ProgramProtectedTenantGuardCoverageTest extends TestCase
             ->notPath('Policies') // ProgramPolicy itself defines the guard, doesn't need to call it
             ->notPath('Models');  // scopeForTenant() definitions, not resolution call sites
 
-        $resolvesByTenant = '/Program::forTenant\(|Program::where\(\s*[\'"]tenant_id/';
-        $hasRealGuard     = '/\$this->authorize\(|ProtectedTenants::isProtected\(/';
+        $resolvesByTenant = self::RESOLVES_BY_TENANT;
+        $hasRealGuard     = self::HAS_REAL_GUARD;
 
         $unguarded = [];
 
@@ -93,10 +104,38 @@ class ProgramProtectedTenantGuardCoverageTest extends TestCase
 
             $contents = file_get_contents($fullPath);
             $this->assertMatchesRegularExpression(
-                '/\$this->authorize\(|ProtectedTenants::isProtected\(/',
+                self::HAS_REAL_GUARD,
                 $contents,
                 "Allowlisted file {$relativePath} no longer contains a guard -- its protection may have been removed."
             );
         }
+    }
+
+    /**
+     * Test of the test: proves RESOLVES_BY_TENANT actually flags a
+     * relationship-closure resolution pattern (no `Program::` token at all),
+     * and that an unguarded version of that same snippet would NOT be waved
+     * through by HAS_REAL_GUARD. A prior version of this regex only matched
+     * `Program::` call sites and would have missed this pattern entirely --
+     * this test exists so that gap can't silently reopen.
+     */
+    public function test_regex_catches_relationship_closure_resolution_pattern(): void
+    {
+        $unguardedSnippet = <<<'PHP'
+            $memberships = SomeModel::with('program')
+                ->whereHas('program', fn($q) => $q->where('tenant_id', $tenantId))
+                ->get();
+            PHP;
+
+        $this->assertMatchesRegularExpression(self::RESOLVES_BY_TENANT, $unguardedSnippet,
+            'RESOLVES_BY_TENANT should flag a whereHas(\'program\', ...) relationship-closure pattern.');
+
+        $this->assertDoesNotMatchRegularExpression(self::HAS_REAL_GUARD, $unguardedSnippet,
+            'HAS_REAL_GUARD should not false-positive on a snippet with no real guard.');
+
+        $guardedSnippet = "abort_if(\\App\\Support\\ProtectedTenants::isProtected(\$tenantId), 404);\n" . $unguardedSnippet;
+
+        $this->assertMatchesRegularExpression(self::HAS_REAL_GUARD, $guardedSnippet,
+            'HAS_REAL_GUARD should match once a real ProtectedTenants::isProtected( guard is present.');
     }
 }
