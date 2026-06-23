@@ -421,85 +421,139 @@ class BulkDealExtensionService
             throw new \InvalidArgumentException('Extension must be between 1 and 90 days.');
         }
 
+        // Raise the per-request time budget for this one action only -- with a
+        // batch this large, the bulk of the time is network round-trips to a
+        // pooled Postgres connection (Supabase), not CPU, so this is safe.
+        // Does not touch the global php-fpm/php.ini setting used by every
+        // other request.
+        @set_time_limit(120);
+
         $deals = Lead::where('tenant_id', $tenantId)
             ->whereIn('id', $dealIds)
             ->whereNull('deleted_at')
             ->get();
 
-        $extended = [];
+        $eligible = [];
         $skipped  = [];
 
         foreach ($deals as $deal) {
             if ($deal->status === 'archived') {
                 $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Deal is archived.'];
-                continue;
-            }
-            if (in_array($deal->commission_status, ['locked', 'paid'])) {
+            } elseif (in_array($deal->commission_status, ['locked', 'paid'])) {
                 $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Commission is locked or paid.'];
-                continue;
-            }
-            if ($deal->days_left === null) {
+            } elseif ($deal->days_left === null) {
                 $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'This deal has no active deadline.'];
-                continue;
-            }
-            if (!in_array($deal->status, ['active', 'expiring', 'expired'])) {
+            } elseif (!in_array($deal->status, ['active', 'expiring', 'expired'])) {
                 $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Not eligible for extension in its current stage.'];
-                continue;
+            } else {
+                $eligible[] = $deal;
             }
+        }
 
+        if (empty($eligible)) {
+            return ['extended' => [], 'skipped' => $skipped];
+        }
+
+        $eligibleIds = array_map(fn($d) => $d->id, $eligible);
+
+        // One UPDATE for the whole batch instead of one per deal -- the extension
+        // amount is uniform across the batch, so days_left can be bumped with a
+        // single raw arithmetic expression rather than N round-trips.
+        DB::table('leads')->whereIn('id', $eligibleIds)->update([
+            'days_left'  => DB::raw('days_left + ' . (int) $days),
+            'status'     => 'active',
+            'updated_at' => now(),
+        ]);
+
+        // One bulk INSERT for all audit rows instead of N individual creates.
+        $auditRows = [];
+        foreach ($eligible as $deal) {
             $newDaysLeft = max(0, $deal->days_left) + $days;
+            $auditRows[] = [
+                'id'        => (string) Str::uuid(),
+                'tenant_id' => $tenantId,
+                'user_id'   => is_numeric($actorId) ? (int) $actorId : null,
+                'action'    => 'deal_extension_admin_granted',
+                'entity'    => 'deal',
+                'entity_id' => $deal->id,
+                'metadata'  => json_encode([
+                    'deal_id'       => $deal->id,
+                    'actor_id'      => $actorId,
+                    'extended_days' => $days,
+                    'new_days_left' => $newDaysLeft,
+                    'admin_note'    => $note,
+                    'bulk'          => true,
+                    'timestamp'     => now()->toIso8601String(),
+                ]),
+                'created_at' => now(),
+            ];
+        }
+        try {
+            // ActivityLog::insert() bypasses the model's boot()/casts entirely (it's
+            // a raw query builder bulk insert) -- and the model declares
+            // const UPDATED_AT = null (no updated_at column on this table), so an
+            // updated_at key here would fail the insert with an unknown-column
+            // error. Found via a transactional smoke test: the failed INSERT was
+            // silently caught, but left the whole transaction aborted, masking
+            // the real cause until isolated.
+            ActivityLog::insert($auditRows);
+        } catch (\Throwable) {}
 
-            DB::transaction(function () use ($deal, $newDaysLeft) {
-                DB::table('leads')->where('id', $deal->id)->update([
-                    'days_left'  => $newDaysLeft,
-                    'status'     => 'active',
-                    'updated_at' => now(),
-                ]);
-            });
+        // One notification per referrer (not per deal) -- a referrer with many
+        // expiring deals in the batch gets a single summary, not a flood, and
+        // this needs one batched reseller lookup instead of N individual ones.
+        $byReferrer = collect($eligible)
+            ->filter(fn($d) => !empty($d->reseller_name))
+            ->groupBy(fn($d) => strtolower(trim($d->reseller_name)));
 
-            $this->auditDeal($tenantId, $deal->id, $deal->id, 'deal_extension_admin_granted', $actorId, [
-                'extended_days'  => $days,
-                'new_days_left'  => $newDaysLeft,
-                'admin_note'     => $note,
-                'bulk'           => true,
-            ]);
+        if ($byReferrer->isNotEmpty()) {
+            $nameKeys      = $byReferrer->keys()->all();
+            $placeholders  = implode(',', array_fill(0, count($nameKeys), '?'));
+            $resellers = DB::table('resellers')
+                ->where('tenant_id', $tenantId)
+                ->whereRaw("LOWER(name) IN ({$placeholders})", $nameKeys)
+                ->get()
+                ->keyBy(fn($r) => strtolower(trim($r->name)));
 
-            try {
-                $this->notifyResellerOfAdminGrant($tenantId, $deal, $days, $newDaysLeft);
-            } catch (\Throwable) {}
-
-            $extended[] = $deal->fresh();
+            foreach ($byReferrer as $nameKey => $dealsForReferrer) {
+                $reseller = $resellers->get($nameKey);
+                if (!$reseller) continue;
+                try {
+                    $this->notifyResellerOfAdminGrantBatch($tenantId, $reseller, $dealsForReferrer, $days);
+                } catch (\Throwable) {}
+            }
         }
 
-        if (!empty($extended)) {
-            try {
-                $this->criticalActions->invalidateAllAdminBadges($tenantId);
-            } catch (\Throwable) {}
-            Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
-        }
+        try {
+            $this->criticalActions->invalidateAllAdminBadges($tenantId);
+        } catch (\Throwable) {}
+        Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
+
+        $extended = Lead::whereIn('id', $eligibleIds)->get()->all();
 
         return ['extended' => $extended, 'skipped' => $skipped];
     }
 
-    private function notifyResellerOfAdminGrant(string $tenantId, Lead $deal, int $days, int $newDaysLeft): void
+    private function notifyResellerOfAdminGrantBatch(string $tenantId, object $reseller, Collection $deals, int $days): void
     {
-        if (!$deal->reseller_name) return;
-        $reseller = DB::table('resellers')
-            ->where('tenant_id', $tenantId)
-            ->whereRaw('LOWER(name) = ?', [strtolower($deal->reseller_name)])
-            ->first();
-        if (!$reseller) return;
+        $count = $deals->count();
+        $title = $count === 1
+            ? "Assignment extended for \"{$deals->first()->name}\""
+            : "Assignment extended for {$count} of your deals";
+        $body  = $count === 1
+            ? "Your admin extended the assignment for \"{$deals->first()->name}\" by {$days} day" . ($days > 1 ? 's' : '') . "."
+            : "Your admin extended {$count} of your deals' assignments by {$days} day" . ($days > 1 ? 's' : '') . ".";
 
         $this->notifications->dispatchToReseller(
             resellerId:   (string) $reseller->id,
             tenantId:     $tenantId,
             category:     'deal_pipeline',
             priority:     'normal',
-            title:        "Assignment extended for \"{$deal->name}\"",
-            body:         "Your admin extended the assignment for \"{$deal->name}\" by {$days} day" . ($days > 1 ? 's' : '') . ".",
-            actionUrl:    url("/reseller/{$tenantId}/deals/{$deal->id}"),
-            actionLabel:  'View Deal',
-            dedupeSuffix: "ext_admin_grant:{$deal->id}:v" . md5((string) $newDaysLeft),
+            title:        $title,
+            body:         $body,
+            actionUrl:    url("/reseller/{$tenantId}/deals"),
+            actionLabel:  'View Deals',
+            dedupeSuffix: "ext_admin_grant_batch:{$reseller->id}:v" . md5($deals->pluck('id')->sort()->implode(',') . $days),
         );
         Cache::forget("notif_unread_reseller_{$reseller->id}");
     }
