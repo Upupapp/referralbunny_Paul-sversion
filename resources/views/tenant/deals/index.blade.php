@@ -1284,7 +1284,12 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
                     this.$dispatch('show-toast', { type: 'success', message: d.message || 'Deals extended.' });
                     await this.init();
                 } else {
-                    this.extendError = d.error || 'Could not extend the selected deals.';
+                    // d.error covers our own thrown messages; d.message + d.errors
+                    // covers Laravel's validation-failure response shape (422) --
+                    // without this fallback, validation errors (e.g. too many deal_ids)
+                    // silently showed a useless generic message instead of the real reason.
+                    const firstFieldError = d.errors ? Object.values(d.errors)[0]?.[0] : null;
+                    this.extendError = d.error || firstFieldError || d.message || 'Could not extend the selected deals.';
                 }
             } catch (e) {
                 this.extendError = 'Network error. Please try again.';

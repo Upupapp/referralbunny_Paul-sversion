@@ -45,7 +45,11 @@ class BulkDealExtensionController extends Controller
         }
 
         $data = $request->validate([
-            'deal_ids'         => 'required|array|min:1|max:200',
+            // 200 was an arbitrary cap that turned out lower than a real tenant's
+            // actual expiring-deal count (216) -- raised well above any realistic
+            // "select all expiring" click. The deals list itself caps at per_page=500,
+            // so 1000 leaves headroom without being unbounded.
+            'deal_ids'         => 'required|array|min:1|max:1000',
             'deal_ids.*'       => 'string',
             'extension_days'   => 'required|integer|min:1|max:90',
             'note'             => 'nullable|string|max:2000',
