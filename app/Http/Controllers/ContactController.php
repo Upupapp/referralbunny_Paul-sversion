@@ -32,6 +32,7 @@ class ContactController extends Controller
         }
 
         $quotedTenantId = DB::getPdo()->quote($tenantId);
+        $search = trim((string) $request->query('search', ''));
 
         $contacts = DB::table('contacts as c')
             ->leftJoin('organizations as o', 'c.organization_id', '=', 'o.id')
@@ -54,6 +55,13 @@ class ContactController extends Controller
                 'c.id', '=', 'cri.contact_id'
             )
             ->where('c.tenant_id', $tenantId)
+            ->when($search !== '', function ($q) use ($search) {
+                $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $search) . '%';
+                $q->where(function ($q2) use ($like) {
+                    $q2->whereRaw("c.first_name || ' ' || COALESCE(c.last_name, '') ILIKE ?", [$like])
+                        ->orWhere('c.email', 'ILIKE', $like);
+                });
+            })
             ->select(
                 'c.*',
                 'o.name as org_name',
