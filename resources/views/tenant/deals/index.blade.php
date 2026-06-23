@@ -26,6 +26,13 @@
         @endif
     @endif
     @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
+    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-deal-extend'))"
+            class="btn-secondary" title="Select multiple deals to extend their assignment duration">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="hidden sm:inline">Extend Deals</span>
+    </button>
     <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-deal-delete'))"
             class="btn-secondary" title="Select deals to delete">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,9 +52,12 @@
      x-data="dealsModule('{{ $tenant->id }}', {{ $showLocation ? 'true' : 'false' }}, {{ $canViewReferrers ? 'true' : 'false' }}, '{{ $actingRole }}')"
      x-init="init()"
      @open-add-deal.window="showAdd = true; resetForm()"
-     @open-deal-delete.window="showDeleteInstructions = true; selectMode = false; selectedDeals = []"
+     @open-deal-delete.window="showDeleteInstructions = true; bulkAction = 'delete'; selectMode = false; selectedDeals = []"
+     @open-deal-extend.window="bulkAction = 'extend'; selectMode = true; selectedDeals = []; filterStatus = 'expiring'; applyFilters()"
      @rb-del-cancel.window="selectMode = false; selectedDeals = []"
-     @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true">
+     @rb-del-execute.window="if(selectedDeals.length > 0) showDeleteConfirm = true"
+     @rb-extend-cancel.window="selectMode = false; selectedDeals = []"
+     @rb-extend-execute.window="if(selectedDeals.length > 0) showExtendConfirm = true"
 
     {{-- Flash messages --}}
     @if(session('success'))
@@ -313,11 +323,12 @@
                     </template>
                     <template x-for="lead in sortedFiltered()" :key="lead.id">
                         <tr class="table-row cursor-pointer transition-colors"
-                            :class="selectMode && selectedDeals.includes(lead.id) ? 'bg-red-50' : ''"
+                            :class="selectMode && selectedDeals.includes(lead.id) ? (bulkAction === 'extend' ? 'bg-teal-50' : 'bg-red-50') : ''"
                             @click="viewDeal(lead.id)">
                             <td x-show="selectMode" class="w-10 pl-3" @click.stop>
                                 <input type="checkbox"
-                                       style="width:18px;height:18px;cursor:pointer;accent-color:#dc2626"
+                                       style="width:18px;height:18px;cursor:pointer"
+                                       :style="bulkAction === 'extend' ? 'accent-color:#0D9488' : 'accent-color:#dc2626'"
                                        :checked="selectedDeals.includes(lead.id)"
                                        @click.stop="toggleDeal(lead.id)">
                             </td>
@@ -950,6 +961,7 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
         showAdd: false, saving: false, formError: '', nameAutoFilled: false,
         showSuccessState: false, createdDeal: null,
         selectMode: false, selectedDeals: [], deleting: false, showDeleteConfirm: false, showDeleteInstructions: false,
+        bulkAction: 'delete', showExtendConfirm: false, extending: false, extendDays: 14, extendNote: '', extendError: '', extendResult: null,
         municipalityOptions: [], dealMode: 'standard',
         activeTab: 'deals',
         // Referrer combobox
@@ -967,10 +979,15 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
                 this._watchersInited = true;
 
                 this.$watch('selectMode', (val) => {
-                    const bar = document.getElementById('rb-del-bar');
-                    if (bar) bar.style.display = val ? 'flex' : 'none';
-                    if (!val) rbDelBarCount(0);
+                    const delBar    = document.getElementById('rb-del-bar');
+                    const extendBar = document.getElementById('rb-extend-bar');
+                    const showDel    = val && this.bulkAction === 'delete';
+                    const showExtend = val && this.bulkAction === 'extend';
+                    if (delBar)    delBar.style.display    = showDel    ? 'flex' : 'none';
+                    if (extendBar) extendBar.style.display = showExtend ? 'flex' : 'none';
+                    if (!val) { rbDelBarCount(0); rbExtendBarCount(0); }
                 });
+
 
             }
 
@@ -1171,12 +1188,55 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
             const idx = this.selectedDeals.indexOf(id);
             if (idx === -1) this.selectedDeals.push(id);
             else            this.selectedDeals.splice(idx, 1);
-            rbDelBarCount(this.selectedDeals.length);
+            if (this.bulkAction === 'extend') rbExtendBarCount(this.selectedDeals.length);
+            else                              rbDelBarCount(this.selectedDeals.length);
         },
 
         toggleSelectAll() {
             const ids = this.sortedFiltered().map(l => l.id);
             this.selectedDeals = this.selectedDeals.length === ids.length ? [] : ids;
+            if (this.bulkAction === 'extend') rbExtendBarCount(this.selectedDeals.length);
+            else                              rbDelBarCount(this.selectedDeals.length);
+        },
+
+        async bulkExtendSelected() {
+            this.extendError = '';
+            if (!this.selectedDeals.length) return;
+            if (!this.extendDays || this.extendDays < 1 || this.extendDays > 90) {
+                this.extendError = 'Enter a number of days between 1 and 90.';
+                return;
+            }
+            this.extending = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const r = await fetch('/api/leads/bulk-extend', {
+                    method:      'POST',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body:        JSON.stringify({
+                        deal_ids:       this.selectedDeals,
+                        extension_days: this.extendDays,
+                        note:           this.extendNote.trim() || null,
+                        tenant_id:      tenantId,
+                    }),
+                });
+                const d = await r.json().catch(() => ({}));
+                if (r.ok) {
+                    this.showExtendConfirm = false;
+                    this.selectMode        = false;
+                    this.selectedDeals     = [];
+                    this.extendNote        = '';
+                    this.extendResult      = d;
+                    this.$dispatch('show-toast', { type: 'success', message: d.message || 'Deals extended.' });
+                    await this.init();
+                } else {
+                    this.extendError = d.error || 'Could not extend the selected deals.';
+                }
+            } catch (e) {
+                this.extendError = 'Network error. Please try again.';
+            } finally {
+                this.extending = false;
+            }
         },
 
         async deleteSelected() {
@@ -1407,6 +1467,20 @@ function rbDelBarCount(n) {
     }
 }
 window.rbDelBarCount = rbDelBarCount;
+
+function rbExtendBarCount(n) {
+    const label = document.getElementById('rb-extend-label');
+    const btn   = document.getElementById('rb-extend-btn');
+    if (label) label.textContent = n === 0
+        ? 'Tap an expiring deal to select it'
+        : n + ' deal' + (n !== 1 ? 's' : '') + ' selected';
+    if (btn) {
+        btn.textContent = n > 0 ? 'Extend (' + n + ')' : 'Extend';
+        btn.style.background = n > 0 ? '#0D9488' : '#9ca3af';
+        btn.style.cursor     = n > 0 ? 'pointer'  : 'not-allowed';
+    }
+}
+window.rbExtendBarCount = rbExtendBarCount;
 </script>
 
 {{-- ── Standalone Floating Delete Bar (pure HTML, no Alpine) ─────────────── --}}
@@ -1429,6 +1503,69 @@ window.rbDelBarCount = rbDelBarCount;
             <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Delete
         </button>
+    </div>
+</div>
+
+{{-- ── Standalone Floating Extend Bar (pure HTML, no Alpine) ─────────────── --}}
+<div id="rb-extend-bar"
+     style="display:none;position:fixed;bottom:24px;left:0;right:0;z-index:9001;justify-content:center;padding:0 16px;pointer-events:none">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:18px;background:white;box-shadow:0 8px 40px rgba(0,0,0,0.2);border:1.5px solid #e5e7eb;pointer-events:auto">
+        <div style="flex:1;min-width:0">
+            <p id="rb-extend-label" style="font-size:14px;font-weight:600;color:#1E1B4B;margin:0;white-space:nowrap">Tap an expiring deal to select it</p>
+            <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">Tap again to deselect · Cancel to exit</p>
+        </div>
+        <button type="button" onclick="window.dispatchEvent(new CustomEvent('rb-extend-cancel'))"
+                style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:10px;white-space:nowrap;transition:background .15s"
+                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+            Cancel
+        </button>
+        <button type="button" id="rb-extend-btn"
+                onclick="window.dispatchEvent(new CustomEvent('rb-extend-execute'))"
+                style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:12px;background:#9ca3af;color:white;border:none;font-size:13px;font-weight:700;cursor:not-allowed;white-space:nowrap;transition:background .15s">
+            <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Extend
+        </button>
+    </div>
+</div>
+@endif
+
+{{-- ── Extend Confirmation Modal ────────────────────────────────── --}}
+@if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
+<div :style="showExtendConfirm ? 'display:flex' : 'display:none'"
+     style="display:none" x-cloak
+     class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100">
+        <div class="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <h3 class="text-[#1E1B4B] font-bold text-lg mb-2 text-center">Extend Assignment Duration</h3>
+        <p class="text-gray-500 text-sm mb-4 text-center leading-relaxed">
+            <span x-text="selectedDeals.length"></span> deal<span x-text="selectedDeals.length !== 1 ? 's' : ''"></span> will have their assignment duration extended.
+        </p>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Extend by (days)</label>
+        <input type="number" min="1" max="90" x-model.number="extendDays"
+               class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30">
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Note <span class="font-normal text-gray-400">(optional, visible in activity log)</span></label>
+        <textarea x-model="extendNote" rows="2"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30 resize-none"
+                  placeholder="Reason for extending these deals…"></textarea>
+        <p x-show="extendError" x-text="extendError" class="text-xs text-red-600 mb-3"></p>
+        <div class="flex gap-3">
+            <button type="button" @click="showExtendConfirm = false; extendError = ''"
+                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button type="button" @click="bulkExtendSelected()" :disabled="extending"
+                    class="flex-1 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50"
+                    x-text="extending ? 'Extending…' : 'Extend'">
+                Extend
+            </button>
+        </div>
     </div>
 </div>
 @endif

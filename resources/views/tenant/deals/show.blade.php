@@ -1227,17 +1227,44 @@
                                         </div>
                                         <p style="font-size:11px;color:#9ca3af;margin-top:1px" x-text="s.partner_email"></p>
                                     </div>
-                                    <div style="text-align:right;flex-shrink:0">
+                                    <div style="text-align:right;flex-shrink:0" x-show="editingSplitId !== s.id">
                                         <p style="font-size:14px;font-weight:700;color:#7B61FF"
                                            x-text="'₱' + splitPesoAmount(s).toLocaleString('en-PH')"></p>
                                         <p style="font-size:10px;color:#9ca3af;margin-top:1px"
                                            x-text="s.split_share_type === 'percentage'
                                                ? parseFloat(s.split_share_value) + '% of pool'
                                                : 'fixed'"></p>
-                                        <button type="button" @click="removeSplit(s.id, s.partner_name)"
-                                                style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;margin-top:3px;display:block;margin-left:auto;padding:2px 6px;border-radius:6px;transition:all .15s"
-                                                onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
-                                                onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
+                                        <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px">
+                                            <button type="button" @click="startEditSplit(s)"
+                                                    style="font-size:10px;color:#7B61FF;cursor:pointer;background:none;border:none;padding:2px 6px;border-radius:6px;transition:all .15s"
+                                                    onmouseover="this.style.background='#f0eeff'"
+                                                    onmouseout="this.style.background='none'">Edit</button>
+                                            <button type="button" @click="removeSplit(s.id, s.partner_name)"
+                                                    style="font-size:10px;color:#9ca3af;cursor:pointer;background:none;border:none;padding:2px 6px;border-radius:6px;transition:all .15s"
+                                                    onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
+                                                    onmouseout="this.style.color='#9ca3af';this.style.background='none'">Remove</button>
+                                        </div>
+                                    </div>
+
+                                    {{-- Inline edit form --}}
+                                    <div x-show="editingSplitId === s.id" style="flex-shrink:0;text-align:right">
+                                        <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end">
+                                            <input type="number" min="0.01" step="0.01" x-model.number="editValue"
+                                                   style="width:72px;border:1px solid #d8d2ff;border-radius:8px;padding:4px 6px;font-size:12px;font-weight:600;text-align:center;outline:none">
+                                            <select x-model="editType" style="border:1px solid #d8d2ff;border-radius:8px;padding:4px 4px;font-size:10px;outline:none">
+                                                <option value="percentage">%</option>
+                                                <option value="fixed_amount">₱ fixed</option>
+                                            </select>
+                                        </div>
+                                        <p x-show="editError" x-text="editError" style="font-size:10px;color:#dc2626;margin-top:3px"></p>
+                                        <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px">
+                                            <button type="button" @click="cancelEditSplit()"
+                                                    style="font-size:10px;font-weight:600;color:#6b7280;background:none;border:1px solid #e5e7eb;border-radius:6px;padding:3px 8px;cursor:pointer">Cancel</button>
+                                            <button type="button" @click="saveEditSplit(s)" :disabled="editSaving"
+                                                    style="font-size:10px;font-weight:700;color:#fff;background:#7B61FF;border:none;border-radius:6px;padding:3px 8px;cursor:pointer"
+                                                    :style="editSaving ? 'opacity:.6' : ''"
+                                                    x-text="editSaving ? 'Saving…' : 'Save'">Save</button>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -3372,6 +3399,7 @@ function partnerSplitSection(dealId, tenantId, isArchived) {
     return {
         splits: [], coRefs: [], loading: true, showAdd: false, saving: false, formError: '',
         removeCoRefId: null, removeCoRefName: '', removeCoRefing: false,
+        editingSplitId: null, editValue: 0, editType: 'percentage', editSaving: false, editError: '',
         isArchived: !!isArchived,
         totalPct: 0,
         dealValue: 0,
@@ -3579,6 +3607,47 @@ function partnerSplitSection(dealId, tenantId, isArchived) {
             } catch(e) {
                 this.$dispatch('show-toast', { type: 'error', message: 'Network error. Please try again.' });
             } finally { this.removeCoRefing = false; }
+        },
+
+        startEditSplit(s) {
+            this.editingSplitId = s.id;
+            this.editValue      = parseFloat(s.split_share_value) || 0;
+            this.editType       = s.split_share_type || 'percentage';
+            this.editError      = '';
+        },
+
+        cancelEditSplit() {
+            this.editingSplitId = null;
+            this.editError      = '';
+        },
+
+        async saveEditSplit(s) {
+            this.editError = '';
+            if (!this.editValue || this.editValue <= 0) { this.editError = 'Enter a value greater than 0.'; return; }
+            this.editSaving = true;
+            try {
+                const csrf = (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+                const r = await fetch(`/api/leads/${dealId}/partner-splits/${s.id}`, {
+                    method:      'PUT',
+                    credentials: 'same-origin',
+                    headers:     { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body:        JSON.stringify({
+                        partner_name:       s.partner_name,
+                        partner_email:      s.partner_email || null,
+                        split_share_value:  this.editValue,
+                        split_share_type:   this.editType,
+                    }),
+                });
+                const d = await r.json().catch(() => ({}));
+                if (r.ok) {
+                    this.editingSplitId = null;
+                    await this.load();
+                    this.$dispatch('show-toast', { type: 'success', message: 'Partner split updated.' });
+                } else {
+                    this.editError = d.error || 'Could not update split.';
+                }
+            } catch(e) { this.editError = 'Network error. Please try again.'; }
+            finally { this.editSaving = false; }
         },
 
         async removeSplit(splitId, partnerName) {

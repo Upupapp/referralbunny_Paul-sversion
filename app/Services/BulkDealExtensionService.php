@@ -392,6 +392,118 @@ class BulkDealExtensionService
         return $request;
     }
 
+    // ── Admin direct bulk grant (no request/approval ceremony) ─────
+
+    /**
+     * Admin/manager directly extends a batch of deals' assignment duration.
+     * Unlike createBulkRequest()+approveAll(), this is a single-step grant —
+     * an admin/manager already has authority to extend, so there's no
+     * reseller-initiated request to create and self-approve.
+     *
+     * Eligibility intentionally does NOT check deal ownership (unlike
+     * DealExtensionEligibilityService, which is reseller-ownership-scoped) —
+     * an admin can extend any deal in their own tenant regardless of which
+     * referrer it's assigned to.
+     *
+     * Returns ['extended' => [...Lead], 'skipped' => [['deal_id','name','reason']]]
+     */
+    public function adminBulkExtend(
+        string  $tenantId,
+        ?string $actorId,
+        array   $dealIds,
+        int     $days,
+        ?string $note = null
+    ): array {
+        if (empty($dealIds)) {
+            throw new \InvalidArgumentException('At least one deal must be selected.');
+        }
+        if ($days < 1 || $days > 90) {
+            throw new \InvalidArgumentException('Extension must be between 1 and 90 days.');
+        }
+
+        $deals = Lead::where('tenant_id', $tenantId)
+            ->whereIn('id', $dealIds)
+            ->whereNull('deleted_at')
+            ->get();
+
+        $extended = [];
+        $skipped  = [];
+
+        foreach ($deals as $deal) {
+            if ($deal->status === 'archived') {
+                $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Deal is archived.'];
+                continue;
+            }
+            if (in_array($deal->commission_status, ['locked', 'paid'])) {
+                $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Commission is locked or paid.'];
+                continue;
+            }
+            if ($deal->days_left === null) {
+                $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'This deal has no active deadline.'];
+                continue;
+            }
+            if (!in_array($deal->status, ['active', 'expiring', 'expired'])) {
+                $skipped[] = ['deal_id' => $deal->id, 'name' => $deal->name, 'reason' => 'Not eligible for extension in its current stage.'];
+                continue;
+            }
+
+            $newDaysLeft = max(0, $deal->days_left) + $days;
+
+            DB::transaction(function () use ($deal, $newDaysLeft) {
+                DB::table('leads')->where('id', $deal->id)->update([
+                    'days_left'  => $newDaysLeft,
+                    'status'     => 'active',
+                    'updated_at' => now(),
+                ]);
+            });
+
+            $this->auditDeal($tenantId, $deal->id, $deal->id, 'deal_extension_admin_granted', $actorId, [
+                'extended_days'  => $days,
+                'new_days_left'  => $newDaysLeft,
+                'admin_note'     => $note,
+                'bulk'           => true,
+            ]);
+
+            try {
+                $this->notifyResellerOfAdminGrant($tenantId, $deal, $days, $newDaysLeft);
+            } catch (\Throwable) {}
+
+            $extended[] = $deal->fresh();
+        }
+
+        if (!empty($extended)) {
+            try {
+                $this->criticalActions->invalidateAllAdminBadges($tenantId);
+            } catch (\Throwable) {}
+            Cache::deleteMultiple(["bulk_ext_metrics:{$tenantId}", "nav_ext_req_badge:{$tenantId}"]);
+        }
+
+        return ['extended' => $extended, 'skipped' => $skipped];
+    }
+
+    private function notifyResellerOfAdminGrant(string $tenantId, Lead $deal, int $days, int $newDaysLeft): void
+    {
+        if (!$deal->reseller_name) return;
+        $reseller = DB::table('resellers')
+            ->where('tenant_id', $tenantId)
+            ->whereRaw('LOWER(name) = ?', [strtolower($deal->reseller_name)])
+            ->first();
+        if (!$reseller) return;
+
+        $this->notifications->dispatchToReseller(
+            resellerId:   (string) $reseller->id,
+            tenantId:     $tenantId,
+            category:     'deal_pipeline',
+            priority:     'normal',
+            title:        "Assignment extended for \"{$deal->name}\"",
+            body:         "Your admin extended the assignment for \"{$deal->name}\" by {$days} day" . ($days > 1 ? 's' : '') . ".",
+            actionUrl:    url("/reseller/{$tenantId}/deals/{$deal->id}"),
+            actionLabel:  'View Deal',
+            dedupeSuffix: "ext_admin_grant:{$deal->id}:v" . md5((string) $newDaysLeft),
+        );
+        Cache::forget("notif_unread_reseller_{$reseller->id}");
+    }
+
     // ── Batch-level decisions ──────────────────────────────────────
 
     /**

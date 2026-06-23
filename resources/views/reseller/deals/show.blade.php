@@ -761,8 +761,17 @@ window.__rsDeal = {
         @endif
         <div class="divide-y divide-gray-50">
             @foreach($partnerSplits as $ps)
-            @php $pStatus = $ps['status'] ?? 'provisional'; @endphp
-            <div class="px-5 py-3.5 flex items-center justify-between gap-4">
+            @php
+                $pStatus       = $ps['status'] ?? 'provisional';
+                $pIsFixed      = ($ps['split_share_type'] ?? '') === 'fixed_amount';
+                $pValue        = (float) ($ps['split_share_value'] ?? 0);
+                $pUpdateUrl    = $ps['id']
+                    ? url("/reseller/{$tenantId}/partners/splits/{$ps['id']}")
+                    : null;
+                $pCanEdit      = $canRemovePartner && $pUpdateUrl;
+            @endphp
+            <div class="px-5 py-3.5 flex items-center justify-between gap-4"
+                 x-data="{ editing: false, val: '{{ number_format($pValue, 2, '.', '') }}', type: '{{ $pIsFixed ? 'fixed_amount' : 'percentage' }}', saving: false, err: '' }">
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-teal-700 shrink-0" style="background:#CCFBF1">
                         {{ strtoupper(substr($ps['partner_name'] ?? '?', 0, 2)) }}
@@ -784,15 +793,24 @@ window.__rsDeal = {
                         </div>
                     </div>
                 </div>
-                <div class="text-right shrink-0">
-                    <p class="text-sm font-bold text-[#1E1B4B]">{{ $ps['display_share'] ?? '—' }}</p>
-                    <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
-                </div>
-                <div class="text-right shrink-0 min-w-[90px] flex items-center justify-end gap-2">
-                    <div>
+
+                {{-- Display or inline edit --}}
+                <div x-show="!editing" class="flex items-center gap-2">
+                    <div class="text-right shrink-0">
+                        <p class="text-sm font-bold text-[#1E1B4B]">{{ $ps['display_share'] ?? '—' }}</p>
+                        <p class="text-xs text-gray-400 hidden sm:block">of pool</p>
+                    </div>
+                    <div class="text-right shrink-0 min-w-[90px]">
                         <p class="text-sm font-bold text-[#0D9488]">₱{{ number_format($ps['estimated_commission'] ?? 0, 0) }}</p>
                         <p class="text-[10px] text-gray-400 hidden sm:block">estimated</p>
                     </div>
+                    @if($pCanEdit)
+                    <button type="button" @click="editing = true"
+                            title="Edit split"
+                            class="shrink-0 px-2 py-1 rounded-lg text-[10px] font-semibold border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors">
+                        Edit
+                    </button>
+                    @endif
                     @if($canRemovePartner)
                     <button type="button" onclick="rbRemovePartner('{{ $ps['id'] }}', {{ json_encode($ps['partner_name'] ?? 'this partner', JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) }})"
                             title="Remove partner"
@@ -802,6 +820,30 @@ window.__rsDeal = {
                     </button>
                     @endif
                 </div>
+
+                {{-- Inline edit form --}}
+                @if($pCanEdit)
+                <div x-show="editing" x-cloak class="flex items-center gap-1.5 flex-wrap justify-end">
+                    <input x-model="val" type="number" min="0.01" step="0.01"
+                           class="w-20 border border-teal-300 rounded-lg px-2 py-1 text-xs text-center font-semibold outline-none focus:ring-2 focus:ring-teal-400/20">
+                    <select x-model="type" class="border border-teal-300 rounded-lg px-1.5 py-1 text-[10px] font-medium outline-none">
+                        <option value="percentage">%</option>
+                        <option value="fixed_amount">₱ fixed</option>
+                    </select>
+                    <p x-show="err" class="text-[10px] text-red-600 w-full text-right" x-text="err"></p>
+                    <button type="button" @click="editing = false; val = '{{ number_format($pValue, 2, '.', '') }}'; type = '{{ $pIsFixed ? 'fixed_amount' : 'percentage' }}'; err = ''"
+                            class="px-2 py-1 rounded-lg text-[10px] font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" @click="window.__savePartnerSplit('{{ $pUpdateUrl }}', '{{ csrf_token() }}', val, type, $data)"
+                            :disabled="saving || !val"
+                            class="px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white disabled:opacity-50 transition-all"
+                            style="background:linear-gradient(135deg,#0D9488,#0F766E)"
+                            x-text="saving ? 'Saving…' : 'Save'">
+                        Save
+                    </button>
+                </div>
+                @endif
             </div>
             @endforeach
         </div>
@@ -1514,6 +1556,24 @@ function rsDealData() {
             ctx.editing = false;
             ctx.pct = String(d.new_percentage);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'Co-referrer share updated.' } }));
+            setTimeout(() => window.location.reload(), 1200);
+        } catch(e) { ctx.err = 'Network error. Please try again.'; }
+        finally { ctx.saving = false; }
+    };
+
+    window.__savePartnerSplit = async function(url, csrf, val, type, ctx) {
+        ctx.saving = true; ctx.err = '';
+        try {
+            const r = await fetch(url, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ split_share_value: parseFloat(val), split_share_type: type }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { ctx.err = d.error || 'Could not update split.'; return; }
+            ctx.editing = false;
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: d.message || 'Partner split updated.' } }));
             setTimeout(() => window.location.reload(), 1200);
         } catch(e) { ctx.err = 'Network error. Please try again.'; }
         finally { ctx.saving = false; }

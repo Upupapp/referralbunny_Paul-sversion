@@ -400,6 +400,100 @@ class ReferrerPartnerController extends Controller
         ]);
     }
 
+    // ── Edit Partner Split Amount/Percentage ────────────────────────────────────
+
+    public function updateSplit(Request $request, string $tenantId, string $splitId): JsonResponse
+    {
+        $reseller = $this->reseller();
+
+        $split = DealPartnerSplit::where('id', $splitId)
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'removed')
+            ->first();
+
+        if (!$split) {
+            return response()->json(['error' => 'Partner split not found.'], 404);
+        }
+
+        $lead = Lead::where('id', $split->deal_id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        if (!$lead || !$this->resellerCanAccessDeal($reseller, $lead)) {
+            return response()->json(['error' => 'You do not have access to this deal.'], 403);
+        }
+
+        if (in_array($lead->commission_status, ['locked', 'paid'])) {
+            return response()->json(['error' => 'Commission on this deal is locked or paid. Contact your admin to change a Partner split.'], 422);
+        }
+
+        $data = $request->validate([
+            'split_share_value' => 'required|numeric|min:0.01',
+            'split_share_type'  => 'required|in:percentage,fixed_amount',
+        ]);
+
+        $oldValue = (float) $split->split_share_value;
+        $oldType  = $split->split_share_type;
+
+        try {
+            $updated = app(DealPartnerSplitService::class)->upsert(
+                tenantId:        $tenantId,
+                dealId:          $split->deal_id,
+                partnerName:     $split->partner_name,
+                partnerEmail:    $split->partner_email ?? '',
+                splitValue:      (float) $data['split_share_value'],
+                splitType:       $data['split_share_type'],
+                currency:        $split->currency ?? 'PHP',
+                source:          'referrer_added',
+                actorId:         (string) $reseller->id,
+                existingSplitId: $splitId,
+            );
+
+            app(DealActivityService::class)->record($lead, 'Partner split updated by Referrer', 'partner', [
+                'category'   => 'partner',
+                'reseller'   => $reseller->name,
+                'actor_name' => $reseller->name,
+                'actor_role' => 'referrer',
+                'old_values' => [
+                    'partner_name'  => $split->partner_name,
+                    'split_value'   => $oldValue,
+                    'split_type'    => $oldType,
+                ],
+                'new_values' => [
+                    'partner_name'  => $split->partner_name,
+                    'split_value'   => $data['split_share_value'],
+                    'split_type'    => $data['split_share_type'],
+                ],
+            ]);
+
+            app(NotificationDispatchService::class)->dispatchToTenantAdmins(
+                tenantId:     $tenantId,
+                category:     'deal_pipeline',
+                priority:     'normal',
+                title:        'Partner split updated by Referrer',
+                body:         $reseller->name . ' updated ' . $split->partner_name . '\'s split on "' . $lead->name . '" to '
+                              . $data['split_share_value'] . ($data['split_share_type'] === 'fixed_amount' ? ' (fixed)' : '%') . '.',
+                actionUrl:    url("/tenant/{$tenantId}/deals/{$lead->id}"),
+                actionLabel:  'Review Deal',
+                dedupeSuffix: $lead->id . ':partner_updated:' . $reseller->id . ':' . $splitId . ':v' . md5((string) $data['split_share_value'] . $data['split_share_type']),
+            );
+            try {
+                app(\App\Services\CriticalActionService::class)->invalidateAllAdminBadges($tenantId);
+            } catch (\Throwable) {}
+
+            return response()->json(['success' => true, 'message' => 'Partner split updated.', 'split' => $updated]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            Log::error('ReferrerPartnerController::updateSplit failed', [
+                'split_id' => $splitId,
+                'error'    => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Could not update Partner split. Please try again.'], 500);
+        }
+    }
+
     // ── Remove Partner from Deal ──────────────────────────────────────────────
 
     public function removeFromDeal(Request $request, string $tenantId, string $splitId): JsonResponse

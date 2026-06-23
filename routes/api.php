@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', 'api.tenant'])->group(function () {
     Route::get('leads',                           [LeadController::class, 'index']);
     Route::post('leads',                          [LeadController::class, 'store'])->middleware('feature.access:leads,create');
     Route::post('leads/bulk-delete',              [LeadController::class, 'bulkDelete']);
+    Route::post('leads/bulk-extend',              [\App\Http\Controllers\BulkDealExtensionController::class, 'adminBulkExtend'])->middleware('throttle:20,1');
     Route::get('leads/archived',                  [LeadController::class, 'archivedIndex']);
     Route::post('leads/{leadId}/restore',         [LeadController::class, 'restore']);
     Route::delete('leads/{leadId}/force-delete',  [LeadController::class, 'forceDeleteLead']);

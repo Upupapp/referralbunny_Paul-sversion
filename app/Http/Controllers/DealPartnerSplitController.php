@@ -162,7 +162,7 @@ class DealPartnerSplitController extends Controller
 
         $data = $request->validate([
             'partner_name'      => 'required|string|max:255',
-            'partner_email'     => 'required|email|max:255',
+            'partner_email'     => 'nullable|email|max:255', // optional — record-only partners have none
             'split_share_value' => 'required|numeric|min:0',
             'split_share_type'  => 'nullable|in:percentage,fixed_amount',
             'currency'          => 'nullable|string|max:10',
@@ -175,12 +175,20 @@ class DealPartnerSplitController extends Controller
             ->where('deal_id', $lead->id)
             ->first();
 
+        // Email isn't always resubmitted from the edit UI (only the amount/type
+        // usually changes) — fall back to the existing stored value so we never
+        // accidentally null out a record-only partner's email field on a pure
+        // amount edit, and never block the edit when no email was ever provided.
+        $partnerEmail = !empty($data['partner_email'])
+            ? strtolower(trim($data['partner_email']))
+            : ($oldSplit->partner_email ?? '');
+
         try {
             $split = $this->service->upsert(
                 tenantId:        $tenantId,
                 dealId:          $lead->id,
                 partnerName:     $data['partner_name'],
-                partnerEmail:    $data['partner_email'],
+                partnerEmail:    $partnerEmail,
                 splitValue:      (float) $data['split_share_value'],
                 splitType:       $data['split_share_type'] ?? 'percentage',
                 currency:        $data['currency']          ?? 'PHP',
@@ -200,7 +208,7 @@ class DealPartnerSplitController extends Controller
                     ],
                     [
                         'partner_name'      => $data['partner_name'],
-                        'partner_email'     => $data['partner_email'],
+                        'partner_email'     => $partnerEmail,
                         'split_share_value' => $data['split_share_value'],
                         'split_share_type'  => $data['split_share_type'] ?? 'percentage',
                     ]
@@ -217,10 +225,12 @@ class DealPartnerSplitController extends Controller
 
             // Notify the partner themselves (if they have an account)
             try {
-                $partnerUserId = DB::table('partner_users')
-                    ->where('tenant_id', $lead->tenant_id)
-                    ->whereRaw('LOWER(email) = ?', [strtolower(trim($data['partner_email']))])
-                    ->value('id');
+                $partnerUserId = $partnerEmail
+                    ? DB::table('partner_users')
+                        ->where('tenant_id', $lead->tenant_id)
+                        ->whereRaw('LOWER(email) = ?', [$partnerEmail])
+                        ->value('id')
+                    : null;
 
                 if ($partnerUserId) {
                     app(\App\Services\NotificationDispatchService::class)->dispatchToPartner(

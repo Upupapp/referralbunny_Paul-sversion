@@ -30,6 +30,55 @@ class BulkDealExtensionController extends Controller
         private DealExtensionEligibilityService $eligibility,
     ) {}
 
+    // ── Admin direct bulk grant ──────────────────────────────────────
+
+    /**
+     * POST /api/leads/bulk-extend
+     * Admin/manager directly extends assignment duration for multiple deals
+     * at once — no request/approval ceremony (admin already has authority).
+     */
+    public function adminBulkExtend(Request $request): JsonResponse
+    {
+        $tenantId = TenantContext::id();
+        if (!$tenantId || !$this->isAdminOrManager()) {
+            return response()->json(['error' => 'Not authorized.'], 403);
+        }
+
+        $data = $request->validate([
+            'deal_ids'         => 'required|array|min:1|max:200',
+            'deal_ids.*'       => 'string',
+            'extension_days'   => 'required|integer|min:1|max:90',
+            'note'             => 'nullable|string|max:2000',
+        ]);
+
+        [$actorId] = $this->resolveActor();
+
+        try {
+            $results = $this->bulk->adminBulkExtend(
+                $tenantId,
+                $actorId,
+                $data['deal_ids'],
+                (int) $data['extension_days'],
+                $data['note'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $extendedCount = count($results['extended']);
+        $skippedCount  = count($results['skipped']);
+
+        return response()->json([
+            'success' => true,
+            'message' => $extendedCount > 0
+                ? "{$extendedCount} deal" . ($extendedCount > 1 ? 's' : '') . " extended."
+                    . ($skippedCount > 0 ? " {$skippedCount} skipped." : '')
+                : 'No deals were eligible for extension.',
+            'extended_count' => $extendedCount,
+            'skipped'        => $results['skipped'],
+        ]);
+    }
+
     // ── Referrer endpoints ─────────────────────────────────────────
 
     /**

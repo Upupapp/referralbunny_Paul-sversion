@@ -150,6 +150,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::get('/partners/{partnerSlug}',      [\App\Http\Controllers\ReferrerPartnerController::class, 'show'])->name('partners.show')->where('partnerSlug', '.+');
         Route::post('/partners',                   [\App\Http\Controllers\ReferrerPartnerController::class, 'store'])->name('partners.store')->middleware('throttle:10,1');
         Route::delete('/partners/splits/{splitId}',[\App\Http\Controllers\ReferrerPartnerController::class, 'removeFromDeal'])->name('partners.remove');
+        Route::patch('/partners/splits/{splitId}', [\App\Http\Controllers\ReferrerPartnerController::class, 'updateSplit'])->name('partners.update')->middleware('throttle:20,1');
         Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
         Route::post('/messages/mark-all-read',  [MessageController::class, 'markAllResellerRead'])->name('messages.mark-all-read');
