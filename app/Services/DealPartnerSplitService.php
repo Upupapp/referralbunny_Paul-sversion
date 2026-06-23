@@ -211,15 +211,23 @@ class DealPartnerSplitService
     private function audit(string $tenantId, string $dealId, string $splitId, string $event, string $actorId, array $extra = []): void
     {
         try {
+            // activity_logs.user_id is bigint (FK to staff users); reseller/partner
+            // actor ids are UUIDs and the 'system' default is non-numeric too --
+            // store any non-numeric actor id in metadata only, same fix already
+            // applied in BulkDealExtensionService::auditDeal(). Without this guard
+            // the INSERT throws (caught here) but leaves the surrounding Postgres
+            // transaction aborted, silently failing any later statement in the
+            // same transaction -- confirmed via a transactional smoke test.
             ActivityLog::create([
                 'id'        => (string) Str::uuid(),
                 'tenant_id' => $tenantId,
-                'user_id'   => $actorId,
+                'user_id'   => is_numeric($actorId) ? (int) $actorId : null,
                 'action'    => $event,
                 'entity'    => 'deal_partner_split',
                 'entity_id' => $splitId,
                 'metadata'  => array_merge([
                     'deal_id'   => $dealId,
+                    'actor_id'  => $actorId,
                     'timestamp' => now()->toIso8601String(),
                 ], $extra),
             ]);
