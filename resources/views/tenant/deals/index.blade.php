@@ -912,6 +912,50 @@
     </div>
     @endif
 
+    {{-- ── Extend Confirmation Modal -- must stay INSIDE this x-data root
+         (a prior version was placed after the root closed, alongside the
+         deliberately-Alpine-free floating bars, which left it permanently
+         visible with unevaluated bindings -- found via a live screenshot). --}}
+    @if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
+    <div :style="showExtendConfirm ? 'display:flex' : 'display:none'"
+         style="display:none" x-cloak
+         class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100">
+            <div class="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-[#1E1B4B] font-bold text-lg mb-2 text-center">Extend Assignment Duration</h3>
+            <p class="text-gray-500 text-sm mb-4 text-center leading-relaxed">
+                <span x-text="selectedDeals.length"></span> deal<span x-text="selectedDeals.length !== 1 ? 's' : ''"></span> will have their assignment duration extended.
+            </p>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Extend by (days)</label>
+            <input type="number" min="1" max="90" x-model.number="extendDays"
+                   class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Note <span class="font-normal text-gray-400">(optional, visible in activity log)</span></label>
+            <textarea x-model="extendNote" rows="2"
+                      class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30 resize-none"
+                      placeholder="Reason for extending these deals…"></textarea>
+            <p x-show="extendError" x-text="extendError" class="text-xs text-red-600 mb-3"></p>
+            <div class="flex gap-3">
+                <button type="button" @click="showExtendConfirm = false; extendError = ''"
+                        class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" @click="bulkExtendSelected()" :disabled="extending"
+                        class="flex-1 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50"
+                        x-text="extending ? 'Extending…' : 'Extend'">
+                    Extend
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
 
 </div>
 
@@ -1539,46 +1583,6 @@ window.rbExtendBarCount = rbExtendBarCount;
 </div>
 @endif
 
-{{-- ── Extend Confirmation Modal ────────────────────────────────── --}}
-@if(in_array($actingRole, ['owner', 'admin', 'manager', 'super_admin']))
-<div :style="showExtendConfirm ? 'display:flex' : 'display:none'"
-     style="display:none" x-cloak
-     class="fixed inset-0 bg-black/50 z-[9999] items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100">
-        <div class="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
-            <svg class="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-        </div>
-        <h3 class="text-[#1E1B4B] font-bold text-lg mb-2 text-center">Extend Assignment Duration</h3>
-        <p class="text-gray-500 text-sm mb-4 text-center leading-relaxed">
-            <span x-text="selectedDeals.length"></span> deal<span x-text="selectedDeals.length !== 1 ? 's' : ''"></span> will have their assignment duration extended.
-        </p>
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Extend by (days)</label>
-        <input type="number" min="1" max="90" x-model.number="extendDays"
-               class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30">
-        <label class="block text-xs font-semibold text-gray-500 mb-1">Note <span class="font-normal text-gray-400">(optional, visible in activity log)</span></label>
-        <textarea x-model="extendNote" rows="2"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-teal-400/30 resize-none"
-                  placeholder="Reason for extending these deals…"></textarea>
-        <p x-show="extendError" x-text="extendError" class="text-xs text-red-600 mb-3"></p>
-        <div class="flex gap-3">
-            <button type="button" @click="showExtendConfirm = false; extendError = ''"
-                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors">
-                Cancel
-            </button>
-            <button type="button" @click="bulkExtendSelected()" :disabled="extending"
-                    class="flex-1 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50"
-                    x-text="extending ? 'Extending…' : 'Extend'">
-                Extend
-            </button>
-        </div>
-    </div>
-</div>
-@endif
 
 @endsection
 
