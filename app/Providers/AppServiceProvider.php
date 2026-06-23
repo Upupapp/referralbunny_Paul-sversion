@@ -25,12 +25,15 @@ use App\Listeners\HandleImportFailed;
 use App\Listeners\HandleInviteAccepted;
 use App\Listeners\HandleResellerJoined;
 use App\Models\Lead;
+use App\Models\Program;
 use App\Models\Task;
 use App\Observers\LeadGoogleCalendarObserver;
 use App\Observers\TaskGoogleCalendarObserver;
+use App\Policies\ProgramPolicy;
 use App\Services\CriticalActionService;
 use App\Services\PermissionService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -45,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Program::class, ProgramPolicy::class);
+
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
             request()->server->set('HTTPS', 'on');

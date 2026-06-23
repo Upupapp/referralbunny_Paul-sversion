@@ -1,50 +1,58 @@
-name: STITCH
+﻿name: STITCH
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
-  release-gate:
+  stitch:
+    name: STITCH Release Gate + Test Suite
     runs-on: ubuntu-latest
 
     env:
       APP_ENV: testing
       DB_CONNECTION: sqlite
-      DB_DATABASE: ':memory:'
+      DB_DATABASE: ":memory:"
       SESSION_DRIVER: array
       CACHE_STORE: array
       QUEUE_CONNECTION: sync
       MAIL_MAILER: array
-      BROADCAST_CONNECTION: 'null'
+      BROADCAST_CONNECTION: "null"
       BCRYPT_ROUNDS: 4
+      PROGRAMS_V4_ENABLED: true
+      PULSE_ENABLED: false
+      TELESCOPE_ENABLED: false
+      NIGHTWATCH_ENABLED: false
+      DB_URL: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, dom, fileinfo, pdo_sqlite, sqlite3
+          php-version: "8.4"
+          extensions: pdo, pdo_sqlite, sqlite3, mbstring, xml, curl, zip
           coverage: none
 
-      - name: Cache Composer dependencies
+      - name: Cache Composer packages
         uses: actions/cache@v4
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Prepare environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+        run: cp .env.example .env && php artisan key:generate
 
       - name: STITCH release gate
         run: php artisan stitch:release-gate --ci --fail-on=P1
 
-      - name: Run test suite
+      - name: PHP test suite
         run: php artisan test

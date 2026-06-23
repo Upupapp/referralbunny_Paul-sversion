@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -28,7 +29,7 @@ class RequestForm extends Model
     }
 
     protected $fillable = [
-        'tenant_id', 'created_by_type', 'created_by_id',
+        'tenant_id', 'program_id', 'created_by_type', 'created_by_id',
         'title', 'slug', 'public_token',
         'description', 'success_message', 'status',
         'is_public', 'allow_multiple_recipients', 'max_recipients',
@@ -42,6 +43,16 @@ class RequestForm extends Model
         'published_at'               => 'datetime',
         'archived_at'                => 'datetime',
     ];
+
+    public function program(): BelongsTo
+    {
+        return $this->belongsTo(Program::class);
+    }
+
+    public function scopeForProgram($query, string $programId)
+    {
+        return $query->where('program_id', $programId);
+    }
 
     public function fields(): HasMany
     {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Program;
 use App\Models\RequestForm;
 use App\Models\RequestFormField;
 use App\Models\RequestFormRecipientOption;
@@ -11,6 +12,7 @@ use App\Models\Task;
 use App\Models\Tenant;
 use App\Models\TenantUser;
 use App\Services\TenantContext;
+use App\Support\ProtectedTenants;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -58,13 +60,26 @@ class RequestFormController extends Controller
 
     // ── Create / Store ────────────────────────────────────────────────────────
 
-    public function create(string $tenantId): \Illuminate\View\View
+    public function create(Request $request, string $tenantId): \Illuminate\View\View
     {
         $this->authorizeAdmin($tenantId);
-        $tenant      = Tenant::findOrFail($tenantId);
+        $tenant = Tenant::findOrFail($tenantId);
+
+        $programId = $request->query('program_id');
+        if ($programId) {
+            // Never trust the query param blindly — confirm it belongs to this
+            // tenant and isn't archived. Resolved before eligibleRecipients()
+            // so a bad id fails fast. Protected tenants (lgu-ids) must never
+            // get a program_id resolved here either, even though Programs V4
+            // itself is already blocked for them by ProgramPolicy -- this is
+            // the same choke point applied to this side door.
+            abort_if(ProtectedTenants::isProtected($tenantId), 404);
+            $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($programId)->id;
+        }
+
         $teamMembers = $this->eligibleRecipients($tenantId);
 
-        return view('tenant.request-forms.create', compact('tenant', 'teamMembers'));
+        return view('tenant.request-forms.create', compact('tenant', 'teamMembers', 'programId'));
     }
 
     public function store(Request $request, string $tenantId): \Illuminate\Http\RedirectResponse
@@ -75,6 +90,7 @@ class RequestFormController extends Controller
             'title'                     => 'required|string|max:120',
             'description'               => 'nullable|string|max:500',
             'success_message'           => 'nullable|string|max:300',
+            'program_id'                => 'nullable|string',
             'allow_multiple_recipients' => 'boolean',
             'max_recipients'            => 'integer|min:1|max:10',
             'fields'                    => 'required|array|min:1',
@@ -94,9 +110,24 @@ class RequestFormController extends Controller
 
         [$actorType, $actorId] = $this->resolveActor();
 
-        try { $form = DB::transaction(function () use ($data, $tenantId, $actorType, $actorId, $request) {
+        // 'nullable|string' alone doesn't confirm tenant ownership — never trust
+        // a client-supplied program_id without re-deriving it from this tenant.
+        // Archived programs are excluded -- a program that's done shouldn't
+        // accept new intake forms.
+        // Same protected-tenant choke point as create() -- a side door into
+        // Program-linked data must not exist just because this controller
+        // predates Programs V4's ProgramPolicy guardrail.
+        abort_if(!empty($data['program_id']) && ProtectedTenants::isProtected($tenantId), 404);
+
+        $programId = null;
+        if (!empty($data['program_id'])) {
+            $programId = Program::forTenant($tenantId)->where('status', '!=', 'archived')->findOrFail($data['program_id'])->id;
+        }
+
+        try { $form = DB::transaction(function () use ($data, $tenantId, $programId, $actorType, $actorId, $request) {
             $form = RequestForm::create([
                 'tenant_id'                 => $tenantId,
+                'program_id'                => $programId,
                 'created_by_type'           => $actorType,
                 'created_by_id'             => $actorId,
                 'title'                     => $data['title'],
@@ -664,14 +695,21 @@ class RequestFormController extends Controller
 
     private function eligibleRecipients(string $tenantId): \Illuminate\Support\Collection
     {
+        // Name built in PHP rather than via SQL CONCAT() -- CONCAT() is
+        // Postgres/MySQL syntax, not supported by sqlite (used in tests),
+        // and this is otherwise behaviorally identical.
         return DB::table('tenant_users as tu')
             ->join('tenant_memberships as tm', 'tm.tenant_user_id', '=', 'tu.id')
             ->where('tm.tenant_id', $tenantId)
             ->where('tm.status', 'active')
             ->whereIn('tm.role', ['owner', 'admin', 'manager'])
-            ->selectRaw("tu.id, TRIM(CONCAT(COALESCE(tu.first_name,''), ' ', COALESCE(tu.last_name,''))) as name, tu.email, tm.role")
+            ->select('tu.id', 'tu.first_name', 'tu.last_name', 'tu.email', 'tm.role')
             ->orderBy('tm.role')
             ->orderBy('tu.first_name')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $row->name = trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
+                return $row;
+            });
     }
 }
