@@ -973,20 +973,30 @@ function dealsModule(tenantId, showLocation, canViewReferrers = false, actingRol
 
         stages: _rbStages,
 
+        syncBulkActionBars() {
+            const delBar    = document.getElementById('rb-del-bar');
+            const extendBar = document.getElementById('rb-extend-bar');
+            const showDel    = this.selectMode && this.bulkAction === 'delete';
+            const showExtend = this.selectMode && this.bulkAction === 'extend';
+            if (delBar)    delBar.style.display    = showDel    ? 'flex' : 'none';
+            if (extendBar) extendBar.style.display = showExtend ? 'flex' : 'none';
+            if (!this.selectMode) { rbDelBarCount(0); rbExtendBarCount(0); }
+            else if (this.bulkAction === 'extend') rbExtendBarCount(this.selectedDeals.length);
+            else                                   rbDelBarCount(this.selectedDeals.length);
+        },
+
         async init() {
             // Register watchers exactly once — guard prevents duplicates on Retry
             if (!this._watchersInited) {
                 this._watchersInited = true;
 
-                this.$watch('selectMode', (val) => {
-                    const delBar    = document.getElementById('rb-del-bar');
-                    const extendBar = document.getElementById('rb-extend-bar');
-                    const showDel    = val && this.bulkAction === 'delete';
-                    const showExtend = val && this.bulkAction === 'extend';
-                    if (delBar)    delBar.style.display    = showDel    ? 'flex' : 'none';
-                    if (extendBar) extendBar.style.display = showExtend ? 'flex' : 'none';
-                    if (!val) { rbDelBarCount(0); rbExtendBarCount(0); }
-                });
+                // Called explicitly from both window event handlers AND these watchers --
+                // Alpine's $watch only fires on an actual value CHANGE, so relying on the
+                // watcher alone misses the case where selectMode is already true and the
+                // user switches bulkAction (e.g. clicks "Extend Deals" mid delete-selection
+                // without cancelling first) -- found during a post-deploy audit.
+                this.$watch('selectMode', () => this.syncBulkActionBars());
+                this.$watch('bulkAction', () => this.syncBulkActionBars());
 
 
             }
