@@ -163,13 +163,21 @@
                             saveError: false,
                             validationStatus: '{{ $row->validation_status }}',
                             rowAction: '{{ $row->row_action ?? '' }}',
+                            munSeq: 0,
                             async loadMunicipalities(prov) {
-                                if (!prov) { this.municipalities = []; return; }
+                                // Out-of-order responses would leave another province's
+                                // municipalities in the list — only the newest wins.
+                                const seq = ++this.munSeq;
+                                this.municipalities = [];
+                                if (!prov) { this.loading = false; return; }
                                 this.loading = true;
                                 try {
                                     const r = await fetch('/api/lgu-ids/municipalities?province=' + encodeURIComponent(prov));
-                                    this.municipalities = await r.json();
-                                } catch(e) { this.municipalities = []; }
+                                    const data = await r.json();
+                                    if (seq !== this.munSeq) return;
+                                    this.municipalities = data;
+                                } catch(e) { if (seq === this.munSeq) this.municipalities = []; }
+                                if (seq !== this.munSeq) return;
                                 this.loading = false;
                             },
                             async saveCorrection() {

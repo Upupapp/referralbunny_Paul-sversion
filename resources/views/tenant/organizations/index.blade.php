@@ -349,6 +349,7 @@
         return {
             orgs: [],
             loading: true,
+            _fetchSeq: 0,
             search: '',
             filterIsland: '',
             filterRegion: '',
@@ -383,6 +384,11 @@
             },
 
             async fetch() {
+                // Every filter change fires a request; responses can land out of order
+                // (a slow region-wide query resolving after a narrower province one would
+                // repaint the list with the wrong province's municipalities). Only the
+                // newest request is allowed to write state.
+                const seq = ++this._fetchSeq;
                 this.loading = true;
                 try {
                     const p = new URLSearchParams({ tenant_id: tenantId, page: this.meta.page, per_page: this.meta.per_page });
@@ -397,6 +403,7 @@
                         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     });
                     const json = await res.json();
+                    if (seq !== this._fetchSeq) return;   // superseded — drop this response
                     this.orgs  = (json.data || []).map(o => {
                         let _d = {};
                         try { _d = typeof o.data === 'string' ? JSON.parse(o.data || '{}') : (o.data || {}); } catch(e) {}
@@ -409,8 +416,10 @@
                         last_page: json.last_page ?? 1,
                     };
                 } catch(e) {
+                    if (seq !== this._fetchSeq) return;
                     this.orgs = [];
                 }
+                if (seq !== this._fetchSeq) return;       // keep the spinner up for the live request
                 this.loading = false;
             },
 

@@ -575,7 +575,7 @@ function resellerDeals(tenantId, resellerName) {
         filterArchived: false, archivedLeads: [], archivedTotal: 0, archivedLoaded: false,
         filterNoNotes: false,
         showClaim: false, claimStep: 1, dealMode: 'standard',
-        claimProvince: '', availableOrgs: [], loadingOrgs: false,
+        claimProvince: '', availableOrgs: [], loadingOrgs: false, orgsSeq: 0,
         selectedOrg: null, saving: false, claimError: '',
         claimForm: { stage: 'introduction', deal_value: '' },
         claimPrompt: '',
@@ -681,17 +681,24 @@ function resellerDeals(tenantId, resellerName) {
         },
 
         async loadAvailableOrgs() {
-            if (!this.claimProvince) { this.availableOrgs = []; return; }
+            // Responses can land out of order, which would list another province's
+            // municipalities under the selected one. Only the newest request writes state.
+            const seq = ++this.orgsSeq;
+            this.availableOrgs = [];
+            if (!this.claimProvince) { this.loadingOrgs = false; return; }
             this.loadingOrgs = true;
             try {
                 const res  = await fetch(`/api/organizations/available?tenant_id=${tenantId}&province=${encodeURIComponent(this.claimProvince)}`, {
                     credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
+                if (seq !== this.orgsSeq) return;   // superseded — drop this response
                 if (!res.ok) { this.availableOrgs = []; return; }
-                this.availableOrgs = await res.json();
-            } catch(e) { this.availableOrgs = []; }
-            finally { this.loadingOrgs = false; }
+                const data = await res.json();
+                if (seq !== this.orgsSeq) return;
+                this.availableOrgs = data;
+            } catch(e) { if (seq === this.orgsSeq) this.availableOrgs = []; }
+            finally { if (seq === this.orgsSeq) this.loadingOrgs = false; }
         },
 
         selectOrgToClaim(org) {
