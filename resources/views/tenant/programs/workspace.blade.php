@@ -23,10 +23,13 @@
         'access'       => ['label' => 'Access',         'icon' => 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
     ];
 @endphp
-<div class="flex flex-col h-full" x-data="{ activeTab: @js($activeTab) }">
+@if($tenant->id !== 'lgu-ids')
+    @include('tenant.programs._workspace-styles')
+@endif
+<div class="flex flex-col h-full {{ $tenant->id !== 'lgu-ids' ? 'rb-program-workspace' : '' }}" x-data="{ activeTab: @js($activeTab) }">
 
     {{-- ── Workspace Header ────────────────────────────────────────────────── --}}
-    <div class="bg-white border-b border-gray-200 px-6 pt-5 pb-0">
+    <div class="rb-workspace-header bg-white border-b border-gray-200 px-6 pt-5 pb-0">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>
                 <a href="{{ route('tenant.programs.index', $tenant->id) }}"
@@ -37,6 +40,9 @@
                     Programs
                 </a>
                 <h1 class="text-xl font-bold text-heading">{{ $program->name }}</h1>
+                @if($tenant->id !== 'lgu-ids')
+                <p class="rb-workspace-description">Manage your rewards, referrers, and program settings in one place.</p>
+                @endif
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
@@ -77,13 +83,16 @@
         </div>
 
         {{-- ── Tab bar ──────────────────────────────────────────────────────── --}}
-        <nav class="flex gap-0.5 -mb-px overflow-x-auto" aria-label="Program workspace tabs">
+        <nav class="rb-workspace-tabs flex gap-0.5 -mb-px overflow-x-auto" aria-label="Program workspace tabs">
             @foreach($tabs as $key => $tab)
             <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}?tab={{ $key }}"
                @click.prevent="activeTab = '{{ $key }}'; history.replaceState(null, '', '?tab={{ $key }}')"
                :aria-current="activeTab === '{{ $key }}' ? 'page' : 'false'"
                :class="activeTab === '{{ $key }}' ? 'tab-active' : 'tab'"
                class="tab whitespace-nowrap">
+                @if($tenant->id !== 'lgu-ids')
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="{{ $tab['icon'] }}"/></svg>
+                @endif
                 {{ $tab['label'] }}
             </a>
             @endforeach
@@ -91,7 +100,7 @@
     </div>
 
     {{-- ── Tab content panels ───────────────────────────────────────────────── --}}
-    <div class="flex-1 overflow-auto">
+    <div class="rb-workspace-panels flex-1 overflow-auto">
 
         {{-- ── Overview tab ──────────────────────────────────────────────────── --}}
         <div x-show="activeTab === 'overview'" x-cloak class="p-6 max-w-4xl mx-auto space-y-6">
@@ -109,7 +118,12 @@
                 @csrf @method('PATCH')
 
                 <div class="p-6 space-y-5">
-                    <h2 class="text-base font-semibold text-heading">Program details</h2>
+                    <div class="rb-details-heading">
+                        <h2 class="text-base font-semibold text-heading">Program details</h2>
+                        @if($tenant->id !== 'lgu-ids')
+                        <p>Give your program a clear name and introduce it to your referrers.</p>
+                        @endif
+                    </div>
 
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div class="sm:col-span-2">
