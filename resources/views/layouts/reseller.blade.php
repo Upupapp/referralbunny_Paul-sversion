@@ -99,12 +99,6 @@
             0%,100% { opacity:1; transform:scale(1); }
             50%      { opacity:.4; transform:scale(1.5); }
         }
-        @if(!empty($subscriptionDashboard) && isset($tenant) && $tenant->id !== 'lgu-ids')
-        .rs-page-bg { background:#f2effb; }
-        .rs-sidebar { background:#30295f; }
-        .rs-sidebar-link.active { background:rgba(176,137,242,.20);border-left-color:#aa7bf0; }
-        .rs-sidebar-link:focus-visible { outline-color:#c7a7f8; }
-        @endif
     </style>
 </head>
 <body class="rs-page-bg font-sans antialiased" data-stitch-page="@yield('stitch_page', 'referrer-dashboard')" data-stitch-fallback="referrer-dashboard">

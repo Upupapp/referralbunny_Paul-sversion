@@ -8,3 +8,4 @@
 | DO NOT TOUCH LGUIDS — preserve all LGU IDS screens, data and behavior | [AGENTS.md](AGENTS.md), [MEMORY.md](MEMORY.md) | HARD RULE |
 | Manual/Automated program mode and navigation behavior | [MEMORY.md](MEMORY.md) | IMPLEMENTED |
 | Subscription / Manual program naming; Marketplace multi-product links deferred | [MEMORY.md](MEMORY.md) | PRODUCT DIRECTION |
+| Referrer portals green/teal; company admins purple | [MEMORY.md](MEMORY.md) | DESIGN RULE |
