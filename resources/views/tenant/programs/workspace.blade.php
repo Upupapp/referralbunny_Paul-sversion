@@ -86,7 +86,7 @@
         <nav class="rb-workspace-tabs flex gap-0.5 -mb-px overflow-x-auto" aria-label="Program workspace tabs">
             @foreach($tabs as $key => $tab)
             <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}?tab={{ $key }}"
-               @click.prevent="activeTab = '{{ $key }}'; history.replaceState(null, '', '?tab={{ $key }}')"
+               @if($tenant->id === 'lgu-ids') @click.prevent="activeTab = '{{ $key }}'; history.replaceState(null, '', '?tab={{ $key }}')" @endif
                :aria-current="activeTab === '{{ $key }}' ? 'page' : 'false'"
                :class="activeTab === '{{ $key }}' ? 'tab-active' : 'tab'"
                class="tab whitespace-nowrap">
@@ -822,6 +822,9 @@
 
         {{-- ── Analytics tab ─────────────────────────────────────────────────── --}}
         <div x-show="activeTab === 'analytics'" x-cloak class="p-6 max-w-5xl mx-auto space-y-6">
+            @if($tenant->id !== 'lgu-ids')
+                @include('tenant.programs._performance', ['performance' => $analytics])
+            @else
             @php $a = $analytics ?? []; @endphp
 
             <div>
@@ -889,6 +892,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- ── Access tab ────────────────────────────────────────────────────── --}}

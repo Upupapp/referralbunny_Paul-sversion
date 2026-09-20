@@ -36,6 +36,13 @@ class ProgramAnalyticsTest extends TestCase
         parent::setUp();
         Config::set('programs.enabled', true);
         $this->buildSchema();
+        foreach ([
+            '2026_06_13_000001_create_referral_program_setup_tables.php',
+            '2026_06_17_200006_create_program_offers_table.php',
+            '2026_06_17_200007_create_program_offer_versions_table.php',
+            '2026_09_20_000001_create_program_connections.php',
+            '2026_09_20_000004_add_program_operating_mode.php',
+        ] as $file) (require database_path('migrations/'.$file))->up();
         $this->seedFixtures();
     }
 
@@ -131,6 +138,21 @@ class ProgramAnalyticsTest extends TestCase
         $this->assertSame(1, $metrics['referrer_active']);
     }
 
+    public function test_manual_performance_uses_assigned_stages_without_fixed_commission(): void
+    {
+        $this->program->update(['operating_mode'=>'manual']);
+        $this->makeLead(['stage'=>'demo_complete']);
+        $this->makeLead(['stage'=>'custom_won', 'status'=>'expiring']);
+        $this->makeLead(['stage'=>'custom_won', 'status'=>'archived']);
+        $this->makeLead(['stage'=>'other'], 'other-program');
+        $result = app(\App\Services\Programs\ProgramPerformanceSummary::class)->compute($this->program);
+        $this->assertSame('manual', $result['mode']);
+        $this->assertSame(2, $result['total']);
+        $this->assertSame(1, $result['expiring']);
+        $this->assertSame(['custom_won', 'demo_complete'], $result['stages']->pluck('stage')->all());
+        $this->assertArrayNotHasKey('pending_commission', $result);
+    }
+
     // ── workspace rendering ──────────────────────────────────────────────────
 
     public function test_get_workspace_analytics_tab_renders(): void
@@ -140,7 +162,8 @@ class ProgramAnalyticsTest extends TestCase
         $this->actingAs($this->ownerUser, 'tenant')
             ->get(route('tenant.programs.workspace', [self::TENANT_ID, $this->program->id]) . '?tab=analytics')
             ->assertStatus(200)
-            ->assertSee('Total deals');
+            ->assertSee('Total referrals')
+            ->assertDontSee('Pending</p>', false);
     }
 
     public function test_get_workspace_other_tabs_render_without_error_when_analytics_data_is_null(): void
@@ -301,6 +324,10 @@ class ProgramAnalyticsTest extends TestCase
 
     private function dropSchema(): void
     {
+        Schema::dropIfExists('program_offer_versions');
+        Schema::dropIfExists('program_offers');
+        Schema::dropIfExists('program_connections');
+        Schema::dropIfExists('program_conversion_events');
         Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('leads');
         Schema::dropIfExists('partner_program_memberships');

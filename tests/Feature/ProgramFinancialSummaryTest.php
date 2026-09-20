@@ -30,6 +30,25 @@ class ProgramFinancialSummaryTest extends TestCase
         $this->assertTrue($nav->allowsManualDeals('test-sp4s9i'));
         $this->assertCount(0, $nav->programs('test-sp4s9i'));
     }
+    public function test_workspace_automated_metrics_are_program_scoped_and_preserve_recorded_rewards(): void {
+        $this->event('payment-one', 'payment', 'PHP', 100000, 20000);
+        $other = \App\Models\Program::create(['tenant_id' => 'test-sp4s9i', 'name' => 'Other', 'status' => 'draft', 'operating_mode' => 'automated']);
+        $otherConnection = ProgramConnection::create(['tenant_id'=>'test-sp4s9i','program_id'=>$other->id,'website'=>'https://example.org','secret'=>'secret','status'=>'not_connected']);
+        $this->event('other-payment', 'payment', 'PHP', 999999, 99999, $otherConnection->id);
+        ProgramOfferVersion::first()->update(['percentage_rate' => 25]);
+        $service = app(\App\Services\Programs\ProgramPerformanceSummary::class);
+        $result = $service->compute($this->program);
+        $this->assertSame('automated', $result['mode']);
+        $this->assertEquals(1000, $result['financials']['totals'][0]['revenue']);
+        $this->assertEquals(200, $result['financials']['totals'][0]['reward']);
+        $this->assertSame('25%', $result['financials']['terms'][0]['label']);
+        $html = view('tenant.programs._performance', ['performance'=>$result, 'program'=>$this->program])->render();
+        $this->assertStringContainsString('Purchases &amp; referral rewards', $html);
+        $this->assertStringNotContainsString('Closed won', $html);
+        $this->assertStringContainsString('25%', $html);
+        $this->assertStringContainsString('30-day hold', $html);
+        $this->assertNull($service->compute(new \App\Models\Program(['tenant_id'=>'lgu-ids'])));
+    }
     private function event($id,$type,$currency,$amount,$reward,$connection=null):void {
         DB::table('program_conversion_events')->insert(['id'=>$id,'connection_id'=>$connection??ProgramConnection::first()->id,'external_id'=>$id,'customer_id'=>'customer','invoice_id'=>$id,'payload_hash'=>str_repeat('a',64),'type'=>$type,'currency'=>$currency,'amount_minor'=>$amount,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()]);
     }

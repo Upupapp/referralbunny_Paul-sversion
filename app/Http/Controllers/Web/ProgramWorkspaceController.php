@@ -11,7 +11,6 @@ use App\Models\Tenant;
 use App\Models\TenantMembership;
 use App\Models\TenantUser;
 use App\Services\PermissionService;
-use App\Services\ProgramAnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -110,7 +109,7 @@ class ProgramWorkspaceController extends Controller
 
         $analytics = null;
         if ($activeTab === 'analytics') {
-            $analytics = app(ProgramAnalyticsService::class)->compute($program);
+            $analytics = app(\App\Services\Programs\ProgramPerformanceSummary::class)->compute($program);
         }
 
         $intakeForms = null;
