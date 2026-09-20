@@ -1,3 +1,6 @@
+@if($tenant->id !== 'lgu-ids')
+    @include('reseller._generic-nav')
+@else
 @php
     $tid    = $tenant->id;
     $_rsId  = auth('reseller')->id();
@@ -361,3 +364,5 @@
     </svg>
     Profile
 </a>
+
+@endif

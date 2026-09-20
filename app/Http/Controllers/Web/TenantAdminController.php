@@ -542,6 +542,7 @@ class TenantAdminController extends Controller
 
     public function messages($tenantId)
     {
+        if ($tenantId !== 'lgu-ids') return app(ProgramMessageController::class)->index(request(), $tenantId);
         $tenant = Tenant::findOrFail($tenantId);
 
         $resellers = DB::table('resellers')

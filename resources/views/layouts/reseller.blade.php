@@ -188,6 +188,9 @@
                 <h1 class="text-sm font-semibold" style="color:#1E1B4B">@yield('title', 'Dashboard')</h1>
             </div>
             <div class="flex items-center gap-2">
+                @if(isset($tenant) && $tenant->id !== 'lgu-ids' && config('programs.enabled') && auth('reseller')->check())
+                    @include('reseller.programs._picker')
+                @endif
                 <x-portal-view-switch current="referrer" />
                 @yield('topbar-actions')
 

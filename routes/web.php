@@ -155,6 +155,7 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
         Route::delete('/partners/splits/{splitId}',[\App\Http\Controllers\ReferrerPartnerController::class, 'removeFromDeal'])->name('partners.remove');
         Route::patch('/partners/splits/{splitId}', [\App\Http\Controllers\ReferrerPartnerController::class, 'updateSplit'])->name('partners.update')->middleware('throttle:20,1');
         Route::get('/request-forms',  [ResellerPortalController::class, 'requestForms'])->name('request-forms');
+        Route::post('/messages/program', [\App\Http\Controllers\Web\ProgramMessageController::class, 'send'])->name('messages.program.send')->middleware('throttle:30,1');
         Route::get('/messages',       [ResellerPortalController::class, 'messages'])->name('messages');
         Route::post('/messages/mark-all-read',  [MessageController::class, 'markAllResellerRead'])->name('messages.mark-all-read');
         Route::post('/actions/mark-all-read',   [ResellerPortalController::class, 'markActionsRead'])->name('actions.mark-all-read');
@@ -364,6 +365,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     Route::patch('/request-forms/{formId}/fields/{fieldId}',    [\App\Http\Controllers\Web\RequestFormController::class, 'updateField'])->name('request-forms.fields.update');
     Route::delete('/request-forms/{formId}/fields/{fieldId}',   [\App\Http\Controllers\Web\RequestFormController::class, 'destroyField'])->name('request-forms.fields.destroy');
     Route::post('/request-forms/{formId}/fields/reorder',       [\App\Http\Controllers\Web\RequestFormController::class, 'reorderFields'])->name('request-forms.fields.reorder');
+    Route::post('/messages/program', [\App\Http\Controllers\Web\ProgramMessageController::class, 'send'])->name('messages.program.send')->middleware('throttle:30,1');
     Route::get('/messages',                              [TenantAdminController::class, 'messages'])->name('messages');
     Route::get('/agreements',      [TenantAdminController::class, 'agreements'])->name('agreements');
     Route::get('/reports',         [TenantAdminController::class, 'reports'])->name('reports');

@@ -137,6 +137,10 @@ if ($isAdminMgr) {
 }
 
 // Note: $criticalBadge is added to workspaceBadge after it's computed below
+if ($tenantId !== 'lgu-ids' && config('programs.enabled') && \Illuminate\Support\Facades\Schema::hasTable('program_messages')) {
+    $msgBadge = \Illuminate\Support\Facades\DB::table('program_messages')->where('tenant_id',$tenantId)
+        ->where('sender_type','referrer')->whereNull('read_at')->count();
+}
 $workspaceBadge = $taskBadge + $msgBadge;
 
 // Critical actions badge — uses lightweight badgeCount() (~10 targeted COUNT queries)

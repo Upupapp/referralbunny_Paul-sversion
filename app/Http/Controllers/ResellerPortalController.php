@@ -27,6 +27,7 @@ class ResellerPortalController extends Controller
 
     public function dashboard($tenantId)
     {
+        if ($tenantId !== 'lgu-ids' && config('programs.enabled')) return app(\App\Http\Controllers\Web\ReferrerProgramPortalController::class)->index(request(), $tenantId);
         $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
@@ -131,6 +132,7 @@ class ResellerPortalController extends Controller
 
     public function deals($tenantId)
     {
+        if ($tenantId !== 'lgu-ids' && config('programs.enabled')) return app(\App\Http\Controllers\Web\ReferrerProgramPortalController::class)->index(request(), $tenantId);
         $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         return view('reseller.deals.index', compact('reseller', 'tenant'));
@@ -138,6 +140,7 @@ class ResellerPortalController extends Controller
 
     public function commission($tenantId)
     {
+        if ($tenantId !== 'lgu-ids' && config('programs.enabled')) return app(\App\Http\Controllers\Web\ReferrerProgramPortalController::class)->index(request(), $tenantId);
         $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         $calc = app(\App\Services\CommissionCalculationService::class);
@@ -223,6 +226,7 @@ class ResellerPortalController extends Controller
 
     public function requestForms($tenantId)
     {
+        abort_unless($tenantId === 'lgu-ids', 404);
         $reseller = $this->reseller($tenantId);
         if ($reseller->tenant_id !== $tenantId) abort(403);
         $tenant   = Tenant::findOrFail($tenantId);
@@ -241,6 +245,7 @@ class ResellerPortalController extends Controller
 
     public function messages($tenantId)
     {
+        if ($tenantId !== 'lgu-ids') return app(\App\Http\Controllers\Web\ProgramMessageController::class)->index(request(), $tenantId);
         $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
 
@@ -291,6 +296,7 @@ class ResellerPortalController extends Controller
 
     public function activityLog($tenantId)
     {
+        if ($tenantId !== 'lgu-ids' && config('programs.enabled')) return app(\App\Http\Controllers\Web\ReferrerProgramPortalController::class)->index(request(), $tenantId);
         $reseller = $this->reseller($tenantId);
         $tenant   = Tenant::findOrFail($tenantId);
         $filter   = request('filter', 'all');

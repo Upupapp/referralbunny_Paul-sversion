@@ -14,7 +14,7 @@
     {{-- ── Enrolled programs ─────────────────────────────────────────────── --}}
     @if($memberships->isNotEmpty())
     <section>
-        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">My Programs</h2>
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Enrolled programs</h2>
         <div class="grid gap-4 sm:grid-cols-2">
             @foreach($memberships as $membership)
             @php $prog = $membership->program; @endphp

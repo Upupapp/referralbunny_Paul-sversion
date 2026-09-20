@@ -1,0 +1,72 @@
+<?php
+namespace Tests\Feature;
+use App\Models\{Program, ProgramConnection, ReferrerProgramMembership, Reseller, Tenant, TenantMembership, TenantUser};
+use Illuminate\Support\Facades\{DB, Schema};
+use Illuminate\Database\Schema\Blueprint;
+use Tests\Support\QuickProgramSchema;
+use Tests\TestCase;
+class ProgramReferrerPortalTest extends TestCase
+{
+    use QuickProgramSchema;
+    private $referrer; private $owner; private $first; private $second;
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['app.key'=>'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=','programs.enabled'=>true]);
+        $this->buildQuickProgramSchema();
+        (require database_path('migrations/2026_09_20_000005_create_program_messages.php'))->up();
+        Schema::create('tenant_brand_profiles', function(Blueprint $t){$t->id();$t->string('tenant_id');$t->string('status')->default('draft');$t->timestamps();});
+        Schema::create('leads',function(Blueprint $t){$t->string('id');$t->string('tenant_id');$t->string('program_id');$t->string('reseller_id');$t->string('name');$t->string('stage');$t->string('status');$t->timestamps();$t->softDeletes();});
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLegalAgreementsAccepted::class);
+        Tenant::create(['id'=>'company','name'=>'Company','status'=>'active']);
+        $this->owner=TenantUser::create(['id'=>'owner','email'=>'owner@example.com','password'=>'x','status'=>'active']);
+        TenantMembership::create(['tenant_id'=>'company','tenant_user_id'=>'owner','role'=>'owner','status'=>'active']);
+        $this->referrer=Reseller::create(['tenant_id'=>'company','name'=>'Referrer','email'=>'r@example.com','status'=>'active']);
+        $this->first=Program::create(['tenant_id'=>'company','name'=>'Online','status'=>'active','operating_mode'=>'automated']);
+        $this->second=Program::create(['tenant_id'=>'company','name'=>'Manual','status'=>'active','operating_mode'=>'manual']);
+        foreach([$this->first,$this->second] as $program) ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$program->id,'reseller_id'=>$this->referrer->id,'status'=>'active']);
+    }
+    public function test_referrer_messages_and_admin_replies_are_program_scoped(): void
+    {
+        $send=route('reseller.messages.program.send','company');
+        $this->actingAs($this->referrer,'reseller')->post($send,['program_id'=>$this->first->id,'body'=>'Online question'])->assertRedirect();
+        $this->post($send,['program_id'=>$this->second->id,'body'=>'Manual question'])->assertRedirect();
+        $this->get(route('reseller.messages',['tenantId'=>'company','program_id'=>$this->first->id]))->assertOk()->assertSee('Online question')->assertDontSee('Manual question');
+        auth('reseller')->logout();
+        $this->actingAs($this->owner,'tenant')->get(route('tenant.messages',['tenantId'=>'company','program_id'=>$this->first->id]))->assertOk()->assertSee('Online question')->assertDontSee('Manual question');
+        $this->post(route('tenant.messages.program.send','company'),['program_id'=>$this->first->id,'reseller_id'=>$this->referrer->id,'body'=>'Admin reply'])->assertRedirect();
+        auth('tenant')->logout();
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.messages',['tenantId'=>'company','program_id'=>$this->first->id]))->assertOk()->assertSee('Admin reply');
+        $this->assertDatabaseHas('program_messages',['body'=>'Admin reply','sender_type'=>'admin']);
+    }
+    public function test_referrer_cannot_select_unenrolled_program_or_impersonate_another_referrer(): void
+    {
+        $hidden=Program::create(['tenant_id'=>'company','name'=>'Private','status'=>'active']);
+        $send=route('reseller.messages.program.send','company');
+        $this->actingAs($this->referrer,'reseller')->post($send,['program_id'=>$hidden->id,'body'=>'No'])->assertNotFound();
+        $this->post($send,['program_id'=>$this->first->id,'reseller_id'=>'someone-else','body'=>'No'])->assertForbidden();
+        $this->post($send,['program_id'=>$this->first->id,'body'=>'   '])->assertSessionHasErrors('body');
+        $this->assertDatabaseCount('program_messages',0);
+        $this->get(route('reseller.request-forms','company'))->assertNotFound();
+    }
+    public function test_switching_programs_changes_dashboard_and_excludes_other_referrer_data(): void
+    {
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x','status'=>'not_connected']);
+        foreach([[$this->referrer->id,2000],['another',990000]] as [$referrerId,$reward]) DB::table('program_conversion_events')->insert(['id'=>$referrerId,'connection_id'=>$connection->id,'external_id'=>$referrerId,'customer_id'=>'c','invoice_id'=>$referrerId,'referrer_id'=>$referrerId,'payload_hash'=>str_repeat('a',64),'type'=>'payment','currency'=>'PHP','amount_minor'=>10000,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()]);
+        DB::table('leads')->insert(['id'=>'manual-one','tenant_id'=>'company','program_id'=>$this->second->id,'reseller_id'=>$this->referrer->id,'name'=>'Assigned referral','stage'=>'demo','status'=>'active','created_at'=>now()]);
+        $url=route('reseller.dashboard','company');
+        $this->actingAs($this->referrer,'reseller')->get($url.'?program_id='.$this->first->id)->assertOk()->assertSee('20.00')->assertDontSee('9,900.00')->assertDontSee('Assigned referral')->assertDontSee('Request Forms');
+        $this->get($url.'?program_id='.$this->second->id)->assertOk()->assertSee('Assigned referral')->assertDontSee('20.00');
+        $this->get(route('reseller.deals','company'))->assertOk()->assertSee('Assigned referral');
+        $this->get(route('reseller.messages','company'))->assertOk()->assertViewHas('program',fn($p)=>$p->id===$this->second->id);
+    }
+    public function test_removed_members_and_foreign_admin_cannot_read_or_send(): void
+    {
+        ReferrerProgramMembership::where('program_id',$this->first->id)->update(['status'=>'removed']);
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.messages',['tenantId'=>'company','program_id'=>$this->first->id]))->assertNotFound();
+        auth('reseller')->logout();
+        $outsider=TenantUser::create(['id'=>'outsider','email'=>'out@example.com','password'=>'x','status'=>'active']);
+        $this->actingAs($outsider,'tenant')->post(route('tenant.messages.program.send','company'),['program_id'=>$this->first->id,'reseller_id'=>$this->referrer->id,'body'=>'No'])->assertForbidden();
+        $this->assertDatabaseCount('program_messages',0);
+    }
+}

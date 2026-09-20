@@ -73,6 +73,10 @@ class ReferrerProgramController extends Controller
             abort(404);
         }
 
+        if ($membership && in_array($membership->status, ['active','approved'])) {
+            $request->session()->put('referrer_program.'.$tenantId.'.'.$referrer->id, $program->id);
+        }
+
         return view('reseller.programs.show', compact(
             'tenant', 'program', 'membership'
         ));
