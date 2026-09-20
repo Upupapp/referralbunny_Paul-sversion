@@ -170,6 +170,7 @@ class ProgramWorkspaceController extends Controller
         $this->authorize('update', $program);
 
         $data = $request->validate([
+            'operating_mode'             => ['sometimes', 'required', 'in:manual,automated'],
             'name'                       => ['sometimes', 'string', 'max:120'],
             'short_description'          => ['nullable', 'string', 'max:500'],
             'full_description'           => ['nullable', 'string', 'max:5000'],
@@ -195,6 +196,14 @@ class ProgramWorkspaceController extends Controller
             'referral_period_closes_at'  => ['nullable', 'date', 'after:referral_period_opens_at'],
             'evergreen'                  => ['sometimes', 'boolean'],
         ]);
+
+        if (isset($data['operating_mode'])
+            && $data['operating_mode'] !== $program->effectiveOperatingMode()
+            && !$program->canChangeOperatingMode()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'operating_mode' => 'The mode is fixed after launch or integration setup. Create a new program to use a different mode.',
+            ]);
+        }
 
         $data['updated_by'] = (string) (auth('tenant')->id() ?? auth('web')->id());
 

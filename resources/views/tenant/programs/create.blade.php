@@ -45,6 +45,8 @@
                 @error('name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
             </div>
 
+            @include('tenant.programs._operating-mode')
+
             <div>
                 <label for="program_type" class="block text-sm font-medium text-gray-700 mb-1">Program type <span class="text-red-500">*</span></label>
                 <select id="program_type" name="program_type" class="input w-full">

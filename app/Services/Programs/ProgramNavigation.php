@@ -26,10 +26,14 @@ class ProgramNavigation
             return true;
         }
 
-        // An online program remains automated while disconnected or awaiting setup.
-        // Aggregate pages must not offer unassigned manual entry into online programs.
-        return !ProgramConnection::where('tenant_id', $tenantId)
-            ->whereIn('program_id', Program::forTenant($tenantId)->visible()->select('id'))
-            ->exists();
+        // Explicit mode wins; old programs retain their connection-based behavior.
+        // Aggregate pages cannot yet assign manual entries to a specific program.
+        return !Program::forTenant($tenantId)->visible()->where(function ($query) use ($tenantId) {
+            $query->where('operating_mode', 'automated')
+                ->orWhere(function ($legacy) use ($tenantId) {
+                    $legacy->whereNull('operating_mode')->whereIn('id',
+                        ProgramConnection::where('tenant_id', $tenantId)->select('program_id'));
+                });
+        })->exists();
     }
 }

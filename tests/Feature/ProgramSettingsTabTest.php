@@ -31,6 +31,8 @@ class ProgramSettingsTabTest extends TestCase
         parent::setUp();
         Config::set('programs.enabled', true);
         $this->buildSchema();
+        (require database_path('migrations/2026_09_20_000001_create_program_connections.php'))->up();
+        (require database_path('migrations/2026_09_20_000004_add_program_operating_mode.php'))->up();
         $this->seedFixtures();
     }
 
@@ -200,6 +202,8 @@ class ProgramSettingsTabTest extends TestCase
     private function dropSchema(): void
     {
         Schema::dropIfExists('tenant_brand_profiles');
+        Schema::dropIfExists('program_connections');
+        Schema::dropIfExists('program_conversion_events');
         Schema::dropIfExists('programs');
         Schema::dropIfExists('tenant_memberships');
         Schema::dropIfExists('tenant_users');

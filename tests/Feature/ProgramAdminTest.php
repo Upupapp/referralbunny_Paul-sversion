@@ -34,6 +34,9 @@ class ProgramAdminTest extends TestCase
         parent::setUp();
         Config::set('programs.enabled', true);
         $this->buildSchema();
+        (require database_path('migrations/2026_06_13_000001_create_referral_program_setup_tables.php'))->up();
+        (require database_path('migrations/2026_09_20_000001_create_program_connections.php'))->up();
+        (require database_path('migrations/2026_09_20_000004_add_program_operating_mode.php'))->up();
         $this->seedFixtures();
     }
 
@@ -98,6 +101,7 @@ class ProgramAdminTest extends TestCase
             ->post(route('tenant.programs.store', self::TENANT_ID), [
                 'name'         => 'My Test Program',
                 'program_type' => 'referral',
+                'operating_mode' => 'manual',
             ]);
 
         $response->assertRedirect();
@@ -119,6 +123,7 @@ class ProgramAdminTest extends TestCase
             ->post(route('tenant.programs.store', self::TENANT_ID), [
                 'name'         => 'Injected Tenant Program',
                 'program_type' => 'referral',
+                'operating_mode' => 'manual',
                 'tenant_id'    => self::OTHER_TENANT,  // attempt injection
             ]);
 
@@ -141,6 +146,7 @@ class ProgramAdminTest extends TestCase
             ->post(route('tenant.programs.store', self::TENANT_ID), [
                 'name'         => 'Unauthorized Program',
                 'program_type' => 'referral',
+                'operating_mode' => 'manual',
             ])
             ->assertStatus(403);
     }
@@ -163,6 +169,7 @@ class ProgramAdminTest extends TestCase
             'tenant_id'    => self::OTHER_TENANT,
             'name'         => 'Other Tenant Program',
             'program_type' => 'referral',
+                'operating_mode' => 'manual',
             'status'       => 'draft',
         ]);
 
@@ -272,6 +279,7 @@ class ProgramAdminTest extends TestCase
             'tenant_id'    => self::TENANT_ID,
             'name'         => 'Test Program ' . Str::random(4),
             'program_type' => 'referral',
+                'operating_mode' => 'manual',
             'status'       => $status,
         ]);
     }
@@ -377,6 +385,8 @@ class ProgramAdminTest extends TestCase
         Schema::dropIfExists('leads');
         Schema::dropIfExists('tenant_brand_profiles');
         Schema::dropIfExists('program_configuration_versions');
+        Schema::dropIfExists('program_connections');
+        Schema::dropIfExists('program_conversion_events');
         Schema::dropIfExists('programs');
         Schema::dropIfExists('tenant_memberships');
         Schema::dropIfExists('tenant_users');

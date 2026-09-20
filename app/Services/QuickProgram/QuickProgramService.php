@@ -47,7 +47,7 @@ class QuickProgramService
             }
             $draft = $this->save($tenantId, $actor, $data);
             $program = Program::create([
-                'tenant_id' => $tenantId, 'name' => $data['name'], 'program_type' => 'referral',
+                'tenant_id' => $tenantId, 'name' => $data['name'], 'program_type' => 'referral', 'operating_mode' => 'automated',
                 'status' => 'draft', 'default_currency' => $data['currency'],
                 'timezone' => $tenant->timezone ?? 'UTC', 'public_visibility' => 'private',
                 'application_mode' => 'invite_only', 'approval_mode' => 'manual',

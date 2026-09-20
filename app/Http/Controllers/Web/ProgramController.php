@@ -54,6 +54,7 @@ class ProgramController extends Controller
         $this->authorize('create', Program::class);
 
         $data = $request->validate([
+            'operating_mode'    => ['required', 'in:manual,automated'],
             'name'              => ['required', 'string', 'max:120'],
             'program_type'      => ['required', 'in:' . implode(',', Program::allTypes())],
             'short_description' => ['nullable', 'string', 'max:500'],

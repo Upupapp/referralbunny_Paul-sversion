@@ -336,6 +336,7 @@
                 @csrf @method('PATCH')
 
                 <div class="p-6 space-y-5">
+                    @include('tenant.programs._operating-mode', ['modeProgram' => $program])
                     <h2 class="text-base font-semibold text-heading">Attribution &amp; eligibility</h2>
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>

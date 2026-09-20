@@ -19,7 +19,7 @@ class Program extends Model
     protected $fillable = [
         'tenant_id', 'name', 'slug', 'internal_code',
         'short_description', 'full_description',
-        'program_type', 'objective_type',
+        'program_type', 'objective_type', 'operating_mode',
         'industry_key', 'sub_industry_key',
         'status', 'is_default', 'is_featured',
         'timezone', 'default_currency', 'locale',
@@ -154,6 +154,25 @@ class Program extends Model
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    public function effectiveOperatingMode(): string
+    {
+        if (\App\Support\ProtectedTenants::isProtected($this->tenant_id)) {
+            return 'manual';
+        }
+        if (in_array($this->operating_mode, ['manual', 'automated'], true)) {
+            return $this->operating_mode;
+        }
+        return ProgramConnection::where('tenant_id', $this->tenant_id)
+            ->where('program_id', $this->id)->exists() ? 'automated' : 'manual';
+    }
+
+    public function canChangeOperatingMode(): bool
+    {
+        return !\App\Support\ProtectedTenants::isProtected($this->tenant_id)
+            && $this->isDraft() && !$this->launched_at
+            && !ProgramConnection::where('tenant_id', $this->tenant_id)->where('program_id', $this->id)->exists();
+    }
 
     public function isActive(): bool     { return $this->status === 'active'; }
     public function isDraft(): bool      { return $this->status === 'draft'; }
