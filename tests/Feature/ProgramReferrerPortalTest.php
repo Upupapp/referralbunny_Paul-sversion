@@ -121,6 +121,11 @@ class ProgramReferrerPortalTest extends TestCase
         $this->assertEquals([10,10,null],$data['targetDaily']);
         $this->assertEquals(150,$data['revenue']);
         $this->assertEquals(30,$data['rewards']);
+        $records=route('tenant.programs.subscription-records',['tenantId'=>'company','programId'=>$this->first->id,'from'=>'2026-08-02','to'=>'2026-08-04','currency'=>'PHP']);
+        $this->get($records)->assertOk()->assertSee('p2')->assertSee('r1')->assertDontSee('p1');
+        $this->get($records.'&referrer=someone-else')->assertOk()->assertSee('No recorded events match this view.');
+        $this->get(route('tenant.programs.subscription-records',['tenantId'=>'company','programId'=>$this->second->id]))->assertNotFound();
+
         $this->post($save,['total'=>-1,'starts_on'=>'2026-08-03','ends_on'=>'2026-08-01'])->assertSessionHasErrors(['total','ends_on']);
         $this->post($save,['total'=>20,'starts_on'=>'2026-08-02','ends_on'=>'2026-08-02'])->assertRedirect();
         $this->assertDatabaseCount('program_referral_targets',1);
