@@ -178,7 +178,7 @@ class ProgramReferrerPortalTest extends TestCase
         $adminData=app(\App\Services\Programs\SubscriptionDashboard::class)->compute($this->first,$adminRequest);
         $this->assertSame(5,$adminData['clicks']);
         $this->actingAs($this->owner,'tenant')->get(route('tenant.dashboard',['tenantId'=>'company','program_id'=>$this->first->id,'from'=>'2026-09-14','to'=>'2026-09-20']))
-            ->assertOk()->assertSeeInOrder(['Net referral revenue','Clicks','New paying customers','Active subscriptions'])->assertDontSee('Referred MRR');
+            ->assertOk()->assertSeeInOrder(['Net referral revenue','Clicks','Signups','New paying customers'])->assertDontSee('Referred MRR')->assertDontSee('Active subscriptions');
         $report=route('tenant.programs.clicks',['tenantId'=>'company','programId'=>$this->first->id,'from'=>'2026-09-14','to'=>'2026-09-20']);
         $this->get($report)->assertOk()->assertViewHas('total',5)->assertViewHas('daily',fn($d)=>array_sum($d)===5 && $d['2026-09-20']===3)
             ->assertSee('Clicks by referrer')->assertSee('Another')->assertDontSee(str_repeat('a',64));
