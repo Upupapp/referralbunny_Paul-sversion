@@ -29,6 +29,7 @@ class ProgramConversionController extends Controller
             'amount_minor' => 'required_unless:type,test|integer|min:1|max:10000000000',
             'occurred_at' => 'required_unless:type,test|date|before_or_equal:'.now()->addMinutes(5)->toIso8601String(),
             'referred_at' => 'required_if:type,payment|date',
+            'signed_up_at' => 'nullable|date',
             'first_payment' => 'required_if:type,payment|boolean',
             'self_referral' => 'exclude_unless:type,payment|required|declined',
         ]);
@@ -73,7 +74,14 @@ class ProgramConversionController extends Controller
                 } else {
                     abort_unless($data['first_payment'], 422, 'Only newly referred paying customers qualify.');
                     $referred = Carbon::parse($data['referred_at'])->utc();
-                    abort_if($referred->gt($occurred) || $referred->lt($occurred->copy()->subDays($program->attribution_window_days ?? 30)), 422, 'Referral is outside the attribution window.');
+                    if ($connection->platform === 'gethired') {
+                        abort_unless(!empty($data['signed_up_at']), 422, 'Verified signup timestamp is required.');
+                        $signup = Carbon::parse($data['signed_up_at'])->utc();
+                        abort_if($signup->lt($referred) || $signup->gt($referred->copy()->addDays($program->attribution_window_days ?? 30)), 422, 'Signup is outside the referral window.');
+                        abort_if($occurred->lt($signup) || $occurred->gt($signup->copy()->addDays(30)), 422, 'First payment must be within 30 days after signup.');
+                    } else {
+                        abort_if($referred->gt($occurred) || $referred->lt($occurred->copy()->subDays($program->attribution_window_days ?? 30)), 422, 'Referral is outside the attribution window.');
+                    }
                     $version = $program->offers()->where('status', 'active')->firstOrFail()->currentVersion;
                 }
                 abort_unless($version && $version->currency === $data['currency'], 422, 'Currency does not match the program.');

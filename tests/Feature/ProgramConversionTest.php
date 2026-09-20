@@ -41,6 +41,16 @@ class ProgramConversionTest extends TestCase
             'HTTP_X_RB_SIGNATURE'=>$valid ? $signature : 'invalid',
         ],$body);
     }
+    public function test_gethired_first_payment_window_starts_at_verified_signup(): void
+    {
+        $this->connection->update(['platform'=>'gethired']);
+        $base=['referred_at'=>now()->subDays(50)->toIso8601String(),'signed_up_at'=>now()->subDays(30)->toIso8601String()];
+        $this->sendEvent($this->payload(array_replace($base,['signed_up_at'=>null])))->assertStatus(422);
+        $this->sendEvent($this->payload(array_replace($base,['signed_up_at'=>now()->subDays(30)->subSecond()->toIso8601String()])))->assertStatus(422);
+        $this->sendEvent($this->payload(array_replace($base,['referred_at'=>now()->subDays(61)->toIso8601String()])))->assertStatus(422);
+        $this->sendEvent($this->payload($base))->assertCreated()->assertJson(['reward_minor'=>10000]);
+        $this->sendEvent($this->payload(['event_id'=>'renewal','invoice_id'=>'renewal','first_payment'=>false,'referred_at'=>$base['referred_at']]))->assertCreated();
+    }
     public function test_requires_valid_fresh_signature(): void
     {
         $this->sendEvent($this->payload(),false)->assertUnauthorized();

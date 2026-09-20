@@ -25,7 +25,7 @@
 @endif
 </article>
 <article><h3>2. Qualify for a reward</h3>
-@if($automated)<p>The customer’s <strong>first qualifying payment must arrive within {{ $days }} days of the original referral visit</strong>. Signing up within that period does not extend the payment deadline. A click or signup alone does not earn a payment-based reward.</p>
+@if($automated)<p>@if($gethired)The customer’s <strong>first qualifying payment must arrive within 30 days after signup</strong>. This payment window starts at account creation, separately from the {{ $days }}-day click-to-signup window. Signup saves the referrer attribution; the first eligible payment within this deadline qualifies the customer for rewards.@else The customer’s <strong>first qualifying payment must arrive within {{ $days }} days of the original referral visit</strong>. Signing up within that period does not extend the payment deadline.@endif A click or signup alone does not earn a payment-based reward.</p>
 <p>The program and referrer membership must be active when a payment is recorded. Payment credit requires the connected platform to deliver a valid payment event to Referral Bunny.</p>
 @else<p>Eligibility follows the qualifying event and published offer below. A submitted lead alone does not prove that a reward has been earned.</p>@endif
 </article>
