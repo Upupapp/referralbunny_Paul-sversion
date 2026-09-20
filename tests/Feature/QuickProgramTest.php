@@ -26,6 +26,19 @@ class QuickProgramTest extends TestCase
         return ['website'=>'example.com','name'=>'Acme Referrals','pricing_model'=>'subscription','price'=>1000,'currency'=>'PHP',
             'option'=>'recurring','reward_model'=>'percentage','reward_value'=>10,'reward_scope'=>'recurring','duration_months'=>6,'hold_days'=>30,'confirmed'=>true];
     }
+    public function test_autosaves_do_not_consume_publish_limit_and_publish_remains_limited(): void
+    {
+        for ($i = 0; $i < 6; $i++) {
+            $this->putJson('/tenant/acme/quick-program/draft', $this->payload())->assertOk();
+        }
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/tenant/acme/quick-program/publish', $this->payload())->assertOk();
+        }
+        $this->postJson('/tenant/acme/quick-program/publish', $this->payload())->assertStatus(429)->assertHeader('Retry-After');
+        $this->putJson('/tenant/acme/quick-program/draft', $this->payload())->assertStatus(409);
+        $this->assertDatabaseCount('programs', 1);
+    }
+
     public function test_empty_workspace_prompts_and_saved_draft_resumes(): void
     {
         $this->getJson('/tenant/acme/quick-program/status')->assertOk()->assertJson(['needed'=>true,'draft'=>null]);

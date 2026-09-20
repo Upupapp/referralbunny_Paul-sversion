@@ -13,6 +13,10 @@ export default function quickProgram(config) {
         async api(url, method = 'GET', body = null) {
             const res = await fetch(url, {method, credentials: 'same-origin', headers: {'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content}, ...(body ? {body: JSON.stringify(body)} : {})});
             const data = await res.json().catch(() => ({}));
+            if (res.status === 429) {
+                const seconds = Math.max(1, Number(res.headers.get('Retry-After')) || 60);
+                throw new Error(`Please wait ${seconds} seconds before trying this action again. Your setup details are still here.`);
+            }
             if (!res.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Unable to save. Please try again.');
             return data;
         },
