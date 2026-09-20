@@ -4,11 +4,30 @@ namespace App\Services\Programs;
 
 use App\Models\{Program, ProgramConnection, ReferrerProgramMembership};
 use App\Support\ProtectedTenants;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use GuzzleHttp\Psr7\Uri;
 
 class ReferrerReferralLink
 {
     public function forMembership(Program $program, ?ReferrerProgramMembership $membership): ?string
+    {
+        if (!$this->destination($program, $membership)) return null;
+
+        // Separate aliases keep existing enrollment codes and tracking integrations unchanged.
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $code = DB::table('program_referral_links')->where('membership_id', $membership->id)->value('code');
+            if ($code) return route('referral.short', ['code' => $code]);
+            DB::table('program_referral_links')->insertOrIgnore([
+                'code' => Str::lower(Str::random(8)),
+                'membership_id' => $membership->id,
+                'created_at' => now(),
+            ]);
+        }
+        throw new \RuntimeException('Unable to allocate referral link.');
+    }
+
+    public function destination(Program $program, ?ReferrerProgramMembership $membership): ?string
     {
         if (ProtectedTenants::isProtected($program->tenant_id)
             || $program->status !== 'active' || $program->effectiveOperatingMode() !== 'automated'

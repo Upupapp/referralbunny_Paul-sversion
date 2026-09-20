@@ -19,6 +19,10 @@ use App\Http\Controllers\ResellerPortalAuthController;
 use App\Http\Controllers\ResellerPortalController;
 use Illuminate\Support\Facades\Route;
 
+// Public share preview and attribution-preserving short link.
+Route::get('/r/{code}', \App\Http\Controllers\Web\ReferralShortLinkController::class)
+    ->where('code', '[a-z0-9]{8}')->name('referral.short');
+
 // ── Auth ──────────────────────────────────────────────────────
 Route::get('/login',          [AuthWebController::class, 'showLogin'])->name('login');
 Route::get('/platform/login', fn() => redirect()->route('login'))->name('platform.login');

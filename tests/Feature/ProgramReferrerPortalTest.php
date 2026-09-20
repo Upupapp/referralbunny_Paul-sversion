@@ -14,6 +14,7 @@ class ProgramReferrerPortalTest extends TestCase
         parent::setUp();
         config(['app.key'=>'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=','programs.enabled'=>true]);
         $this->buildQuickProgramSchema();
+        (require database_path('migrations/2026_09_20_000007_create_program_referral_links.php'))->up();
         (require database_path('migrations/2026_09_20_000005_create_program_messages.php'))->up();
         Schema::create('tenant_brand_profiles', function(Blueprint $t){$t->id();$t->string('tenant_id');$t->string('status')->default('draft');$t->timestamps();});
         Schema::create('leads',function(Blueprint $t){$t->string('id');$t->string('tenant_id');$t->string('program_id');$t->string('reseller_id');$t->string('name');$t->string('stage');$t->string('status');$t->timestamps();$t->softDeletes();});
@@ -76,18 +77,44 @@ class ProgramReferrerPortalTest extends TestCase
         $url=route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->first->id]);
         $response=$this->actingAs($this->referrer,'reseller')->get($url)->assertOk()->assertSee('Copy referral link');
         $link=$response->viewData('referralLink');
-        parse_str(parse_url($link,PHP_URL_QUERY),$query);
+        $this->assertMatchesRegularExpression('~/r/[a-z0-9]{8}$~', $link);
+        $this->assertSame($link, app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($this->first,$member));
+        $short=$this->get($link)->assertOk()->assertSee('og:image',false)->assertSee('summary_large_image')->assertSee('window.location.replace',false);
+        $destination=$short->viewData('destination');
+        $this->get($link.'?preview=1&url=https://evil.example')->assertOk()->assertDontSee('window.location.replace',false)->assertViewHas('destination',$destination);
+        parse_str(parse_url($destination,PHP_URL_QUERY),$query);
         $this->assertSame(['campaign'=>'summer','rb_program'=>$this->first->id,'rb_ref'=>$member->id],$query);
-        $this->assertSame('pricing',parse_url($link,PHP_URL_FRAGMENT));
-        $this->assertSame('/plans',parse_url($link,PHP_URL_PATH));
+        $this->assertSame('pricing',parse_url($destination,PHP_URL_FRAGMENT));
+        $this->assertSame('/plans',parse_url($destination,PHP_URL_PATH));
         $this->assertNull($member->fresh()->referral_code);
         $this->get(route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->second->id]))->assertOk()->assertDontSee('Copy referral link');
         $member->update(['status'=>'approved']);
+        $this->get($link)->assertNotFound();
         $this->get($url)->assertOk()->assertDontSee('Copy referral link');
         $member->update(['status'=>'active']);
         $this->first->update(['status'=>'paused']);
+        $this->get($link)->assertNotFound();
         $this->get($url)->assertOk()->assertDontSee('Copy referral link');
     }
+    public function test_short_link_rejects_unknown_and_mismatched_membership(): void
+    {
+        $this->get('/r/abcdefgh')->assertNotFound();
+        $this->get('/r/invalid')->assertNotFound();
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $link=app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($this->first,$member);
+        $this->get($link)->assertOk();
+        $connection->update(['website'=>'javascript:alert(1)']);
+        $this->get($link)->assertNotFound();
+        $connection->update(['website'=>'https://example.com']);
+        Tenant::create(['id'=>'other','name'=>'Other','status'=>'active']);
+        $member->update(['tenant_id'=>'other']);
+        $this->get($link)->assertNotFound();
+        $member->update(['tenant_id'=>'company']);
+        $this->first->delete();
+        $this->get($link)->assertNotFound();
+    }
+
     public function test_referral_links_reject_invalid_destinations_and_membership_mismatch(): void
     {
         $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
