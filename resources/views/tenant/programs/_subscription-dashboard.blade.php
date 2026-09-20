@@ -25,13 +25,13 @@
  @if(session('success'))<div class="hint" role="status">{{ session('success') }}</div>@endif
  <section class="cards">
  @foreach([
- ['▥','Net referral revenue',$money($s['revenue']),'Payments less refunds, excluding tax'],
- ['♧','New paying customers',number_format(array_sum($values)),'First recorded payment · all currencies'],
- ['↻','Active subscriptions','—','Lifecycle data not available'],
- ['↗','Referred MRR','—','Subscription billing data not available'],
- ['♔','Net recorded rewards',$money($s['rewards']),'Calculated, not paid out'],
- ['▤','Revenue after rewards',$money($s['revenue']-$s['rewards']),'Before other costs']
- ] as [$icon,$label,$value,$note])<article class="panel card"><div class="card-label"><span class="icon">{{ $icon }}</span>{{ $label }}</div><strong class="value">{{ $value }}</strong><p class="muted">{{ $note }}</p></article>@endforeach
+ ['revenue','Net referral revenue',$money($s['revenue']),'Payments less refunds, excluding tax'],
+ ['users','New paying customers',number_format(array_sum($values)),'First recorded payment · all currencies'],
+ ['renew','Active subscriptions','—','Lifecycle data not available'],
+ ['trend','Referred MRR','—','Subscription billing data not available'],
+ ['gift','Net recorded rewards',$money($s['rewards']),'Calculated, not paid out'],
+ ['wallet','Revenue after rewards',$money($s['revenue']-$s['rewards']),'Before other costs']
+ ] as [$icon,$label,$value,$note])<article class="panel card"><div class="card-label"><span class="icon">@include('tenant.programs._dashboard-icon',['icon'=>$icon])</span>{{ $label }}</div><strong class="value">{{ $value }}</strong><p class="muted">{{ $note }}</p></article>@endforeach
  </section>
  <section class="middle">
   <div class="panel"><div class="row"><div><h2>Referrals vs target</h2><p class="muted">Daily new paying referred customers · {{ $s['from']->format('M j') }}–{{ $s['to']->format('M j, Y') }}</p></div><button class="button primary" @click="$refs.targetDialog.showModal()">{{ $s['target'] ? 'Edit target' : '+ Add target' }}</button></div>
@@ -49,7 +49,7 @@
   <details style="margin-top:12px"><summary class="muted" style="cursor:pointer">View daily data</summary><div style="max-height:200px;overflow:auto"><table><thead><tr><th>Date</th><th>Actual</th><th>Target</th></tr></thead><tbody>@foreach($s['daily'] as $day=>$count)<tr><td>{{ $day }}</td><td>{{ $day>now($s['tz'])->toDateString()?'Not yet due':$count }}</td><td>{{ $s['target'] && $day >= $s['target']->starts_on && $day <= $s['target']->ends_on ? number_format($s['average'],2) : '—' }}</td></tr>@endforeach</tbody></table></div></details>
   </div>
   <aside class="panel"><h2>Needs attention</h2><p class="muted">Current program status · all dates</p>
-   <a class="attention" href="{{ $manage }}?tab=analytics"><span class="icon">♔</span><div><strong>{{ $signals['ready'] }} rewards ready for review</strong><p class="muted">Hold period completed</p></div><span>›</span></a>
+   <a class="attention" href="{{ $manage }}?tab=analytics"><span class="icon">@include('tenant.programs._dashboard-icon',['icon'=>'gift'])</span><div><strong>{{ $signals['ready'] }} rewards ready for review</strong><p class="muted">Hold period completed</p></div><span>›</span></a>
    <a class="attention" href="{{ route('tenant.quick-program.connection',[$tenant->id,$program->id]) }}"><span class="icon">⌁</span><div><strong>Website tracking</strong><p class="muted">Review connection and delivery status</p></div><span>›</span></a>
    <a class="attention" href="{{ route('tenant.messages',['tenantId'=>$tenant->id,'program_id'=>$program->id]) }}"><span class="icon">☏</span><div><strong>{{ $s['unread'] }} unread messages</strong><p class="muted">Program conversations</p></div><span>›</span></a>
    <div class="attention"><span class="icon">◷</span><div><strong>{{ $signals['on_hold'] }} rewards on hold</strong><p class="muted">Waiting for eligibility review</p></div></div>
