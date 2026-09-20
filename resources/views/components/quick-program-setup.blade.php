@@ -10,7 +10,7 @@
     <dialog x-ref="dialog" @cancel.prevent="minimize()" aria-labelledby="quick-program-title" class="m-auto w-[calc(100%-2rem)] max-w-3xl max-h-[90dvh] overflow-y-auto rounded-3xl border-0 bg-white text-slate-900 p-0 shadow-2xl backdrop:bg-slate-950/50">
         <div class="p-5 sm:p-8">
             <div class="flex items-start justify-between gap-4 mb-5">
-                <div><p class="text-xs font-bold uppercase tracking-widest text-purple-600 mb-2">Your first referral program</p><h2 id="quick-program-title" class="text-2xl font-bold">Turn happy customers into your next customers.</h2><p class="text-sm text-slate-500 mt-2">A website, a reward, and you’re ready to start.</p></div>
+                <div><p class="text-xs font-bold uppercase tracking-widest text-purple-600 mb-2">{{ $tenant->id === 'lgu-ids' ? 'Your first referral program' : 'Subscription Referral Program' }}</p><h2 id="quick-program-title" class="text-2xl font-bold">Turn happy customers into your next customers.</h2><p class="text-sm text-slate-500 mt-2">{{ $tenant->id === 'lgu-ids' ? 'A website, a reward, and you’re ready to start.' : 'Set up referrals for your subscription platform with a website and a reward.' }}</p></div>
                 <button type="button" @click="minimize()" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Minimize setup">✕</button>
             </div>
             <ol class="flex gap-3 text-xs mb-6" aria-label="Setup progress"><template x-for="(label, i) in ['Your website', 'Your reward', 'Review']"><li class="rounded-full px-3 py-2" :class="step === i+1 ? 'bg-purple-100 text-purple-800 font-bold' : 'bg-slate-100 text-slate-500'"><span x-text="`${i+1}. ${label}`"></span></li></template></ol>

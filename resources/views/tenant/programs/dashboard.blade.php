@@ -12,7 +12,7 @@
         <div>
             <p class="rb-eyebrow">Program dashboard</p>
             <h1>{{ $program->name }}</h1>
-            <p class="rb-context">{{ ucfirst($performance['mode']) }} · {{ ucfirst($program->status) }} · All-time activity<br>Use the program menu above to switch dashboards.</p>
+            <p class="rb-context">{{ $program->referralProgramLabel() }} · {{ ucfirst($program->status) }} · All-time activity<br>Use the program menu above to switch dashboards.</p>
         </div>
         <a class="rb-settings" href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}">Manage program →</a>
     </header>

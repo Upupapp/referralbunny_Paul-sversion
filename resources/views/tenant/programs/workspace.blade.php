@@ -41,7 +41,7 @@
                 </a>
                 <h1 class="text-xl font-bold text-heading">{{ $program->name }}</h1>
                 @if($tenant->id !== 'lgu-ids')
-                <p class="rb-workspace-description">Manage your rewards, referrers, and program settings in one place.</p>
+                <p class="rb-workspace-description">{{ $program->referralProgramLabel() }} · Manage your rewards, referrers, and program settings in one place.</p>
                 @endif
             </div>
 

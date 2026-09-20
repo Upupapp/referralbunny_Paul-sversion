@@ -10,8 +10,8 @@
     <div class="rb-panel"><h1>Your referral programs</h1><p class="rb-muted">Your dashboard, referrals, rewards, and conversations will appear here once you’re enrolled in a program.</p><a class="rb-link" href="{{ route('reseller.programs.index', $tenant->id) }}">Explore referral programs →</a></div>
     @else
     <div class="rb-panel">
-        <p class="rb-muted">{{ $page }} · {{ ucfirst($mode) }} program</p><h1>{{ $program->name }}</h1>
-        <p class="rb-muted">{{ $mode === 'automated' ? 'Your referred purchases and rewards are recorded through the connected website.' : 'Follow the progress of the referrals assigned to you in this program.' }}</p>
+        <p class="rb-muted">{{ $page }} · {{ $program->referralProgramLabel() }}</p><h1>{{ $program->name }}</h1>
+        <p class="rb-muted">{{ $mode === 'automated' ? 'Your referred subscription payments and rewards are recorded through the connected platform.' : 'Follow the progress of the referrals assigned to you in this program.' }}</p>
         @if($referralLink)
         <div style="margin-top:20px;padding:18px;background:#faf5ff;border:1px solid #ead9fb;border-radius:14px" x-data="{ copyStatus: '' }">
             <label for="referral-link" style="display:block;font-weight:600;margin-bottom:10px">Your referral link</label>

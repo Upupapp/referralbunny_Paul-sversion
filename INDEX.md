@@ -7,3 +7,4 @@
 | Five recommended next steps; explain recommendations for user decisions | [MEMORY.md](MEMORY.md) | USER PREFERENCE |
 | DO NOT TOUCH LGUIDS — preserve all LGU IDS screens, data and behavior | [AGENTS.md](AGENTS.md), [MEMORY.md](MEMORY.md) | HARD RULE |
 | Manual/Automated program mode and navigation behavior | [MEMORY.md](MEMORY.md) | IMPLEMENTED |
+| Subscription / Manual program naming; Marketplace multi-product links deferred | [MEMORY.md](MEMORY.md) | PRODUCT DIRECTION |

@@ -155,6 +155,13 @@ class Program extends Model
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    public function referralProgramLabel(): string
+    {
+        return $this->effectiveOperatingMode() === 'automated'
+            ? 'Subscription Referral Program'
+            : 'Manual Referral Program';
+    }
+
     public function effectiveOperatingMode(): string
     {
         if (\App\Support\ProtectedTenants::isProtected($this->tenant_id)) {

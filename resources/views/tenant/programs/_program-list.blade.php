@@ -66,7 +66,7 @@
             <h2>{{ $program->name }}</h2>
             <p class="rb-card-description">{{ $program->short_description ?: 'Manage the rewards, members, and settings for this program.' }}</p>
             <div class="rb-card-tags">
-                <span>{{ ucfirst(str_replace('_', ' ', $program->program_type)) }}</span>
+                <span>{{ $program->referralProgramLabel() }}</span>
                 @if($program->is_default)<span>Default program</span>@endif
                 <span>{{ ucfirst($program->public_visibility ?? 'private') }}</span>
             </div>
