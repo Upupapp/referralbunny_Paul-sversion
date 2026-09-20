@@ -37,10 +37,12 @@ class ReferrerSubscriptionDashboard
         $recent=(clone $money)->orderByDesc('occurred_at')->limit(5)->get(['type','reward_minor','currency','occurred_at','status','available_at']);
         $unread=DB::table('program_messages')->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)
             ->where('reseller_id',$reseller->id)->where('sender_type','admin')->whereNull('read_at')->count();
-        $clickBase=DB::table('program_referral_clicks as clicks')
-            ->join('referrer_program_memberships as members','members.id','=','clicks.membership_id')
-            ->where('members.tenant_id',$program->tenant_id)->where('members.program_id',$program->id)
-            ->where('members.reseller_id',$reseller->id);
+        // Legacy production enrollment IDs are varchar; analytics IDs are UUID.
+        // Resolve scoped IDs first so PostgreSQL binds values to the column type.
+        $clickMemberships=DB::table('referrer_program_memberships')
+            ->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)
+            ->where('reseller_id',$reseller->id)->pluck('id');
+        $clickBase=DB::table('program_referral_clicks as clicks')->whereIn('membership_id',$clickMemberships);
         $linkClicks=(clone $clickBase)->count();
         $uniqueBrowsers=(clone $clickBase)->distinct()->count('clicks.visitor_hash');
         $periodClicks=(clone $clickBase)->whereBetween('clicks.created_at',[$start->utc(),$end->utc()])->count();
