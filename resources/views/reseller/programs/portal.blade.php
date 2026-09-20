@@ -2,6 +2,9 @@
 @section('nav') @include('reseller._nav') @endsection
 @section('title', $page)
 @section('content')
+@if($subscriptionDashboard)
+@include('reseller.programs._subscription-dashboard')
+@else
 <style>
 .rb-referrer-program{max-width:1100px;margin:auto;color:#292147}.rb-referrer-program .rb-panel{background:white;border:1px solid #e6dfef;border-radius:18px;padding:24px;margin-bottom:20px}.rb-referrer-program h1{font-size:25px;font-weight:700}.rb-referrer-program h2{font-size:16px;font-weight:600;margin-bottom:12px}.rb-referrer-program .rb-muted{font-size:13px;color:#81748e;line-height:1.7;margin:8px 0}.rb-referrer-program .rb-link{display:inline-block;color:#8925cc;background:#f7edff;padding:10px 15px;border-radius:10px;font-size:13px;font-weight:600;margin-top:14px}.rb-referrer-program .rb-stats{display:flex;gap:16px;flex-wrap:wrap}.rb-referrer-program .rb-stat{padding:16px 20px;border:1px solid #eee4f6;border-radius:13px;flex:1;min-width:170px}.rb-referrer-program strong.value{font-size:25px;display:block;margin:8px 0}.rb-referrer-program table{width:100%;font-size:13px}.rb-referrer-program th{text-align:left;color:#93859e;font-size:11px;padding:12px}.rb-referrer-program td{padding:13px 12px;border-top:1px solid #f0eaf6}.rb-referrer-program .rb-table{overflow:auto}.rb-referrer-program code{overflow-wrap:anywhere;white-space:normal}
 </style>
@@ -57,4 +60,5 @@
     @endif
     @endif
 </div>
+@endif
 @endsection

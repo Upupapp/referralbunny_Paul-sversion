@@ -31,6 +31,8 @@ class ReferrerProgramPortalController extends Controller
         }
         $referralLink = $program ? app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($program, $membership) : null;
         $page = $request->routeIs('reseller.commission') ? 'Rewards' : ($request->routeIs('reseller.deals') ? 'My Referrals' : ($request->routeIs('reseller.activity') ? 'Activity' : 'Dashboard'));
-        return view('reseller.programs.portal', $context + compact('tenant','mode','records','totals','membership','offers','stages','page','referralLink'));
+        $subscriptionDashboard = $program && $mode === 'automated' && $page === 'Dashboard'
+            ? app(\App\Services\Programs\ReferrerSubscriptionDashboard::class)->compute($program,$reseller,$request) : null;
+        return view('reseller.programs.portal', $context + compact('tenant','mode','records','totals','membership','offers','stages','page','referralLink','subscriptionDashboard'));
     }
 }

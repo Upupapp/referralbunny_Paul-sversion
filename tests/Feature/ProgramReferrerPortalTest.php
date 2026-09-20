@@ -55,7 +55,7 @@ class ProgramReferrerPortalTest extends TestCase
         foreach([[$this->referrer->id,2000],['another',990000]] as [$referrerId,$reward]) DB::table('program_conversion_events')->insert(['id'=>$referrerId,'connection_id'=>$connection->id,'external_id'=>$referrerId,'customer_id'=>'c','invoice_id'=>$referrerId,'referrer_id'=>$referrerId,'payload_hash'=>str_repeat('a',64),'type'=>'payment','currency'=>'PHP','amount_minor'=>10000,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()]);
         DB::table('leads')->insert(['id'=>'manual-one','tenant_id'=>'company','program_id'=>$this->second->id,'reseller_id'=>$this->referrer->id,'name'=>'Assigned referral','stage'=>'demo','status'=>'active','created_at'=>now()]);
         $url=route('reseller.dashboard','company');
-        $this->actingAs($this->referrer,'reseller')->get($url.'?program_id='.$this->first->id)->assertOk()->assertSee('20.00')->assertDontSee('9,900.00')->assertDontSee('Assigned referral')->assertDontSee('Request Forms')->assertSee('My Referrals')->assertSee('Referral Programs');
+        $this->actingAs($this->referrer,'reseller')->get($url.'?program_id='.$this->first->id.'&currency=PHP')->assertOk()->assertSee('20.00')->assertDontSee('9,900.00')->assertDontSee('Assigned referral')->assertDontSee('Request Forms')->assertSee('My Referrals')->assertSee('Referral Programs');
         $this->get($url.'?program_id='.$this->second->id)->assertOk()->assertSee('Assigned referral')->assertDontSee('20.00');
         $this->get(route('reseller.deals','company'))->assertOk()->assertSee('Assigned referral');
         $this->get(route('reseller.messages','company'))->assertOk()->assertViewHas('program',fn($p)=>$p->id===$this->second->id);
@@ -184,6 +184,27 @@ class ProgramReferrerPortalTest extends TestCase
         $program->tenant_id='lgu-ids';
         $this->assertNull($service->forProgram($program));
         $this->travelBack();
+    }
+
+    public function test_referrer_design_scopes_chart_currencies_and_refund_adjusted_review_counts(): void
+    {
+        $this->first->update(['default_currency'=>'PHP','timezone'=>'Asia/Manila']);
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        foreach([['paid','payment',2000,'PHP',$this->referrer->id],['reversal','refund',-2000,'PHP',$this->referrer->id],['foreign','payment',990000,'PHP','another'],['usd','payment',500,'USD',$this->referrer->id]] as [$id,$type,$reward,$currency,$referrerId]) {
+            DB::table('program_conversion_events')->insert(['id'=>$id,'connection_id'=>$connection->id,'external_id'=>$id,'customer_id'=>'c','invoice_id'=>$currency,'referrer_id'=>$referrerId,'payload_hash'=>str_repeat('a',64),'type'=>$type,'currency'=>$currency,'amount_minor'=>10000,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()->subDay(),'available_at'=>now()->subHour()]);
+        }
+        $url=route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->first->id,'days'=>7]);
+        $response=$this->actingAs($this->referrer,'reseller')->get($url)->assertOk()->assertSee('Your reward activity')->assertSee('Copy referral link')->assertDontSee('9,900.00');
+        $d=$response->viewData('subscriptionDashboard');
+        $this->assertEquals(0,$d['net']);
+        $this->assertEquals(0,$d['ready']);
+        $this->assertCount(7,$d['daily']);
+        $this->assertEquals(0,array_sum($d['daily']));
+        $this->assertEquals(1,$d['customers']);
+        $this->assertEquals(1,$d['payments']);
+        $this->get($url.'&currency=USD')->assertOk()->assertViewHas('subscriptionDashboard',fn($s)=>$s['net']===500 && $s['ready']===1);
+        $this->get($url.'&currency=EUR')->assertSessionHasNoErrors()->assertStatus(422);
+        $this->get(route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->second->id]))->assertOk()->assertDontSee('Your reward activity');
     }
 
 }
