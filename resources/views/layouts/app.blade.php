@@ -384,6 +384,7 @@
                 @if(auth('tenant')->check() && !auth('web')->check())
                     <x-portal-view-switch current="admin" :tenant-id="$tenant->id ?? null" />
                 @endif
+                @include('tenant.programs._picker')
                 @yield('topbar-actions')
 
                 {{-- Mobile search icon --}}

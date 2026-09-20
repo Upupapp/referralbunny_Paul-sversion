@@ -15,6 +15,21 @@ class ProgramFinancialSummaryTest extends TestCase
         TenantUser::create(['id'=>'owner','email'=>'owner@example.com','password'=>'x','status'=>'active']);
         $this->program=app(QuickProgramService::class)->publish('test-sp4s9i','owner',['website'=>'https://example.com','name'=>'GetHired','pricing_model'=>'subscription','price'=>1000,'currency'=>'PHP','option'=>'recurring','reward_model'=>'percentage','reward_value'=>20,'reward_scope'=>'recurring','duration_months'=>6,'hold_days'=>30]);
     }
+    public function test_program_navigation_scopes_online_entry_and_preserves_protected_tenant(): void {
+        $nav = app(\App\Services\Programs\ProgramNavigation::class);
+        $this->assertFalse($nav->allowsManualDeals('test-sp4s9i'));
+        $this->assertTrue($nav->allowsManualDeals('unrelated'));
+        $this->assertSame([$this->program->id], $nav->programs('test-sp4s9i')->pluck('id')->all());
+        $this->assertCount(0, $nav->programs('unrelated'));
+        DB::enableQueryLog(); DB::flushQueryLog();
+        $this->assertTrue($nav->allowsManualDeals('lgu-ids'));
+        $this->assertCount(0, $nav->programs('lgu-ids'));
+        $this->assertSame([], DB::getQueryLog());
+        DB::disableQueryLog();
+        $this->program->update(['status' => 'archived']);
+        $this->assertTrue($nav->allowsManualDeals('test-sp4s9i'));
+        $this->assertCount(0, $nav->programs('test-sp4s9i'));
+    }
     private function event($id,$type,$currency,$amount,$reward,$connection=null):void {
         DB::table('program_conversion_events')->insert(['id'=>$id,'connection_id'=>$connection??ProgramConnection::first()->id,'external_id'=>$id,'customer_id'=>'customer','invoice_id'=>$id,'payload_hash'=>str_repeat('a',64),'type'=>$type,'currency'=>$currency,'amount_minor'=>$amount,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()]);
     }
