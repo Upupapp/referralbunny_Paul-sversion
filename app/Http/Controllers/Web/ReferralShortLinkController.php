@@ -24,6 +24,7 @@ class ReferralShortLinkController extends Controller
             return response('', 204)->header('Cache-Control', 'no-store');
         }
         [$clickToken,$visitor] = $tracking->issue($request,$code,$membership);
+        if ($clickToken) $destination=(string) \GuzzleHttp\Psr7\Uri::withQueryValues(new \GuzzleHttp\Psr7\Uri($destination),['rb_click'=>$clickToken]);
         $clickUrl = route('referral.click', ['code'=>$code]);
         $canonical = route('referral.short', ['code' => $code]);
         $host = parse_url($destination, PHP_URL_HOST);

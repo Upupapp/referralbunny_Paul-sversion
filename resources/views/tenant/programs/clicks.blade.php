@@ -23,6 +23,7 @@
  <div class="stats"><div><strong>{{ number_format($total) }}</strong><p>Recorded clicks</p></div><div><strong>{{ number_format($total/count($daily),1) }}</strong><p>Average per calendar day</p></div><div><strong>{{ number_format(max($daily)) }}</strong><p>Most clicks in one day</p></div></div>
  <p style="margin-top:18px">{{ $summary['from']->format('M j, Y') }} – {{ $summary['to']->format('M j, Y') }} · Clicks are independent of currency. Repeat visits count. Previews, known bots and signed-in own-referrer/company-team visits are excluded. Earlier visits and blocked tracking cannot be recovered; zero means no recorded clicks. Future days and today may be incomplete.</p>
  </section>
+ @include('components.signup-metrics',['signupTimezone'=>$summary['tz']])
  @include('tenant.programs._click-report-chart')
  <div class="grid">
   <section class="panel"><h2>Daily clicks</h2><p>Calendar dates in {{ $summary['tz'] }}</p><div class="table-wrap"><table><thead><tr><th scope="col">Date</th><th scope="col">Clicks</th></tr></thead><tbody>@foreach($daily as $date=>$count)<tr><td>{{ $date }}</td><td>{{ $date>now($summary['tz'])->toDateString()?'Not yet due':number_format($count) }}</td></tr>@endforeach</tbody></table></div></section>

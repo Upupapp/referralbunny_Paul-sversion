@@ -38,6 +38,7 @@ class ProgramClickReportController extends Controller
         $breakdown=(clone $clicks)->select('membership_id')->selectRaw('COUNT(*) as clicks, COUNT(DISTINCT visitor_hash) as browsers, MAX(created_at) as latest')
             ->groupBy('membership_id')->orderByDesc('clicks')->get();
         $recent=(clone $clicks)->select(['id','membership_id','created_at'])->orderByDesc('created_at')->orderByDesc('id')->paginate(25)->withQueryString();
-        return view('tenant.programs.clicks',compact('tenant','program','summary','selected','names','memberReferrers','total','daily','breakdown','recent'));
+        $signupMetrics=app(\App\Services\Programs\SignupMetrics::class)->compute($program,$summary['from'],$summary['to'],$selected);
+        return view('tenant.programs.clicks',compact('tenant','program','summary','selected','names','memberReferrers','total','daily','breakdown','recent','signupMetrics'));
     }
 }

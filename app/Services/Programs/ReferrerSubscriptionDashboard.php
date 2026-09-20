@@ -54,6 +54,7 @@ class ReferrerSubscriptionDashboard
         }
         $periodClicks=array_sum($dailyClicks);
         $campaign=app(CampaignPeriod::class)->forProgram($program);
-        return compact('currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign','linkClicks','uniqueBrowsers','periodClicks','dailyClicks');
+        $signupMetrics=app(SignupMetrics::class)->compute($program,$start,$end,$reseller->id);
+        return compact('signupMetrics','currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign','linkClicks','uniqueBrowsers','periodClicks','dailyClicks');
     }
 }

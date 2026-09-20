@@ -14,6 +14,7 @@ class ProgramReferrerPortalTest extends TestCase
         parent::setUp();
         config(['app.key'=>'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=','programs.enabled'=>true]);
         $this->buildQuickProgramSchema();
+        (require database_path('migrations/2026_09_20_000009_create_program_signup_tracking.php'))->up();
         (require database_path('migrations/2026_09_20_000008_create_program_referral_clicks.php'))->up();
         (require database_path('migrations/2026_09_20_000007_create_program_referral_links.php'))->up();
         (require database_path('migrations/2026_09_20_000005_create_program_messages.php'))->up();
@@ -127,6 +128,27 @@ class ProgramReferrerPortalTest extends TestCase
         $data=app(\App\Services\Programs\ReferrerSubscriptionDashboard::class)->compute($this->first,$this->referrer,\Illuminate\Http\Request::create('/'));
         $this->assertSame(3,$data['linkClicks']);
         $this->assertSame(0,$data['periodClicks']);
+        $this->travelBack();
+    }
+
+    public function test_signup_sync_is_idempotent_and_links_only_same_member_clicks(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-09-20 12:00:00','UTC'));
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x','platform'=>'gethired','platform_connected_at'=>now()]);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $click=(string) \Illuminate\Support\Str::uuid();
+        DB::table('program_referral_clicks')->insert(['id'=>$click,'membership_id'=>$member->id,'visitor_hash'=>str_repeat('b',64),'created_at'=>'2026-09-19 10:00:00']);
+        $foreign=ReferrerProgramMembership::where('program_id',$this->second->id)->first();
+        $rows=[['customerId'=>str_repeat('a',64),'membershipId'=>$member->id,'clickId'=>$click,'referredAt'=>'2026-09-19T10:00:00Z','occurredAt'=>'2026-09-20T11:00:00Z'],['customerId'=>str_repeat('b',64),'membershipId'=>$foreign->id,'clickId'=>$click,'referredAt'=>'2026-09-19T10:00:00Z','occurredAt'=>'2026-09-20T11:00:00Z']];
+        $api=\Mockery::mock(\App\Services\Platform\GetHiredConnector::class);
+        $api->shouldReceive('request')->twice()->with('signups',['connectionId'=>$connection->id,'cursor'=>null])->andReturn(['connectionId'=>$connection->id,'programId'=>$this->first->id,'cursor'=>null,'rows'=>$rows]);
+        $this->app->instance(\App\Services\Platform\GetHiredConnector::class,$api);
+        $sync=app(\App\Services\Programs\GetHiredSignupSync::class);
+        $this->assertSame(1,$sync->sync($connection));$this->assertSame(0,$sync->sync($connection));
+        $this->assertDatabaseCount('program_signup_events',1);
+        $metrics=app(\App\Services\Programs\SignupMetrics::class)->compute($this->first,\Carbon\CarbonImmutable::parse('2026-09-19'),\Carbon\CarbonImmutable::parse('2026-09-19')->endOfDay(),$this->referrer->id);
+        $this->assertSame(0,$metrics['signups']);$this->assertSame(1,$metrics['converted']);$this->assertEquals(100,$metrics['rate']);
+        $this->assertSame('ready',$metrics['status']);
         $this->travelBack();
     }
 

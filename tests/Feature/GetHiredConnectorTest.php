@@ -70,6 +70,13 @@ class GetHiredConnectorTest extends TestCase
         $headers=['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_X_RB_TIMESTAMP'=>$timestamp,'HTTP_X_RB_SIGNATURE'=>hash_hmac('sha256',$timestamp.'.'.$body,$this->connection->secret)];
         $res=$this->call('POST',$path,[],[],[],$headers,$body)->assertOk()->assertJsonPath('membershipId',$member->id);
         $this->assertStringNotContainsString('referrer@example.com',$res->getContent());
+        $click=(string) \Illuminate\Support\Str::uuid();
+        $token=\Illuminate\Support\Facades\Crypt::encryptString(json_encode(['id'=>$click,'member'=>$member->id,'expires'=>time()+600]));
+        foreach([[$token,$click],['tampered',null]] as [$token,$expected]) {
+            $body=json_encode(['membership_id'=>$member->id,'click_token'=>$token]);
+            $headers['HTTP_X_RB_SIGNATURE']=hash_hmac('sha256',$timestamp.'.'.$body,$this->connection->secret);
+            $this->call('POST',$path,[],[],[],$headers,$body)->assertOk()->assertJsonPath('clickId',$expected);
+        }
         $member->update(['status'=>'paused']);
         $this->call('POST',$path,[],[],[],$headers,$body)->assertNotFound();
     }

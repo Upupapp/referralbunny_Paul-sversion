@@ -39,6 +39,7 @@ class SubscriptionDashboard {
    ->where('program_id',$program->id)->pluck('id');
   $clicks=DB::table('program_referral_clicks')->whereIn('membership_id',$clickMemberships)
    ->whereBetween('created_at',[$from->utc(),$to->utc()])->count();
-  return compact('clicks','campaign','from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
+  $signupMetrics=app(SignupMetrics::class)->compute($program,$from,$to);
+  return compact('signupMetrics','clicks','campaign','from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
  }
 }

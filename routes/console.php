@@ -83,3 +83,6 @@ Schedule::command('exports:cleanup-expired')->dailyAt('02:00')->timezone('Asia/M
 
 // ── Subscription expiry check ─────────────────────────────────
 Schedule::command('subscriptions:check-expiry')->dailyAt('08:30')->timezone('Asia/Manila');
+
+// Signup analytics only; no payments, rewards or payouts are created.
+Schedule::command('programs:sync-gethired-signups')->everyFiveMinutes()->withoutOverlapping(10);
