@@ -12,3 +12,11 @@ User instruction, 2026-09-20: “no github action credits to be consumed as well
 - A documentation-only change does not require an application rebuild.
 
 Read [MEMORY.md](MEMORY.md) for the saved decision and [INDEX.md](INDEX.md) for the project memory index.
+
+## Hard rule: DO NOT TOUCH LGUIDS
+
+User instruction, 2026-09-20: “DO NOT TOUCH LGUIDS”.
+
+- Do not change LGU IDS (`lgu-ids`) screens, data, configuration, pricing, commissions, workflows, imports, or integrations.
+- Scope company-account changes to the requested tenant. Shared code changes must preserve LGU IDS behavior and rendering exactly.
+- Do not run LGU IDS data writes, migrations targeting its data, or LGU IDS deployment/configuration changes.

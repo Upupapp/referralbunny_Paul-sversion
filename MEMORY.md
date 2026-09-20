@@ -17,3 +17,7 @@ The previous application release was deployed before this hard rule was given. P
 ## Communication preference
 
 Recorded: 2026-09-20. Always finish task updates with five recommended next steps. When the user must decide, state the recommended choice and explain why.
+
+## Hard rule — DO NOT TOUCH LGUIDS
+
+Recorded 2026-09-20 from explicit user instruction. LGU IDS (`lgu-ids`) must remain unchanged: screens, data, configuration, pricing, commissions, workflows, imports and integrations. Changes requested for the user’s Referral Bunny company account must be tenant-scoped; shared changes must preserve LGU IDS behavior and rendering. Never apply company-specific changes to LGU IDS.

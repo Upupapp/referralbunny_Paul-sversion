@@ -60,7 +60,7 @@ document.addEventListener('alpine:init', () => {
     </div>
 
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4"@if($tenant->id === 'test-sp4s9i') style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"@endif>
 
         @php
         $kpis = [
@@ -73,6 +73,7 @@ document.addEventListener('alpine:init', () => {
         @endphp
 
         @foreach($kpis as $k)
+        @continue($tenant->id === 'test-sp4s9i' && $k['label'] === 'Base Cost')
         <div class="kpi-inline-card bg-white rounded-2xl shadow-sm border border-gray-100" style="padding:16px 18px">
             {{-- Row 1: icon + label + menu --}}
             <div class="flex items-center justify-between mb-2 sm:mb-3">
