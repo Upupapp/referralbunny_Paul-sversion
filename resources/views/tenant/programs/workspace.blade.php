@@ -22,6 +22,7 @@
         'notifications'=> ['label' => 'Notifications',  'icon' => 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'],
         'access'       => ['label' => 'Access',         'icon' => 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
     ];
+    if ($tenant->id !== 'lgu-ids') $tabs = array_slice($tabs,0,1,true) + ['mechanics'=>['label'=>'Mechanics','icon'=>'M9 5h6M9 12h6M9 16h6M5 3h14v18H5z']] + array_slice($tabs,1,null,true);
 @endphp
 @if($tenant->id !== 'lgu-ids')
     @include('tenant.programs._workspace-styles')
@@ -101,6 +102,9 @@
 
     {{-- ── Tab content panels ───────────────────────────────────────────────── --}}
     <div class="rb-workspace-panels flex-1 overflow-auto">
+        @if($activeTab === 'mechanics' && $tenant->id !== 'lgu-ids')
+        <div class="p-6 max-w-4xl mx-auto">@include('programs._mechanics',['mechanicsGreen'=>false])</div>
+        @endif
 
         {{-- ── Overview tab ──────────────────────────────────────────────────── --}}
         <div x-show="activeTab === 'overview'" x-cloak class="p-6 max-w-4xl mx-auto space-y-6">
@@ -1112,7 +1116,7 @@
 
         {{-- ── Placeholder panels for remaining tabs ──────────────────────────── --}}
         @foreach(array_keys($tabs) as $tabKey)
-            @if(!in_array($tabKey, ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'], true))
+            @if(!in_array($tabKey, ['mechanics', 'overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'], true))
             <div x-show="activeTab === '{{ $tabKey }}'" x-cloak class="p-6">
                 <div class="max-w-2xl mx-auto rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
                     <p class="text-sm text-gray-500">{{ $tabs[$tabKey]['label'] }} — coming in next phase</p>

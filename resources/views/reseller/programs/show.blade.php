@@ -26,6 +26,10 @@
         </div>
     </div>
 
+    <nav style="display:flex;gap:16px;color:#0f766e"><a href="{{ route('reseller.programs.show',[$tenant->id,$program->id]) }}">Overview</a><a href="{{ route('reseller.programs.show',[$tenant->id,$program->id]) }}?tab=mechanics">Program mechanics</a></nav>
+    @if(request('tab') === 'mechanics')
+        @include('programs._mechanics',['mechanicsGreen'=>true])
+    @else
     @if($program->short_description)
     <p class="text-gray-600">{{ $program->short_description }}</p>
     @endif
@@ -60,5 +64,6 @@
             @endif
         </dl>
     </div>
+    @endif
 </div>
 @endsection

@@ -29,6 +29,16 @@ class ProgramReferrerPortalTest extends TestCase
         $this->second=Program::create(['tenant_id'=>'company','name'=>'Manual','status'=>'active','operating_mode'=>'manual']);
         foreach([$this->first,$this->second] as $program) ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$program->id,'reseller_id'=>$this->referrer->id,'status'=>'active']);
     }
+    public function test_mechanics_are_program_specific_and_manual_does_not_inherit_online_rules(): void
+    {
+        $this->first->update(['attribution_window_days'=>45]);
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.programs.show',['tenantId'=>'company','programId'=>$this->first->id,'tab'=>'mechanics']))
+            ->assertOk()->assertSee('Program mechanics')->assertSee('45 days')->assertSee('Reward terms not published yet');
+        $this->get(route('reseller.programs.show',['tenantId'=>'company','programId'=>$this->second->id,'tab'=>'mechanics']))
+            ->assertOk()->assertSee('agreed process')->assertDontSee('first qualifying payment must arrive');
+        $private=Program::create(['tenant_id'=>'company','name'=>'Private mechanics','status'=>'active','public_visibility'=>'private']);
+        $this->get(route('reseller.programs.show',['tenantId'=>'company','programId'=>$private->id,'tab'=>'mechanics']))->assertNotFound();
+    }
     public function test_referrer_messages_and_admin_replies_are_program_scoped(): void
     {
         $send=route('reseller.messages.program.send','company');

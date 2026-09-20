@@ -26,9 +26,10 @@ use Illuminate\Support\Collection;
 class ProgramWorkspaceController extends Controller
 {
     /** Tabs with live content. Others exist in the view as placeholders but resolve to overview. */
-    private const IMPLEMENTED_TABS = ['overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'];
+    private const IMPLEMENTED_TABS = ['mechanics', 'overview', 'members', 'settings', 'offers', 'contracts', 'action-items', 'analytics', 'access', 'notifications', 'public-page', 'intake'];
 
     private const VALID_TABS = [
+        'mechanics',
         'overview', 'offers', 'members', 'contracts', 'analytics',
         'action-items', 'settings', 'notifications', 'intake',
         'public-page', 'access',
@@ -47,6 +48,7 @@ class ProgramWorkspaceController extends Controller
         }
 
         $activeTab = $this->resolveTab($request->query('tab'));
+        if ($activeTab === 'mechanics' && \App\Support\ProtectedTenants::isProtected($tenantId)) $activeTab = 'overview';
 
         $referrerMemberships = $partnerMemberships = $offers = $tenantResellers = $tenantPartners = null;
 

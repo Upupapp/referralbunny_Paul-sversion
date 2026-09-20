@@ -34,6 +34,7 @@
  <a href="{{ $connectionUrl }}" style="color:#7734ff;margin-left:10px">Connection details →</a>
  </section>
  @endif
+ <a href="{{ $manage }}?tab=mechanics" style="display:inline-block;color:#7734ff;margin:0 0 14px;font-weight:600">Program mechanics →</a>
  <section class="cards">
  @foreach([
  ['revenue','Net referral revenue',$money($s['revenue']),'Payments less refunds, excluding tax'],
