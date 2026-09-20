@@ -27,6 +27,8 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\TenantLegalAgreementController;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/program-connections/{connectionId}/events', [\App\Http\Controllers\ProgramConversionController::class, 'store'])->middleware('throttle:60,1');
+
 // ── Public routes ─────────────────────────────────────────────
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 

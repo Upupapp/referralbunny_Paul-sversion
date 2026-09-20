@@ -397,6 +397,14 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::post('/versions/{versionId}/restore', [\App\Http\Controllers\Web\ReferralProgramSetupController::class, 'restoreVersion'])->middleware('throttle:10,1')->name('versions.restore');
     });
 
+    Route::prefix('quick-program')->name('quick-program.')->group(function () {
+        Route::get('/status', [\App\Http\Controllers\Web\QuickProgramController::class, 'status'])->name('status');
+        Route::post('/analyze', [\App\Http\Controllers\Web\QuickProgramController::class, 'analyze'])->middleware('throttle:5,1')->name('analyze');
+        Route::put('/draft', [\App\Http\Controllers\Web\QuickProgramController::class, 'save'])->middleware('throttle:30,1')->name('draft');
+        Route::post('/publish', [\App\Http\Controllers\Web\QuickProgramController::class, 'publish'])->middleware('throttle:5,1')->name('publish');
+        Route::get('/connection/{programId}', [\App\Http\Controllers\Web\QuickProgramController::class, 'connection'])->name('connection');
+    });
+
     // ── Programs V4 (admin) ───────────────────────────────────────
     Route::prefix('programs')->name('programs.')->group(function () {
         Route::get('/',                                   [\App\Http\Controllers\Web\ProgramController::class, 'index'])->name('index');

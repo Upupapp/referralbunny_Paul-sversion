@@ -904,9 +904,15 @@ function toastSystem() {
     <x-brand.r-bunny-ai-dialog />
 @endauth
 
+@if($quickProgramNeeded ?? false)
+    <x-quick-program-setup :tenant="$tenant" />
+@endif
+
 {{-- R Bunny Onboarding Walkthrough (modal, fires on first sign-in) --}}
 @auth('tenant')
-    <x-brand.onboarding-walkthrough />
+    @unless($quickProgramNeeded ?? false)
+        <x-brand.onboarding-walkthrough />
+    @endunless
 @endauth
 @auth('web')
     <x-brand.onboarding-walkthrough />

@@ -40,6 +40,9 @@
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
+                @if(auth('tenant')->check() && \Illuminate\Support\Facades\Schema::hasTable('program_connections') && \App\Models\ProgramConnection::where('program_id', $program->id)->where('tenant_id', $tenant->id)->exists())
+                    <a href="{{ route('tenant.quick-program.connection', [$tenant->id, $program->id]) }}" class="btn btn-sm">Website tracking</a>
+                @endif
                 {{-- Status badge --}}
                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
                     {{ $program->status === 'active'    ? 'bg-green-100 text-green-700'   : '' }}

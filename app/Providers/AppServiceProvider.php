@@ -77,6 +77,20 @@ class AppServiceProvider extends ServiceProvider
         Task::observe(TaskGoogleCalendarObserver::class);
         Lead::observe(LeadGoogleCalendarObserver::class);
 
+        View::composer('layouts.app', function ($view) {
+            $tenant = $view->getData()['tenant'] ?? null;
+            $needed = false;
+            if ($tenant && auth('tenant')->check() && !auth('web')->check()
+                && config('programs.enabled') && !\App\Support\ProtectedTenants::isProtected($tenant->id)
+                && \Illuminate\Support\Facades\Schema::hasTable('program_connections')) {
+                $role = \App\Models\TenantMembership::where('tenant_id', $tenant->id)
+                    ->where('tenant_user_id', auth('tenant')->id())->where('status', 'active')->value('role');
+                $needed = in_array($role, ['owner', 'admin'])
+                    && !app(\App\Services\QuickProgram\QuickProgramService::class)->hasProgram($tenant->id);
+            }
+            $view->with('quickProgramNeeded', $needed);
+        });
+
         // View composer — inject partner unread count into all partner views
         View::composer(['partner.*', 'layouts.partner'], function ($view) {
             if ($partner = auth('partner')->user()) {
