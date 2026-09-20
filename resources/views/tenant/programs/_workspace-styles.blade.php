@@ -9,7 +9,7 @@
 .rb-program-workspace .rb-workspace-tabs a{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;padding:11px 13px;border-radius:11px;border:1px solid transparent;font-size:12px;font-weight:600;color:#78728c;text-decoration:none;line-height:18px;background:transparent;transition:background .15s,color .15s}
 .rb-program-workspace .rb-workspace-tabs svg{display:block;flex-shrink:0}
 .rb-program-workspace .rb-workspace-tabs a:hover{background:#f4edff;color:#8234d5}
-.rb-program-workspace .rb-workspace-tabs a[aria-current="page"]{background:#f0e4ff;color:#8425d8;border-color:#e7d3ff;box-shadow:none}
+.rb-program-workspace .rb-workspace-tabs a[aria-current="page"]{background:#f0e4ff;color:#8425d8!important;border-color:#e7d3ff;box-shadow:none}
 .rb-program-workspace .rb-workspace-panels{overflow:visible}
 .rb-program-workspace .rb-workspace-panels>div{padding:0;max-width:960px;width:100%;margin-left:auto;margin-right:auto}
 .rb-program-workspace .rb-workspace-panels form.rounded-xl{border:1px solid #e8e3f1;border-radius:20px;overflow:hidden;box-shadow:0 3px 12px #24204f05}
