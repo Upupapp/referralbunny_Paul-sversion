@@ -117,6 +117,9 @@
         {{-- Nav --}}
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             @yield('nav')
+            @if(auth('tenant')->check() && !auth('web')->check())
+                <x-portal-view-switch current="admin" :tenant-id="$tenant->id ?? null" :tab="true" />
+            @endif
         </nav>
 
         {{-- Bottom profile (guard-aware) --}}
@@ -378,6 +381,9 @@
             <div class="flex items-center gap-1 ml-auto shrink-0">
 
                 {{-- Page-specific action (e.g. New Tenant) --}}
+                @if(auth('tenant')->check() && !auth('web')->check())
+                    <x-portal-view-switch current="admin" :tenant-id="$tenant->id ?? null" />
+                @endif
                 @yield('topbar-actions')
 
                 {{-- Mobile search icon --}}

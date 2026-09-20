@@ -51,7 +51,7 @@
     </form>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:.8125rem;color:#9CA3AF">
-        Remembered it? <a href="{{ route('tenant.login') }}" style="color:#7B61FF;font-weight:600;text-decoration:none">Sign in</a>
+        Remembered it? <a href="{{ route('login') }}" style="color:#7B61FF;font-weight:600;text-decoration:none">Sign in</a>
     </p>
 </div>
 </body>

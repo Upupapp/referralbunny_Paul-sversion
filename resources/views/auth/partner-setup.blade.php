@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -116,7 +116,7 @@
                 <button type="submit" class="btn-primary" :disabled="sub" x-text="sub ? 'Activating...' : 'Activate My Account →'">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
-                    Already set up? <a href="{{ route('partner.login') }}" style="color:#2563EB;text-decoration:none">Sign in</a>
+                    Already set up? <a href="{{ route('login') }}" style="color:#2563EB;text-decoration:none">Sign in</a>
                 </p>
             </form>
         </div>

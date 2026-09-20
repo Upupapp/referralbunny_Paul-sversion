@@ -138,6 +138,7 @@
         {{-- Nav --}}
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             @yield('nav')
+            <x-portal-view-switch current="referrer" :tab="true" />
         </nav>
 
         {{-- Bottom profile --}}
@@ -187,6 +188,7 @@
                 <h1 class="text-sm font-semibold" style="color:#1E1B4B">@yield('title', 'Dashboard')</h1>
             </div>
             <div class="flex items-center gap-2">
+                <x-portal-view-switch current="referrer" />
                 @yield('topbar-actions')
 
                 {{-- Anonymous mode toggle + onboarding guide --}}

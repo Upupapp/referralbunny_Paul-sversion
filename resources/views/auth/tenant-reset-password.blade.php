@@ -54,7 +54,7 @@
     </form>
 
     <p style="text-align:center;margin-top:1.5rem;font-size:.8125rem;color:#9CA3AF">
-        <a href="{{ route('tenant.login') }}" style="color:#7B61FF;font-weight:600;text-decoration:none">Back to sign in</a>
+        <a href="{{ route('login') }}" style="color:#7B61FF;font-weight:600;text-decoration:none">Back to sign in</a>
     </p>
 </div>
 </body>

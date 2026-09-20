@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -142,7 +142,7 @@
 
             {{-- Sign In button --}}
             <div class="a4" style="margin-top:.75rem">
-                <a href="{{ route('signin.select') }}"
+                <a href="{{ route('login') }}"
                    style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.875rem 1rem;border-radius:1.25rem;border:1.5px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;font-size:.875rem;font-weight:600;text-decoration:none;transition:all .2s ease;font-family:'Inter',sans-serif"
                    onmouseover="this.style.background='rgba(255,255,255,0.10)';this.style.borderColor='rgba(255,255,255,0.28)'"
                    onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.borderColor='rgba(255,255,255,0.18)'">

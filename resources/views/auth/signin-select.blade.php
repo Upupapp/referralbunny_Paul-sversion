@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -80,7 +80,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 a2">
 
             {{-- Workspace Admin --}}
-            <a href="{{ route('tenant.login') }}" class="signin-card signin-card-admin">
+            <a href="{{ route('login') }}" class="signin-card signin-card-admin">
                 {{-- R Bunny mascot --}}
                 <div class="mascot-wrap mascot-wrap-admin">
                     <x-r-bunny variant="portal" size="sm" :decorative="true"
@@ -101,7 +101,7 @@
             </a>
 
             {{-- Referrer / Reseller --}}
-            <a href="{{ route('reseller.login') }}" class="signin-card signin-card-referrer">
+            <a href="{{ route('login') }}" class="signin-card signin-card-referrer">
                 {{-- R Bunny mascot --}}
                 <div class="mascot-wrap mascot-wrap-referrer">
                     <x-r-bunny variant="rocket" size="sm" :decorative="true"
@@ -122,7 +122,7 @@
             </a>
 
             {{-- Partner --}}
-            <a href="{{ route('partner.login') }}" class="signin-card signin-card-partner">
+            <a href="{{ route('login') }}" class="signin-card signin-card-partner">
                 {{-- R Bunny mascot --}}
                 <div class="mascot-wrap mascot-wrap-partner">
                     <x-r-bunny variant="rocket" size="sm" :decorative="true"

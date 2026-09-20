@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -57,7 +57,7 @@
                 Contact your program administrator to send you a new invitation.
             </p>
 
-            <a href="{{ route('reseller.login') }}" class="btn-primary">Go to Sign In</a>
+            <a href="{{ route('login') }}" class="btn-primary">Go to Sign In</a>
             <br>
             <a href="mailto:admin@referralbunny.ai" class="btn-ghost">Contact administrator</a>
         </div>

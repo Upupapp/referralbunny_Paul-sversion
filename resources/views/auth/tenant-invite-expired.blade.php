@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -49,7 +49,7 @@
             This invitation link is invalid, has expired, or has already been accepted.
             Please contact the workspace administrator to send a new invitation.
         </p>
-        <a href="{{ route('tenant.login') }}" class="btn">Back to Sign In</a>
+        <a href="{{ route('login') }}" class="btn">Back to Sign In</a>
     </div>
 </div>
 </body>

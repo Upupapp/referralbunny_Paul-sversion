@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -65,7 +65,7 @@
     </form>
 
     <p style="text-align:center;margin-top:1.25rem;font-size:.8125rem;color:#6b7280">
-        <a href="{{ route('reseller.login') }}" style="color:#0D9488;text-decoration:none">← Back to Sign In</a>
+        <a href="{{ route('login') }}" style="color:#0D9488;text-decoration:none">← Back to Sign In</a>
     </p>
 </div>
 </body>

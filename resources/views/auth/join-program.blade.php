@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -245,12 +245,12 @@
             {{-- Bottom links --}}
             <div style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #f3f4f6" class="form-wrap">
                 <div style="display:flex;flex-direction:column;gap:.5rem">
-                    <a href="{{ route('tenant.login') }}"
+                    <a href="{{ route('login') }}"
                        style="font-size:.75rem;color:#7c3aed;text-decoration:none"
                        onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
                         Already have an account? Sign in →
                     </a>
-                    <a href="{{ route('reseller.login') }}"
+                    <a href="{{ route('login') }}"
                        style="font-size:.75rem;color:#9ca3af;text-decoration:none"
                        onmouseover="this.style.color='#6b7280'" onmouseout="this.style.color='#9ca3af'">
                         Sign in as a referrer / reseller →

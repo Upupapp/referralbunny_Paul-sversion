@@ -35,12 +35,12 @@ class TenantSignupWebController extends Controller
             'email'              => 'required|email|unique:tenant_users,email',
             'password'           => ['required', 'confirmed', Password::min(8)],
             'workspace_name'     => 'required|string|max:255',
-            'industry'           => 'required|string|max:100',
+            'industry'           => 'nullable|string|max:100',
             'sub_industries'     => 'nullable|array|max:3',
             'sub_industries.*'   => 'string|max:100',
-            'country'            => 'required|string|max:100',
-            'timezone'           => 'required|string|max:100',
-            'preferred_currency' => 'required|string|max:10',
+            'country'            => 'nullable|string|max:100',
+            'timezone'           => 'nullable|string|max:100',
+            'preferred_currency' => 'nullable|string|max:10',
             'lead_label'         => 'nullable|string|max:50',
             'value_label'        => 'nullable|string|max:50',
             'commission_type'    => 'nullable|string|in:percentage_of_value,fixed_amount,placement_fee',
@@ -52,8 +52,21 @@ class TenantSignupWebController extends Controller
             'pipeline_stages.*.days'  => 'nullable|integer|min:1|max:365',
             'pipeline_stages.*.color' => 'nullable|string|max:20',
             'pipeline_stages.*.is_final' => 'nullable|boolean',
+            'pipeline_stages.*.is_won' => 'nullable|boolean',
             'terms'              => 'accepted',
         ]);
+
+        // Company signup needs only account details. Program settings can be edited later.
+        $data['industry'] = $data['industry'] ?? 'Other';
+        $data['country'] = $data['country'] ?? 'Philippines';
+        $data['timezone'] = $data['timezone'] ?? 'Asia/Manila';
+        $data['preferred_currency'] = $data['preferred_currency'] ?? 'PHP';
+        $data['pipeline_stages'] = $data['pipeline_stages'] ?? [
+            ['key' => 'new', 'name' => 'New', 'days' => 7, 'color' => '#9CA3AF'],
+            ['key' => 'in-progress', 'name' => 'In Progress', 'days' => 14, 'color' => '#3B82F6'],
+            ['key' => 'closed-won', 'name' => 'Closed Won', 'color' => '#10B981', 'is_final' => true, 'is_won' => true],
+            ['key' => 'closed-lost', 'name' => 'Closed Lost', 'color' => '#EF4444', 'is_final' => true],
+        ];
 
         // Generate a URL-safe tenant ID from the workspace name
         $base     = Str::slug($data['workspace_name']);
@@ -65,8 +78,9 @@ class TenantSignupWebController extends Controller
         }
 
         $userId = (string) Str::uuid();
+        $signedInReferrer = Auth::guard('reseller')->user();
 
-        DB::transaction(function () use ($data, $tenantId, $userId) {
+        DB::transaction(function () use ($data, $tenantId, $userId, $signedInReferrer) {
             $now = now();
 
             DB::table('tenant_users')->insert([
@@ -79,6 +93,14 @@ class TenantSignupWebController extends Controller
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            // Creating a company from My Programs links the already authenticated identity.
+            if ($signedInReferrer && !$signedInReferrer->linked_tenant_user_id
+                && strtolower($signedInReferrer->email) === strtolower($data['email'])
+                && in_array($signedInReferrer->status, ['active', 'nda_signed'])) {
+                DB::table('resellers')->where('id', $signedInReferrer->id)
+                    ->whereNull('linked_tenant_user_id')->update(['linked_tenant_user_id' => $userId]);
+            }
 
             DB::table('tenants')->insert([
                 'id'                 => $tenantId,
@@ -147,6 +169,7 @@ class TenantSignupWebController extends Controller
         });
 
         // Log in as tenant user — regenerate session to prevent fixation
+        foreach (['web', 'reseller', 'partner'] as $guard) Auth::guard($guard)->logout();
         Auth::guard('tenant')->loginUsingId($userId, false);
         request()->session()->regenerate();
 
@@ -171,7 +194,7 @@ class TenantSignupWebController extends Controller
             );
         } catch (\Throwable) {}
 
-        // Return JSON for the fetch-based wizard; plain redirect for legacy form posts
+        // Support API clients and redirect the signup form straight to the dashboard.
         if (request()->expectsJson()) {
             return response()->json([
                 'success'  => true,

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -126,7 +126,7 @@
             </p>
 
             <div class="form-wrap" style="padding-top:.75rem;border-top:1px solid #EFF6FF;margin-top:.25rem">
-                <a href="{{ route('signin.select') }}"
+                <a href="{{ route('login') }}"
                    style="display:inline-flex;align-items:center;gap:.375rem;font-size:.75rem;color:#9ca3af;text-decoration:none;transition:color .15s"
                    onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#9ca3af'">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">

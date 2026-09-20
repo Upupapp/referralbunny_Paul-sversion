@@ -25,6 +25,9 @@ Route::get('/platform/login', fn() => redirect()->route('login'))->name('platfor
 Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 
+Route::post('/portal/switch-view', [\App\Http\Controllers\Web\PortalViewController::class, 'switchView'])->middleware('auth:tenant,reseller')->name('portal.switch-view');
+Route::get('/portal/my-programs', [\App\Http\Controllers\Web\PortalViewController::class, 'myPrograms'])->middleware('auth:tenant,reseller')->name('portal.my-programs');
+
 // ── Root — public marketing landing page ──────────────────────
 Route::get('/', [PublicLandingController::class, 'index'])->name('public.home');
 
@@ -44,11 +47,11 @@ Route::get('/api/lgu-ids/municipalities', function(\Illuminate\Http\Request $req
 
 // ── Portal selection ──────────────────────────────────────────
 Route::get('/select-portal', fn() => view('auth.portal-select'))->name('portal.select');
-Route::get('/sign-in',       fn() => view('auth.signin-select'))->name('signin.select');
+Route::get('/sign-in',       [AuthWebController::class, 'showLogin'])->name('signin.select');
 
 // ── Tenant Admin Auth ─────────────────────────────────────────
-Route::get('/tenant/login',   [TenantAuthWebController::class, 'showLogin'])->name('tenant.login');
-Route::post('/tenant/login',  [TenantAuthWebController::class, 'login'])->name('tenant.login.post')->middleware('throttle:10,1');
+Route::get('/tenant/login',   [AuthWebController::class, 'showLogin'])->name('tenant.login');
+Route::post('/tenant/login',  [AuthWebController::class, 'login'])->name('tenant.login.post')->middleware('throttle:10,1');
 Route::post('/tenant/logout', [TenantAuthWebController::class, 'logout'])->name('tenant.logout');
 Route::get('/tenant/forgot-password',  [TenantAuthWebController::class, 'showForgotPassword'])->name('tenant.forgot-password');
 Route::post('/tenant/forgot-password', [TenantAuthWebController::class, 'forgotPassword'])->name('tenant.forgot-password.send')->middleware('throttle:5,1');
@@ -94,8 +97,8 @@ Route::get('/tenant/onboarding/{tenantId}', fn($tenantId) => redirect()->route('
 Route::get('/tenant/first-signin-password', fn() => view('auth.tenant-coming-soon', ['page' => 'Update Password']))->name('tenant.first-signin-password');
 
 // ── Reseller Auth ────────────────────────────────────────────
-Route::get('/reseller/login',  [ResellerPortalAuthController::class, 'showLogin'])->name('reseller.login');
-Route::post('/reseller/login', [ResellerPortalAuthController::class, 'login'])->name('reseller.login.post')->middleware('throttle:10,1');
+Route::get('/reseller/login',  [AuthWebController::class, 'showLogin'])->name('reseller.login');
+Route::post('/reseller/login', [AuthWebController::class, 'login'])->name('reseller.login.post')->middleware('throttle:10,1');
 Route::post('/reseller/logout',[ResellerPortalAuthController::class, 'logout'])->name('reseller.logout');
 Route::get('/reseller/setup',          [ResellerPortalAuthController::class, 'showSetup'])->name('reseller.setup');
 Route::post('/reseller/setup',         [ResellerPortalAuthController::class, 'setup'])->name('reseller.setup.post')->middleware('throttle:10,1');
@@ -197,8 +200,8 @@ use App\Http\Controllers\Web\PartnerAuthController;
 use App\Http\Controllers\Web\PartnerPortalController;
 use App\Http\Controllers\Web\PartnerProfileController;
 
-Route::get('/partner/login',            [PartnerAuthController::class, 'showLogin'])->name('partner.login');
-Route::post('/partner/login',           [PartnerAuthController::class, 'login'])->name('partner.login.post')->middleware('throttle:10,1');
+Route::get('/partner/login',            [AuthWebController::class, 'showLogin'])->name('partner.login');
+Route::post('/partner/login',           [AuthWebController::class, 'login'])->name('partner.login.post')->middleware('throttle:10,1');
 Route::post('/partner/logout',          [PartnerAuthController::class, 'logout'])->name('partner.logout');
 Route::get('/partner/setup',            [PartnerAuthController::class, 'showSetup'])->name('partner.setup');
 Route::post('/partner/setup',           [PartnerAuthController::class, 'setup'])->name('partner.setup.post')->middleware('throttle:10,1');

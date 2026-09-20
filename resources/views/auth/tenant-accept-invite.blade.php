@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -298,7 +298,7 @@
                 <p style="margin:0;font-size:.75rem;color:#9ca3af">
                     Invitation expires {{ $invitation->expires_at->diffForHumans() }}.
                 </p>
-                <a href="{{ route('tenant.login') }}"
+                <a href="{{ route('login') }}"
                    style="display:inline-flex;align-items:center;gap:.3125rem;font-size:.75rem;color:#9ca3af;text-decoration:none;margin-top:.5rem;transition:color .15s"
                    onmouseover="this.style.color='#7c3aed'" onmouseout="this.style.color='#9ca3af'">
                     <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">

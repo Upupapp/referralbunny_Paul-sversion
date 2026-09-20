@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,9 +13,9 @@
     <x-r-bunny variant="portal" size="lg" :decorative="true" class="mx-auto mb-6" />
     <h1 class="text-xl font-bold text-gray-900 mb-2">{{ $page }}</h1>
     <p class="text-gray-500 text-sm max-w-xs mb-8">This page is coming soon. You can sign in to your existing tenant workspace now.</p>
-    <a href="{{ route('tenant.login') }}"
+    <a href="{{ route('login') }}"
        data-stitch-action="navigate"
-       data-stitch-target="{{ route('tenant.login') }}"
+       data-stitch-target="{{ route('login') }}"
        data-stitch-fallback="{{ route('public.home') }}"
        data-stitch-loading="none"
        class="rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 py-2.5 text-sm transition-colors">

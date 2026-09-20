@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -112,7 +112,7 @@
                 <button type="submit" id="setup-btn" class="btn-primary">Activate My Account →</button>
 
                 <p style="margin:.875rem 0 0;font-size:.75rem;color:#9ca3af;text-align:center">
-                    Already set up? <a href="{{ route('reseller.login') }}" style="color:#0D9488;text-decoration:none">Sign in</a>
+                    Already set up? <a href="{{ route('login') }}" style="color:#0D9488;text-decoration:none">Sign in</a>
                 </p>
             </form>
         </div>
