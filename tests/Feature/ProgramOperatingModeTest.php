@@ -19,6 +19,10 @@ class ProgramOperatingModeTest extends TestCase
         parent::setUp();
         config(['app.key' => 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', 'programs.enabled' => true]);
         $this->buildQuickProgramSchema();
+        \Illuminate\Support\Facades\Schema::create('tenant_brand_profiles', function (\Illuminate\Database\Schema\Blueprint $table) {
+            $table->id(); $table->string('tenant_id'); $table->string('status')->default('draft');
+            $table->timestamps();
+        });
         Tenant::create(['id' => 'modes', 'name' => 'Modes', 'status' => 'active']);
         $this->owner = TenantUser::create(['id' => 'owner', 'email' => 'owner@example.com', 'password' => 'x', 'status' => 'active']);
         TenantMembership::create(['tenant_id' => 'modes', 'tenant_user_id' => 'owner', 'role' => 'owner', 'status' => 'active']);
@@ -57,6 +61,24 @@ class ProgramOperatingModeTest extends TestCase
         $this->assertFalse(app(ProgramNavigation::class)->allowsManualDeals('modes'));
         $this->actingAs($this->owner, 'tenant')->patch(route('tenant.programs.update', ['modes', $program->id]), ['operating_mode' => 'manual'])->assertSessionHasErrors('operating_mode');
         $this->assertNull($program->fresh()->operating_mode);
+    }
+
+    public function test_dashboard_selection_persists_and_rejects_other_tenants(): void
+    {
+        $first = Program::create(['tenant_id'=>'modes','name'=>'First','status'=>'draft','operating_mode'=>'automated','default_currency'=>'PHP']);
+        $second = Program::create(['tenant_id'=>'modes','name'=>'Second','status'=>'draft','operating_mode'=>'automated','default_currency'=>'USD']);
+        Tenant::create(['id'=>'other','name'=>'Other','status'=>'active']);
+        $foreign = Program::create(['tenant_id'=>'other','name'=>'Foreign','status'=>'draft','operating_mode'=>'automated']);
+        $url = route('tenant.dashboard', 'modes');
+        $this->actingAs($this->owner, 'tenant')->get($url.'?program_id='.$second->id)
+            ->assertOk()->assertViewIs('tenant.programs.dashboard')
+            ->assertViewHas('program', fn ($p) => $p->id === $second->id)
+            ->assertSee('USD 0.00')->assertDontSee('PHP 0.00');
+        $this->get($url)->assertOk()->assertViewHas('program', fn ($p) => $p->id === $second->id);
+        $this->get($url.'?program_id='.$foreign->id)->assertNotFound();
+        $this->get($url.'?program_id[]=bad')->assertStatus(422);
+        $second->update(['status'=>'archived']);
+        $this->get($url)->assertOk()->assertViewHas('program', fn ($p) => $p->id === $first->id);
     }
 
     public function test_protected_mode_never_queries_or_changes_data(): void

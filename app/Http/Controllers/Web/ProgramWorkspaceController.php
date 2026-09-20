@@ -42,6 +42,9 @@ class ProgramWorkspaceController extends Controller
         $program = Program::forTenant($tenantId)->findOrFail($programId);
 
         $this->authorize('view', $program);
+        if (!\App\Support\ProtectedTenants::isProtected($tenantId) && $program->status !== 'archived') {
+            $request->session()->put('program_dashboard.'.$tenantId, $program->id);
+        }
 
         $activeTab = $this->resolveTab($request->query('tab'));
 

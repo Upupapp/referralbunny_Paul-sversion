@@ -6,7 +6,7 @@
 @if($canPickProgram)
 @php
     $pickerPrograms = app(\App\Services\Programs\ProgramNavigation::class)->programs($tenant->id);
-    $pickerCurrent = $pickerPrograms->firstWhere('id', request()->route('programId')) ?? $pickerPrograms->first();
+    $pickerCurrent = $pickerPrograms->firstWhere('id', request()->route('programId') ?? session('program_dashboard.'.$tenant->id)) ?? $pickerPrograms->first();
 @endphp
 <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.stop="open = false; $refs.trigger.focus()">
     <button type="button" x-ref="trigger" @click="open = !open" :aria-expanded="open.toString()" aria-controls="company-program-picker"
@@ -19,9 +19,9 @@
         <p class="px-3 py-2 text-xs font-semibold text-gray-500">Your programs</p>
         <div style="max-height:280px;overflow-y:auto">
         @forelse($pickerPrograms as $pickerProgram)
-            <a href="{{ route('tenant.programs.workspace', [$tenant->id, $pickerProgram->id]) }}"
+            <a href="{{ request()->routeIs('tenant.dashboard', 'tenant.sub.dashboard', 'tenant.sub.home') ? route('tenant.dashboard', ['tenantId' => $tenant->id, 'program_id' => $pickerProgram->id]) : route('tenant.programs.workspace', [$tenant->id, $pickerProgram->id]) }}"
                class="block px-3 py-2 rounded-lg hover:bg-purple-50 text-sm" style="color:#1e1b4b"
-               @if(request()->route('programId') === $pickerProgram->id) aria-current="page" @endif>
+               @if($pickerCurrent?->id === $pickerProgram->id) aria-current="page" @endif>
                 <span class="block truncate font-semibold">{{ $pickerProgram->name }}</span>
                 <span class="text-xs text-gray-500">{{ ucfirst($pickerProgram->status) }}</span>
             </a>

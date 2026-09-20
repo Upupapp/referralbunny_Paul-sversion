@@ -46,6 +46,16 @@ class TenantAdminController extends Controller
     public function dashboard($tenantId)
     {
         $tenant = Tenant::findOrFail($tenantId);
+        if (!\App\Support\ProtectedTenants::isProtected($tenantId) && config('programs.enabled')) {
+            $actor = auth('web')->user() ?? auth('tenant')->user();
+            if ($actor && \Illuminate\Support\Facades\Gate::forUser($actor)->allows('viewAny', \App\Models\Program::class)) {
+                $program = app(\App\Services\Programs\ProgramNavigation::class)->selectedForDashboard($tenantId, request());
+                if ($program) {
+                    $performance = app(\App\Services\Programs\ProgramPerformanceSummary::class)->compute($program);
+                    return view('tenant.programs.dashboard', compact('tenant', 'program', 'performance'));
+                }
+            }
+        }
         $tenant->load(['metric']);
         $metric = $tenant->metric;
 

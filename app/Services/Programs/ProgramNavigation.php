@@ -19,6 +19,24 @@ class ProgramNavigation
             ->orderByDesc('is_default')->orderBy('name')->get(['id', 'name', 'status']);
     }
 
+    public function selectedForDashboard(string $tenantId, \Illuminate\Http\Request $request): ?Program
+    {
+        if (ProtectedTenants::isProtected($tenantId) || !config('programs.enabled')) return null;
+        $key = 'program_dashboard.'.$tenantId;
+        $query = Program::forTenant($tenantId)->visible();
+        if ($request->query->has('program_id')) {
+            $id = $request->query('program_id');
+            abort_unless(is_string($id), 422);
+            $program = (clone $query)->whereKey($id)->firstOrFail();
+        } else {
+            $program = (clone $query)->whereKey($request->session()->get($key))->first()
+                ?? $query->orderByDesc('is_default')->orderBy('name')->first();
+        }
+        if ($program) $request->session()->put($key, $program->id);
+        else $request->session()->forget($key);
+        return $program;
+    }
+
     public function allowsManualDeals(string $tenantId): bool
     {
         // Preserve the protected tenant and legacy manual programs exactly.
