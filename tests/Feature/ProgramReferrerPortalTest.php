@@ -106,4 +106,31 @@ class ProgramReferrerPortalTest extends TestCase
         $this->assertSame([],DB::getQueryLog()); DB::disableQueryLog();
     }
 
+    public function test_subscription_dashboard_target_and_first_payment_counts(): void
+    {
+        (require database_path('migrations/2026_09_20_000006_create_program_referral_targets.php'))->up();
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        foreach([['p1','c1','2026-08-01 12:00:00','payment',10000,2000],['p2','c1','2026-08-02 12:00:00','payment',10000,2000],['p3','c2','2026-08-02 12:00:00','payment',10000,2000],['r1','c2','2026-08-03 12:00:00','refund',5000,-1000]] as [$id,$customer,$date,$type,$amount,$reward]) {
+            DB::table('program_conversion_events')->insert(['id'=>$id,'connection_id'=>$connection->id,'external_id'=>$id,'customer_id'=>$customer,'invoice_id'=>$id,'referrer_id'=>$this->referrer->id,'payload_hash'=>str_repeat('a',64),'type'=>$type,'currency'=>'PHP','amount_minor'=>$amount,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>$date]);
+        }
+        $save=route('tenant.programs.referral-target',['tenantId'=>'company','programId'=>$this->first->id]);
+        $this->actingAs($this->owner,'tenant')->post($save,['total'=>30,'starts_on'=>'2026-08-01','ends_on'=>'2026-08-03'])->assertRedirect();
+        $request=\Illuminate\Http\Request::create('/','GET',['from'=>'2026-08-02','to'=>'2026-08-04','currency'=>'PHP']);
+        $data=app(\App\Services\Programs\SubscriptionDashboard::class)->compute($this->first,$request);
+        $this->assertSame([1,0,0],array_values($data['daily']));
+        $this->assertEquals([10,10,null],$data['targetDaily']);
+        $this->assertEquals(150,$data['revenue']);
+        $this->assertEquals(30,$data['rewards']);
+        $this->post($save,['total'=>-1,'starts_on'=>'2026-08-03','ends_on'=>'2026-08-01'])->assertSessionHasErrors(['total','ends_on']);
+        $this->post($save,['total'=>20,'starts_on'=>'2026-08-02','ends_on'=>'2026-08-02'])->assertRedirect();
+        $this->assertDatabaseCount('program_referral_targets',1);
+        $data=app(\App\Services\Programs\SubscriptionDashboard::class)->compute($this->first,$request);
+        $this->assertEquals([20,null,null],$data['targetDaily']);
+        $this->post(route('tenant.programs.referral-target',['tenantId'=>'company','programId'=>$this->second->id]),['total'=>20,'starts_on'=>'2026-08-02','ends_on'=>'2026-08-02'])->assertNotFound();
+        $this->get(route('tenant.dashboard',['tenantId'=>'company','program_id'=>$this->first->id,'from'=>'2026-08-01','to'=>'2026-08-03']))->assertOk()->assertSee('Referrals vs target')->assertSee('Edit target');
+        Tenant::create(['id'=>'another','name'=>'Another','status'=>'active']);
+        $foreign=Program::create(['tenant_id'=>'another','name'=>'Foreign','status'=>'active','operating_mode'=>'automated']);
+        $this->post(route('tenant.programs.referral-target',['tenantId'=>'company','programId'=>$foreign->id]),['total'=>20,'starts_on'=>'2026-08-02','ends_on'=>'2026-08-02'])->assertNotFound();
+    }
+
 }

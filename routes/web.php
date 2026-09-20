@@ -418,6 +418,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
 
     // ── Programs V4 (admin) ───────────────────────────────────────
     Route::prefix('programs')->name('programs.')->group(function () {
+        Route::post('/{programId}/referral-target', [\App\Http\Controllers\Web\ProgramReferralTargetController::class, 'store'])->middleware('throttle:30,1')->name('referral-target');
         Route::get('/',                                   [\App\Http\Controllers\Web\ProgramController::class, 'index'])->name('index');
         Route::get('/create',                             [\App\Http\Controllers\Web\ProgramController::class, 'create'])->name('create');
         Route::post('/',                                  [\App\Http\Controllers\Web\ProgramController::class, 'store'])->middleware('throttle:20,1')->name('store');

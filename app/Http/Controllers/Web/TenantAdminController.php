@@ -52,7 +52,8 @@ class TenantAdminController extends Controller
                 $program = app(\App\Services\Programs\ProgramNavigation::class)->selectedForDashboard($tenantId, request());
                 if ($program) {
                     $performance = app(\App\Services\Programs\ProgramPerformanceSummary::class)->compute($program);
-                    return view('tenant.programs.dashboard', compact('tenant', 'program', 'performance'));
+                    $subscription = $performance['mode'] === 'automated' ? app(\App\Services\Programs\SubscriptionDashboard::class)->compute($program, request()) : null;
+                    return view('tenant.programs.dashboard', compact('tenant', 'program', 'performance', 'subscription'));
                 }
             }
         }
