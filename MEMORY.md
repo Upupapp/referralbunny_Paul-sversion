@@ -13,3 +13,7 @@ Enforcement:
 - Avoid Netlify deployment credits; reuse dependencies and batch changes into one asset build per application release.
 
 The previous application release was deployed before this hard rule was given. Prior Actions consumption cannot be undone. Do not repeat it.
+
+## Communication preference
+
+Recorded: 2026-09-20. Always finish task updates with five recommended next steps. When the user must decide, state the recommended choice and explain why.

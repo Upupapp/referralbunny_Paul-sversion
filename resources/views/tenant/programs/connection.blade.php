@@ -9,15 +9,43 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-purple-700">{{ $program->name }}</p>
         <h1 class="text-2xl font-bold mt-2">Your program is ready. Connect your website next.</h1>
         <p class="mt-3 text-sm text-slate-600">{{ $connection->website }}</p>
-        <p class="mt-3 font-semibold {{ $connection->status === 'connected' ? 'text-green-700' : 'text-amber-700' }}">{{ ['connected' => 'Tracking connected', 'tested' => 'Test received · Waiting for a live payment', 'not_connected' => 'Tracking not connected'][$connection->status] }}</p>
+        <p class="mt-3 font-semibold {{ $connection->status === 'connected' ? 'text-green-700' : 'text-amber-700' }}">{{ ['connected' => 'Payment tracking connected', 'tested' => 'Test received · Waiting for a live payment', 'not_connected' => 'Payment tracking not connected'][$connection->status] }}</p>
         <p class="text-sm text-slate-500 mt-2">Website analysis does not install tracking. GetHired or your other application must send signed payment events from its backend.</p>
         <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}" class="inline-block mt-4 text-purple-700 underline">Open program workspace</a>
     </div>
+    <section class="bg-white rounded-2xl border border-purple-100 p-6 space-y-4" x-data="websiteTracking(@js(['statusUrl' => route('tenant.quick-program.installation', [$tenant->id, $program->id]), 'originsUrl' => route('tenant.quick-program.origins', [$tenant->id, $program->id])]))">
+        <h2 class="text-lg font-bold">1. Add Referral Bunny to your website</h2>
+        <p class="text-sm text-slate-600">Paste this snippet before the closing &lt;/head&gt; tag on your website, or in your website builder’s custom code settings. Include it on every page where visitors arrive from referral links.</p>
+        <textarea x-ref="snippet" readonly rows="4" aria-label="Website tracking snippet" class="w-full rounded-lg border-slate-300 font-mono text-xs">&lt;script defer src="{{ url('/referral-bunny.js') }}" data-connection="{{ $connection->id }}" data-program="{{ $program->id }}"&gt;&lt;/script&gt;</textarea>
+        <div class="flex flex-wrap gap-3">
+            <button type="button" @click="copy()" class="rounded-lg bg-purple-700 text-white px-4 py-2 text-sm font-semibold">Copy snippet</button>
+            <a href="{{ $connection->website }}" target="_blank" rel="noopener noreferrer" class="rounded-lg border px-4 py-2 text-sm">Open website ↗</a>
+            <button type="button" @click="check()" :disabled="busy" class="rounded-lg border px-4 py-2 text-sm" x-text="busy ? 'Checking…' : 'Check installation'">Check installation</button>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4" aria-live="polite">
+            <p class="font-semibold" :class="installed ? 'text-green-700' : 'text-amber-700'" x-text="installed ? '✓ Website snippet detected' : 'Waiting for your first website visit'">Checking installation…</p>
+            <p x-show="installed" class="text-sm text-slate-600 mt-1" x-text="origin + ' · Last seen ' + (lastSeen ? new Date(lastSeen).toLocaleString() : '')"></p>
+            <p class="text-sm text-slate-500 mt-2">After adding the snippet, open your website to verify it. Detection checks automatically for two minutes. Payment tracking is connected separately below.</p>
+        </div>
+        <p x-show="message" x-text="message" class="text-sm text-purple-700" role="status"></p>
+        <p x-show="error" x-text="error" class="text-sm text-red-700" role="alert"></p>
+        <details>
+            <summary class="cursor-pointer text-sm font-semibold text-purple-700">Website and app domains</summary>
+            <p class="text-sm text-slate-600 mt-3">Allow up to five HTTPS website addresses, one per line. Add your app address if you also install the snippet there. Referral storage is separate for each domain; your app must carry attribution across signup or domain changes.</p>
+            <textarea x-model="origins" rows="3" aria-label="Allowed website origins" class="w-full mt-3 rounded-lg border-slate-300 text-sm"></textarea>
+            <button type="button" @click="saveOrigins()" class="mt-2 rounded-lg border px-4 py-2 text-sm">Save websites</button>
+        </details>
+        <details>
+            <summary class="cursor-pointer text-sm font-semibold text-purple-700">For your developer: read referral details</summary>
+            <p class="text-sm text-slate-600 mt-3">After the script loads, await <code>ReferralBunny.programs['{{ $program->id }}'].ready</code>, then call <code>ReferralBunny.getReferral('{{ $program->id }}')</code>. Save the returned membership_id and referred_at with the customer at signup. Browser attribution is a hint; validate eligibility on your backend.</p>
+            <p class="text-sm text-slate-600 mt-2">The snippet stores referral details in first-party local storage. For consent-controlled loading, add <code>data-consent="required"</code> and call <code>ReferralBunny.programs['{{ $program->id }}'].consent()</code> after consent is granted.</p>
+        </details>
+    </section>
     <section class="bg-white rounded-2xl p-6 space-y-4">
-        <h2 class="text-lg font-bold">Connect GetHired or another application</h2>
+        <h2 class="text-lg font-bold">2. Connect payments from your application</h2>
         <ol class="list-decimal pl-5 space-y-3 text-sm text-slate-700">
             <li>Invite and activate referrers in your program’s Members tab. Use their program membership ID as the referral identifier.</li>
-            <li>Add <code>?rb_ref=MEMBERSHIP_ID&amp;rb_program={{ $program->id }}</code> to links to your website. Your app must preserve this identifier and its arrival time through customer signup, for up to 30 days.</li>
+            <li>Add <code>?rb_ref=MEMBERSHIP_ID&amp;rb_program={{ $program->id }}</code> to links to your website. The snippet remembers valid referrals on that domain for the program attribution window. Your app must save the identifier and arrival time with the customer during signup.</li>
             <li>From the trusted payment backend, send confirmed payments and refunds to the endpoint below. Exclude tax and use the amount actually collected after discounts. Never put the signing key in browser code.</li>
             <li>Send a test event, then a real payment. Refresh this page to check connection status and recorded rewards.</li>
         </ol>

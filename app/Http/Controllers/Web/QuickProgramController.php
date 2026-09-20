@@ -71,6 +71,37 @@ class QuickProgramController extends Controller
         return response()->json(['redirect' => route('tenant.quick-program.connection', [$tenantId, $program->id])]);
     }
 
+    public function installationStatus(string $tenantId, string $programId)
+    {
+        $this->access($tenantId);
+        Program::forTenant($tenantId)->findOrFail($programId);
+        $connection = ProgramConnection::where('tenant_id', $tenantId)->where('program_id', $programId)->firstOrFail();
+        return response()->json([
+            'installed' => (bool) $connection->snippet_installed_at,
+            'installed_at' => $connection->snippet_installed_at?->toIso8601String(),
+            'last_seen_at' => $connection->snippet_last_seen_at?->toIso8601String(),
+            'origin' => $connection->snippet_origin,
+            'origins' => app(\App\Services\QuickProgram\TrackingOrigins::class)->forConnection($connection),
+            'payment_status' => $connection->status,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function updateTrackingOrigins(Request $request, string $tenantId, string $programId)
+    {
+        $this->access($tenantId);
+        Program::forTenant($tenantId)->findOrFail($programId);
+        $connection = ProgramConnection::where('tenant_id', $tenantId)->where('program_id', $programId)->firstOrFail();
+        $data = $request->validate(['origins' => 'required|array|min:1|max:5', 'origins.*' => 'required|string|max:255']);
+        $service = app(\App\Services\QuickProgram\TrackingOrigins::class);
+        $origins = array_values(array_unique(array_map(fn ($origin) => $service->normalize($origin), $data['origins'])));
+        $changes = ['tracking_origins' => $origins];
+        if ($connection->snippet_origin && !in_array($connection->snippet_origin, $origins, true)) {
+            $changes += ['snippet_installed_at' => null, 'snippet_last_seen_at' => null, 'snippet_origin' => null];
+        }
+        $connection->update($changes);
+        return $this->installationStatus($tenantId, $programId);
+    }
+
     public function connection(string $tenantId, string $programId)
     {
         $this->access($tenantId);

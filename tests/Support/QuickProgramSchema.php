@@ -34,6 +34,7 @@ trait QuickProgramSchema
             '2026_06_17_200006_create_program_offers_table.php',
             '2026_06_17_200007_create_program_offer_versions_table.php',
             '2026_09_20_000001_create_program_connections.php',
+            '2026_09_20_000002_add_website_snippet_detection.php',
         ] as $file) (require database_path('migrations/'.$file))->up();
     }
 }

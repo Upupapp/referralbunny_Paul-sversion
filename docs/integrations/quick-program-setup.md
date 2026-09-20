@@ -37,3 +37,27 @@ GetHired's production domain, approved billing source, and server-side attributi
 - `php artisan view:cache`
 - `npm run build`
 - Browser check: desktop creation, price selection, three options, review/confirmation, Escape/minimize/resume, and 390px mobile overflow.
+
+## Website snippet and installation detection
+
+The program connection page now provides a public, copyable `referral-bunny.js` snippet and installation status. Place the snippet before `</head>` on landing pages and other pages that receive referral links. It contains only the program and connection IDs, never a signing secret.
+
+The script POSTs text/plain JSON to `/tracking/connections/{connectionId}/visit` without cookies or a Referer header. The endpoint accepts only configured, exact HTTPS origins and active tenants with active or paused programs. By default, the website origin and its www counterpart are allowed; owners/admins may configure up to five origins in the connection panel. Adding an app origin does not transfer local storage between origins.
+
+A successful visit records the first installation time, latest observed origin, and last-seen time (writes coalesced to five minutes for the same origin). It does not record browsing paths or visitor identifiers. Detection is an installation hint, not domain ownership verification or payment evidence: a non-browser client can spoof Origin. It never changes payment connection status or creates rewards. Admin polling ends after two minutes or detection; manual checks remain available.
+
+Links use `?rb_program=PROGRAM_ID&rb_ref=MEMBERSHIP_ID`. A valid active membership in this program is saved in first-party local storage with its arrival and expiration times. Invalid links do not replace saved attribution. Repeated visits from the same referrer keep the original arrival; a different valid referrer replaces it. Storage is scoped to the connection and browser origin. If local storage is blocked, the current page can still access the in-memory referral. Capturing does not establish purchase eligibility.
+
+After the deferred script has loaded:
+
+```js
+await ReferralBunny.programs[programId].ready;
+const referral = ReferralBunny.getReferral(programId);
+// null, or { program_id, membership_id, referred_at, expires_at }
+```
+
+The host app must save membership_id and referred_at with its customer at signup, preserve attribution across domain changes if needed, and validate it on the trusted backend before sending signed payment events. The snippet does not automatically hook into arbitrary signup forms, payment systems, or SPA route changes. Payment integration remains a separate step.
+
+For consent-controlled use, add `data-consent="required"` to the script. No storage reads or network signals occur until the host calls `ReferralBunny.programs[programId].consent()`. The returned promise resolves after capture. Consent collection and lifecycle belong to the host site. Sites with a Content Security Policy must allow the Referral Bunny origin in script-src and connect-src.
+
+Release prerequisite: run migration `2026_09_20_000002_add_website_snippet_detection.php` before serving the updated connection page. No dependency changes are required. Run local PHP tests and `node --test tests/Js/website-snippet.test.cjs`; follow AGENTS.md for credit-free pushes and deployment.

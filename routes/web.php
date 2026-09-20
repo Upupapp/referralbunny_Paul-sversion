@@ -402,6 +402,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::post('/analyze', [\App\Http\Controllers\Web\QuickProgramController::class, 'analyze'])->middleware('throttle:5,1')->name('analyze');
         Route::put('/draft', [\App\Http\Controllers\Web\QuickProgramController::class, 'save'])->middleware('throttle:30,1')->name('draft');
         Route::post('/publish', [\App\Http\Controllers\Web\QuickProgramController::class, 'publish'])->middleware('throttle:5,1')->name('publish');
+        Route::get('/connection/{programId}/installation', [\App\Http\Controllers\Web\QuickProgramController::class, 'installationStatus'])->middleware('throttle:30,1')->name('installation');
+        Route::put('/connection/{programId}/origins', [\App\Http\Controllers\Web\QuickProgramController::class, 'updateTrackingOrigins'])->middleware('throttle:10,1')->name('origins');
         Route::get('/connection/{programId}', [\App\Http\Controllers\Web\QuickProgramController::class, 'connection'])->name('connection');
     });
 
