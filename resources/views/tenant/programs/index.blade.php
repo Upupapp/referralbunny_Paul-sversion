@@ -8,6 +8,9 @@
 @endsection
 
 @section('content')
+@if($tenant->id !== 'lgu-ids')
+    @include('tenant.programs._program-list')
+@else
 <div class="p-6 max-w-6xl mx-auto space-y-6">
 
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
@@ -90,4 +93,5 @@
     </div>
     @endif
 </div>
+@endif
 @endsection
