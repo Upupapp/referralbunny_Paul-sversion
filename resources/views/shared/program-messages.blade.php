@@ -1,7 +1,7 @@
 @extends($admin ? 'layouts.app' : 'layouts.reseller')
 @section('title', 'Messages')
 @section('nav')
-    @if($admin) @include('tenant._nav') @endif
+    @if($admin) @include('tenant._nav') @else @include('reseller._nav') @endif
 @endsection
 @section('content')
 <style>

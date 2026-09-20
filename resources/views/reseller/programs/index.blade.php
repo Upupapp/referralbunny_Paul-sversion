@@ -1,4 +1,5 @@
 @extends('layouts.reseller')
+@section('nav') @include('reseller._nav') @endsection
 
 @section('title', 'Programs')
 @section('stitch_page', 'referrer-programs-index')

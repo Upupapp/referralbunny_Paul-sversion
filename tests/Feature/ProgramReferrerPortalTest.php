@@ -55,7 +55,7 @@ class ProgramReferrerPortalTest extends TestCase
         foreach([[$this->referrer->id,2000],['another',990000]] as [$referrerId,$reward]) DB::table('program_conversion_events')->insert(['id'=>$referrerId,'connection_id'=>$connection->id,'external_id'=>$referrerId,'customer_id'=>'c','invoice_id'=>$referrerId,'referrer_id'=>$referrerId,'payload_hash'=>str_repeat('a',64),'type'=>'payment','currency'=>'PHP','amount_minor'=>10000,'reward_minor'=>$reward,'status'=>'pending_review','occurred_at'=>now()]);
         DB::table('leads')->insert(['id'=>'manual-one','tenant_id'=>'company','program_id'=>$this->second->id,'reseller_id'=>$this->referrer->id,'name'=>'Assigned referral','stage'=>'demo','status'=>'active','created_at'=>now()]);
         $url=route('reseller.dashboard','company');
-        $this->actingAs($this->referrer,'reseller')->get($url.'?program_id='.$this->first->id)->assertOk()->assertSee('20.00')->assertDontSee('9,900.00')->assertDontSee('Assigned referral')->assertDontSee('Request Forms');
+        $this->actingAs($this->referrer,'reseller')->get($url.'?program_id='.$this->first->id)->assertOk()->assertSee('20.00')->assertDontSee('9,900.00')->assertDontSee('Assigned referral')->assertDontSee('Request Forms')->assertSee('My Referrals')->assertSee('Referral Programs');
         $this->get($url.'?program_id='.$this->second->id)->assertOk()->assertSee('Assigned referral')->assertDontSee('20.00');
         $this->get(route('reseller.deals','company'))->assertOk()->assertSee('Assigned referral');
         $this->get(route('reseller.messages','company'))->assertOk()->assertViewHas('program',fn($p)=>$p->id===$this->second->id);
