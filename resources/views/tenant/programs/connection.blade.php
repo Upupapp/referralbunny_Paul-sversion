@@ -7,12 +7,44 @@
 <main class="max-w-4xl mx-auto p-5 sm:p-8 space-y-6">
     <div class="rounded-2xl bg-white border border-purple-100 p-6">
         <p class="text-xs font-semibold uppercase tracking-wide text-purple-700">{{ $program->name }}</p>
-        <h1 class="text-2xl font-bold mt-2">Your program is ready. Connect your website next.</h1>
+        <h1 class="text-2xl font-bold mt-2">Your program is ready. Connect your platform next.</h1>
         <p class="mt-3 text-sm text-slate-600">{{ $connection->website }}</p>
         <p class="mt-3 font-semibold {{ $connection->status === 'connected' ? 'text-green-700' : 'text-amber-700' }}">{{ ['connected' => 'Payment tracking connected', 'tested' => 'Test received · Waiting for a live payment', 'not_connected' => 'Payment tracking not connected'][$connection->status] }}</p>
-        <p class="text-sm text-slate-500 mt-2">Website analysis does not install tracking. GetHired or your other application must send signed payment events from its backend.</p>
+        <p class="text-sm text-slate-500 mt-2">Connect your platform below. Account connection and payment tracking are shown separately.</p>
         <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}" class="inline-block mt-4 text-purple-700 underline">Open program workspace</a>
     </div>
+    <section class="bg-white rounded-2xl border border-purple-100 p-6 space-y-4">
+        <h2 class="text-xl font-bold">Connect my platform</h2>
+        <p class="text-sm text-slate-600">Choose your platform, sign in, and approve the connection. No code or API keys to copy.</p>
+        @if(session('platform_message'))<p role="status" class="text-purple-700">{{ session('platform_message') }}</p>@endif
+        @if($errors->has('platform'))<p role="alert" class="text-red-700">{{ $errors->first('platform') }}</p>@endif
+        <div class="rounded-xl border p-5 space-y-4" x-data="gethiredConnection(@js(['enabled'=>(bool)config('services.gethired.enabled'),'previouslyConnected'=>(bool)$connection->platform_connected_at,'statusUrl'=>route('tenant.quick-program.gethired.status',[$tenant->id,$program->id])]))">
+            <h3 class="font-bold text-lg">GetHired Online</h3>
+            <dl class="grid sm:grid-cols-3 gap-3" aria-live="polite">
+                <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Account connection</dt><dd class="mt-1 text-sm font-semibold" x-text="accountLabel">Checking connection…</dd></div>
+                <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Signup tracking</dt><dd class="mt-1 text-sm font-semibold" x-text="signupLabel">Not verified</dd></div>
+                <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Payment tracking</dt><dd class="mt-1 text-sm font-semibold" x-text="paymentLabel">Not verified</dd></div>
+            </dl>
+            <p class="text-sm text-slate-600">Sign in as a GetHired platform administrator to approve access. Reconnecting an active account preserves saved referral details. Payment tracking requires separate approval when enabled. Refund synchronization is not available yet.</p>
+            <p x-show="error" x-text="error" x-cloak role="alert" class="text-sm text-red-700"></p>
+            @if(config('services.gethired.enabled'))
+                <a class="text-purple-700 underline font-semibold" href="{{ route('tenant.quick-program.gethired.review',[$tenant->id,$program->id]) }}">Review payments and refunds</a>
+                <div class="flex flex-wrap gap-3">
+                    <form method="POST" action="{{ route('tenant.quick-program.gethired.start',[$tenant->id,$program->id]) }}" @submit="submitting=true">@csrf<button :disabled="submitting" class="bg-purple-700 text-white rounded-lg px-5 py-3 font-semibold disabled:opacity-50" x-text="submitting ? 'Opening GetHired…' : connectLabel">Connect GetHired</button></form>
+                    <button type="button" @click="check()" :disabled="checking" class="border rounded-lg px-4 py-2 text-sm" x-text="checking ? 'Checking…' : 'Check connection'">Check connection</button>
+                </div>
+                <button type="button" x-show="account==='connected' || account==='reconnect_required' || {{ $connection->platform === 'gethired' ? 'true' : 'false' }}" @click="disconnecting=true" class="underline text-sm text-slate-600">Disconnect GetHired</button>
+                <div x-show="disconnecting" x-cloak class="rounded-lg border border-amber-200 bg-amber-50 p-4" role="group" aria-label="Confirm disconnection">
+                    <p class="text-sm mb-3">Disconnecting stops new referral capture and signup attribution, and invalidates unclaimed referral details. Existing records are retained.</p>
+                    <div class="flex gap-3"><form method="POST" action="{{ route('tenant.quick-program.gethired.disconnect',[$tenant->id,$program->id]) }}" @submit="submitting=true">@csrf<button :disabled="submitting" class="rounded-lg bg-slate-800 px-4 py-2 text-white text-sm">Confirm disconnect</button></form><button type="button" @click="disconnecting=false" class="text-sm underline">Keep connected</button></div>
+                </div>
+            @else
+                <p class="text-sm text-slate-600">GetHired connection is being prepared. It will appear here when available.</p>
+            @endif
+        </div>
+    </section>
+    <details class="rounded-2xl bg-white p-5"><summary class="text-sm text-slate-500 cursor-pointer">Developer setup for other websites</summary>
+    <div class="space-y-6 mt-4">
     <section class="bg-white rounded-2xl border border-purple-100 p-6 space-y-4" x-data="websiteTracking(@js(['statusUrl' => route('tenant.quick-program.installation', [$tenant->id, $program->id]), 'originsUrl' => route('tenant.quick-program.origins', [$tenant->id, $program->id])]))">
         <h2 class="text-lg font-bold">1. Add Referral Bunny to your website</h2>
         <p class="text-sm text-slate-600">Paste this snippet before the closing &lt;/head&gt; tag on your website, or in your website builder’s custom code settings. Include it on every page where visitors arrive from referral links.</p>
@@ -83,6 +115,7 @@ await fetch(process.env.RB_ENDPOINT, {
             </div>
         </details>
     </section>
+    </div></details>
     <section class="bg-white rounded-2xl p-6">
         <h2 class="text-lg font-bold mb-2">Recent tracked rewards</h2>
         <p class="text-sm text-slate-500 mb-4">Review eligibility after the hold period and arrange payment separately. Refund reversals reduce the reward owed. These entries do not initiate payouts.</p>

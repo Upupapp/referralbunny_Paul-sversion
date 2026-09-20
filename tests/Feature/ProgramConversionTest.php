@@ -85,4 +85,15 @@ class ProgramConversionTest extends TestCase
         $this->sendEvent($this->payload(['event_id'=>'different-id']))->assertConflict();
         $this->assertDatabaseCount('program_conversion_events',1);
     }
+    public function test_gethired_net_revenue_and_renewal_are_rewarded_once(): void
+    {
+        $first=$this->payload(['event_id'=>'gh-payment-first','invoice_id'=>'gh-invoice-first','customer_id'=>'gh-company','amount_minor'=>90000,'occurred_at'=>now()->subMonth()->toIso8601String(),'referred_at'=>now()->subMonth()->subDay()->toIso8601String()]);
+        $this->sendEvent($first)->assertCreated()->assertJsonPath('reward_minor',9000)->assertJsonPath('status','pending_review');
+        $this->sendEvent($first)->assertOk()->assertJsonPath('duplicate',true);
+        $renewal=array_replace($first,['event_id'=>'gh-payment-renewal','invoice_id'=>'gh-invoice-renewal','occurred_at'=>now()->toIso8601String(),'first_payment'=>false]);
+        $this->sendEvent($renewal)->assertCreated()->assertJsonPath('reward_minor',9000);
+        $this->sendEvent($renewal)->assertOk()->assertJsonPath('duplicate',true);
+        $this->assertDatabaseCount('program_conversion_events',2);
+        $this->assertEquals(18000,DB::table('program_conversion_events')->sum('reward_minor'));
+    }
 }

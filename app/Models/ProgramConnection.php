@@ -10,7 +10,7 @@ class ProgramConnection extends Model
     protected $keyType = 'string';
     protected $guarded = [];
     protected $hidden = ['secret'];
-    protected $casts = ['secret' => 'encrypted', 'last_event_at' => 'datetime', 'tracking_origins' => 'array', 'snippet_installed_at' => 'datetime', 'snippet_last_seen_at' => 'datetime'];
+    protected $casts = ['secret' => 'encrypted', 'platform_connected_at' => 'datetime', 'last_event_at' => 'datetime', 'tracking_origins' => 'array', 'snippet_installed_at' => 'datetime', 'snippet_last_seen_at' => 'datetime'];
     protected static function boot(): void
     {
         parent::boot();

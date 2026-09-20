@@ -382,3 +382,6 @@ Route::middleware(['auth:reseller', 'api.tenant'])->group(function () {
 // ── PayMongo Webhook (no auth — verified by signature) ────────
 Route::post('webhooks/paymongo', [WebhookController::class, 'paymongo'])->middleware('throttle:60,1');
 
+
+Route::post('program-connections/{connectionId}/referrals/validate', [\App\Http\Controllers\PlatformReferralController::class, 'validateReferral'])
+    ->whereUuid('connectionId')->middleware('throttle:120,1,platform-referral:');

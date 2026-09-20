@@ -398,6 +398,13 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
     });
 
     Route::prefix('quick-program')->name('quick-program.')->group(function () {
+        Route::get('/connection/{programId}/gethired/review', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'review'])->middleware('throttle:30,1,gethired-review:')->name('gethired.review');
+        Route::post('/connection/{programId}/gethired/review/retry', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'retryDelivery'])->middleware('throttle:10,1,gethired-review-retry:')->name('gethired.retry');
+        Route::get('/connection/{programId}/gethired/status', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'status'])->middleware('throttle:30,1,gethired-status:')->name('gethired.status');
+        Route::post('/connection/{programId}/gethired', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'start'])->middleware('throttle:10,1,gethired-start:')->name('gethired.start');
+        Route::get('/connection/{programId}/gethired/callback', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'callback'])->middleware('throttle:20,1,gethired-callback:')->name('gethired.callback');
+        Route::post('/connection/{programId}/gethired/disconnect', [\App\Http\Controllers\Web\GetHiredConnectionController::class, 'disconnect'])->middleware('throttle:10,1,gethired-disconnect:')->name('gethired.disconnect');
+
         Route::get('/status', [\App\Http\Controllers\Web\QuickProgramController::class, 'status'])->name('status');
         Route::post('/analyze', [\App\Http\Controllers\Web\QuickProgramController::class, 'analyze'])->middleware('throttle:5,1,quick-program-analyze:')->name('analyze');
         Route::put('/draft', [\App\Http\Controllers\Web\QuickProgramController::class, 'save'])->middleware('throttle:30,1,quick-program-draft:')->name('draft');

@@ -53,4 +53,10 @@ return [
 
     'google_analytics_id' => env('GOOGLE_ANALYTICS_ID'),
 
+    'gethired' => [
+        'enabled' => env('GETHIRED_CONNECTOR_ENABLED', false),
+        'client_secret' => env('GETHIRED_CONNECTOR_SECRET', ''),
+        'api_url' => env('GETHIRED_API_URL', 'https://api.gethiredonline.app/api'),
+        'web_url' => env('GETHIRED_WEB_URL', 'https://gethiredonline.app'),
+    ],
 ];
