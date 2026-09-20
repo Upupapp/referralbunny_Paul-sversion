@@ -21,3 +21,9 @@ Recorded: 2026-09-20. Always finish task updates with five recommended next step
 ## Hard rule — DO NOT TOUCH LGUIDS
 
 Recorded 2026-09-20 from explicit user instruction. LGU IDS (`lgu-ids`) must remain unchanged: screens, data, configuration, pricing, commissions, workflows, imports and integrations. Changes requested for the user’s Referral Bunny company account must be tenant-scoped; shared changes must preserve LGU IDS behavior and rendering. Never apply company-specific changes to LGU IDS.
+
+## Program modes and navigation — requested 2026-09-20
+
+Automated programs connected to online purchases should use the program-based dashboard, metrics, deals and pipeline as a system-wide standard, rather than an account-specific exception. Manual programs must use admin-configured rules and stages. LGU IDS is reference-only and remains untouched. This broader operating-mode rollout is pending; the current ProgramFinancialSummary still targets test-sp4s9i and must not be represented as a completed global rollout.
+
+Upper menu bar: Tasks (including the deal-detail New Task shortcut), Overview/Full View, and the Google Calendar quick-connect button are LGU IDS-only. This is a navigation change, not removal of underlying task/calendar features.

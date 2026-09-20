@@ -398,7 +398,7 @@
                 <div class="w-px h-5 bg-gray-200 mx-1.5"></div>
 
                 {{-- Google Calendar quick-connect --}}
-                @if(isset($tenant) && (auth('tenant')->check() || auth('web')->check()))
+                @if(isset($tenant) && $tenant->id === 'lgu-ids' && (auth('tenant')->check() || auth('web')->check()))
                     @php
                         $gcalUserId    = auth('tenant')->id() ?? auth('web')->id();
                         $gcalConnected = false;
