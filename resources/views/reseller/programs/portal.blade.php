@@ -17,7 +17,7 @@
             <label for="referral-link" style="display:block;font-weight:600;margin-bottom:10px">Your referral link</label>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
                 <input id="referral-link" x-ref="referralLink" type="text" readonly value="{{ $referralLink }}" @click="$el.select()" style="flex:1;min-width:180px;border:1px solid #dacbea;border-radius:10px;padding:12px;background:white;color:#4b3b60;font-size:13px" aria-describedby="referral-link-help">
-                <button type="button" style="background:#8925cc;color:white;border-radius:10px;padding:12px 18px;font-weight:600;font-size:13px" @click="try { await navigator.clipboard.writeText($refs.referralLink.value); copyStatus = 'Link copied!'; } catch (error) { $refs.referralLink.focus(); $refs.referralLink.select(); copyStatus = 'Select and copy the link above.'; }">Copy referral link</button>
+                <button type="button" style="background:#8925cc;color:white;border-radius:10px;padding:12px 18px;font-weight:600;font-size:13px" @click="(async () => { try { await navigator.clipboard.writeText($refs.referralLink.value); copyStatus = 'Link copied!'; } catch (error) { $refs.referralLink.focus(); $refs.referralLink.select(); copyStatus = 'Select and copy the link above.'; } })()">Copy referral link</button>
             </div>
             <p id="referral-link-help" class="rb-muted">Share this link with new customers. It identifies you in {{ $program->name }}. Rewards follow the program’s eligibility rules and recorded qualifying events.</p>
             <p class="rb-muted" role="status" aria-live="polite" x-text="copyStatus"></p>
