@@ -18,6 +18,21 @@ class GetHiredConnectorTest extends TestCase
         $this->postJson('/tenant/acme/quick-program/publish',['website'=>'gethiredonline.app','name'=>'GetHired Referrals','pricing_model'=>'subscription','price'=>1000,'currency'=>'PHP','option'=>'first','reward_model'=>'percentage','reward_value'=>20,'reward_scope'=>'first_payment','duration_months'=>6,'hold_days'=>30,'confirmed'=>true])->assertOk();
         $this->connection=ProgramConnection::first();$this->base='/tenant/acme/quick-program/connection/'.$this->connection->program_id.'/gethired';
     }
+    public function test_owner_connection_uses_pinned_server_authorization_without_extra_login():void {
+        config(['services.gethired.owner_connection_id'=>$this->connection->id]);
+        Http::fake(['*/owner-connect'=>Http::response(['connectionId'=>$this->connection->id])]);
+        $this->post($this->base)->assertRedirect('/tenant/acme/quick-program/connection/'.$this->connection->program_id);
+        $this->assertSame('gethired',$this->connection->fresh()->platform);
+        Http::assertSent(fn($r)=>str_ends_with($r->url(),'/owner-connect') && $r['programId']===$this->connection->program_id && $r['eventSecret']===$this->connection->secret);
+        Http::assertSentCount(1);
+        config(['services.gethired.owner_connection_id'=>'another-connection']);
+        $this->post($this->base)->assertForbidden();
+        Http::assertSentCount(1);
+        config(['services.gethired.owner_connection_id'=>$this->connection->id]);
+        TenantMembership::where('tenant_user_id','owner')->update(['role'=>'viewer']);
+        $this->post($this->base)->assertForbidden();
+        Http::assertSentCount(1);
+    }
     public function test_authorization_binds_session_and_pkce_and_does_not_enable_payments():void {
         Http::fake(['*/requests'=>Http::response(['requestId'=>str_repeat('a',64)]),'*/exchange'=>Http::response(['connectionId'=>$this->connection->id])]);
         $this->post($this->base)->assertRedirect('https://gethiredonline.app/integrations/referral-bunny?request='.str_repeat('a',64));

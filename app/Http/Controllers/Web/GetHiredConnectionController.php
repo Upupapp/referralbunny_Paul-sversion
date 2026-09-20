@@ -20,6 +20,14 @@ class GetHiredConnectionController extends Controller
     public function start(Request $request, string $tenantId, string $programId, GetHiredConnector $api)
     {
         $connection = $this->connection($tenantId,$programId);
+        if (config('services.gethired.owner_connection_id')) {
+            abort_unless($connection->id === config('services.gethired.owner_connection_id'), 403);
+            $result = $api->request('owner-connect', ['connectionId'=>$connection->id, 'programId'=>$programId, 'eventSecret'=>$connection->secret]);
+            abort_unless(($result['connectionId'] ?? '') === $connection->id, 502);
+            $connection->update(['platform'=>'gethired','platform_connected_at'=>now()]);
+            $request->session()->forget('gethired.'.$connection->id);
+            return redirect()->route('tenant.quick-program.connection',[$tenantId,$programId])->with('platform_message','GetHired is connected. No extra login, website code or API keys are needed.');
+        }
         $state = Str::random(64); $verifier = Str::random(64);
         $result = $api->request('requests', [
             'connectionId'=>$connection->id, 'programId'=>$programId,

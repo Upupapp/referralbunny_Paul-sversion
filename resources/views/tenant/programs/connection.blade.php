@@ -15,7 +15,7 @@
     </div>
     <section class="bg-white rounded-2xl border border-purple-100 p-6 space-y-4">
         <h2 class="text-xl font-bold">Connect my platform</h2>
-        <p class="text-sm text-slate-600">Choose your platform, sign in, and approve the connection. No code or API keys to copy.</p>
+        <p class="text-sm text-slate-600">Connect your platform without copying code or API keys.</p>
         @if(session('platform_message'))<p role="status" class="text-purple-700">{{ session('platform_message') }}</p>@endif
         @if($errors->has('platform'))<p role="alert" class="text-red-700">{{ $errors->first('platform') }}</p>@endif
         <div class="rounded-xl border p-5 space-y-4" x-data="gethiredConnection(@js(['enabled'=>(bool)config('services.gethired.enabled'),'previouslyConnected'=>(bool)$connection->platform_connected_at,'statusUrl'=>route('tenant.quick-program.gethired.status',[$tenant->id,$program->id])]))">
@@ -25,9 +25,13 @@
                 <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Signup tracking</dt><dd class="mt-1 text-sm font-semibold" x-text="signupLabel">Not verified</dd></div>
                 <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Payment tracking</dt><dd class="mt-1 text-sm font-semibold" x-text="paymentLabel">Not verified</dd></div>
             </dl>
+            @if(config('services.gethired.owner_connection_id'))
+                <p class="text-sm text-slate-600">GetHired is configured by the platform owner for its designated referral program. No separate GetHired login is needed. Signup tracking is available after connection; payment and refund tracking require a separate setup.</p>
+            @else
             <p class="text-sm text-slate-600">Sign in as a GetHired platform administrator to approve access. Reconnecting an active account preserves saved referral details. Payment tracking requires separate approval when enabled. Refund synchronization is not available yet.</p>
+            @endif
             <p x-show="error" x-text="error" x-cloak role="alert" class="text-sm text-red-700"></p>
-            @if(config('services.gethired.enabled'))
+            @if(config('services.gethired.enabled') && (!config('services.gethired.owner_connection_id') || config('services.gethired.owner_connection_id') === $connection->id))
                 <a class="text-purple-700 underline font-semibold" href="{{ route('tenant.quick-program.gethired.review',[$tenant->id,$program->id]) }}">Review payments and refunds</a>
                 <div class="flex flex-wrap gap-3">
                     <form method="POST" action="{{ route('tenant.quick-program.gethired.start',[$tenant->id,$program->id]) }}" @submit="submitting=true">@csrf<button :disabled="submitting" class="bg-purple-700 text-white rounded-lg px-5 py-3 font-semibold disabled:opacity-50" x-text="submitting ? 'Opening GetHired…' : connectLabel">Connect GetHired</button></form>
@@ -39,7 +43,7 @@
                     <div class="flex gap-3"><form method="POST" action="{{ route('tenant.quick-program.gethired.disconnect',[$tenant->id,$program->id]) }}" @submit="submitting=true">@csrf<button :disabled="submitting" class="rounded-lg bg-slate-800 px-4 py-2 text-white text-sm">Confirm disconnect</button></form><button type="button" @click="disconnecting=false" class="text-sm underline">Keep connected</button></div>
                 </div>
             @else
-                <p class="text-sm text-slate-600">GetHired connection is being prepared. It will appear here when available.</p>
+                <p class="text-sm text-slate-600">GetHired connection is available only for the referral program designated by its platform owner.</p>
             @endif
         </div>
     </section>
