@@ -207,6 +207,19 @@ class ProgramWorkspaceController extends Controller
             ]);
         }
 
+        // Subscription campaign windows are entered in the program timezone and stored as UTC.
+        if ($program->effectiveOperatingMode() === 'automated') {
+            $tz = $data['timezone'] ?? $program->timezone ?? 'UTC';
+            foreach (['referral_period_opens_at','referral_period_closes_at'] as $field) {
+                if (!empty($data[$field])) $data[$field] = \Carbon\CarbonImmutable::parse($data[$field], $tz)->utc();
+            }
+            $start = $data['referral_period_opens_at'] ?? $program->referral_period_opens_at;
+            $end = $data['referral_period_closes_at'] ?? $program->referral_period_closes_at;
+            if ($start && $end && ($end->lt($start) || $start->diffInDays($end) > 3660)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['referral_period_closes_at'=>'Choose a valid campaign duration of at most ten years.']);
+            }
+        }
+
         $data['updated_by'] = (string) (auth('tenant')->id() ?? auth('web')->id());
 
         $program->update($data);

@@ -133,4 +133,52 @@ class ProgramReferrerPortalTest extends TestCase
         $this->post(route('tenant.programs.referral-target',['tenantId'=>'company','programId'=>$foreign->id]),['total'=>20,'starts_on'=>'2026-08-02','ends_on'=>'2026-08-02'])->assertNotFound();
     }
 
+    public function test_campaign_duration_drives_dashboard_and_target_in_program_timezone(): void
+    {
+        (require database_path('migrations/2026_09_20_000006_create_program_referral_targets.php'))->up();
+        $this->first->update(['timezone'=>'Asia/Manila']);
+        $save=route('tenant.programs.campaign-duration',['tenantId'=>'company','programId'=>$this->first->id]);
+        $this->actingAs($this->owner,'tenant')->post($save,['campaign_start'=>'2026-08-01','campaign_end'=>'2026-08-03'])->assertRedirect();
+        $this->first->refresh();
+        $this->assertSame('2026-07-31 16:00:00',$this->first->referral_period_opens_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-08-03 15:59:59',$this->first->referral_period_closes_at->format('Y-m-d H:i:s'));
+        $targetRoute=route('tenant.programs.referral-target',['tenantId'=>'company','programId'=>$this->first->id]);
+        // A submitted target cannot override the campaign dates.
+        $this->post($targetRoute,['total'=>30,'starts_on'=>'2025-01-01','ends_on'=>'2025-01-02'])->assertRedirect();
+        $service=app(\App\Services\Programs\SubscriptionDashboard::class);
+        $data=$service->compute($this->first,\Illuminate\Http\Request::create('/'));
+        $this->assertSame('2026-08-01',$data['from']->toDateString());
+        $this->assertSame('2026-08-03',$data['to']->toDateString());
+        $this->assertEquals(10,$data['average']);
+        $this->post($save,['campaign_start'=>'2026-08-01','campaign_end'=>'2026-08-06'])->assertRedirect();
+        $data=$service->compute($this->first->fresh(),\Illuminate\Http\Request::create('/','GET',['from'=>'2026-08-05','to'=>'2026-08-07']));
+        $this->assertEquals(30,$data['target']->total);
+        $this->assertEquals([5,5,null],$data['targetDaily']);
+        $this->assertSame(6,$data['campaign']['days']);
+        $this->post($save,['campaign_start'=>'2026-08-02','campaign_end'=>'2026-08-02'])->assertRedirect();
+        $data=$service->compute($this->first->fresh(),\Illuminate\Http\Request::create('/'));
+        $this->assertEquals(30,$data['average']);
+        $this->assertCount(1,$data['daily']);
+        $this->get(route('tenant.dashboard',['tenantId'=>'company','program_id'=>$this->first->id]))->assertOk()->assertSee('Full campaign')->assertSee('Edit duration');
+        $this->post($save,['campaign_start'=>'2026-08-03','campaign_end'=>'2026-08-01'])->assertSessionHasErrorsIn('duration','campaign_end');
+        $this->assertSame('2026-08-02',app(\App\Services\Programs\CampaignPeriod::class)->forProgram($this->first->fresh())['starts_on']);
+        $this->post(route('tenant.programs.campaign-duration',['tenantId'=>'company','programId'=>$this->second->id]),['campaign_start'=>'2026-08-01','campaign_end'=>'2026-08-02'])->assertNotFound();
+        $outsider=TenantUser::create(['id'=>'duration-outsider','email'=>'duration@example.com','password'=>'x','status'=>'active']);
+        $this->actingAs($outsider,'tenant')->post($save,['campaign_start'=>'2026-08-01','campaign_end'=>'2026-08-02'])->assertForbidden();
+    }
+    public function test_campaign_period_state_uses_local_dates_and_protects_lgu(): void
+    {
+        $service=app(\App\Services\Programs\CampaignPeriod::class);
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01 16:00:00','UTC'));
+        $program=new Program(['tenant_id'=>'company','timezone'=>'Asia/Manila','referral_period_opens_at'=>'2026-08-01 16:00:00','referral_period_closes_at'=>'2026-08-02 15:59:59']);
+        $this->assertSame('In progress',$service->forProgram($program)['state']);
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-01 15:59:59','UTC'));
+        $this->assertSame('Upcoming',$service->forProgram($program)['state']);
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-02 16:00:00','UTC'));
+        $this->assertSame('Completed',$service->forProgram($program)['state']);
+        $program->tenant_id='lgu-ids';
+        $this->assertNull($service->forProgram($program));
+        $this->travelBack();
+    }
+
 }

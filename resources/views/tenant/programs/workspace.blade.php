@@ -443,12 +443,12 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Referral period opens</label>
                             <input type="datetime-local" name="referral_period_opens_at"
-                                   value="{{ old('referral_period_opens_at', $program->referral_period_opens_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                                   value="{{ old('referral_period_opens_at', ($program->effectiveOperatingMode() === 'automated' ? $program->referral_period_opens_at?->copy()->setTimezone($program->timezone ?: 'UTC') : $program->referral_period_opens_at)?->format('Y-m-d\TH:i')) }}" class="input w-full">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Referral period closes</label>
                             <input type="datetime-local" name="referral_period_closes_at"
-                                   value="{{ old('referral_period_closes_at', $program->referral_period_closes_at?->format('Y-m-d\TH:i')) }}" class="input w-full">
+                                   value="{{ old('referral_period_closes_at', ($program->effectiveOperatingMode() === 'automated' ? $program->referral_period_closes_at?->copy()->setTimezone($program->timezone ?: 'UTC') : $program->referral_period_closes_at)?->format('Y-m-d\TH:i')) }}" class="input w-full">
                         </div>
                     </div>
                 </div>

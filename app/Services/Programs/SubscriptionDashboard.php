@@ -9,9 +9,10 @@ class SubscriptionDashboard {
  public function compute(Program $program, Request $request): array {
   abort_if(ProtectedTenants::isProtected($program->tenant_id),404);
   $tz=$program->timezone ?: 'UTC';
+  $campaign=app(CampaignPeriod::class)->forProgram($program);
   $v=$request->validate(['from'=>'nullable|date_format:Y-m-d','to'=>'nullable|date_format:Y-m-d|after_or_equal:from','currency'=>'nullable|string|size:3']);
-  $from=Date::parse($v['from'] ?? Date::now($tz)->subDays(29)->toDateString(),$tz)->startOfDay();
-  $to=Date::parse($v['to'] ?? Date::now($tz)->toDateString(),$tz)->endOfDay();
+  $from=Date::parse($v['from'] ?? $campaign['starts_on'] ?? Date::now($tz)->subDays(29)->toDateString(),$tz)->startOfDay();
+  $to=Date::parse($v['to'] ?? $campaign['ends_on'] ?? Date::now($tz)->toDateString(),$tz)->endOfDay();
   abort_if($to->lt($from) || $from->diffInDays($to)>3660,422,'Choose a date range of at most ten years.');
   $connection=ProgramConnection::where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->first();
   $base=DB::table('program_conversion_events')->where('connection_id',$connection?->id ?? 'none')->whereIn('type',['payment','refund']);
@@ -26,6 +27,7 @@ class SubscriptionDashboard {
   $revenue=$events->sum(fn($e)=>$e->type==='payment'?$e->amount_minor:-$e->amount_minor)/100;
   $rewards=$events->sum('reward_minor')/100;
   $target=Schema::hasTable('program_referral_targets') ? DB::table('program_referral_targets')->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->first() : null;
+  if ($target && $campaign) { $target->starts_on=$campaign['starts_on']; $target->ends_on=$campaign['ends_on']; }
   $average=$target ? $target->total/(Date::parse($target->starts_on)->diffInDays(Date::parse($target->ends_on))+1) : null;
   $targetDaily=[]; foreach($daily as $day=>$value) $targetDaily[]=$target && $day >= $target->starts_on && $day <= $target->ends_on ? $average : null;
   $top=$events->whereNotNull('referrer_id')->groupBy('referrer_id')->map(function($rows,$id) use($program) {
@@ -33,6 +35,6 @@ class SubscriptionDashboard {
    return ['name'=>$name,'revenue'=>$rows->sum(fn($e)=>$e->type==='payment'?$e->amount_minor:-$e->amount_minor)/100,'rewards'=>$rows->sum('reward_minor')/100];
   })->sortByDesc('revenue')->take(5);
   $unread=Schema::hasTable('program_messages') ? DB::table('program_messages')->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->where('sender_type','referrer')->whereNull('read_at')->count() : 0;
-  return compact('from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
+  return compact('campaign','from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
  }
 }
