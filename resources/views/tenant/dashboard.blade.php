@@ -59,6 +59,9 @@ document.addEventListener('alpine:init', () => {
         <span>Breakdown stats below are based on <span x-text="leads.length"></span> of <span x-text="leadsTotal"></span> referrals. "Total Referrals" reflects the full count.</span>
     </div>
 
+    @if(isset($programFinancials))
+        @include('tenant.programs._financial-dashboard')
+    @else
     {{-- ── KPI CARDS ────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4"@if($tenant->id === 'test-sp4s9i') style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"@endif>
 
@@ -107,6 +110,7 @@ document.addEventListener('alpine:init', () => {
         </div>
         @endforeach
     </div>
+    @endif
 
     {{-- ── CRITICAL ACTIONS + QUICK COUNTS ───────────────── --}}
     @php
@@ -700,6 +704,7 @@ document.addEventListener('alpine:init', () => {
                 <p class="text-xs text-gray-400">No activity yet</p>
             </div>
 
+            @if(!isset($programFinancials))
             {{-- Commission quick stats --}}
             <div class="mt-4 pt-4 border-t border-gray-50 space-y-2.5">
                 <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Commission</p>
@@ -716,6 +721,9 @@ document.addEventListener('alpine:init', () => {
                     </div>
                 </template>
             </div>
+            @else
+            <p class="mt-4 text-xs text-gray-500">Program rewards above use recorded payments and refund reversals. Deal stages do not confirm a reward payout.</p>
+            @endif
         </div>
     </div>
 

@@ -218,7 +218,9 @@ class TenantAdminController extends Controller
             } catch (\Throwable) {}
         }
 
+        $programFinancials = app(\App\Services\QuickProgram\ProgramFinancialSummary::class)->forTenant($tenantId);
         return view('tenant.dashboard', array_merge(
+            ['programFinancials'=>$programFinancials],
             compact('tenant', 'metric', 'accessExtendedNotif', 'dailyBriefing',
                     'currentResellerName', 'criticalActions', 'dashboardCounts', 'canSeeBilling',
                     'canViewReferrers', 'pendingTasks', 'newDealsSinceLastSession'),
@@ -301,7 +303,9 @@ class TenantAdminController extends Controller
                 ->value('role') ?? 'viewer';
         }
 
+        $programFinancials = app(\App\Services\QuickProgram\ProgramFinancialSummary::class)->forTenant($tenantId);
         return view('tenant.deals.show', array_merge(
+            ['programFinancials'=>$programFinancials],
             ['tenant' => $tenant, 'dealId' => $dealId, 'ssrLead' => $ssrLead, 'pendingApprovals' => $pendingApprovals, 'referrers' => $referrers, 'viewerUserId' => $viewerUserId, 'viewerRole' => $viewerRole],
             $this->configMeta($tenantId)
         ));

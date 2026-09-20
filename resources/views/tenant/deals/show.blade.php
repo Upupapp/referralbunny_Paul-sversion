@@ -10,6 +10,7 @@
         <span class="hidden sm:inline">New Task</span>
     </a>
     @if(!$dealIsArchived)
+    @if(!isset($programFinancials))
     {{-- Update Amount: opens the finance edit section directly --}}
     <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-update-amount-deal'))"
             class="btn-secondary text-sm">
@@ -18,6 +19,9 @@
         </svg>
         <span class="hidden sm:inline">Update Amount</span>
     </button>
+    @else
+    <button type="button" class="btn-secondary text-sm" onclick="document.getElementById('rb-finance-section')?.scrollIntoView({behavior:'smooth'})">Estimate reward</button>
+    @endif
     <button type="button" onclick="rbOpenMoveStage()" class="btn-secondary text-sm">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         Move Stage
@@ -399,6 +403,9 @@
         {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
              FINANCIAL BREAKDOWN  Ã¢â€ Â the key feature
              â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+        @if(isset($programFinancials))
+            @include('tenant.programs._financial-detail')
+        @else
         <div class="card" id="rb-finance-section">
 
             {{-- Header --}}
@@ -1044,6 +1051,7 @@
                 </div>
             </div>
         </div>
+        @endif
         <script>
         // Apply financial layout â€" JS setProperty bypasses ALL CSS blocking
         (function applyFin(){
@@ -1108,7 +1116,7 @@
                         <span class="font-medium text-gray-700" x-text="(lead?.days_left ?? 21) + ' days'"></span>
                     </div>
                     <div class="flex justify-between text-sm py-1.5">
-                        <span class="text-gray-400">Commission</span>
+                        <span class="text-gray-400">{{ isset($programFinancials) ? 'Deal review status' : 'Commission' }}</span>
                         <span :class="{
                             'badge badge-gray':   lead?.commission_status === 'pending',
                             'badge badge-orange': lead?.commission_status === 'locked',
@@ -1117,6 +1125,7 @@
                     </div>
                 </div>
 
+            @if(!isset($programFinancials))
             {{-- Commission Split Share --}}
             <div class="card space-y-3"
                  x-data="partnerSplitSection('{{ $dealId }}', '{{ $tenant->id }}', {{ $dealIsArchived ? 'true' : 'false' }})"
@@ -1485,6 +1494,7 @@
                 </div>
             </div>
 
+            @endif
             {{-- Extend Assignment (admin/manager review view) --}}
             <div class="card space-y-3"
                  x-data="extensionRequestSection('{{ $dealId }}', '{{ $tenant->id }}')"
