@@ -14,6 +14,7 @@ class ProgramReferrerPortalTest extends TestCase
         parent::setUp();
         config(['app.key'=>'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=','programs.enabled'=>true]);
         $this->buildQuickProgramSchema();
+        (require database_path('migrations/2026_09_20_000008_create_program_referral_clicks.php'))->up();
         (require database_path('migrations/2026_09_20_000007_create_program_referral_links.php'))->up();
         (require database_path('migrations/2026_09_20_000005_create_program_messages.php'))->up();
         Schema::create('tenant_brand_profiles', function(Blueprint $t){$t->id();$t->string('tenant_id');$t->string('status')->default('draft');$t->timestamps();});
@@ -96,6 +97,63 @@ class ProgramReferrerPortalTest extends TestCase
         $this->get($link)->assertNotFound();
         $this->get($url)->assertOk()->assertDontSee('Copy referral link');
     }
+    public function test_short_link_clicks_count_browser_visits_once_and_scope_metrics(): void
+    {
+        ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $link=app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($this->first,$member);
+        $click=$link.'/click';
+        $visitor=(string) \Illuminate\Support\Str::uuid();
+        $page=$this->withCookie('rb_link_visitor',$visitor)->get($link)->assertOk();
+        $this->assertDatabaseCount('program_referral_clicks',0);
+        $token=$page->viewData('clickToken');
+        $this->assertNotNull($token);
+        $this->post($click,['token'=>$token])->assertNoContent();
+        $this->post($click,['token'=>$token])->assertNoContent();
+        $this->assertDatabaseCount('program_referral_clicks',1);
+        $page=$this->withCookie('rb_link_visitor',$visitor)->get($link)->assertOk();
+        $this->post($click,['token'=>$page->viewData('clickToken')])->assertNoContent();
+        $page=$this->withCookie('rb_link_visitor',(string) \Illuminate\Support\Str::uuid())->get($link)->assertOk();
+        $this->post($click,['token'=>$page->viewData('clickToken')])->assertNoContent();
+        $this->assertDatabaseCount('program_referral_clicks',3);
+        $this->assertSame(2,DB::table('program_referral_clicks')->distinct()->count('visitor_hash'));
+        $other=ReferrerProgramMembership::where('program_id',$this->second->id)->first();
+        DB::table('program_referral_clicks')->insert(['id'=>(string) \Illuminate\Support\Str::uuid(),'membership_id'=>$other->id,'visitor_hash'=>str_repeat('a',64),'created_at'=>now()]);
+        $data=app(\App\Services\Programs\ReferrerSubscriptionDashboard::class)->compute($this->first,$this->referrer,\Illuminate\Http\Request::create('/'));
+        $this->assertSame(3,$data['linkClicks']);
+        $this->assertSame(2,$data['uniqueBrowsers']);
+        $this->assertSame(3,$data['periodClicks']);
+        $this->travel(31)->days();
+        $data=app(\App\Services\Programs\ReferrerSubscriptionDashboard::class)->compute($this->first,$this->referrer,\Illuminate\Http\Request::create('/'));
+        $this->assertSame(3,$data['linkClicks']);
+        $this->assertSame(0,$data['periodClicks']);
+        $this->travelBack();
+    }
+
+    public function test_click_tracking_excludes_previews_bots_internal_visits_and_invalid_tokens(): void
+    {
+        ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $link=app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($this->first,$member);
+        $this->get($link.'?preview=1')->assertOk()->assertViewHas('clickToken',null);
+        $this->withHeader('User-Agent','facebookexternalhit/1.1')->get($link)->assertOk()->assertViewHas('clickToken',null);
+        $this->withHeader('User-Agent','Mozilla/5.0')->withHeader('Sec-Purpose','prefetch')->get($link)->assertOk()->assertViewHas('clickToken',null);
+        $this->flushHeaders();
+        $token=$this->get($link)->viewData('clickToken');
+        $this->post($link.'/click',['token'=>'tampered'])->assertStatus(422);
+        $this->travel(11)->minutes();
+        $this->post($link.'/click',['token'=>$token])->assertStatus(422);
+        $this->travelBack();
+        $this->actingAs($this->referrer,'reseller')->get($link)->assertOk()->assertViewHas('clickToken',null);
+        $this->post($link.'/click',['token'=>$token])->assertNoContent();
+        auth('reseller')->logout();
+        $this->actingAs($this->owner,'tenant')->get($link)->assertOk()->assertViewHas('clickToken',null);
+        auth('tenant')->logout();
+        $member->update(['status'=>'paused']);
+        $this->post($link.'/click',['token'=>$token])->assertNotFound();
+        $this->assertDatabaseCount('program_referral_clicks',0);
+    }
+
     public function test_short_link_rejects_unknown_and_mismatched_membership(): void
     {
         $this->get('/r/abcdefgh')->assertNotFound();

@@ -18,5 +18,26 @@
 @if($preview)<p>Short link: {{ $canonical }}</p><p>This referral link opens <strong>{{ $host }}</strong> and includes your program attribution.</p>@else<p>Taking you to {{ $host }}…</p>@endif
 <a class="button" href="{{ $destination }}" rel="nofollow noreferrer">Continue to {{ $host }} →</a>
 <small>Referral link powered by Referral Bunny</small></div></main>
-@if(!$preview)<script>window.location.replace({!! json_encode($destination, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!});</script>@endif
+@if(!$preview)<script>
+(() => {
+    const destination = {!! json_encode($destination, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+    const go = () => window.location.replace(destination);
+    @if($clickToken)
+    const body = new FormData();
+    body.append('_token', @json(csrf_token()));
+    body.append('token', @json($clickToken));
+    // Keep navigation fast even if analytics is blocked or temporarily unavailable.
+    const record = () => {
+        Promise.race([
+            fetch(@json($clickUrl), {method:'POST', body, credentials:'same-origin', keepalive:true}).catch(() => {}),
+            new Promise(resolve => setTimeout(resolve,350))
+        ]).finally(go);
+    };
+    if (document.prerendering) document.addEventListener('prerenderingchange',record,{once:true});
+    else record();
+    @else
+    go();
+    @endif
+})();
+</script>@endif
 </body></html>

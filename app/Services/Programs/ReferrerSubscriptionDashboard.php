@@ -37,7 +37,14 @@ class ReferrerSubscriptionDashboard
         $recent=(clone $money)->orderByDesc('occurred_at')->limit(5)->get(['type','reward_minor','currency','occurred_at','status','available_at']);
         $unread=DB::table('program_messages')->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)
             ->where('reseller_id',$reseller->id)->where('sender_type','admin')->whereNull('read_at')->count();
+        $clickBase=DB::table('program_referral_clicks as clicks')
+            ->join('referrer_program_memberships as members','members.id','=','clicks.membership_id')
+            ->where('members.tenant_id',$program->tenant_id)->where('members.program_id',$program->id)
+            ->where('members.reseller_id',$reseller->id);
+        $linkClicks=(clone $clickBase)->count();
+        $uniqueBrowsers=(clone $clickBase)->distinct()->count('clicks.visitor_hash');
+        $periodClicks=(clone $clickBase)->whereBetween('clicks.created_at',[$start->utc(),$end->utc()])->count();
         $campaign=app(CampaignPeriod::class)->forProgram($program);
-        return compact('currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign');
+        return compact('currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign','linkClicks','uniqueBrowsers','periodClicks');
     }
 }

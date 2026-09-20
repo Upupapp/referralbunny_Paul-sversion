@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/r/{code}', \App\Http\Controllers\Web\ReferralShortLinkController::class)
     ->where('code', '[a-z0-9]{8}')->name('referral.short');
 
+Route::post('/r/{code}/click', \App\Http\Controllers\Web\ReferralShortLinkController::class)
+    ->where('code', '[a-z0-9]{8}')->middleware('throttle:120,1')->name('referral.click');
+
 // ── Auth ──────────────────────────────────────────────────────
 Route::get('/login',          [AuthWebController::class, 'showLogin'])->name('login');
 Route::get('/platform/login', fn() => redirect()->route('login'))->name('platform.login');
