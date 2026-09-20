@@ -35,6 +35,21 @@ class ProgramFinancialSummaryTest extends TestCase
         $result=$service->forTenant('test-sp4s9i');$term=$result[0]['terms'][0];$this->assertSame('PHP 250.00',$term['label']);$this->assertSame('First eligible payment only.',$term['scope']);$this->assertSame(7,$term['hold']);
         $html=view('tenant.programs._financial-detail',['programFinancials'=>$result,'tenant'=>Tenant::first(),'ssrLead'=>['deal_value'=>1000]])->render();$this->assertStringContainsString('Preview only',$html);$this->assertStringContainsString('PHP 250.00',$html);$this->assertStringNotContainsString('30%',$html);
     }
+    public function test_sidebar_counts_hold_expiry_and_refund_reversals():void {
+        $this->event('held','payment','PHP',100000,20000);
+        $this->event('ready','payment','PHP',100000,20000);
+        $this->event('reversed','payment','PHP',100000,20000);
+        $this->event('refund','refund','PHP',100000,-20000);
+        DB::table('program_conversion_events')->where('id','held')->update(['available_at'=>now()->addDay()]);
+        DB::table('program_conversion_events')->whereIn('id',['ready','reversed'])->update(['available_at'=>now()->subDay()]);
+        DB::table('program_conversion_events')->where('id','refund')->update(['invoice_id'=>'reversed']);
+        DB::table('resellers')->insert(['id'=>'referrer','tenant_id'=>'test-sp4s9i','name'=>'Referrer','email'=>'test@example.com','status'=>'active']);
+        \App\Models\ReferrerProgramMembership::create(['tenant_id'=>'test-sp4s9i','program_id'=>$this->program->id,'reseller_id'=>'referrer','status'=>'active']);
+        $signals=app(ProgramFinancialSummary::class)->forTenant('test-sp4s9i')[0]['signals'];
+        $this->assertSame(1,$signals['on_hold']);$this->assertSame(1,$signals['ready']);$this->assertCount(1,$signals['customers']);$this->assertSame(['referrer'],$signals['referrers']);
+        DB::table('resellers')->where('id','referrer')->update(['deleted_at'=>now()]);
+        $this->assertSame([],app(ProgramFinancialSummary::class)->forTenant('test-sp4s9i')[0]['signals']['referrers']);
+    }
     public function test_protected_and_other_tenants_are_not_queried_or_changed():void {
         DB::enableQueryLog();DB::flushQueryLog();$service=app(ProgramFinancialSummary::class);
         $this->assertNull($service->forTenant('lgu-ids'));$this->assertNull($service->forTenant('another-company'));$this->assertSame([],DB::getQueryLog());

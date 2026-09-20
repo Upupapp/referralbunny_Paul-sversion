@@ -398,6 +398,18 @@ document.addEventListener('alpine:init', () => {
                 'show'   => $dashIsAdmin && ($canViewReferrers ?? false),
             ],
         ], fn($qc) => $qc['show']);
+        if (isset($programFinancials)) {
+            $signals = collect($programFinancials)->pluck('signals');
+            $program = collect($programFinancials)->first();
+            $programUrl = $program ? route('tenant.programs.workspace', [$tenant->id,$program['id']]) : route('tenant.programs.index', $tenant->id);
+            $rewardsUrl = $program ? route('tenant.quick-program.connection', [$tenant->id,$program['id']]) : $programUrl;
+            $quickCounts = [
+                ['label'=>'Active Referrers','value'=>$signals->pluck('referrers')->flatten()->unique()->count(),'color'=>'#7B61FF','bg'=>'#EDE9FE','url'=>$programUrl,'tip'=>'Distinct active referrers enrolled in your published programs.','icon'=>'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
+                ['label'=>'Paying Customers','value'=>$signals->pluck('customers')->flatten()->unique()->count(),'color'=>'#10B981','bg'=>'#D1FAE5','url'=>$rewardsUrl,'tip'=>'Customers with a recorded referral payment, counted once per connected program. Includes subsequently refunded purchases.','icon'=>'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
+                ['label'=>'Rewards on Hold','value'=>$signals->sum('on_hold'),'color'=>'#D97706','bg'=>'#FEF3C7','url'=>$rewardsUrl,'tip'=>'Positive reward entries still within the program hold period. Fully reversed rewards are excluded.','icon'=>'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+                ['label'=>'Ready for Review','value'=>$signals->sum('ready'),'color'=>'#7B61FF','bg'=>'#EDE9FE','url'=>$rewardsUrl,'tip'=>'Positive reward entries whose hold period ended and still need manual review. These have not been paid automatically.','icon'=>'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 12l2 2 4-4'],
+            ];
+        }
         @endphp
         <div class="space-y-3">
             @foreach($quickCounts as $qc)
