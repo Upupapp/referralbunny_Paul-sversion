@@ -8,6 +8,7 @@
  $lastActual=$actualIndices ? end($actualIndices) : 0;
  $targetPoints=[];foreach($s['targetDaily'] as $i=>$v) if($v!==null)$targetPoints[]=$x($i).','.$y($v);
  $recordArgs=['tenantId'=>$tenant->id,'programId'=>$program->id,'from'=>$s['from']->toDateString(),'to'=>$s['to']->toDateString(),'currency'=>$s['currency']];
+ $clicksUrl=route('tenant.programs.clicks',$recordArgs);
  $recordsUrl=route('tenant.programs.subscription-records',$recordArgs);
  $connectionUrl=route('tenant.quick-program.connection',[$tenant->id,$program->id]);
  $manage=route('tenant.programs.workspace',[$tenant->id,$program->id]);
@@ -41,7 +42,7 @@
  ['renew','Active subscriptions','—','Lifecycle data not available'],
  ['gift','Net recorded rewards',$money($s['rewards']),'Calculated, not paid out'],
  ['wallet','Revenue after rewards',$money($s['revenue']-$s['rewards']),'Before other costs']
- ] as [$icon,$label,$value,$note])<article class="panel card"><div class="card-label"><span class="icon">@include('tenant.programs._dashboard-icon',['icon'=>$icon])</span>{{ $label }}</div><span @if($label==='Clicks') title="Recorded short-link visits from all referrers in this program. Repeat visits count; previews and known bots are excluded. Tracking starts from activation, and currency does not affect clicks." @endif>@if($label==='Clicks')<strong class="value">{{ $value }}</strong>@else<a class="value" style="color:inherit;font-weight:750;text-decoration:none" href="{{ $label==='Active subscriptions' ? $connectionUrl : ($label==='New paying customers' ? '#referral-daily-data' : $recordsUrl) }}">{{ $value }}</a>@endif</span><p class="muted">{{ $note }}</p></article>@endforeach
+ ] as [$icon,$label,$value,$note])<article class="panel card"><div class="card-label"><span class="icon">@include('tenant.programs._dashboard-icon',['icon'=>$icon])</span>{{ $label }}</div><span @if($label==='Clicks') title="Recorded short-link visits from all referrers in this program. Repeat visits count; previews and known bots are excluded. Tracking starts from activation, and currency does not affect clicks." @endif>@if($label==='Clicks')<a class="value" style="color:inherit;text-decoration:none" aria-label="View click report: {{ $value }} clicks" href="{{ $clicksUrl }}">{{ $value }}</a>@else<a class="value" style="color:inherit;font-weight:750;text-decoration:none" href="{{ $label==='Active subscriptions' ? $connectionUrl : ($label==='New paying customers' ? '#referral-daily-data' : $recordsUrl) }}">{{ $value }}</a>@endif</span><p class="muted">{{ $note }}</p></article>@endforeach
  </section>
  <section class="middle">
   <div class="panel"><div class="row"><div><h2>Referrals vs target</h2><p class="muted">Daily new paying referred customers · {{ $s['from']->format('M j') }}–{{ $s['to']->format('M j, Y') }}</p></div>@can('update',$program)<button class="button primary" @click="$refs.targetDialog.showModal()">{{ $s['target'] ? 'Edit target' : '+ Add target' }}</button>@endcan</div>

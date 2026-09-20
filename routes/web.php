@@ -425,6 +425,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
 
     // ── Programs V4 (admin) ───────────────────────────────────────
     Route::prefix('programs')->name('programs.')->group(function () {
+        Route::get('/{programId}/clicks', [\App\Http\Controllers\Web\ProgramClickReportController::class, 'index'])->name('clicks');
         Route::get('/{programId}/subscription-records', [\App\Http\Controllers\Web\SubscriptionRecordsController::class, 'index'])->name('subscription-records');
         Route::post('/{programId}/campaign-duration', [\App\Http\Controllers\Web\ProgramCampaignDurationController::class, 'store'])->middleware('throttle:30,1')->name('campaign-duration');
         Route::post('/{programId}/referral-target', [\App\Http\Controllers\Web\ProgramReferralTargetController::class, 'store'])->middleware('throttle:30,1')->name('referral-target');
