@@ -45,8 +45,15 @@ class ReferrerSubscriptionDashboard
         $clickBase=DB::table('program_referral_clicks as clicks')->whereIn('membership_id',$clickMemberships);
         $linkClicks=(clone $clickBase)->count();
         $uniqueBrowsers=(clone $clickBase)->distinct()->count('clicks.visitor_hash');
-        $periodClicks=(clone $clickBase)->whereBetween('clicks.created_at',[$start->utc(),$end->utc()])->count();
+        $dailyClicks=array_fill_keys(array_keys($daily),0);
+        $clickEvents=(clone $clickBase)->whereBetween('clicks.created_at',[$start->utc(),$end->utc()])
+            ->select('clicks.created_at')->cursor();
+        foreach ($clickEvents as $event) {
+            $date=Date::parse($event->created_at,'UTC')->setTimezone($tz)->toDateString();
+            $dailyClicks[$date]++;
+        }
+        $periodClicks=array_sum($dailyClicks);
         $campaign=app(CampaignPeriod::class)->forProgram($program);
-        return compact('currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign','linkClicks','uniqueBrowsers','periodClicks');
+        return compact('currency','currencies','days','start','end','tz','net','payments','customers','hold','ready','daily','recent','unread','campaign','linkClicks','uniqueBrowsers','periodClicks','dailyClicks');
     }
 }

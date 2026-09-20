@@ -130,6 +130,40 @@ class ProgramReferrerPortalTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_daily_click_chart_uses_local_dates_ranges_and_referrer_scope(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-09-20 04:00:00','UTC'));
+        $this->first->update(['timezone'=>'Asia/Manila']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $other=ReferrerProgramMembership::where('program_id',$this->second->id)->first();
+        $foreign=Reseller::create(['tenant_id'=>'company','name'=>'Another','email'=>'other@example.com','status'=>'active']);
+        $foreignMember=ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$this->first->id,'reseller_id'=>$foreign->id,'status'=>'active']);
+        foreach ([[$member->id,'2026-09-13 15:59:59'],[$member->id,'2026-09-13 16:00:00'],[$member->id,'2026-09-19 15:59:59'],[$member->id,'2026-09-19 16:00:00'],[$member->id,'2026-09-20 00:00:00'],[$other->id,'2026-09-20 00:00:00'],[$foreignMember->id,'2026-09-20 00:00:00']] as [$id,$date]) {
+            DB::table('program_referral_clicks')->insert(['id'=>(string) \Illuminate\Support\Str::uuid(),'membership_id'=>$id,'visitor_hash'=>str_repeat('a',64),'created_at'=>$date]);
+        }
+        $service=app(\App\Services\Programs\ReferrerSubscriptionDashboard::class);
+        foreach ([7,30,90] as $days) {
+            $data=$service->compute($this->first,$this->referrer,\Illuminate\Http\Request::create('/','GET',['days'=>$days]));
+            $this->assertCount($days,$data['dailyClicks']);
+            $this->assertSame(2,$data['dailyClicks']['2026-09-20']);
+            $this->assertSame(1,$data['dailyClicks']['2026-09-19']);
+            $this->assertSame(0,$data['dailyClicks']['2026-09-18']);
+            $this->assertSame($days===7?4:5,$data['periodClicks']);
+            $this->assertSame($data['periodClicks'],array_sum($data['dailyClicks']));
+        }
+        ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        $adminRequest=\Illuminate\Http\Request::create('/','GET',['from'=>'2026-09-14','to'=>'2026-09-20']);
+        $adminData=app(\App\Services\Programs\SubscriptionDashboard::class)->compute($this->first,$adminRequest);
+        $this->assertSame(5,$adminData['clicks']);
+        $this->actingAs($this->owner,'tenant')->get(route('tenant.dashboard',['tenantId'=>'company','program_id'=>$this->first->id,'from'=>'2026-09-14','to'=>'2026-09-20']))
+            ->assertOk()->assertSeeInOrder(['Net referral revenue','Clicks','New paying customers','Active subscriptions'])->assertDontSee('Referred MRR');
+        auth('tenant')->logout();
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->first->id,'days'=>7]))
+            ->assertOk()->assertSee('Daily link clicks')->assertSee('View daily click counts')->assertSee('Asia/Manila');
+        $this->get(route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->second->id]))->assertOk()->assertDontSee('Daily link clicks');
+        $this->travelBack();
+    }
+
     public function test_click_tracking_excludes_previews_bots_internal_visits_and_invalid_tokens(): void
     {
         ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);

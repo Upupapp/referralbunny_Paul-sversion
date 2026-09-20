@@ -30,6 +30,7 @@
  ] as [$icon,$label,$value,$note,$url])<a class="panel metric" href="{{ $url }}"><div class="metric-title"><span class="icon">@include('tenant.programs._dashboard-icon',['icon'=>$icon])</span>{{ $label }}</div><strong>{{ $value }}</strong><p class="muted">{{ $note }}</p></a>@endforeach
  </section>
  <div class="main-grid"><div class="stack">
+  @include('reseller.programs._click-chart')
   <section class="panel"><div class="row"><div><h2>Your reward activity</h2><p class="muted">Daily recorded rewards · {{ $d['currency'] }} · {{ $d['tz'] }}</p></div><nav class="range" aria-label="Reward chart range">@foreach([7,30,90] as $days)<a class="{{ $d['days']===$days?'active':'' }}" @if($d['days']===$days) aria-current="page" @endif href="{{ route('reseller.dashboard',$args+['days'=>$days,'currency'=>$d['currency']]) }}">{{ $days }}D</a>@endforeach</nav></div>
   <svg class="chart" viewBox="0 0 810 260" role="img" aria-label="Your daily recorded rewards for the past {{ $d['days'] }} days"><defs><linearGradient id="referrer-reward-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0d9488" stop-opacity=".2"/><stop offset="100%" stop-color="#0d9488" stop-opacity=".02"/></linearGradient></defs>
   @for($i=0;$i<5;$i++)@php $tick=$lo+$range*$i/4; @endphp<line x1="60" x2="780" y1="{{ $y($tick) }}" y2="{{ $y($tick) }}" stroke="#dceee9"/><text x="50" y="{{ $y($tick)+4 }}" text-anchor="end" fill="#526f6b" font-size="10">{{ number_format($tick,2) }}</text>@endfor

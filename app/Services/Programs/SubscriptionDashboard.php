@@ -35,6 +35,10 @@ class SubscriptionDashboard {
    return ['id'=>$id,'name'=>$name,'revenue'=>$rows->sum(fn($e)=>$e->type==='payment'?$e->amount_minor:-$e->amount_minor)/100,'rewards'=>$rows->sum('reward_minor')/100];
   })->sortByDesc('revenue')->take(5);
   $unread=Schema::hasTable('program_messages') ? DB::table('program_messages')->where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->where('sender_type','referrer')->whereNull('read_at')->count() : 0;
-  return compact('campaign','from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
+  $clickMemberships=DB::table('referrer_program_memberships')->where('tenant_id',$program->tenant_id)
+   ->where('program_id',$program->id)->pluck('id');
+  $clicks=DB::table('program_referral_clicks')->whereIn('membership_id',$clickMemberships)
+   ->whereBetween('created_at',[$from->utc(),$to->utc()])->count();
+  return compact('clicks','campaign','from','to','tz','connection','currencies','currency','revenue','rewards','daily','target','average','targetDaily','top','unread');
  }
 }
