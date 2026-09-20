@@ -29,7 +29,8 @@ class ReferrerProgramPortalController extends Controller
                 $records = $leads->orderByDesc('created_at')->paginate(20, ['id','name','stage','status','created_at'])->withQueryString();
             }
         }
+        $referralLink = $program ? app(\App\Services\Programs\ReferrerReferralLink::class)->forMembership($program, $membership) : null;
         $page = $request->routeIs('reseller.commission') ? 'Rewards' : ($request->routeIs('reseller.deals') ? 'My Referrals' : ($request->routeIs('reseller.activity') ? 'Activity' : 'Dashboard'));
-        return view('reseller.programs.portal', $context + compact('tenant','mode','records','totals','membership','offers','stages','page'));
+        return view('reseller.programs.portal', $context + compact('tenant','mode','records','totals','membership','offers','stages','page','referralLink'));
     }
 }

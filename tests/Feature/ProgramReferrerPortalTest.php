@@ -69,4 +69,41 @@ class ProgramReferrerPortalTest extends TestCase
         $this->actingAs($outsider,'tenant')->post(route('tenant.messages.program.send','company'),['program_id'=>$this->first->id,'reseller_id'=>$this->referrer->id,'body'=>'No'])->assertForbidden();
         $this->assertDatabaseCount('program_messages',0);
     }
+    public function test_referral_link_uses_selected_enrollment_and_preserves_website_url(): void
+    {
+        ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com/plans?campaign=summer&rb_ref=old#pricing','secret'=>'x']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $url=route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->first->id]);
+        $response=$this->actingAs($this->referrer,'reseller')->get($url)->assertOk()->assertSee('Copy referral link');
+        $link=$response->viewData('referralLink');
+        parse_str(parse_url($link,PHP_URL_QUERY),$query);
+        $this->assertSame(['campaign'=>'summer','rb_program'=>$this->first->id,'rb_ref'=>$member->id],$query);
+        $this->assertSame('pricing',parse_url($link,PHP_URL_FRAGMENT));
+        $this->assertSame('/plans',parse_url($link,PHP_URL_PATH));
+        $this->assertNull($member->fresh()->referral_code);
+        $this->get(route('reseller.dashboard',['tenantId'=>'company','program_id'=>$this->second->id]))->assertOk()->assertDontSee('Copy referral link');
+        $member->update(['status'=>'approved']);
+        $this->get($url)->assertOk()->assertDontSee('Copy referral link');
+        $member->update(['status'=>'active']);
+        $this->first->update(['status'=>'paused']);
+        $this->get($url)->assertOk()->assertDontSee('Copy referral link');
+    }
+    public function test_referral_links_reject_invalid_destinations_and_membership_mismatch(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $service=app(\App\Services\Programs\ReferrerReferralLink::class);
+        $this->assertNull($service->forMembership($this->first,$member));
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'javascript:alert(1)','secret'=>'x']);
+        $this->assertNull($service->forMembership($this->first,$member));
+        $connection->update(['website'=>'https://user:password@example.com']);
+        $this->assertNull($service->forMembership($this->first,$member));
+        $connection->update(['website'=>'https://example.com']);
+        $member->tenant_id='another';
+        $this->assertNull($service->forMembership($this->first,$member));
+        $protected=new Program(['tenant_id'=>'lgu-ids','status'=>'active','operating_mode'=>'automated']);
+        DB::enableQueryLog(); DB::flushQueryLog();
+        $this->assertNull($service->forMembership($protected,$member));
+        $this->assertSame([],DB::getQueryLog()); DB::disableQueryLog();
+    }
+
 }

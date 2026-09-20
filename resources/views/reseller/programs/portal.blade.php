@@ -12,7 +12,19 @@
     <div class="rb-panel">
         <p class="rb-muted">{{ $page }} · {{ ucfirst($mode) }} program</p><h1>{{ $program->name }}</h1>
         <p class="rb-muted">{{ $mode === 'automated' ? 'Your referred purchases and rewards are recorded through the connected website.' : 'Follow the progress of the referrals assigned to you in this program.' }}</p>
-        @if($membership?->referral_code && $mode === 'automated')<p class="rb-muted">Your referral code: <code>{{ $membership->referral_code }}</code></p>@endif
+        @if($referralLink)
+        <div style="margin-top:20px;padding:18px;background:#faf5ff;border:1px solid #ead9fb;border-radius:14px" x-data="{ copyStatus: '' }">
+            <label for="referral-link" style="display:block;font-weight:600;margin-bottom:10px">Your referral link</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <input id="referral-link" x-ref="referralLink" type="text" readonly value="{{ $referralLink }}" @click="$el.select()" style="flex:1;min-width:180px;border:1px solid #dacbea;border-radius:10px;padding:12px;background:white;color:#4b3b60;font-size:13px" aria-describedby="referral-link-help">
+                <button type="button" style="background:#8925cc;color:white;border-radius:10px;padding:12px 18px;font-weight:600;font-size:13px" @click="try { await navigator.clipboard.writeText($refs.referralLink.value); copyStatus = 'Link copied!'; } catch (error) { $refs.referralLink.focus(); $refs.referralLink.select(); copyStatus = 'Select and copy the link above.'; }">Copy referral link</button>
+            </div>
+            <p id="referral-link-help" class="rb-muted">Share this link with new customers. It identifies you in {{ $program->name }}. Rewards follow the program’s eligibility rules and recorded qualifying events.</p>
+            <p class="rb-muted" role="status" aria-live="polite" x-text="copyStatus"></p>
+        </div>
+        @elseif($mode === 'automated')
+            <p class="rb-muted">Your referral link will appear when this program and your membership are active and a website is configured.</p>
+        @endif
         <a class="rb-link" href="{{ route('reseller.messages', ['tenantId'=>$tenant->id,'program_id'=>$program->id]) }}">Message company admins →</a>
         <a class="rb-link" href="{{ route('reseller.programs.show', [$tenant->id,$program->id]) }}">Program details →</a>
     </div>
