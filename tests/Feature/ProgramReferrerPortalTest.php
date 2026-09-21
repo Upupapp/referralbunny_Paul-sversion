@@ -37,7 +37,7 @@ class ProgramReferrerPortalTest extends TestCase
         $foreign=ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$this->first->id,'reseller_id'=>$other->id,'status'=>'active']);
         DB::table('program_referral_clicks')->insert(['id'=>(string) \Illuminate\Support\Str::uuid(),'membership_id'=>$foreign->id,'visitor_hash'=>str_repeat('b',64),'created_at'=>now()]);
         $this->actingAs($this->referrer,'reseller')->get(route('reseller.programs.index','company'))->assertOk()
-            ->assertSee('Good connections. Real rewards.')->assertSee('Verified signups')->assertSee('Program mechanics')
+            ->assertSee('Grow your network with')->assertSee('Verified signups')->assertSee('Program mechanics')
             ->assertViewHas('cards',fn($c)=>$c[$this->first->id]['clicks']===1 && $c[$this->first->id]['signups']===null && $c[$this->second->id]['manual']===true);
     }
     public function test_referrers_page_is_scoped_to_program_and_mode(): void
