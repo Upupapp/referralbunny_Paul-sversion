@@ -28,7 +28,16 @@ class ProgramReferrerInvite {
   });
   $setup=!$reseller->password;
   $url=$setup?route('reseller.setup',['token'=>$reseller->setup_token]):route('reseller.dashboard',['tenantId'=>$program->tenant_id,'program_id'=>$program->id]);
-  Mail::to($email)->send(new ProgramReferrerInvitation($program->name,$reseller->name,$url,$setup));
+  $member=ReferrerProgramMembership::where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->where('reseller_id',$reseller->id)->firstOrFail();
+  $delivery=app(ProgramInviteDelivery::class);$attempt=(string)Str::uuid();
+  $delivery->record($member,$attempt,['status'=>'sending','sent_at'=>now()->toIso8601String()],true);
+  try {
+   $sent=Mail::to($email)->send(new ProgramReferrerInvitation($program->name,$reseller->name,$url,$setup));
+  } catch(\Throwable $e){
+   $delivery->record($member,$attempt,['status'=>'failed']);throw $e;
+  }
+  $providerId=$sent?->getOriginalMessage()?->getHeaders()?->get('X-Resend-Email-ID')?->getBodyAsString();
+  $delivery->record($member,$attempt,['status'=>'sent','provider_id'=>Str::isUuid((string)$providerId)?$providerId:null]);
   return $reseller;
  }
 }

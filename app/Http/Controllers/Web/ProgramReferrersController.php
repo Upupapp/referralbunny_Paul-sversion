@@ -4,6 +4,15 @@ use App\Http\Controllers\Controller;
 use App\Models\{Program,ProgramConnection,ReferrerProgramMembership,Reseller,Tenant};
 use Illuminate\Support\Facades\{DB,Gate};
 class ProgramReferrersController extends Controller {
+ public function delivery(string $tenantId,string $programId,string $membershipId){
+  abort_unless(config('programs.enabled'),404);
+  abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
+  $program=Program::forTenant($tenantId)->findOrFail($programId);
+  $this->authorize('managePeople',$program);
+  $member=ReferrerProgramMembership::where('tenant_id',$tenantId)->where('program_id',$programId)->findOrFail($membershipId);
+  $ok=app(\App\Services\Programs\ProgramInviteDelivery::class)->check($member);
+  return back()->with('delivery_notice',$ok?'Delivery status refreshed.':'Delivery status is unavailable right now. The last recorded status is unchanged. No email was sent.');
+ }
  public function index($tenantId){
   abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
   $tenant=Tenant::findOrFail($tenantId);

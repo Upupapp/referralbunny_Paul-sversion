@@ -51,6 +51,41 @@ class ProgramReferrerPortalTest extends TestCase
         $this->get(route('reseller.programs.index','company').'?range=custom')->assertSessionHasErrors(['from','to']);
     }
 
+    public function test_invite_delivery_checks_provider_without_resending_or_losing_membership_metadata(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $id=(string) \Illuminate\Support\Str::uuid();
+        $member->update(['metadata'=>['activate_on_setup'=>true,'invite_delivery'=>['attempt'=>'attempt-1','provider_id'=>$id,'status'=>'sent']]]);
+        config(['services.resend.key'=>'test-key']);
+        \Illuminate\Support\Facades\Http::fake(['api.resend.com/emails/'.$id=>\Illuminate\Support\Facades\Http::sequence()->push(['id'=>$id,'last_event'=>'delivered'])->push([],429)]);
+        \Illuminate\Support\Facades\Mail::fake();
+        $url=route('tenant.programs.members.delivery',['company',$this->first->id,$member->id]);
+        $this->actingAs($this->owner,'tenant')->post($url)->assertRedirect()->assertSessionHas('delivery_notice','Delivery status refreshed.');
+        $this->assertSame('delivered',$member->fresh()->metadata['invite_delivery']['status']);
+        $this->assertTrue($member->fresh()->metadata['activate_on_setup']);
+        $this->post($url)->assertRedirect();
+        $this->assertSame('delivered',$member->fresh()->metadata['invite_delivery']['status']);
+        $this->post(route('tenant.programs.members.delivery',['company',$this->second->id,$member->id]))->assertNotFound();
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+    }
+
+    public function test_delivery_event_mappings_and_stale_attempts(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $id=(string) \Illuminate\Support\Str::uuid();
+        $member->update(['metadata'=>['invite_delivery'=>['attempt'=>'latest','provider_id'=>$id,'status'=>'sent']]]);
+        config(['services.resend.key'=>'test-key']);
+        $service=app(\App\Services\Programs\ProgramInviteDelivery::class);
+        $event='';
+        \Illuminate\Support\Facades\Http::fake(function()use($id,&$event){return \Illuminate\Support\Facades\Http::response(['id'=>$id,'last_event'=>$event]);});
+        foreach(['bounced'=>'bounced','complained'=>'complained','delivery_delayed'=>'delayed','opened'=>'delivered'] as $event=>$expected){
+            $this->assertTrue($service->check($member->fresh()));
+            $this->assertSame($expected,$member->fresh()->metadata['invite_delivery']['status']);
+        }
+        $service->record($member,'old-attempt',['status'=>'failed']);
+        $this->assertSame('delivered',$member->fresh()->metadata['invite_delivery']['status']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
