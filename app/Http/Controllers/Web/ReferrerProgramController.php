@@ -46,9 +46,15 @@ class ReferrerProgramController extends Controller
             ->whereNotIn('id', $memberships->pluck('program_id'))
             ->get();
 
-        $cards=app(\App\Services\Programs\ReferrerProgramCards::class)->build($memberships,$tenantId,$referrer->id);
+        $request->validate([
+            'range' => ['nullable', 'in:all,7,30,90,custom'],
+            'from' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d'],
+            'to' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $period = ['range' => $request->input('range') ?: 'all', 'from' => $request->input('from'), 'to' => $request->input('to')];
+        $cards=app(\App\Services\Programs\ReferrerProgramCards::class)->build($memberships,$tenantId,$referrer->id,$period);
         return view('reseller.programs.index', compact(
-            'tenant', 'memberships', 'openPrograms', 'cards'
+            'tenant', 'memberships', 'openPrograms', 'cards', 'period'
         ));
     }
 

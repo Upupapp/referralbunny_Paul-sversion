@@ -37,6 +37,20 @@ class ProgramReferrerPortalTest extends TestCase
         $this->actingAs($outsider,'tenant')->post($url)->assertForbidden();
     }
 
+    public function test_program_card_dates_use_local_day_boundaries_and_net_refunds(): void
+    {
+        $this->first->update(['timezone'=>'Asia/Manila']);
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $connection=ProgramConnection::create(['tenant_id'=>'company','program_id'=>$this->first->id,'website'=>'https://example.com','secret'=>'x']);
+        foreach (['2026-09-19 15:59:59','2026-09-19 16:00:00','2026-09-20 15:59:59','2026-09-20 16:00:00'] as $i=>$date) {
+            DB::table('program_referral_clicks')->insert(['id'=>(string) \Illuminate\Support\Str::uuid(),'membership_id'=>$member->id,'visitor_hash'=>str_repeat('a',64),'created_at'=>$date]);
+            DB::table('program_conversion_events')->insert(['id'=>'date'.$i,'connection_id'=>$connection->id,'external_id'=>'date'.$i,'customer_id'=>'c'.$i,'invoice_id'=>'i'.$i,'referrer_id'=>$this->referrer->id,'payload_hash'=>str_repeat('a',64),'type'=>$i===2?'refund':'payment','currency'=>'PHP','amount_minor'=>10000,'reward_minor'=>$i===2?-100:200,'status'=>'pending_review','occurred_at'=>$date]);
+        }
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.programs.index','company').'?range=custom&from=2026-09-20&to=2026-09-20')->assertOk()->assertViewHas('cards',fn($cards)=>$cards[$this->first->id]['clicks']===2 && $cards[$this->first->id]['paying']===1 && (int)$cards[$this->first->id]['rewards']->first()->net===100);
+        $this->get(route('reseller.programs.index','company').'?range=custom&from=2026-09-21&to=2026-09-20')->assertSessionHasErrors('to');
+        $this->get(route('reseller.programs.index','company').'?range=custom')->assertSessionHasErrors(['from','to']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
