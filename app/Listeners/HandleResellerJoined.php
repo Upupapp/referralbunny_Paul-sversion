@@ -36,6 +36,8 @@ class HandleResellerJoined implements ShouldQueue
         );
 
         // 0b. In-app: notify tenant admins
+        $programNotified = app(\App\Services\Programs\ProgramInviteAcceptance::class)->notify($event->tenantId, $event->resellerId, $event->resellerName);
+        if (!$programNotified) {
         $dispatcher->dispatchToTenantAdmins(
             tenantId:     $event->tenantId,
             category:     'reseller_referrer',
@@ -47,6 +49,8 @@ class HandleResellerJoined implements ShouldQueue
             dedupeSuffix: $event->resellerId,
             metadata:     ['reseller_id' => $event->resellerId],
         );
+
+        }
 
         // 1. Welcome email to reseller
         EmailLogger::send(

@@ -4,6 +4,19 @@ use App\Http\Controllers\Controller;
 use App\Models\{Program,ProgramConnection,ReferrerProgramMembership,Reseller,Tenant};
 use Illuminate\Support\Facades\{DB,Gate};
 class ProgramReferrersController extends Controller {
+ public function resend(string $tenantId,string $programId,string $membershipId){
+  abort_unless(config('programs.enabled'),404);
+  abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
+  $program=Program::forTenant($tenantId)->findOrFail($programId);
+  $this->authorize('managePeople',$program);
+  $member=ReferrerProgramMembership::where('tenant_id',$tenantId)->where('program_id',$programId)->where('status','invited')->findOrFail($membershipId);
+  $referrer=$member->reseller;
+  abort_unless($referrer && $referrer->tenant_id===$tenantId,404);
+  try {app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$referrer->name,$referrer->email);}
+  catch(\Illuminate\Validation\ValidationException $e){throw $e;}
+  catch(\Throwable $e){report($e);return back()->withErrors(['email'=>'The invitation could not be sent. Try again in one minute.']);}
+  return back()->with('delivery_notice','Invitation resent. Delivery is not yet confirmed.');
+ }
  public function delivery(string $tenantId,string $programId,string $membershipId){
   abort_unless(config('programs.enabled'),404);
   abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
@@ -37,10 +50,13 @@ class ProgramReferrersController extends Controller {
   $paid=$automated?DB::table('program_conversion_events')->whereIn('connection_id',$connections)->where('type','payment')->selectRaw('referrer_id,COUNT(DISTINCT customer_id) as total')->groupBy('referrer_id')->pluck('total','referrer_id'):collect();
   $leads=!$automated?DB::table('leads')->where('tenant_id',$tenantId)->where('program_id',$program->id)->whereNull('deleted_at')->selectRaw('reseller_id,COUNT(*) as total')->groupBy('reseller_id')->pluck('total','reseller_id'):collect();
   $summary=['total'=>$members->count(),'active'=>$members->where('status','active')->filter(fn($m)=>in_array($m->reseller->status,['active','nda_signed']))->count(),'invited'=>$members->where('status','invited')->count(),'clicks'=>$clicks->sum(),'signups'=>$sync?$signups->sum():null,'rewards'=>$money->sum('rewards')/100,'referrals'=>$leads->sum()];
+  request()->validate(['delivery'=>['nullable','in:sending,sent,delivered,failed,bounced,complained,delayed,suppressed,untracked']]);
+  $deliveryFilter=(string)request('delivery','');
   $search=trim((string)request('q',''));$status=(string)request('status','');
   if($search)$members=$members->filter(fn($m)=>str_contains(mb_strtolower($m->reseller->name.' '.$m->reseller->email),mb_strtolower($search)));
   if($status)$members=$members->where('status',$status);
+  if($deliveryFilter)$members=$members->filter(fn($m)=>($m->metadata['invite_delivery']['status']??'untracked')===$deliveryFilter);
   $rows=new \Illuminate\Pagination\LengthAwarePaginator($members->forPage(max(1,(int)request('page',1)),25)->values(),$members->count(),25,max(1,(int)request('page',1)),['path'=>request()->url(),'query'=>request()->query()]);
-  return view('tenant.referrers.program',compact('tenant','program','programs','automated','currency','rows','summary','clicks','signups','sync','money','paid','leads','search','status'));
+  return view('tenant.referrers.program',compact('tenant','program','programs','automated','currency','rows','summary','clicks','signups','sync','money','paid','leads','search','status','deliveryFilter'));
  }
 }

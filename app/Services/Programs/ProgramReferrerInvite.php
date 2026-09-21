@@ -23,7 +23,14 @@ class ProgramReferrerInvite {
    if(!$r->password && (!$r->setup_token || $r->created_at?->lt(now()->subDays(90))))throw ValidationException::withMessages(['email'=>'This account needs its setup invitation renewed before it can join.']);
    $m=ReferrerProgramMembership::where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->where('reseller_id',$r->id)->first();
    if($m && !in_array($m->status,['active','approved']) && !($m->status==='invited' && ($m->metadata['activate_on_setup']??false)))throw ValidationException::withMessages(['email'=>'Review this referrer’s existing program membership before inviting.']);
-   if(!$m)ReferrerProgramMembership::create(['tenant_id'=>$program->tenant_id,'program_id'=>$program->id,'reseller_id'=>$r->id,'status'=>$r->password?'active':'invited','source'=>'invite','metadata'=>['activate_on_setup'=>!$r->password],'joined_at'=>$r->password?now():null,'activated_at'=>$r->password?now():null]);
+   if(!$m)$m=ReferrerProgramMembership::create(['tenant_id'=>$program->tenant_id,'program_id'=>$program->id,'reseller_id'=>$r->id,'status'=>$r->password?'active':'invited','source'=>'invite','metadata'=>['activate_on_setup'=>!$r->password],'joined_at'=>$r->password?now():null,'activated_at'=>$r->password?now():null]);
+   $meta=$m->metadata??[];
+   $last=$meta['invite_last_attempt_at']??$meta['invite_delivery']['sent_at']??null;
+   $cooldown=($meta['invite_delivery']['status']??'')==='failed'?60:600;
+   if($last && \Carbon\Carbon::parse($last)->addSeconds($cooldown)->isFuture()) {
+    throw ValidationException::withMessages(['email'=>'Please wait until '.\Carbon\Carbon::parse($last)->addSeconds($cooldown)->setTimezone($program->timezone?:'UTC')->format('M j, g:i A').' before resending this invitation.']);
+   }
+   $meta['invite_last_attempt_at']=now()->toIso8601String();$m->update(['metadata'=>$meta]);
    return $r;
   });
   $setup=!$reseller->password;

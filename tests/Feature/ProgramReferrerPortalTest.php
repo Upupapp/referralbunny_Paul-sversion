@@ -86,6 +86,27 @@ class ProgramReferrerPortalTest extends TestCase
         $this->assertSame('delivered',$member->fresh()->metadata['invite_delivery']['status']);
     }
 
+    public function test_delivery_filters_and_expiry_labels_are_program_scoped(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $member->update(['status'=>'invited','metadata'=>['invite_delivery'=>['status'=>'bounced']]]);
+        $this->referrer->forceFill(['created_at'=>now()->subDays(91)])->save();
+        $url=route('tenant.referrers',['tenantId'=>'company','program_id'=>$this->first->id]);
+        $this->actingAs($this->owner,'tenant')->get($url.'&delivery=bounced')->assertOk()->assertSee('Setup link expired')->assertViewHas('rows',fn($rows)=>$rows->total()===1);
+        $this->get($url.'&delivery=delivered')->assertOk()->assertViewHas('rows',fn($rows)=>$rows->total()===0);
+        $this->get($url.'&delivery=invalid')->assertSessionHasErrors('delivery');
+    }
+
+    public function test_acceptance_notification_identifies_program_and_protected_tenants_are_skipped(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $member->update(['source'=>'invite','joined_at'=>now(),'metadata'=>['activate_on_setup'=>true]]);
+        $this->mock(\App\Services\NotificationDispatchService::class,fn($mock)=>$mock->shouldReceive('dispatchToTenantAdmins')->once()->withArgs(fn($tenant,$category,$priority,$title,$body,$url,$label,$dedupe,$meta)=>$tenant==='company' && str_contains($body,'Online') && str_contains($url,$this->first->id) && $meta['membership_id']===$member->id));
+        $service=app(\App\Services\Programs\ProgramInviteAcceptance::class);
+        $this->assertTrue($service->notify('company',$this->referrer->id,'Referrer'));
+        $this->assertFalse($service->notify('lgu-ids',$this->referrer->id,'Referrer'));
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -137,7 +158,13 @@ class ProgramReferrerPortalTest extends TestCase
         $token=$r->setup_token;
         $this->assertDatabaseHas('referrer_program_memberships',['program_id'=>$this->first->id,'reseller_id'=>$r->id,'status'=>'invited']);
         \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,fn($m)=>$m->hasTo('invite@example.com') && str_contains($m->inviteUrl,$token) && $m->programName===$this->first->name);
-        $this->post($url,['name'=>'Invite Test','email'=>'invite@example.com'])->assertRedirect();
+        $this->post($url,['name'=>'Invite Test','email'=>'invite@example.com'])->assertRedirect()->assertSessionHasErrors('email');
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,1);
+        $this->travel(11)->minutes();
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->where('reseller_id',$r->id)->firstOrFail();
+        $this->post(route('tenant.programs.members.resend',['company',$this->first->id,$member->id]))->assertRedirect()->assertSessionHas('delivery_notice');
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,2);
+        $this->assertSame($token,$r->fresh()->setup_token);
         $this->assertSame(1,Reseller::where('email','invite@example.com')->count());
         auth('tenant')->logout();
         $this->get(route('reseller.setup',['token'=>$token]))->assertOk()->assertSee('Invite Test');

@@ -20,7 +20,7 @@ by('invite-group').onclick=groupMode;
 by('invite-add').onclick=()=>{try{add();}catch(e){progress.textContent=e.message;}};
 by('invite-import').onclick=()=>by('invite-file').click();
 by('invite-file').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;if(file.size>200000)throw Error('CSV is too large.');const records=parseCSV(await file.text());const existing=[...container.querySelectorAll('.invite-row')].filter(r=>r.querySelector('[data-name]').value.trim()||r.querySelector('[data-email]').value.trim());if(existing.length+records.length>50)throw Error('Maximum 50 people per batch.');const emails=new Set(existing.map(r=>r.querySelector('[data-email]').value.trim().toLowerCase()));if(records.some(r=>emails.has(r.email)))throw Error('An imported email is already in this list.');container.querySelectorAll('.invite-row').forEach(r=>{if(!existing.includes(r))r.remove();});records.forEach(r=>add(r.name,r.email));container.querySelector('.invite-row').after(by('invite-tools'));progress.textContent=records.length+' imported. Review the list, then send.';}catch(e){progress.textContent=e.message;}e.target.value='';};
-function refreshReferrers(){const url=new URL(location.href);['q','status','page'].forEach(key=>url.searchParams.delete(key));location.assign(url.href);}
+function refreshReferrers(){const url=new URL(location.href);['q','status','delivery','page'].forEach(key=>url.searchParams.delete(key));location.assign(url.href);}
 function close(){if(busy)return;if(hasSent)refreshReferrers();else dialog.close();}
 by('invite-close').onclick=close;by('invite-cancel').onclick=close;
 dialog.addEventListener('cancel',e=>{if(busy||hasSent){e.preventDefault();if(!busy)refreshReferrers();}});
