@@ -34,7 +34,7 @@ class ReferrerProgramController extends Controller
         $tenant = Tenant::findOrFail($tenantId);
 
         // Programs this referrer is enrolled in
-        $memberships = ReferrerProgramMembership::with('program')
+        $memberships = ReferrerProgramMembership::with('program.offers.currentVersion')
             ->where('reseller_id', $referrer->id)
             ->whereHas('program', fn($q) => $q->where('tenant_id', $tenantId)->visible())
             ->get();
@@ -46,8 +46,9 @@ class ReferrerProgramController extends Controller
             ->whereNotIn('id', $memberships->pluck('program_id'))
             ->get();
 
+        $cards=app(\App\Services\Programs\ReferrerProgramCards::class)->build($memberships,$tenantId,$referrer->id);
         return view('reseller.programs.index', compact(
-            'tenant', 'memberships', 'openPrograms'
+            'tenant', 'memberships', 'openPrograms', 'cards'
         ));
     }
 

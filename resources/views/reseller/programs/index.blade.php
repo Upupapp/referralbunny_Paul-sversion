@@ -1,65 +1,23 @@
 @extends('layouts.reseller')
 @section('nav') @include('reseller._nav') @endsection
-
-@section('title', 'Programs')
-@section('stitch_page', 'referrer-programs-index')
-
+@section('title','Programs')
+@section('stitch_page','referrer-programs-index')
 @section('content')
-<div class="p-6 max-w-4xl mx-auto space-y-6">
-
-    <div>
-        <h1 class="text-2xl font-bold text-heading">Programs</h1>
-        <p class="text-sm text-gray-500 mt-1">View the programs you are enrolled in or open programs you can join.</p>
-    </div>
-
-    {{-- ── Enrolled programs ─────────────────────────────────────────────── --}}
-    @if($memberships->isNotEmpty())
-    <section>
-        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Enrolled programs</h2>
-        <div class="grid gap-4 sm:grid-cols-2">
-            @foreach($memberships as $membership)
-            @php $prog = $membership->program; @endphp
-            <a href="{{ route('reseller.programs.show', [$tenant->id, $prog->id]) }}"
-               class="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
-                <div class="flex items-center justify-between gap-2">
-                    <h3 class="text-base font-semibold text-heading">{{ $prog->name }}</h3>
-                    <span class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full
-                        {{ $membership->status === 'active'  ? 'bg-green-100 text-green-700' : '' }}
-                        {{ $membership->status === 'invited' ? 'bg-blue-100 text-blue-700'   : '' }}
-                        {{ $membership->status !== 'active' && $membership->status !== 'invited' ? 'bg-gray-100 text-gray-600' : '' }}
-                    ">{{ ucfirst($membership->status) }}</span>
-                </div>
-                @if($prog->short_description)
-                <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $prog->short_description }}</p>
-                @endif
-            </a>
-            @endforeach
-        </div>
-    </section>
-    @endif
-
-    {{-- ── Open programs ─────────────────────────────────────────────────── --}}
-    @if($openPrograms->isNotEmpty())
-    <section>
-        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Open Programs</h2>
-        <div class="grid gap-4 sm:grid-cols-2">
-            @foreach($openPrograms as $program)
-            <a href="{{ route('reseller.programs.show', [$tenant->id, $program->id]) }}"
-               class="block rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-all">
-                <h3 class="text-base font-semibold text-heading">{{ $program->name }}</h3>
-                @if($program->short_description)
-                <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $program->short_description }}</p>
-                @endif
-            </a>
-            @endforeach
-        </div>
-    </section>
-    @endif
-
-    @if($memberships->isEmpty() && $openPrograms->isEmpty())
-    <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
-        <p class="text-sm text-gray-500">No programs available yet. Check back later.</p>
-    </div>
-    @endif
+<style>
+.rpc{max-width:1340px;margin:auto;color:#134e4a;padding:8px 0 30px}.rpc *{box-sizing:border-box}.rpc .hero{border-radius:24px;background:linear-gradient(115deg,#0c3d38,#0f766e 74%,#7960b0);padding:32px;color:#fff;display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:24px;overflow:hidden}.rpc .hero img{width:135px;height:145px;object-fit:contain}.rpc .eyebrow{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:750}.rpc h1{font-size:32px;font-weight:750;letter-spacing:-.8px;margin:10px 0}.rpc .hero p{max-width:620px;color:#d1fae5;font-size:14px;line-height:1.8}.rpc .hero-tags{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}.rpc .hero-tags span{padding:7px 12px;border:1px solid #ffffff30;border-radius:20px;font-size:12px}.rpc .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:24px 0 14px}.rpc h2{font-size:19px;font-weight:750}.rpc .muted{font-size:12px;line-height:1.7;color:#64807a}.rpc .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.rpc .card{background:white;border:1px solid #d5eee5;border-radius:22px;overflow:hidden;box-shadow:0 5px 20px #0c3d3805}.rpc .card-head{padding:24px;background:linear-gradient(120deg,#f0fdfa,#fff 68%,#f6f0ff)}.rpc .top{display:flex;gap:12px;align-items:center;justify-content:space-between}.rpc .type{color:#0f766e;background:#ddf7ef;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.rpc .status{background:#f3edff;color:#7350ad;border-radius:20px;padding:5px 10px;font-size:11px}.rpc h3{font-size:23px;font-weight:750;letter-spacing:-.4px;margin:15px 0 7px}.rpc .description{font-size:13px;line-height:1.7;color:#64807a;overflow-wrap:anywhere}.rpc .terms{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.rpc .terms span{font-size:11px;color:#7350ad;border:1px solid #e9dffa;background:#faf7ff;border-radius:8px;padding:6px 9px}.rpc .body{padding:22px 24px}.rpc .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px}.rpc .metric{background:#f2fbf7;border:1px solid #e2f3ec;border-radius:12px;padding:13px}.rpc .metric strong{display:block;font-size:25px;font-weight:750;color:#0f766e;margin-bottom:4px}.rpc .metric span{font-size:11px;color:#64807a}.rpc .bottom-metrics{display:flex;gap:16px;justify-content:space-between;border-top:1px solid #edf4f0;padding-top:15px}.rpc .reward{font-size:22px;font-weight:750;color:#7350ad}.rpc .conversion{font-size:22px;font-weight:750;color:#0f766e}.rpc .actions{padding:18px 24px;background:#fbfdfc;border-top:1px solid #edf4f0;display:flex;gap:9px;flex-wrap:wrap}.rpc a{font-size:12px;font-weight:650;text-decoration:none}.rpc .primary{background:#0f766e;color:white;border-radius:10px;padding:11px 16px}.rpc .secondary{border:1px solid #ddede6;border-radius:10px;padding:10px 13px;color:#0f766e;background:white}.rpc .purple{color:#7350ad;border-color:#e6dbf5;background:#faf7ff}.rpc .empty{padding:32px;text-align:center;border:1px dashed #b9ded1;border-radius:20px;background:white}.rpc a:focus-visible{outline:3px solid #a78bfa;outline-offset:4px}@media(max-width:900px){.rpc .grid{grid-template-columns:1fr}}@media(max-width:540px){.rpc .hero{padding:23px}.rpc .hero img{display:none}.rpc h1{font-size:27px}.rpc .card-head,.rpc .body{padding:19px}.rpc .metric{padding:10px}.rpc .metric strong{font-size:22px}.rpc .actions a{flex:1;text-align:center}}
+</style>
+<div class="rpc">
+<header class="hero"><div><span class="eyebrow">Your referral workspace</span><h1>Good connections. Real rewards.</h1><p>Choose a program, share your personal link, and follow the results of your referrals—all in one place.</p><div class="hero-tags"><span>{{ $memberships->count() }} enrolled {{ \Illuminate\Support\Str::plural('program',$memberships->count()) }}</span><span>{{ $memberships->where('status','active')->count() }} active memberships</span><span>Your activity only</span></div></div><img src="{{ asset('images/mascots/r-bunny-thumbs-up.webp') }}" alt="Referral Bunny mascot"></header>
+<div class="section-head"><h2>Your programs</h2><p class="muted">All-time recorded activity · rewards shown by currency</p></div>
+<div class="grid">
+@forelse($memberships as $membership)
+@php $p=$membership->program;$m=$cards[$p->id]??null;$usable=in_array($membership->status,['active','approved']);$detail=route('reseller.programs.show',[$tenant->id,$p->id]); @endphp
+<article class="card"><div class="card-head"><div class="top"><span class="type">{{ $p->referralProgramLabel() }}</span><span class="status">{{ ucfirst($membership->status) }} membership · {{ ucfirst($p->status) }} program</span></div><h3>{{ $p->name }}</h3><p class="description">{{ $p->short_description ?: 'Share a program you believe in. Follow its mechanics to qualify for rewards.' }}</p><div class="terms">@foreach($p->offers->where('status','active') as $offer)@php $v=$offer->currentVersion;@endphp @if($v && $v->status==='published' && $v->tenant_id===$tenant->id && $v->program_id===$p->id)<span>{{ $v->reward_model==='percentage'?(float)$v->percentage_rate.'%':($v->reward_model==='fixed'?$v->currency.' '.number_format($v->fixed_amount,2):'Custom') }} reward</span>@if(($v->reward_rules['scope']??'')==='recurring')<span>{{ $v->reward_rules['duration_months']??'—' }}-month reward period</span>@endif @if(isset($v->reward_rules['hold_days']))<span>{{ $v->reward_rules['hold_days'] }}-day hold</span>@endif @endif @endforeach</div></div>
+<div class="body">@if($m && !$m['manual'])<p class="muted">Your referral performance</p><div class="metrics"><div class="metric"><strong>{{ number_format($m['clicks']) }}</strong><span>Link clicks</span></div><div class="metric"><strong>{{ $m['signups']===null?'—':number_format($m['signups']) }}</strong><span>Verified signups</span></div><div class="metric"><strong>{{ number_format($m['paying']) }}</strong><span>Paying customers</span></div></div><div class="bottom-metrics"><div><p class="muted">Net recorded rewards</p>@foreach($m['rewards'] as $r)<div class="reward">{{ $r->currency }} {{ number_format($r->net/100,2) }}</div>@endforeach<p class="muted">After refund reversals · not paid out</p></div><div><p class="muted">Click → signup</p><div class="conversion">{{ $m['conversion']===null?'—':$m['conversion'].'%' }}</div><p class="muted">Clicks leading to a signup</p></div></div><p class="muted" style="margin-top:14px">Repeated visits count as clicks. Conversion counts clicks linked to a verified signup. A signup does not earn a payment-based reward.</p>
+@elseif($m)<div class="metric"><strong>{{ number_format($m['referrals']) }}</strong><span>Your assigned referrals</span></div><p class="muted" style="margin-top:12px">The company confirms qualifying milestones and rewards under this program’s mechanics.</p>@endif</div>
+<footer class="actions">@if($usable)<a class="primary" href="{{ route('reseller.dashboard',['tenantId'=>$tenant->id,'program_id'=>$p->id]) }}">Open dashboard →</a>@else<a class="primary" href="{{ $detail }}">View membership →</a>@endif<a class="secondary purple" href="{{ $detail }}?tab=mechanics">Program mechanics</a>@if($usable)<a class="secondary" href="{{ route('reseller.messages',['tenantId'=>$tenant->id,'program_id'=>$p->id]) }}">Message company</a>@endif</footer></article>
+@empty<div class="empty"><h3>Your next referral starts here</h3><p class="muted">You haven’t joined a program yet. Invitations and available programs will appear here.</p></div>@endforelse
+</div>
+@if($openPrograms->isNotEmpty())<div class="section-head"><h2>Discover programs</h2><p class="muted">Explore the details and enrollment requirements.</p></div><div class="grid">@foreach($openPrograms as $p)<article class="card"><div class="card-head"><span class="type">{{ $p->referralProgramLabel() }}</span><h3>{{ $p->name }}</h3><p class="description">{{ $p->short_description }}</p></div><footer class="actions"><a class="secondary purple" href="{{ route('reseller.programs.show',[$tenant->id,$p->id]) }}?tab=mechanics">Explore mechanics →</a></footer></article>@endforeach</div>@endif
 </div>
 @endsection
