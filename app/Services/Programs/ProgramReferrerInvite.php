@@ -7,18 +7,18 @@ use Illuminate\Support\Facades\{DB,Mail};
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 class ProgramReferrerInvite {
- public function send(Program $program,string $name,string $email): Reseller {
+ public function send(Program $program,string $name,string $email,array $details=[]): Reseller {
   abort_if(ProtectedTenants::isProtected($program->tenant_id),403);
   abort_unless(in_array($program->status,['active','draft','scheduled']),422);
   $email=strtolower(trim($email));
-  $reseller=DB::transaction(function()use($program,$name,$email){
+  $reseller=DB::transaction(function()use($program,$name,$email,$details){
    Tenant::whereKey($program->tenant_id)->lockForUpdate()->firstOrFail();
    $r=Reseller::withTrashed()->where('tenant_id',$program->tenant_id)->whereRaw('LOWER(email) = ?',[$email])->first();
    if($r && ($r->trashed() || !in_array($r->status,['invited','active','nda_signed'])))throw ValidationException::withMessages(['email'=>'This referrer is inactive. Review their account before inviting.']);
    if(!$r){
     $limit=app(\App\Services\TenantPlanService::class)->canInviteReferrer($program->tenant_id);
     if(!$limit['allowed'])throw ValidationException::withMessages(['email'=>$limit['reason']]);
-    $r=Reseller::create(['tenant_id'=>$program->tenant_id,'name'=>$name,'email'=>$email,'status'=>'invited','setup_token'=>Str::random(64)]);
+    $r=Reseller::create(['tenant_id'=>$program->tenant_id,'name'=>$name,'email'=>$email,'status'=>'invited','setup_token'=>Str::random(64),'phone'=>$details['phone']??null,'territory'=>$details['territory']??null]);
    }
    if(!$r->password && (!$r->setup_token || $r->created_at?->lt(now()->subDays(90))))throw ValidationException::withMessages(['email'=>'This account needs its setup invitation renewed before it can join.']);
    $m=ReferrerProgramMembership::where('tenant_id',$program->tenant_id)->where('program_id',$program->id)->where('reseller_id',$r->id)->first();

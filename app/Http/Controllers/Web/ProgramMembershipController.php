@@ -46,10 +46,11 @@ class ProgramMembershipController extends Controller
         abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
         $program=Program::forTenant($tenantId)->findOrFail($programId);
         $this->authorize('managePeople',$program);
-        $data=$request->validate(['name'=>'required|string|max:150','email'=>'required|email|max:254']);
-        try { app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$data['name'],$data['email']); }
+        $data=$request->validate(['name'=>'required|string|max:150','email'=>'required|email|max:254','phone'=>'nullable|string|max:50','territory'=>'nullable|string|max:150']);
+        try { app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$data['name'],$data['email'],$data); }
         catch (\Illuminate\Validation\ValidationException $e) { throw $e; }
-        catch (\Throwable $e) { report($e); return back()->withErrors(['email'=>'The email could not be sent. Please retry; an existing membership will be reused.']); }
+        catch (\Throwable $e) { report($e); if($request->expectsJson())return response()->json(['message'=>'Email could not be sent. Please retry.'],503); return back()->withErrors(['email'=>'The email could not be sent. Please retry; an existing membership will be reused.']); }
+        if($request->expectsJson())return response()->json(['message'=>'Invitation sent.']);
         return back()->with('success','Program invite sent to '.$data['email'].'.');
     }
 

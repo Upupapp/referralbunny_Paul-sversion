@@ -352,6 +352,11 @@ class TenantAdminController extends Controller
             }
         }
 
+        if (!\App\Support\ProtectedTenants::isProtected($tenantId) && config('programs.enabled')) {
+            abort_unless($canViewReferrers,403);
+            return app(ProgramReferrersController::class)->index($tenantId);
+        }
+
         // Status breakdown for initial page load (avoids blank KPI cards on first render)
         try {
             $referrerSummary = DB::table('resellers')

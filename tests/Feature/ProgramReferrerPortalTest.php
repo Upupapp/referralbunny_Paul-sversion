@@ -29,9 +29,16 @@ class ProgramReferrerPortalTest extends TestCase
         $this->second=Program::create(['tenant_id'=>'company','name'=>'Manual','status'=>'active','operating_mode'=>'manual']);
         foreach([$this->first,$this->second] as $program) ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$program->id,'reseller_id'=>$this->referrer->id,'status'=>'active']);
     }
+    public function test_referrers_page_is_scoped_to_program_and_mode(): void
+    {
+        $url=route('tenant.referrers','company');
+        $this->actingAs($this->owner,'tenant')->get($url.'?program_id='.$this->first->id)->assertOk()->assertSee('PAYING CUSTOMERS')->assertSee('Invite a group')->assertSee('Import referrers')->assertDontSee('EST. COMMISSION');
+        $this->get($url.'?program_id='.$this->second->id)->assertOk()->assertSee('ASSIGNED REFERRALS')->assertDontSee('PAYING CUSTOMERS');
+        $this->get($url.'?program_id=foreign')->assertNotFound();
+    }
     public function test_program_invite_sends_setup_link_and_enrolls_after_account_setup(): void
     {
-        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();$t->date('joined_date')->nullable();});
+        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();$t->string('phone')->nullable();$t->string('territory')->nullable();$t->date('joined_date')->nullable();});
         \Illuminate\Support\Facades\Mail::fake();
         \Illuminate\Support\Facades\Event::fake([\App\Events\ResellerJoined::class,\App\Events\InviteAcceptedEvent::class]);
         $this->mock(\App\Services\TenantPlanService::class,fn($m)=>$m->shouldReceive('canInviteReferrer')->once()->with('company')->andReturn(['allowed'=>true]));
