@@ -180,7 +180,20 @@
     <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {{-- Topbar --}}
-        <header class="bg-white border-b border-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between shrink-0">
+        @if(isset($tenant) && $tenant->id !== 'lgu-ids')
+        <style>
+            @media(max-width:640px){
+                .rs-mobile-topbar{height:auto;min-height:56px;flex-wrap:wrap;gap:6px;padding-top:8px;padding-bottom:8px}
+                .rs-mobile-topbar>div:first-child{width:100%}
+                .rs-mobile-topbar>div:last-child{width:100%;min-width:0}
+                .rs-mobile-topbar #referrer-program-picker{width:100%;max-width:100%!important;min-width:0}
+                .rs-mobile-topbar>div:last-child>form:first-child{flex:1;min-width:0}
+                .rs-mobile-topbar button{min-height:40px;white-space:nowrap}
+                .rs-mobile-topbar a[title]{min-height:40px}
+            }
+        </style>
+        @endif
+        <header class="{{ isset($tenant) && $tenant->id !== 'lgu-ids' ? 'rs-mobile-topbar' : '' }} bg-white border-b border-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
                 <button type="button" @click="sidebarOpen = true" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
