@@ -23,7 +23,8 @@ $reasons=[
  'ROUNDING_ZERO'=>'Recorded successfully. This refund required no additional reward adjustment.',
 ];
 @endphp
-<main class="max-w-5xl mx-auto p-5 sm:p-8 space-y-6">
+<style>.gh-review{color:#241d50}.gh-review header,.gh-review>form,.gh-review article,.gh-review>section{background:#fff;border:1px solid #e9e2f7;border-radius:18px;padding:24px}.gh-review a{color:#7734ff}.gh-review select{border:1px solid #e3d9f1;border-radius:10px;background:white}.gh-review .readiness{background:linear-gradient(120deg,#fff,#f7f2ff)}.gh-review .readiness h2{font-size:20px;font-weight:700}.gh-review .readiness p{margin-top:12px;line-height:1.6}.gh-review .review-action{display:inline-block;padding:10px 16px;border-radius:10px;border:1px solid #dfd2f4;margin:16px 8px 0 0}</style>
+<main class="gh-review max-w-5xl mx-auto p-5 sm:p-8 space-y-6">
  <a href="{{ route('tenant.quick-program.connection',$base) }}" class="text-purple-700 underline">Back to connection</a>
  <header><h1 class="text-2xl font-bold">Review payments and refunds</h1><p class="text-slate-600">{{ $program->name }} · GetHired</p><p class="mt-2">Resolve delivery problems here. Reward amounts and eligibility cannot be overridden on this screen.</p></header>
  @if(session('review_message'))<p role="status" class="rounded-xl bg-green-50 p-4">{{ session('review_message') }}</p>@endif
@@ -34,7 +35,20 @@ $reasons=[
   <button class="bg-purple-700 text-white rounded-lg px-4 py-2">Show events</button>
  </form>
  @if($unavailable)
- <div role="alert" class="bg-amber-50 rounded-xl p-5">The review list is unavailable. Check that GetHired is connected with payment access, then reload this page. No records were changed.</div>
+ <section class="readiness" role="status">
+ @if(($readiness['account']??'')==='connected' && in_array($readiness['payments']??'',['not_available','authorization_required']))
+ <h2>Payment tracking {{ ($readiness['payments']??'')==='authorization_required'?'needs authorization':'is not enabled yet' }}</h2>
+ <p>GetHired · Connected &nbsp; | &nbsp; Signups · {{ ($readiness['signups']??'')==='ready'?'Ready':'Not ready' }} &nbsp; | &nbsp; Payments & refunds · Setup required</p>
+ <p>Your GetHired connection is active. Payments and refunds require separate billing access before their review list is available.</p>
+ <p><strong>Next step:</strong> The GetHired platform owner needs to verify payment and refund records, authorize payment access, and enable delivery. Reconnecting signup tracking alone will not enable payments.</p>
+ <p>Signup tracking does not confirm a payment or generate a referral reward. No payment or reward records were changed.</p>
+ @elseif(in_array($readiness['account']??'',['not_connected','disconnected','reconnect_required']))
+ <h2>Reconnect GetHired to continue</h2><p>The platform connection needs attention before payments and refunds can be reviewed. Open connection details to reconnect the authorized platform account.</p>
+ @else
+ <h2>The review list is unavailable right now</h2><p>GetHired could not provide the review list. Try again shortly or check connection details. No records were changed.</p>
+ @endif
+ <a class="review-action" href="{{ route('tenant.quick-program.connection',$base) }}">Open connection details →</a><a class="review-action" href="{{ request()->fullUrl() }}">Check again</a>
+ </section>
  @else
  @forelse(($result['items'] ?? []) as $item)
  <article class="bg-white border rounded-xl p-5 space-y-3">

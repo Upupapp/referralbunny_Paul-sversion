@@ -9,3 +9,5 @@
 | Manual/Automated program mode and navigation behavior | [MEMORY.md](MEMORY.md) | IMPLEMENTED |
 | Subscription / Manual program naming; Marketplace multi-product links deferred | [MEMORY.md](MEMORY.md) | PRODUCT DIRECTION |
 | Referrer portals green/teal; company admins purple | [MEMORY.md](MEMORY.md) | DESIGN RULE |
+
+- Invitation management and GetHired payment-readiness UX: see MEMORY.md (2026-09-21); program-scoped bulk resend/cancellation, custom messages, invitation cohort counts and on-demand guide.

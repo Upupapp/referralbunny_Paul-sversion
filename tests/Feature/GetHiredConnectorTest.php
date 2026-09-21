@@ -123,8 +123,14 @@ class GetHiredConnectorTest extends TestCase
         $this->get($this->base.'/review')->assertForbidden();
         $this->post($this->base.'/review/retry')->assertForbidden();
     }
+    public function test_review_explains_disabled_payments_and_preserves_signup_connection():void {
+        Http::fake(['*/review'=>Http::response(['code'=>'PAYMENT_AUTHORIZATION_REQUIRED'],403),'*/status'=>Http::response(['account'=>'connected','signups'=>'ready','payments'=>'not_available'])]);
+        $this->get($this->base.'/review')->assertOk()->assertSee('Payment tracking is not enabled yet')->assertSee('Signups · Ready')->assertSee('Open connection details')->assertDontSee('Queue a retry');
+        Http::assertSentCount(2);
+        Http::assertNotSent(fn($r)=>str_ends_with($r->url(),'/owner-connect')||str_ends_with($r->url(),'/review/retry'));
+    }
     public function test_review_handles_outage_and_escapes_audit_notes():void {
-        Http::fake(['*/review'=>Http::sequence()->push([],503)->push(['items'=>[],'hasMore'=>false,'history'=>[['created_at'=>'2026-09-20T00:00:00Z','actor_id'=>'owner','event_kind'=>'payment','delivery_id'=>'id','note'=>'<script>alert(1)</script>']]])]);
+        Http::fake(['*/status'=>Http::response([],503),'*/review'=>Http::sequence()->push([],503)->push(['items'=>[],'hasMore'=>false,'history'=>[['created_at'=>'2026-09-20T00:00:00Z','actor_id'=>'owner','event_kind'=>'payment','delivery_id'=>'id','note'=>'<script>alert(1)</script>']]])]);
         $this->get($this->base.'/review')->assertOk()->assertSee('review list is unavailable');
         $this->get($this->base.'/review')->assertOk()->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;',false)->assertDontSee('<script>alert(1)</script>',false);
     }

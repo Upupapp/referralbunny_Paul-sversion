@@ -40,7 +40,7 @@ class ProgramReferrerInvite {
   $delivery=app(ProgramInviteDelivery::class);$attempt=(string)Str::uuid();
   $delivery->record($member,$attempt,['status'=>'sending','sent_at'=>now()->toIso8601String(),'renewed'=>$renewExpired],true);
   try {
-   $sent=Mail::to($email)->send(new ProgramReferrerInvitation($program->name,$reseller->name,$url,$setup));
+   $sent=Mail::to($email)->send(new ProgramReferrerInvitation($program->name,$reseller->name,$url,$setup,$details['message']??null));
   } catch(\Throwable $e){
    $delivery->record($member,$attempt,['status'=>'failed']);throw $e;
   }

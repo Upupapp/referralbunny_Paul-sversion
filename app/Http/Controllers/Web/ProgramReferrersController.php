@@ -4,6 +4,38 @@ use App\Http\Controllers\Controller;
 use App\Models\{Program,ProgramConnection,ReferrerProgramMembership,Reseller,Tenant};
 use Illuminate\Support\Facades\{DB,Gate};
 class ProgramReferrersController extends Controller {
+ public function cancel(\Illuminate\Http\Request $request,string $tenantId,string $programId,string $membershipId){
+  abort_unless(config('programs.enabled') && !\App\Support\ProtectedTenants::isProtected($tenantId),404);
+  $program=Program::forTenant($tenantId)->findOrFail($programId);$this->authorize('managePeople',$program);
+  $request->validate(['confirmed'=>'accepted']);
+  DB::transaction(function()use($tenantId,$programId,$membershipId){
+   $member=ReferrerProgramMembership::where('tenant_id',$tenantId)->where('program_id',$programId)->findOrFail($membershipId);
+   Reseller::where('tenant_id',$tenantId)->whereKey($member->reseller_id)->lockForUpdate()->firstOrFail();
+   $member=ReferrerProgramMembership::whereKey($membershipId)->lockForUpdate()->firstOrFail();
+   abort_unless($member->status==='invited',422,'Only pending invitations can be cancelled.');
+   $meta=$member->metadata??[];$meta['activate_on_setup']=false;$meta['invite_cancelled_at']=now()->toIso8601String();
+   $meta['invite_history']=array_slice(array_merge($meta['invite_history']??[],[['event'=>'cancelled','at'=>now()->toIso8601String()]]),-50);
+   $member->update(['status'=>'removed','metadata'=>$meta]);
+  });
+  return back()->with('delivery_notice','Invitation cancelled for this program. Invitations to other programs are unchanged.');
+ }
+ public function bulkResend(\Illuminate\Http\Request $request,string $tenantId,string $programId){
+  abort_unless(config('programs.enabled') && !\App\Support\ProtectedTenants::isProtected($tenantId),404);
+  $program=Program::forTenant($tenantId)->findOrFail($programId);$this->authorize('managePeople',$program);
+  $data=$request->validate(['members'=>'required|array|min:1|max:20','members.*'=>'required|string|distinct','message'=>'nullable|string|max:1000','confirmed'=>'accepted']);
+  $members=ReferrerProgramMembership::where('tenant_id',$tenantId)->where('program_id',$programId)->where('status','invited')->whereIn('id',$data['members'])->with('reseller')->get();
+  abort_unless($members->count()===count($data['members']),422,'Selection changed. Refresh and select pending invitations again.');
+  abort_if($members->contains(fn($m)=>!$m->reseller || $m->reseller->tenant_id!==$tenantId),404);
+  $results=[];
+  foreach($members as $member){
+   try{app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$member->reseller->name,$member->reseller->email,['message'=>$data['message']??null]);$message='Sent · delivery unconfirmed';}
+   catch(\Illuminate\Validation\ValidationException $e){$message=collect($e->errors())->flatten()->implode(' ');}
+   catch(\Throwable $e){report($e);$message='Could not send. Check delivery before trying again.';}
+   $results[]=['email'=>$member->reseller->email,'message'=>$message];
+   if(!app()->runningUnitTests())usleep(600000);
+  }
+  return back()->with('bulk_invite_results',$results);
+ }
  public function renew(string $tenantId,string $programId,string $membershipId){return $this->resend($tenantId,$programId,$membershipId,true);}
  public function resend(string $tenantId,string $programId,string $membershipId,bool $renew=false){
   abort_unless(config('programs.enabled'),404);
@@ -52,6 +84,8 @@ class ProgramReferrersController extends Controller {
   $paid=$automated?DB::table('program_conversion_events')->whereIn('connection_id',$connections)->where('type','payment')->selectRaw('referrer_id,COUNT(DISTINCT customer_id) as total')->groupBy('referrer_id')->pluck('total','referrer_id'):collect();
   $leads=!$automated?DB::table('leads')->where('tenant_id',$tenantId)->where('program_id',$program->id)->whereNull('deleted_at')->selectRaw('reseller_id,COUNT(*) as total')->groupBy('reseller_id')->pluck('total','reseller_id'):collect();
   $summary=['total'=>$members->count(),'active'=>$members->where('status','active')->filter(fn($m)=>in_array($m->reseller->status,['active','nda_signed']))->count(),'invited'=>$members->where('status','invited')->count(),'clicks'=>$clicks->sum(),'signups'=>$sync?$signups->sum():null,'rewards'=>$money->sum('rewards')/100,'referrals'=>$leads->sum()];
+  $invites=$members->where('source','invite');
+  $funnel=['Invited people'=>$invites->count(),'Latest email delivered'=>$invites->filter(fn($m)=>($m->metadata['invite_delivery']['status']??'')==='delivered')->count(),'Joined program'=>$invites->filter(fn($m)=>$m->joined_at!==null)->count(),'Awaiting setup'=>$invites->where('status','invited')->count(),'Cancelled'=>$invites->filter(fn($m)=>isset($m->metadata['invite_cancelled_at']))->count()];
   request()->validate(['delivery'=>['nullable','in:sending,sent,delivered,failed,bounced,complained,delayed,suppressed,untracked']]);
   $deliveryFilter=(string)request('delivery','');
   $search=trim((string)request('q',''));$status=(string)request('status','');
@@ -59,6 +93,6 @@ class ProgramReferrersController extends Controller {
   if($status)$members=$members->where('status',$status);
   if($deliveryFilter)$members=$members->filter(fn($m)=>($m->metadata['invite_delivery']['status']??'untracked')===$deliveryFilter);
   $rows=new \Illuminate\Pagination\LengthAwarePaginator($members->forPage(max(1,(int)request('page',1)),25)->values(),$members->count(),25,max(1,(int)request('page',1)),['path'=>request()->url(),'query'=>request()->query()]);
-  return view('tenant.referrers.program',compact('tenant','program','programs','automated','currency','rows','summary','clicks','signups','sync','money','paid','leads','search','status','deliveryFilter'));
+  return view('tenant.referrers.program',compact('tenant','program','programs','automated','currency','rows','summary','clicks','signups','sync','money','paid','leads','search','status','deliveryFilter','funnel'));
  }
 }

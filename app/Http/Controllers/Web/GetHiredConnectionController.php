@@ -79,12 +79,12 @@ class GetHiredConnectionController extends Controller
         $connection=$this->connection($tenantId,$programId);
         $filters=$request->validate(['kind'=>'sometimes|in:payment,refund','status'=>'sometimes|in:held,failed,pending,delivered','page'=>'sometimes|integer|min:1|max:10000']);
         $filters=array_merge(['kind'=>'payment','status'=>'held','page'=>1],$filters);
-        $result=null; $unavailable=false;
+        $result=null; $unavailable=false; $readiness=null;
         try { $result=$api->request('review',array_merge($filters,['connectionId'=>$connection->id])); }
-        catch (\Illuminate\Validation\ValidationException $e) { $unavailable=true; }
+        catch (\Illuminate\Validation\ValidationException $e) { $unavailable=true; try { $readiness=\Illuminate\Support\Arr::only($api->request('status',['connectionId'=>$connection->id]),['account','signups','payments']); } catch (\Illuminate\Validation\ValidationException $ignored) {} }
         return response()->view('tenant.programs.gethired-review',[
             'tenant'=>Tenant::findOrFail($tenantId),'program'=>Program::forTenant($tenantId)->findOrFail($programId),
-            'filters'=>$filters,'result'=>$result,'unavailable'=>$unavailable,
+            'filters'=>$filters,'result'=>$result,'unavailable'=>$unavailable,'readiness'=>$readiness,
         ])->header('Cache-Control','no-store');
     }
     public function retryDelivery(Request $request, string $tenantId, string $programId, GetHiredConnector $api)

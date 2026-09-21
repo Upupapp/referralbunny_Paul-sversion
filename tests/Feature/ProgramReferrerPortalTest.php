@@ -147,6 +147,56 @@ class ProgramReferrerPortalTest extends TestCase
         \Illuminate\Support\Facades\Mail::assertNothingSent();
     }
 
+    public function test_cancel_keeps_other_program_invites_and_blocks_reactivation(): void
+    {
+        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();$t->date('joined_date')->nullable();});
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Event::fake([\App\Events\ResellerJoined::class,\App\Events\InviteAcceptedEvent::class]);
+        $this->referrer->forceFill(['status'=>'invited','setup_token'=>'cancel-test-token'])->save();
+        $members=ReferrerProgramMembership::where('reseller_id',$this->referrer->id)->get();
+        foreach($members as $m)$m->update(['status'=>'invited','source'=>'invite','metadata'=>['activate_on_setup'=>true]]);
+        $first=$members->firstWhere('program_id',$this->first->id);$second=$members->firstWhere('program_id',$this->second->id);
+        $url=route('tenant.programs.members.cancel',['company',$this->first->id,$first->id]);
+        $this->actingAs($this->owner,'tenant')->post($url)->assertSessionHasErrors('confirmed');
+        $this->post(route('tenant.programs.members.cancel',['company',$this->second->id,$first->id]),['confirmed'=>1])->assertNotFound();
+        $this->post($url,['confirmed'=>1])->assertRedirect()->assertSessionHas('delivery_notice');
+        $this->assertSame('removed',$first->fresh()->status);
+        $this->assertFalse($first->fresh()->metadata['activate_on_setup']);
+        $this->assertSame('invited',$second->fresh()->status);
+        $this->post($url,['confirmed'=>1])->assertUnprocessable();
+        auth('tenant')->logout();
+        $this->post(route('reseller.setup.post'),['token'=>'cancel-test-token','password'=>'LocalTest123!','password_confirmation'=>'LocalTest123!'])->assertRedirect();
+        $this->assertSame('removed',$first->fresh()->status);$this->assertSame('active',$second->fresh()->status);
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+    }
+    public function test_bulk_resend_scope_cooldowns_and_escaped_custom_message(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();});
+        $this->referrer->forceFill(['status'=>'invited','setup_token'=>'bulk-test-token'])->save();
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();$member->update(['status'=>'invited','source'=>'invite','metadata'=>['activate_on_setup'=>true]]);
+        $foreign=ReferrerProgramMembership::where('program_id',$this->second->id)->first();
+        \Illuminate\Support\Facades\Mail::fake();
+        $url=route('tenant.programs.members.bulk-resend',['company',$this->first->id]);
+        $this->actingAs($this->owner,'tenant')->post($url,['members'=>[$member->id,$foreign->id],'confirmed'=>1])->assertUnprocessable();
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $this->post($url,['members'=>[$member->id]])->assertSessionHasErrors('confirmed');
+        $this->post($url,['members'=>[$member->id],'confirmed'=>1,'message'=>'Welcome <script>no</script>'])->assertRedirect()->assertSessionHas('bulk_invite_results');
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,fn($m)=>$m->customMessage==='Welcome <script>no</script>');
+        $this->post($url,['members'=>[$member->id],'confirmed'=>1])->assertRedirect()->assertSessionHas('bulk_invite_results',fn($r)=>str_contains($r[0]['message'],'Please wait'));
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,1);
+        $mail=new \App\Mail\ProgramReferrerInvitation('Program','Name','https://example.com',true,'<script>unsafe</script>');
+        $this->assertStringContainsString('&lt;script&gt;unsafe&lt;/script&gt;',$mail->render());
+        $this->assertStringNotContainsString('<script>unsafe</script>',$mail->render());
+    }
+    public function test_invitation_funnel_ignores_table_filters_and_protected_actions_are_blocked(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $member->update(['source'=>'invite','joined_at'=>now(),'metadata'=>['invite_delivery'=>['status'=>'delivered']]]);
+        $this->actingAs($this->owner,'tenant')->get(route('tenant.referrers','company').'?program_id='.$this->first->id.'&q=missing')->assertOk()->assertSee('Getting started guide')->assertSee('Personal message (optional)')->assertViewHas('funnel',fn($f)=>$f['Invited people']===1 && $f['Latest email delivered']===1 && $f['Joined program']===1 && $f['Awaiting setup']===0);
+        $this->post(route('tenant.programs.members.bulk-resend',['lgu-ids',$this->first->id]),['members'=>[$member->id],'confirmed'=>1])->assertForbidden();
+        $this->post(route('tenant.programs.members.cancel',['lgu-ids',$this->first->id,$member->id]),['confirmed'=>1])->assertForbidden();
+    }
     protected function setUp(): void
     {
         parent::setUp();
