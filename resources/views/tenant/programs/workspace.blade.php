@@ -189,12 +189,21 @@
                 <input id="program-logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" required class="block w-full text-sm" aria-describedby="program-logo-help">
                 <p id="program-logo-help" class="text-xs text-gray-500">PNG, JPG or WebP · choose up to 10 MB. We resize to a maximum of 512 pixels and compress before uploading, preserving proportions and transparency. A square image works best.</p>
                 @error('logo')<p class="text-sm text-red-600" role="alert">{{ $message }}</p>@enderror
+                <fieldset data-logo-editor hidden class="rounded-xl border border-purple-100 p-4 space-y-3" style="max-width:420px">
+                    <legend class="text-sm font-semibold">Crop and position</legend>
+                    <label class="flex items-center gap-2 text-sm"><input data-logo-crop type="checkbox"> Crop to square</label>
+                    <p class="text-xs text-gray-500">Enable square crop, then adjust zoom and position. The preview shows exactly what will be saved.</p>
+                    <label class="block text-sm">Zoom<input data-logo-zoom aria-label="Logo zoom" type="range" min="1" max="3" step="0.05" value="1" disabled style="display:block;width:100%;accent-color:#9333ea"></label>
+                    <label class="block text-sm">Horizontal position<input data-logo-x aria-label="Logo horizontal position" type="range" min="0" max="100" value="50" disabled style="display:block;width:100%;accent-color:#9333ea"></label>
+                    <label class="block text-sm">Vertical position<input data-logo-y aria-label="Logo vertical position" type="range" min="0" max="100" value="50" disabled style="display:block;width:100%;accent-color:#9333ea"></label>
+                    <button data-logo-reset type="button" class="text-sm text-purple-700 underline">Reset to original framing</button>
+                </fieldset>
                 <img data-logo-preview hidden alt="New logo preview" style="width:120px;height:120px;object-fit:contain;border:1px solid #ddd;border-radius:12px;padding:8px;background:#f5f3ff">
                 <p data-logo-status role="status" aria-live="polite" class="text-sm text-gray-600"></p>
                 <noscript><p class="text-sm text-gray-500">Automatic compression requires JavaScript. Choose an image up to 2 MB.</p></noscript>
                 <button type="submit" class="btn btn-primary">Save logo</button>
             </form>
-            <script src="{{ asset('js/program-logo-upload.js') }}?v=1" defer></script>
+            <script src="{{ asset('js/program-logo-upload.js') }}?v=2" defer></script>
             @endcan
             @endif
 
