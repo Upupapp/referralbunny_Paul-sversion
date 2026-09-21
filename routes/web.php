@@ -441,6 +441,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::delete('/{programId}',                     [\App\Http\Controllers\Web\ProgramController::class, 'destroy'])->middleware('throttle:10,1')->name('destroy');
 
         // Members tab
+        Route::post('/{programId}/members/invite', [\App\Http\Controllers\Web\ProgramMembershipController::class, 'inviteReferrer'])->middleware('throttle:5,1')->name('members.invite');
         Route::post('/{programId}/members/referrers',                       [\App\Http\Controllers\Web\ProgramMembershipController::class, 'attachReferrer'])->middleware('throttle:30,1')->name('members.referrers.attach');
         Route::post('/{programId}/members/partners',                        [\App\Http\Controllers\Web\ProgramMembershipController::class, 'attachPartner'])->middleware('throttle:30,1')->name('members.partners.attach');
         Route::post('/{programId}/members/referrers/{membershipId}/status', [\App\Http\Controllers\Web\ProgramMembershipController::class, 'transitionReferrer'])->middleware('throttle:30,1')->name('members.referrers.status');

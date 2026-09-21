@@ -237,6 +237,11 @@ class ResellerPortalAuthController extends Controller
                     'setup_token' => null,
                     'joined_date' => now()->toDateString(),
                 ]);
+            if (!\App\Support\ProtectedTenants::isProtected($locked->tenant_id) && config('programs.enabled')) {
+                \App\Models\ReferrerProgramMembership::where('tenant_id',$locked->tenant_id)->where('reseller_id',$locked->id)
+                    ->where('status','invited')->where('source','invite')->where('metadata->activate_on_setup',true)
+                    ->update(['status'=>'active','joined_at'=>now(),'activated_at'=>now()]);
+            }
             return $locked->fresh();
         });
 

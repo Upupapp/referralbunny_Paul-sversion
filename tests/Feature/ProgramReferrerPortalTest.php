@@ -29,6 +29,29 @@ class ProgramReferrerPortalTest extends TestCase
         $this->second=Program::create(['tenant_id'=>'company','name'=>'Manual','status'=>'active','operating_mode'=>'manual']);
         foreach([$this->first,$this->second] as $program) ReferrerProgramMembership::create(['tenant_id'=>'company','program_id'=>$program->id,'reseller_id'=>$this->referrer->id,'status'=>'active']);
     }
+    public function test_program_invite_sends_setup_link_and_enrolls_after_account_setup(): void
+    {
+        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();$t->date('joined_date')->nullable();});
+        \Illuminate\Support\Facades\Mail::fake();
+        \Illuminate\Support\Facades\Event::fake([\App\Events\ResellerJoined::class,\App\Events\InviteAcceptedEvent::class]);
+        $this->mock(\App\Services\TenantPlanService::class,fn($m)=>$m->shouldReceive('canInviteReferrer')->once()->with('company')->andReturn(['allowed'=>true]));
+        $url=route('tenant.programs.members.invite',['tenantId'=>'company','programId'=>$this->first->id]);
+        $this->actingAs($this->owner,'tenant')->post($url,['name'=>'Invite Test','email'=>'invite@example.com'])->assertRedirect()->assertSessionHas('success');
+        $r=Reseller::where('email','invite@example.com')->firstOrFail();
+        $token=$r->setup_token;
+        $this->assertDatabaseHas('referrer_program_memberships',['program_id'=>$this->first->id,'reseller_id'=>$r->id,'status'=>'invited']);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,fn($m)=>$m->hasTo('invite@example.com') && str_contains($m->inviteUrl,$token) && $m->programName===$this->first->name);
+        $this->post($url,['name'=>'Invite Test','email'=>'invite@example.com'])->assertRedirect();
+        $this->assertSame(1,Reseller::where('email','invite@example.com')->count());
+        auth('tenant')->logout();
+        $this->get(route('reseller.setup',['token'=>$token]))->assertOk()->assertSee('Invite Test');
+        $this->post(route('reseller.setup.post'),['token'=>$token,'password'=>'LocalTest123!','password_confirmation'=>'LocalTest123!'])->assertRedirect(route('reseller.dashboard','company'));
+        $this->assertNull($r->fresh()->setup_token);
+        $this->assertDatabaseHas('referrer_program_memberships',['program_id'=>$this->first->id,'reseller_id'=>$r->id,'status'=>'active']);
+        $this->assertSame('active',$r->fresh()->status);
+        $this->get(route('reseller.programs.show',['tenantId'=>'company','programId'=>$this->first->id,'tab'=>'mechanics']))->assertOk();
+        $this->post(route('reseller.setup.post'),['token'=>$token,'password'=>'LocalTest456!','password_confirmation'=>'LocalTest456!'])->assertSessionHasErrors('token');
+    }
     public function test_mechanics_are_program_specific_and_manual_does_not_inherit_online_rules(): void
     {
         $this->first->update(['attribution_window_days'=>45]);

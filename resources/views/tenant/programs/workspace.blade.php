@@ -226,6 +226,17 @@
             {{-- Referrers --}}
             <div x-show="memberType === 'referrers'" x-cloak class="space-y-4">
                 @can('managePeople', $program)
+                @if($tenant->id !== 'lgu-ids')
+                <div class="rounded-xl border border-gray-200 bg-white p-4">
+                <h2 class="font-semibold mb-2">Invite a referrer to {{ $program->name }}</h2>
+                <p class="text-sm text-gray-500 mb-3">Email an invitation and prepare their membership in this program.</p>
+                @if(session('success'))<p role="status" class="text-green-700 mb-3">{{ session('success') }}</p>@endif
+                @if($errors->any())<p role="alert" class="text-red-600 mb-3">{{ $errors->first() }}</p>@endif
+                <form method="POST" action="{{ route('tenant.programs.members.invite',[$tenant->id,$program->id]) }}" class="flex flex-wrap gap-3 items-end">@csrf
+                <label class="text-sm">Name<input class="input w-full" name="name" required maxlength="150" placeholder="Referrer name"></label>
+                <label class="text-sm">Email<input class="input w-full" type="email" name="email" required maxlength="254" placeholder="name@example.com"></label>
+                <button class="btn btn-primary" type="submit">Send program invite</button></form></div>
+                @endif
                 <form method="POST" action="{{ route('tenant.programs.members.referrers.attach', [$tenant->id, $program->id]) }}"
                       class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex items-end gap-3">
                     @csrf
