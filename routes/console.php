@@ -86,3 +86,6 @@ Schedule::command('subscriptions:check-expiry')->dailyAt('08:30')->timezone('Asi
 
 // Signup analytics only; no payments, rewards or payouts are created.
 Schedule::command('programs:sync-gethired-signups')->everyFiveMinutes()->withoutOverlapping(10);
+
+// Program invitation status only; never sends email or touches protected tenants.
+Schedule::command('programs:refresh-invite-delivery')->everyFiveMinutes()->withoutOverlapping(10);

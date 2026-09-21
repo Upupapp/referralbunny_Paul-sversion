@@ -85,6 +85,13 @@ class Reseller extends Authenticatable
         'anonymous_onboarded_at'      => 'datetime',
     ];
 
+    public function setupExpiresAt(): ?\Carbon\Carbon
+    {
+        $issued = \App\Support\ProtectedTenants::isProtected($this->tenant_id)
+            ? $this->created_at : ($this->setup_token_created_at ?? $this->created_at);
+        return $issued?->copy()->addDays(90);
+    }
+
     public function toAnonymousArray(): array
     {
         return [

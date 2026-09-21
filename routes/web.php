@@ -433,6 +433,7 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::get('/create',                             [\App\Http\Controllers\Web\ProgramController::class, 'create'])->name('create');
         Route::post('/',                                  [\App\Http\Controllers\Web\ProgramController::class, 'store'])->middleware('throttle:20,1')->name('store');
         Route::get('/{programId}',                        [\App\Http\Controllers\Web\ProgramWorkspaceController::class, 'show'])->name('workspace');
+        Route::post('/{programId}/members/{membershipId}/renew', [\App\Http\Controllers\Web\ProgramReferrersController::class, 'renew'])->middleware('throttle:5,1')->name('members.renew');
         Route::post('/{programId}/members/{membershipId}/resend', [\App\Http\Controllers\Web\ProgramReferrersController::class, 'resend'])->middleware('throttle:5,1')->name('members.resend');
         Route::post('/{programId}/members/{membershipId}/delivery', [\App\Http\Controllers\Web\ProgramReferrersController::class, 'delivery'])->middleware('throttle:10,1')->name('members.delivery');
         Route::post('/{programId}/logo', [\App\Http\Controllers\Web\ProgramLogoController::class, 'store'])->middleware('throttle:10,1')->name('logo');

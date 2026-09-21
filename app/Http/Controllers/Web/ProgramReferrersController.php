@@ -4,7 +4,8 @@ use App\Http\Controllers\Controller;
 use App\Models\{Program,ProgramConnection,ReferrerProgramMembership,Reseller,Tenant};
 use Illuminate\Support\Facades\{DB,Gate};
 class ProgramReferrersController extends Controller {
- public function resend(string $tenantId,string $programId,string $membershipId){
+ public function renew(string $tenantId,string $programId,string $membershipId){return $this->resend($tenantId,$programId,$membershipId,true);}
+ public function resend(string $tenantId,string $programId,string $membershipId,bool $renew=false){
   abort_unless(config('programs.enabled'),404);
   abort_if(\App\Support\ProtectedTenants::isProtected($tenantId),404);
   $program=Program::forTenant($tenantId)->findOrFail($programId);
@@ -12,7 +13,8 @@ class ProgramReferrersController extends Controller {
   $member=ReferrerProgramMembership::where('tenant_id',$tenantId)->where('program_id',$programId)->where('status','invited')->findOrFail($membershipId);
   $referrer=$member->reseller;
   abort_unless($referrer && $referrer->tenant_id===$tenantId,404);
-  try {app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$referrer->name,$referrer->email);}
+  if($renew)abort_unless(!$referrer->password && $referrer->setupExpiresAt()?->isPast(),422,'Only expired setup invitations can be renewed.');
+  try {app(\App\Services\Programs\ProgramReferrerInvite::class)->send($program,$referrer->name,$referrer->email,[],$renew);}
   catch(\Illuminate\Validation\ValidationException $e){throw $e;}
   catch(\Throwable $e){report($e);return back()->withErrors(['email'=>'The invitation could not be sent. Try again in one minute.']);}
   return back()->with('delivery_notice','Invitation resent. Delivery is not yet confirmed.');

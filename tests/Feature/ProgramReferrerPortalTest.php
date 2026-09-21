@@ -107,6 +107,46 @@ class ProgramReferrerPortalTest extends TestCase
         $this->assertFalse($service->notify('lgu-ids',$this->referrer->id,'Referrer'));
     }
 
+    public function test_expired_invitation_renewal_rotates_link_and_preserves_original_account_date(): void
+    {
+        Schema::table('resellers',function(Blueprint $t){$t->string('password')->nullable();$t->string('setup_token')->nullable();$t->timestamp('setup_token_created_at')->nullable();});
+        $oldCreated=now()->subDays(100);
+        $this->referrer->forceFill(['status'=>'invited','setup_token'=>'expired-token','created_at'=>$oldCreated])->save();
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $member->update(['source'=>'invite','status'=>'invited','metadata'=>['activate_on_setup'=>true]]);
+        \Illuminate\Support\Facades\Mail::fake();
+        $url=route('tenant.programs.members.renew',['company',$this->first->id,$member->id]);
+        $this->actingAs($this->owner,'tenant')->post($url)->assertRedirect()->assertSessionHas('delivery_notice');
+        $r=$this->referrer->fresh();
+        $this->assertNotSame('expired-token',$r->setup_token);
+        $this->assertEquals($oldCreated->format('Y-m-d H:i:s'),$r->created_at->format('Y-m-d H:i:s'));
+        $this->assertTrue($r->setupExpiresAt()->isFuture());
+        $this->assertSame('renewed',$member->fresh()->metadata['invite_history'][0]['event']);
+        $this->post($url)->assertStatus(422);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\ProgramReferrerInvitation::class,1);
+        auth('tenant')->logout();
+        $this->get(route('reseller.setup',['token'=>'expired-token']))->assertOk()->assertDontSee('Create your password');
+        $this->get(route('reseller.setup',['token'=>$r->setup_token]))->assertOk()->assertSee($r->name);
+        $protected=new Reseller(['tenant_id'=>'lgu-ids','setup_token_created_at'=>now()]);$protected->created_at=$oldCreated;
+        $this->assertTrue($protected->setupExpiresAt()->isPast());
+    }
+
+    public function test_delivery_background_refresh_records_history_without_sending_mail(): void
+    {
+        $member=ReferrerProgramMembership::where('program_id',$this->first->id)->first();
+        $id=(string) \Illuminate\Support\Str::uuid();
+        $member->update(['metadata'=>['invite_delivery'=>['attempt'=>'latest','provider_id'=>$id,'status'=>'sent','sent_at'=>now()->toIso8601String()]]]);
+        config(['services.resend.key'=>'test-key']);
+        \Illuminate\Support\Facades\Http::fake(['*'=>\Illuminate\Support\Facades\Http::response(['id'=>$id,'last_event'=>'delivered'])]);
+        \Illuminate\Support\Facades\Mail::fake();
+        $this->artisan('programs:refresh-invite-delivery')->assertSuccessful();
+        $this->assertSame('delivered',$member->fresh()->metadata['invite_delivery']['status']);
+        $this->assertSame('delivered',$member->fresh()->metadata['invite_history'][0]['event']);
+        $this->artisan('programs:refresh-invite-delivery')->assertSuccessful();
+        \Illuminate\Support\Facades\Http::assertSentCount(1);
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

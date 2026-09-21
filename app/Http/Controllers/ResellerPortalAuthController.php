@@ -210,7 +210,7 @@ class ResellerPortalAuthController extends Controller
         }
 
         // Treat invitations older than 90 days as expired.
-        if ($reseller->created_at && $reseller->created_at->lt(now()->subDays(90))) {
+        if ($reseller->setupExpiresAt()?->lt(now())) {
             return view('auth.reseller-link-expired');
         }
 
@@ -228,7 +228,7 @@ class ResellerPortalAuthController extends Controller
         $reseller = DB::transaction(function () use ($data) {
             $locked = Reseller::where('setup_token', $data['token'])->lockForUpdate()->first();
             if (!$locked) return null;
-            if ($locked->created_at && $locked->created_at->lt(now()->subDays(90))) return null;
+            if ($locked->setupExpiresAt()?->lt(now())) return null;
             DB::table('resellers')
                 ->where('id', $locked->id)
                 ->update([

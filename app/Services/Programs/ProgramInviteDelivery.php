@@ -12,6 +12,12 @@ class ProgramInviteDelivery
    $locked=ReferrerProgramMembership::whereKey($member->id)->lockForUpdate()->firstOrFail();
    $meta=$locked->metadata??[];
    if(!$start && ($meta['invite_delivery']['attempt']??null)!==$attempt)return;
+   $previous=$meta['invite_delivery']['status']??null;
+   if($start || (isset($data['status']) && $data['status']!==$previous)) {
+    $history=$meta['invite_history']??[];
+    $history[]=['event'=>($start && ($data['renewed']??false))?'renewed':($data['status']??'updated'),'at'=>now()->toIso8601String()];
+    $meta['invite_history']=array_slice($history,-50);
+   }
    $meta['invite_delivery']=$start?array_merge(['attempt'=>$attempt],$data):array_merge($meta['invite_delivery'],$data);
    $locked->update(['metadata'=>$meta]);
   });
@@ -21,6 +27,7 @@ class ProgramInviteDelivery
   $delivery=$member->metadata['invite_delivery']??[];
   $id=$delivery['provider_id']??null;
   if(!Str::isUuid((string)$id)||!config('services.resend.key'))return false;
+  $this->record($member,$delivery['attempt'],['checked_attempt_at'=>now()->toIso8601String()]);
   try {
    $response=Http::withToken(config('services.resend.key'))->acceptJson()->timeout(8)->get('https://api.resend.com/emails/'.$id);
    if(!$response->successful() || $response->json('id')!==$id)return false;
