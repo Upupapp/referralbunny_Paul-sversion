@@ -178,7 +178,7 @@
 
             @if($tenant->id !== 'lgu-ids')
             @can('update', $program)
-            <form method="POST" enctype="multipart/form-data" action="{{ route('tenant.programs.logo', [$tenant->id, $program->id]) }}" class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+            <form data-program-logo-upload method="POST" enctype="multipart/form-data" action="{{ route('tenant.programs.logo', [$tenant->id, $program->id]) }}" class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
                 @csrf
                 <h2 class="text-base font-semibold text-heading">Program logo</h2>
                 <p class="text-sm text-gray-500">Help referrers recognize your program. Your logo appears on enrolled and open program cards.</p>
@@ -187,10 +187,14 @@
                 @endif
                 <label for="program-logo" class="block text-sm font-medium">Choose a logo</label>
                 <input id="program-logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" required class="block w-full text-sm" aria-describedby="program-logo-help">
-                <p id="program-logo-help" class="text-xs text-gray-500">PNG, JPG or WebP · up to 2 MB and 4096 × 4096 pixels. A square image works best. Uploading replaces your current logo.</p>
+                <p id="program-logo-help" class="text-xs text-gray-500">PNG, JPG or WebP · choose up to 10 MB. We resize to a maximum of 512 pixels and compress before uploading, preserving proportions and transparency. A square image works best.</p>
                 @error('logo')<p class="text-sm text-red-600" role="alert">{{ $message }}</p>@enderror
+                <img data-logo-preview hidden alt="New logo preview" style="width:120px;height:120px;object-fit:contain;border:1px solid #ddd;border-radius:12px;padding:8px;background:#f5f3ff">
+                <p data-logo-status role="status" aria-live="polite" class="text-sm text-gray-600"></p>
+                <noscript><p class="text-sm text-gray-500">Automatic compression requires JavaScript. Choose an image up to 2 MB.</p></noscript>
                 <button type="submit" class="btn btn-primary">Save logo</button>
             </form>
+            <script src="{{ asset('js/program-logo-upload.js') }}?v=1" defer></script>
             @endcan
             @endif
 
