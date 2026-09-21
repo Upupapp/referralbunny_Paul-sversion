@@ -79,6 +79,19 @@ class Program extends Model
         });
     }
 
+    public function logoUrl(): ?string
+    {
+        if (\App\Support\ProtectedTenants::isProtected($this->tenant_id)) return null;
+        if ($this->logo_path && str_starts_with($this->logo_path, "program-logos/{$this->tenant_id}/{$this->id}/")) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->logo_path);
+        }
+        if (preg_match('/^[a-zA-Z0-9-]+$/', (string) $this->tenant_id) && Str::isUuid((string) $this->id)) {
+            $path = "images/programs/{$this->tenant_id}/{$this->id}.png";
+            if (is_file(public_path($path))) return asset($path);
+        }
+        return null;
+    }
+
     // ── Relationships ────────────────────────────────────────────────────────
 
     public function tenant(): BelongsTo

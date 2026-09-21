@@ -1,12 +1,5 @@
 @php
-    // Resolve only bundled, tenant-scoped logos; no remote image requests.
-    $logoPath = null;
-    if ($p->tenant_id !== 'lgu-ids'
-        && preg_match('/^[a-zA-Z0-9-]+$/', (string) $p->tenant_id)
-        && \Illuminate\Support\Str::isUuid((string) $p->id)) {
-        $candidate = 'images/programs/'.$p->tenant_id.'/'.$p->id.'.png';
-        if (is_file(public_path($candidate))) $logoPath = asset($candidate);
-    }
+    $logoPath = $p->logoUrl();
     $words = preg_split('/\s+/u', trim($p->name), -1, PREG_SPLIT_NO_EMPTY);
     $initials = mb_strtoupper(implode('', array_map(fn($word) => mb_substr($word, 0, 1), array_slice($words, 0, 2))));
 @endphp

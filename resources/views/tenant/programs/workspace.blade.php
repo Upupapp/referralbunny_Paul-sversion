@@ -176,6 +176,24 @@
                 </div>
             </form>
 
+            @if($tenant->id !== 'lgu-ids')
+            @can('update', $program)
+            <form method="POST" enctype="multipart/form-data" action="{{ route('tenant.programs.logo', [$tenant->id, $program->id]) }}" class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+                @csrf
+                <h2 class="text-base font-semibold text-heading">Program logo</h2>
+                <p class="text-sm text-gray-500">Help referrers recognize your program. Your logo appears on enrolled and open program cards.</p>
+                @if($program->logoUrl())
+                <img src="{{ $program->logoUrl() }}" alt="Current program logo" width="80" height="80" style="width:80px;height:80px;object-fit:contain;border:1px solid #eee;border-radius:12px;padding:8px">
+                @endif
+                <label for="program-logo" class="block text-sm font-medium">Choose a logo</label>
+                <input id="program-logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" required class="block w-full text-sm" aria-describedby="program-logo-help">
+                <p id="program-logo-help" class="text-xs text-gray-500">PNG, JPG or WebP · up to 2 MB and 4096 × 4096 pixels. A square image works best. Uploading replaces your current logo.</p>
+                @error('logo')<p class="text-sm text-red-600" role="alert">{{ $message }}</p>@enderror
+                <button type="submit" class="btn btn-primary">Save logo</button>
+            </form>
+            @endcan
+            @endif
+
             {{-- Danger zone (delete draft) --}}
             @can('delete', $program)
             <div class="rounded-xl border border-red-200 bg-red-50 p-5">

@@ -9,11 +9,40 @@ class ProgramReferrerPortalTest extends TestCase
 {
     use QuickProgramSchema;
     private $referrer; private $owner; private $first; private $second;
+    public function test_admin_uploads_and_replaces_logo_used_by_referrer_cards(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $url = route('tenant.programs.logo', ['company', $this->first->id]);
+        $file = fn() => \Illuminate\Http\UploadedFile::fake()->createWithContent('logo.png', file_get_contents(public_path('images/programs/test-sp4s9i/8184125a-ace1-4db8-b7d9-884e692002b4.png')));
+        $this->actingAs($this->owner, 'tenant')->post($url, ['logo'=>$file()])->assertRedirect()->assertSessionHas('success');
+        $old = $this->first->fresh()->logo_path;
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($old);
+        $this->actingAs($this->owner, 'tenant')->post($url, ['logo'=>$file()])->assertRedirect();
+        $new = $this->first->fresh()->logo_path;
+        $this->assertNotEquals($old, $new);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($old);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($new);
+        $this->actingAs($this->referrer,'reseller')->get(route('reseller.programs.index','company'))->assertOk()->assertSee($this->first->fresh()->logoUrl());
+    }
+
+    public function test_logo_rejects_invalid_files_cross_tenant_and_protected_tenant(): void
+    {
+        $url = route('tenant.programs.logo', ['company', $this->first->id]);
+        $this->actingAs($this->owner, 'tenant')->post($url, ['logo'=>\Illuminate\Http\UploadedFile::fake()->create('script.svg', 1, 'image/svg+xml')])->assertSessionHasErrors('logo');
+        $this->post($url, ['logo'=>\Illuminate\Http\UploadedFile::fake()->create('large.png', 2049, 'image/png')])->assertSessionHasErrors('logo');
+        $this->assertNull($this->first->fresh()->logo_path);
+        $this->post(route('tenant.programs.logo', ['other', $this->first->id]))->assertForbidden();
+        $this->post(route('tenant.programs.logo', ['lgu-ids', $this->first->id]))->assertForbidden();
+        $outsider=TenantUser::create(['id'=>'logo-outsider','email'=>'logo-out@example.com','password'=>'x','status'=>'active']);
+        $this->actingAs($outsider,'tenant')->post($url)->assertForbidden();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
         config(['app.key'=>'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=','programs.enabled'=>true]);
         $this->buildQuickProgramSchema();
+        (require database_path('migrations/2026_09_21_000001_add_program_logo_path.php'))->up();
         (require database_path('migrations/2026_09_20_000009_create_program_signup_tracking.php'))->up();
         (require database_path('migrations/2026_09_20_000008_create_program_referral_clicks.php'))->up();
         (require database_path('migrations/2026_09_20_000007_create_program_referral_links.php'))->up();
