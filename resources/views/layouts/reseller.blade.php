@@ -196,7 +196,8 @@
 
                 {{-- Anonymous mode toggle + onboarding guide --}}
                 @if(isset($tenant) && $r)
-                @php $rsOnboardAnon = !($r->anonymous_onboarded_at ?? null); @endphp
+                {{-- LGUIDS retains its legacy guide; other tenants open help only via the eye button. --}}
+                @php $rsOnboardAnon = $tenant->id === 'lgu-ids' && !($r->anonymous_onboarded_at ?? null); @endphp
                 <div x-data="{
                         open: false,
                         isAnon: {{ ($r->is_anonymous ?? false) ? 'true' : 'false' }},
@@ -286,6 +287,9 @@
                          x-transition:leave-end="opacity-0"
                          class="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
 
+                        @if($tenant->id !== 'lgu-ids')
+                        <button type="button" @click="open = false" aria-label="Close anonymous mode" class="float-right ml-2 text-gray-400 hover:text-gray-700">×</button>
+                        @endif
                         <div class="flex items-center justify-between mb-2">
                             <p class="text-sm font-bold text-[#1E1B4B]">Anonymous Mode</p>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
