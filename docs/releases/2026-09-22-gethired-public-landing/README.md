@@ -1,6 +1,6 @@
 # GetHired public referrer landing — local implementation
 
-Status: implemented and QA checked locally. Not pushed, deployed, published, or applied to production. User approved changing GetHired's recurring reward duration from six months to one year on 2026-09-22. That approval is separate from deployment.
+Status: pushed and deployed directly on 2026-09-22; public page published. Release commit `d63e62d`. User approved changing GetHired's recurring reward duration from six months to one year on 2026-09-22. That approval is separate from deployment.
 
 ## Features
 
@@ -62,3 +62,17 @@ The admin preview banner no longer adds a full row. Short desktop viewports use 
 - Rebuilt assets; 38 landing/rewards/conversion/admin tests (291 assertions) and 3 JS tests passed. Three additional invitation activation, expired-link renewal and cancellation tests passed (50 assertions).
 - Browser rechecked responsive layout, package selection, all four invitation response dialogs, and How it works. Synthetic invite/email responses stayed in sandbox; no production send or deployment.
 - Admin access after deployment: Programs → GetHired Online Referrals → Public Page → edit/preview → publish/save and copy link. Intended public address: https://referralbunny.ai/gethired/referrals. The editor and route remain local until explicitly deployed; publication also requires the approved twelve-month offer to be activated.
+
+## Production release — 2026-09-22
+
+User explicitly authorized push and deploy. GitHub Actions `enabled:false` verified before push and after release; no Actions/Netlify deployment. Commit `d63e62d` includes the landing work and source reconciliation of 42 previously deployed matching files. Only 20 new/changed release files (including compiled assets) were installed on the server. Existing assets retained.
+
+- Backup/staging: `/root/gethired-landing-release-20260922/`.
+- New empty landing-page table migrated via its explicit migration path only.
+- GetHired offer v2 published with twelve-month duration; v1 still six months and unchanged.
+- Page published using the existing authorized company-admin controller and verified GetHired owner.
+- Route cache rebuilt to register the new routes.
+- Public URL: https://referralbunny.ai/gethired/referrals
+- Live read-only QA: HTTP 200, no preview banner, form enabled, no JavaScript errors, no scroll at 1366×768. Actual packages Starter 1490, Growth 3490 (default), Premium 5990 PHP/month. Growth estimate 837600 PHP/year; selecting Starter updates to 357600 PHP/year.
+- No production invitation submission, email test, payment, signup or LGUIDS access.
+- The separate GetHired frontend Job Board navigation change was not part of this Referral Bunny landing release.
