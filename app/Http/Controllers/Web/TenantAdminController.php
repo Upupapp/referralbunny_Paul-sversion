@@ -671,6 +671,9 @@ class TenantAdminController extends Controller
             'accent_color'  => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
 
+        if (!\App\Support\ProtectedTenants::isProtected($tenantId) && $request->has('name')) {
+            $data += $request->validate(['name' => 'required|string|max:200']);
+        }
         $tenant->update($data);
 
         // Bust tenant config cache so UI reflects the update immediately

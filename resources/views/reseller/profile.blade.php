@@ -3,8 +3,11 @@
 @section('nav') @include('reseller._nav') @endsection
 
 @section('content')
+@php use App\Services\UserDisplayNameService; @endphp
+@if(!\App\Support\ProtectedTenants::isProtected($tenant->id))
+@include('reseller.profile-modern')
+@else
 @php
-    use App\Services\UserDisplayNameService;
     $photoUrl   = UserDisplayNameService::photoUrl($reseller, false);
     $initials   = UserDisplayNameService::initials($reseller, false);
     $completion = UserDisplayNameService::completionPercent($reseller);
@@ -335,4 +338,5 @@
     </div>
 
 </div>
+@endif
 @endsection

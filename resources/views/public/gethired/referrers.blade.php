@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{{ $content['headline'] }} | GetHired × Referral Bunny</title><meta name="description" content="{{ $content['description'] }}"><meta name="robots" content="{{ $preview?'noindex,nofollow':'index,follow' }}">
+<link rel="canonical" href="{{ route('public.gethired.referrers') }}"><meta property="og:title" content="{{ $content['headline'] }}"><meta property="og:description" content="{{ $content['description'] }}"><meta property="og:type" content="website"><meta property="og:url" content="{{ route('public.gethired.referrers') }}"><meta property="og:image" content="{{ asset('images/gethired/logo-horizontal.png') }}">
+<link rel="icon" href="{{ asset('images/logos/referralbunny-favicon.webp') }}">@vite(['resources/css/app.css','resources/js/app.js'])</head>
+@php($landingOptions = ["packages"=>$pricing["packages"],"defaultPackage"=>$pricing["default"],"preview"=>$preview,"open"=>$open])
+<body class="ghl-body" x-data='gethiredPublicLanding(@json($landingOptions))'>
+<header class="ghl-header"><a href="https://gethiredonline.app" class="ghl-brand" aria-label="GetHired home"><img src="{{ asset('images/gethired/logo-horizontal.png') }}" width="170" height="43" alt="GetHired"></a><span class="ghl-powered">powered by <strong>Referral Bunny</strong></span><nav aria-label="Page navigation"><button type="button" @click="$refs.faq.showModal()">How it works</button><button type="button" @click="$refs.faq.showModal()">FAQ</button><a class="ghl-signin" href="{{ route('reseller.login') }}">Sign in ↗</a></nav></header>
+<main class="ghl-main">
+ @if($preview)<div class="ghl-preview" role="status">Admin preview · Invitations are disabled here. Publish from the Public Page tab when ready.</div>@endif
+ <section class="ghl-hero"><span class="ghl-eyebrow">GETHIRED REFERRAL PARTNERS</span><h1>{{ $content['headline'] }}</h1><p>{{ $content['description'] }}</p><ul class="ghl-benefits">@foreach(['benefit_one','benefit_two','benefit_three'] as $key)<li><span aria-hidden="true">✓</span>{{ $content[$key] }}</li>@endforeach</ul></section>
+ <div class="ghl-columns">
+  <section class="ghl-estimator" aria-labelledby="estimator-title"><div class="ghl-card-heading"><span class="ghl-icon" aria-hidden="true">↗</span><div><h2 id="estimator-title">{{ $content['estimator_title'] }}</h2><p>{{ $content['estimator_description'] }}</p></div></div>
+   @if($terms['ready'])
+   <label for="gethired-package">GetHired package <span>Monthly subscription</span></label>
+   <select id="gethired-package" class="ghl-package" x-model="selectedPackage" aria-describedby="package-help" @disabled(empty($pricing['packages']))>
+    @forelse($pricing['packages'] as $package)<option value="{{ $package['id'] }}" @selected($package['id']===$pricing['default'])>{{ $package['name'] }} — ₱{{ number_format($package['monthly_amount_minor']/100,$package['monthly_amount_minor']%100?2:0) }} / month</option>@empty<option value="">Packages temporarily unavailable</option>@endforelse
+   </select><p id="package-help" class="ghl-small">{{ $pricing['error'] ?? 'Current GetHired packages. Choose one to see estimated earnings.' }}</p>
+   <div class="ghl-fixed"><div><small>Reward rate <span>Fixed</span></small><strong>{{ $terms['rate'] }}%</strong></div><div><small>Reward duration <span>Fixed</span></small><strong>1 year</strong></div><div><small>Successful referrals <span>Fixed</span></small><strong>100</strong></div></div>
+   <div class="ghl-estimate" aria-live="polite"><span>Estimated earnings over 1 year</span><div class="ghl-total"><strong x-text="calculation ? money(calculation.annual) : '—'">{{ $pricing['packages'] ? '₱'.number_format(collect($pricing['packages'])->firstWhere('id',$pricing['default'])['estimate']['annual']/100,0) : '—' }}</strong><span class="ghl-earning-label">Your<br>Earning</span></div><p><span x-text="calculation ? money(calculation.per) : '—'">{{ $pricing['packages'] ? '₱'.number_format(collect($pricing['packages'])->firstWhere('id',$pricing['default'])['estimate']['per']/100,0) : '—' }}</span> per qualifying payment × 12 months × 100 referrals</p><div>Assumes every referred employer makes 12 qualifying monthly payments.</div></div>
+   <p class="ghl-disclaimer">Actual earnings depend on qualifying payments and program rules. Excludes taxes; refunds reverse rewards. First payment must be within 30 days of signup. Rewards have a {{ $terms['hold'] }}-day hold and require review.</p>
+   @else<div class="ghl-unavailable"><h3>Rewards are being prepared</h3><p>The approved one-year reward offer must be active before estimates and invitations become available.</p></div>@endif
+   <div class="ghl-mascot"><img src="{{ asset('images/mascots/r-bunny-thumbs-up.webp') }}" width="82" height="92" alt="Referral Bunny"><span>GetHired × Referral Bunny</span></div>
+  </section>
+  <section class="ghl-form-card" aria-labelledby="signup-title"><span class="ghl-form-eyebrow">BECOME A REFERRER</span><h2 id="signup-title">{{ $content['form_title'] }}</h2><p class="ghl-form-description">{{ $content['form_description'] }}</p>
+   @if(!$open)<p class="ghl-closed" role="status">Invitations are currently unavailable. Please check back when enrollment opens.</p>@endif
+   <form action="{{ route('public.gethired.invite') }}" method="POST" @submit.prevent="submit($event)" aria-label="Request a GetHired referral invitation">
+    @csrf
+    <fieldset :disabled="busy || {{ ($preview || !$open)?'true':'false' }}" @disabled($preview || !$open)>
+     <div class="ghl-trap" aria-hidden="true"><label for="company-website">Leave this field blank</label><input id="company-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+     @foreach(['name'=>['Full name','text','name',150],'email'=>['Email address','email','email',254],'phone'=>['Phone number','tel','tel',50]] as $key=>[$label,$type,$autocomplete,$max])
+     <div class="ghl-field"><label for="invite-{{ $key }}">{{ $label }} <span>{{ $key==='phone'?'Optional':'*' }}</span></label><input id="invite-{{ $key }}" name="{{ $key }}" type="{{ $type }}" autocomplete="{{ $autocomplete }}" maxlength="{{ $max }}" @required($key!=='phone') :aria-invalid="errors.{{ $key }} ? 'true':'false'" aria-describedby="invite-{{ $key }}-error" placeholder="{{ ['name'=>'Your full name','email'=>'you@example.com','phone'=>'+63'][ $key ] }}"><p id="invite-{{ $key }}-error" class="ghl-error" x-show="errors.{{ $key }}" x-text="errors.{{ $key }}?.[0]" x-cloak></p></div>
+     @endforeach
+     <button x-ref="submitButton" class="ghl-submit" type="submit"><span x-show="busy" x-cloak class="ghl-spinner" aria-hidden="true"></span><span x-text="busy?'Sending invite…':'Start Earning'">Start Earning</span><span x-show="!busy" aria-hidden="true">→</span></button>
+    </fieldset>
+    <p class="ghl-consent">By signing up, you agree to receive your invitation link and program updates by email.</p>
+   </form>
+   <div class="ghl-next"><h3>What happens next?</h3><ol><li><b>1</b><span>Enter your details</span></li><li><b>2</b><span>Receive your Referral Bunny invite by email</span></li><li><b>3</b><span>Activate your account and start referring employers</span></li></ol></div>
+  </section>
+ </div>
+ <footer class="ghl-footer"><span>{{ $content['footer'] }}</span><span>Already a referrer? <a href="{{ route('reseller.login') }}">Sign in →</a></span></footer>
+</main>
+<dialog x-ref="result" class="ghl-dialog" aria-labelledby="invite-result-title" @close="$refs.submitButton.focus()" @click="if($event.target===$refs.result) closeModal()">
+ <button class="ghl-dialog-close" type="button" aria-label="Close" @click="closeModal()">×</button><span class="ghl-result-icon" :class="state==='error'?'is-error':''" x-text="state==='error'?'!':'✓'" aria-hidden="true"></span>
+ <h2 id="invite-result-title" x-text="({sent:'You’re almost ready to start earning!',resent:'Your invitation has been re-sent',existing:'You already have access',error:'We couldn’t send your invite'})[state]"></h2>
+ <template x-if="state==='sent'"><p>We’ve sent your Referral Bunny invitation for the GetHired referral program to <strong x-text="email"></strong>.</p></template>
+ <template x-if="state==='resent'"><p>This email already had a pending invitation. We’ve sent the latest invite link again to <strong x-text="email"></strong>.</p></template>
+ <template x-if="state==='existing'"><p>This email is already connected to the GetHired referral program. Sign in or check your inbox for access instructions.</p></template>
+ <template x-if="state==='error'"><p role="alert" x-text="message"></p></template>
+ <div x-show="state==='sent'||state==='resent'"><p>Check your inbox and click the invitation link to activate your account and start referring employers. If it hasn’t arrived, check spam or promotions.</p><ol class="ghl-success-steps"><li>1. Invitation sent</li><li>2. Open email</li><li>3. Activate account</li><li>4. Start referring</li></ol></div>
+ <div class="ghl-dialog-actions"><a class="ghl-submit" href="{{ route('reseller.login') }}" x-show="state==='existing'">Sign in</a><button class="ghl-submit" type="button" @click="closeModal()" x-show="state!=='existing'" x-text="state==='error'?'Try again':'Check my email'"></button><button class="ghl-secondary" type="button" @click="closeModal()" x-text="state==='error'||state==='existing'?'Close':'Got it'"></button></div><button type="button" class="ghl-different" @click="closeModal(); $nextTick(()=>document.getElementById('invite-email').focus())">Use a different email</button>
+</dialog>
+<dialog x-ref="faq" class="ghl-dialog" aria-labelledby="faq-title"><button class="ghl-dialog-close" aria-label="Close information" type="button" @click="$refs.faq.close()">×</button><h2 id="faq-title">How GetHired referrals work</h2><h3>Who can I refer?</h3><p>Introduce new employers who could use GetHired. After activating your referrer account, share your personal referral link.</p><h3>When do I earn?</h3><p>Signups alone do not earn rewards. A referred account must make its first qualifying payment within 30 days after signup. Self-referrals, existing customers and internal company use are excluded.</p><h3>How long do rewards last?</h3><p>New qualifying customers follow the current published offer: eligible payments for one year from their first payment. Historical rewards keep their original offer version. Refunds reverse the associated reward; company review and payout arrangements still apply.</p><h3>Where is my invite?</h3><p>Check your inbox and spam folder. Requests are limited to prevent duplicate emails. If you already have an account, sign in.</p><button class="ghl-secondary" type="button" @click="$refs.faq.close()">Got it</button></dialog>
+</body></html>

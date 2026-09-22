@@ -1,3 +1,9 @@
+@php
+    $adminSubscriptionLayout = isset($tenant, $program, $subscription)
+        && is_array($subscription)
+        && request()->routeIs('tenant.dashboard')
+        && !\App\Support\ProtectedTenants::isProtected($tenant->id);
+@endphp
 <!DOCTYPE html>
 <html lang="en"
       x-data="{ sidebarOpen: false }"
@@ -72,7 +78,7 @@
         .rb-bar-wrap:hover .rb-bar-solid { opacity: 1 !important; }
     </style>
 </head>
-<body class="bg-[#F0EFFA] font-sans antialiased" data-stitch-page="@yield('stitch_page', isset($tenant) ? 'tenant-dashboard' : 'platform-dashboard')">
+<body @if($adminSubscriptionLayout) data-rb-ui="admin-subscription-dashboard-v1" @endif class="bg-[#F0EFFA] font-sans antialiased" data-stitch-page="@yield('stitch_page', isset($tenant) ? 'tenant-dashboard' : 'platform-dashboard')">
 
 <div class="flex min-h-screen">
 
@@ -347,7 +353,7 @@
         </div>
 
         {{-- Top bar --}}
-        <header class="h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-40">
+        <header class="{{ $adminSubscriptionLayout ? 'rb-admin-topbar' : '' }} h-16 bg-white border-b border-gray-100 flex items-center px-4 lg:px-6 gap-3 shrink-0 sticky top-0 z-40">
 
             {{-- Mobile: sidebar toggle --}}
             <button type="button" @click="sidebarOpen = true"

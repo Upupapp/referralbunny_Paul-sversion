@@ -131,6 +131,7 @@ class ProgramPublicPageTabTest extends TestCase
             $table->string('name');
             $table->string('slug')->nullable();
             $table->string('program_type')->default('referral');
+            $table->string('operating_mode')->default('manual');
             $table->string('status')->default('draft');
             $table->string('public_visibility')->default('private');
             $table->string('public_cta_text')->nullable();

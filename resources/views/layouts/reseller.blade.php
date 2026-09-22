@@ -1,3 +1,4 @@
+@php $compactProfile = isset($tenant) && request()->routeIs('reseller.profile') && !\App\Support\ProtectedTenants::isProtected($tenant->id); $compactMessaging = isset($messagingPage, $tenant) && !\App\Support\ProtectedTenants::isProtected($tenant->id); $compactRewards = isset($rewardsPage, $tenant) && !\App\Support\ProtectedTenants::isProtected($tenant->id); $compactReferralAccounts = isset($referralAccounts, $tenant) && !\App\Support\ProtectedTenants::isProtected($tenant->id); $compactReferrerDashboard = isset($subscriptionDashboard, $tenant) && $subscriptionDashboard && !\App\Support\ProtectedTenants::isProtected($tenant->id); @endphp
 <!DOCTYPE html>
 <html lang="en" x-data="{ sidebarOpen: false }">
 <head>
@@ -101,7 +102,7 @@
         }
     </style>
 </head>
-<body class="rs-page-bg font-sans antialiased" data-stitch-page="@yield('stitch_page', 'referrer-dashboard')" data-stitch-fallback="referrer-dashboard">
+<body @if($compactProfile) data-rb-ui="referrer-profile-v1" @elseif($compactMessaging) data-rb-ui="referrer-messaging-v1" @elseif($compactRewards) data-rb-ui="referrer-rewards-v1" @elseif($compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) data-rb-ui="referrer-my-referrals-v1" @elseif($compactReferrerDashboard) data-rb-ui="referrer-dashboard-v1" @endif class="rs-page-bg font-sans antialiased" data-stitch-page="@yield('stitch_page', 'referrer-dashboard')" data-stitch-fallback="referrer-dashboard">
 
 <div class="flex h-screen overflow-hidden">
 
@@ -110,7 +111,7 @@
          class="fixed inset-0 bg-black/50 z-20 lg:hidden" x-cloak></div>
 
     {{-- Sidebar --}}
-    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+    <aside @if($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) x-data="{ isMobile: window.innerWidth < 1024 }" @resize.window="isMobile = window.innerWidth < 1024" :inert="isMobile && !sidebarOpen" @keydown.escape.window="sidebarOpen = false" @endif :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
            class="rs-sidebar fixed inset-y-0 left-0 z-30 w-64 flex flex-col transition-transform duration-200 lg:relative lg:translate-x-0">
 
         {{-- Logo --}}
@@ -124,11 +125,11 @@
             @endif
             <div class="flex-1 min-w-0">
                 <p class="text-white text-sm font-semibold leading-none tracking-tight">
-                    {{ $_rsBrandName ?? 'referralbunny.ai' }}
+                    {{ $_rsBrandName ?? (($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) ? 'Referral Bunny' : 'referralbunny.ai') }}
                 </p>
                 <p class="text-white/50 text-xs mt-0.5 truncate">{{ $tenant->name }}</p>
             </div>
-            <button type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
+            <button @if($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) aria-label="Close navigation" @endif type="button" @click.prevent="sidebarOpen = false" class="ml-auto lg:hidden text-white/50 hover:text-white shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -193,18 +194,25 @@
             }
         </style>
         @endif
-        <header class="{{ isset($tenant) && $tenant->id !== 'lgu-ids' ? 'rs-mobile-topbar' : '' }} bg-white border-b border-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between shrink-0">
+        <header class="{{ ($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) ? 'rb-dashboard-topbar' : (isset($tenant) && $tenant->id !== 'lgu-ids' ? 'rs-mobile-topbar' : '') }} bg-white border-b border-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3">
-                <button type="button" @click="sidebarOpen = true" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+                <button @if($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile) aria-label="Open navigation" :aria-expanded="sidebarOpen" @endif type="button" @click="sidebarOpen = true" class="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
+                @if($compactReferrerDashboard)
+                    @include('reseller.programs._navigation-search')
+                @elseif($compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile)
+                    <span class="ra-topbar-label">Referrer portal</span>
+                @else
                 <h1 class="text-sm font-semibold" style="color:#1E1B4B">@yield('title', 'Dashboard')</h1>
+                @endif
             </div>
             <div class="flex items-center gap-2">
-                @if(isset($tenant) && $tenant->id !== 'lgu-ids' && config('programs.enabled') && auth('reseller')->check())
+                @if(!$compactReferrerDashboard && isset($tenant) && $tenant->id !== 'lgu-ids' && config('programs.enabled') && auth('reseller')->check())
                     @include('reseller.programs._picker')
                 @endif
-                <x-portal-view-switch current="referrer" />
+                @unless($compactReferrerDashboard)<x-portal-view-switch current="referrer" />@endunless
+                @if($compactReferrerDashboard || $compactReferralAccounts || $compactRewards || $compactMessaging || $compactProfile)<a class="rb-topbar-account" href="{{ route('reseller.profile',$tenant->id) }}"><span>{{ $initials }}</span><span class="account-name">{{ $displayName }}</span></a>@endif
                 @yield('topbar-actions')
 
                 {{-- Anonymous mode toggle + onboarding guide --}}

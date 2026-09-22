@@ -503,6 +503,13 @@ class ExportApprovalService
     /**
      * Dispatch an in-app notification to the requester (tenant_user or reseller).
      */
+    private function referralAccountExportUrl(ExportRequest $request): ?string
+    {
+        if ($request->requester_type !== 'reseller' || ($request->export_scope['report'] ?? null) !== 'referral_accounts'
+            || \App\Support\ProtectedTenants::isProtected($request->tenant_id)) return null;
+        return route('reseller.referral-accounts.export-status', [$request->tenant_id, $request->id, 'program_id'=>$request->export_scope['program_id']]);
+    }
+
     private function notifyRequester(
         ExportRequest $request,
         string        $title,
@@ -516,6 +523,7 @@ class ExportApprovalService
             return;
         }
 
+        $actionUrl = $this->referralAccountExportUrl($request) ?? $actionUrl;
         $metadata = [
             'export_request_id' => $request->id,
             'export_type'       => $request->export_type,
@@ -618,7 +626,7 @@ class ExportApprovalService
                     requesterName:    $requesterName,
                     exportType:       $exportLabel,
                     tenantName:       $tenantName,
-                    exportRequestUrl: url("/tenant/{$request->tenant_id}/exports/{$request->id}"),
+                    exportRequestUrl: $this->referralAccountExportUrl($request) ?? url("/tenant/{$request->tenant_id}/exports/{$request->id}"),
                 ),
                 recipientEmail: $requesterEmail,
                 recipientType:  $request->requester_type,
@@ -633,7 +641,7 @@ class ExportApprovalService
                     requesterName: $requesterName,
                     exportType:    $exportLabel,
                     tenantName:    $tenantName,
-                    dashboardUrl:  url("/tenant/{$request->tenant_id}/exports"),
+                    dashboardUrl:  $this->referralAccountExportUrl($request) ?? url("/tenant/{$request->tenant_id}/exports"),
                 ),
                 recipientEmail: $requesterEmail,
                 recipientType:  $request->requester_type,
@@ -663,7 +671,7 @@ class ExportApprovalService
                     requesterName: $requesterName,
                     exportType:    $exportLabel,
                     tenantName:    $tenantName,
-                    downloadUrl:   url("/tenant/{$request->tenant_id}/exports/{$request->id}/download"),
+                    downloadUrl:   $this->referralAccountExportUrl($request) ?? url("/tenant/{$request->tenant_id}/exports/{$request->id}/download"),
                     expiresAt:     $request->file_expires_at
                         ? $request->file_expires_at->format('F j, Y')
                         : 'soon',

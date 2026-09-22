@@ -1,4 +1,11 @@
 @import 'tailwindcss';
+@import './referrer-dashboard.css';
+@import './referrer-my-referrals.css';
+@import './referrer-rewards.css';
+@import './program-messenger.css';
+@import './referrer-profile.css';
+@import './gethired-public-landing.css';
+@import './admin-subscription-dashboard.css';
 @plugin '@tailwindcss/forms';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

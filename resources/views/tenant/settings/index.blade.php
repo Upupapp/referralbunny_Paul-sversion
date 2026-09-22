@@ -76,6 +76,14 @@
                 @endif
 
                 <div class="space-y-4">
+                    @unless(\App\Support\ProtectedTenants::isProtected($tenant->id))
+                    <div>
+                        <label for="workspace-name" class="form-label">Company workspace name</label>
+                        <input id="workspace-name" type="text" name="name" class="form-input" maxlength="200" required value="{{ old('name', $tenant->name) }}">
+                        <p class="text-xs text-gray-500 mt-1">Shown in the sidebar, dashboard heading and browser tab. Your program names and workspace address stay the same.</p>
+                    </div>
+                    @endunless
+
                     <div>
                         <label class="form-label">Program Name</label>
                         <input type="text" name="program_name" class="form-input"

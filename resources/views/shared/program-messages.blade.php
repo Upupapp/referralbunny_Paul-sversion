@@ -1,43 +1,55 @@
 @extends($admin ? 'layouts.app' : 'layouts.reseller')
 @section('title', 'Messages')
 @section('nav')
-    @if($admin) @include('tenant._nav') @else @include('reseller._nav') @endif
+@if($admin) @include('tenant._nav') @else @include('reseller._nav') @endif
 @endsection
 @section('content')
-<style>
-.rb-inbox{max-width:1100px;margin:auto;color:#28204a}.rb-inbox h1{font-size:25px;font-weight:700}.rb-inbox p.rb-muted{color:#82758f;font-size:13px;margin:8px 0 22px}.rb-inbox .rb-box{background:white;border:1px solid #e7e0ef;border-radius:18px;padding:22px;margin-bottom:18px}.rb-inbox select,.rb-inbox textarea{border:1px solid #dfd5eb;border-radius:11px;padding:11px;font-size:14px;background:#fcfaff;width:100%}.rb-inbox .rb-controls{display:flex;align-items:end;gap:14px;flex-wrap:wrap}.rb-inbox label{display:block;flex:1;min-width:180px;font-size:12px;font-weight:600}.rb-inbox button,.rb-inbox .rb-refresh{background:#8b19df;color:white;border:0;border-radius:10px;padding:11px 18px;font-size:13px;text-decoration:none;display:inline-block}.rb-inbox .rb-refresh{color:#873ac0;background:#f4eaff}.rb-inbox .rb-thread{max-height:460px;overflow:auto;display:flex;flex-direction:column;gap:15px;padding:8px 0}.rb-inbox .rb-bubble{max-width:85%;background:#f3eef9;border-radius:15px;padding:13px 16px;align-self:flex-start}.rb-inbox .rb-bubble.mine{align-self:flex-end;background:#8b19df;color:white}.rb-inbox .rb-bubble p{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.rb-inbox .rb-bubble small{display:block;font-size:10px;opacity:.75;margin-bottom:6px}.rb-inbox :focus-visible{outline:3px solid #c998ef;outline-offset:2px}
-</style>
-<div class="rb-inbox">
-    <h1>Messages</h1><p class="rb-muted">{{ $admin ? 'Talk with the referrers enrolled in your programs.' : 'Choose a program to talk with its company admins.' }} Conversations stay separate for each program.</p>
-    @if(session('success'))<p role="status" class="rb-box">{{ session('success') }}</p>@endif
-    @if($errors->any())<div role="alert" class="rb-box">{{ $errors->first() }}</div>@endif
-    <form method="GET" action="{{ route($admin ? 'tenant.messages' : 'reseller.messages', $tenant->id) }}" class="rb-box rb-controls">
-        <label>Program<select name="program_id" onchange="this.form.querySelector('[name=reseller_id]')?.remove();this.form.submit()">
-            @forelse($programs as $option)<option value="{{ $option->id }}" @selected($program?->id === $option->id)>{{ $option->name }}{{ ($programUnread[$option->id] ?? 0) ? ' · '.$programUnread[$option->id].' unread' : '' }}</option>@empty<option>No enrolled programs</option>@endforelse
-        </select></label>
-        @if($admin && $program)
-        <label>Referrer<select name="reseller_id">@forelse($members as $member)<option value="{{ $member->id }}" @selected($recipient?->id === $member->id)>{{ $member->name }}{{ ($memberUnread[$member->id] ?? 0) ? ' · '.$memberUnread[$member->id].' unread' : '' }}</option>@empty<option>No enrolled referrers</option>@endforelse</select></label>
-        @endif
-        @if($program)<button type="submit">Open conversation</button>@endif
-    </form>
-    @if($program && $recipient)
-    <div class="rb-box">
-        <div class="rb-controls" style="justify-content:space-between"><strong>{{ $program->name }} · {{ $admin ? $recipient->name : 'Company admins' }}</strong><a class="rb-refresh" href="{{ request()->fullUrl() }}">Refresh</a></div>
-        <div class="rb-thread" role="log" aria-label="Conversation">
-            @forelse($messages->getCollection()->reverse() as $message)
-            <article class="rb-bubble {{ $message->sender_type === ($admin ? 'admin' : 'referrer') ? 'mine' : '' }}"><small>{{ $message->sender_name }} · {{ \Carbon\Carbon::parse($message->created_at)->format('M j, Y · H:i') }} UTC</small><p>{{ $message->body }}</p></article>
-            @empty<p class="rb-muted">No messages yet. Start the conversation below.</p>@endforelse
-        </div>
-        {{ $messages->links() }}
-        <form method="POST" action="{{ route($admin ? 'tenant.messages.program.send' : 'reseller.messages.program.send', $tenant->id) }}" style="margin-top:20px" x-data="{sending:false}" @submit="sending=true">
-            @csrf<input type="hidden" name="program_id" value="{{ $program->id }}">
-            @if($admin)<input type="hidden" name="reseller_id" value="{{ $recipient->id }}">@endif
-            <label for="program-message-body">Message</label><textarea id="program-message-body" name="body" rows="3" maxlength="5000" required placeholder="Write your message…">{{ old('body') }}</textarea>
-            <button type="submit" :disabled="sending" style="margin-top:10px" x-text="sending ? 'Sending…' : 'Send message'">Send message</button>
-        </form>
-    </div>
-    @else
-    <div class="rb-box"><strong>{{ $admin ? 'No enrolled referrers yet' : 'Join a program to start messaging' }}</strong><p class="rb-muted">{{ $admin ? 'Conversations become available when referrers are enrolled in this program.' : 'Your enrolled programs will appear here. Each conversation goes to the company admins managing that program.' }}</p><a class="rb-refresh" href="{{ route($admin ? 'tenant.programs.index' : 'reseller.programs.index', $tenant->id) }}">View programs →</a></div>
-    @endif
+@php
+ $inboxRoute=$admin?'tenant.messages':'reseller.messages';
+ $scope=['program_id'=>$program?->id]+($admin?['reseller_id'=>$recipient?->id]:[]);
+ $inboxUrl=route($inboxRoute,['tenantId'=>$tenant->id]+$scope);
+ $options=$admin?$members:$programs;
+ $selected=$admin?$recipient?->id:$program?->id;
+ $counts=$admin?$memberUnread:$programUnread;
+ $chatConfig=['messages'=>$messageRows,'draft'=>old('body',$referralDraft??''),'poll'=>$program&&$recipient&&request('page',1)==1?$inboxUrl:null,'send'=>route($admin?'tenant.messages.program.send':'reseller.messages.program.send',$tenant->id),'scope'=>$scope,'csrf'=>csrf_token(),'conversations'=>$options->map(fn($o)=>['name'=>$o->name,'unread'=>(int)($counts[$o->id]??0)])->values()->all()];
+@endphp
+<div class="msg-page {{ $admin?'msg-admin':'msg-referrer' }}" x-data="programMessenger({{ \Illuminate\Support\Js::from($chatConfig) }})" @keydown.escape.window="if($refs.details.open)closeDetails()">
+ <header class="msg-page-heading"><div><h1>Messages</h1><p>{{ $admin?'Chat with referrers in your programs.':'Chat with the company team for your referral programs.' }}</p></div>
+ @if($admin)<form method="GET" action="{{ route($inboxRoute,$tenant->id) }}"><label class="sr-only" for="msg-program">Program</label><select id="msg-program" name="program_id" onchange="this.form.submit()">@foreach($programs as $p)<option value="{{ $p->id }}" @selected($p->id===$program?->id)>{{ $p->name }}</option>@endforeach</select></form>@endif
+ </header>
+ @if($errors->any())<p role="alert" class="msg-error">{{ $errors->first() }}</p>@endif
+ <div class="msg-workspace" :class="{'msg-list-mode':mobileList}">
+  <aside class="msg-conversations" aria-label="Conversations"><div class="msg-list-heading"><h2>{{ $admin?'Referrers':'Program conversations' }}</h2><small>{{ $options->count() }} {{ $admin?'referrers':'programs' }}</small></div>
+  @if($options->count()>1)<label class="msg-search"><span class="sr-only">Search conversations</span><input type="search" placeholder="Search conversations…" x-model="search"></label>@endif
+  <div class="msg-filters"><button type="button" @click="unreadOnly=false" :aria-pressed="!unreadOnly">All</button><button type="button" @click="unreadOnly=true" :aria-pressed="unreadOnly">Unread <span>{{ $counts->sum() }}</span></button></div>
+  <div class="msg-list">
+  @foreach($options as $option)
+   @php $count=(int)($counts[$option->id]??0); $choiceScope=$admin?['program_id'=>$program->id,'reseller_id'=>$option->id]:['program_id'=>$option->id]; @endphp
+   <a class="msg-row {{ $selected===$option->id?'selected':'' }}" @if($selected===$option->id) aria-current="page" @endif href="{{ route($inboxRoute,['tenantId'=>$tenant->id]+$choiceScope) }}" x-show="(!unreadOnly || {{ $count }}>0) && {{ \Illuminate\Support\Js::from(mb_strtolower($option->name)) }}.includes(search.toLowerCase())">
+    <span class="msg-avatar">{{ mb_strtoupper(mb_substr($option->name,0,2)) }}</span><span class="msg-row-copy"><strong>{{ $option->name }}</strong><small>{{ $admin?'Program conversation':'Company admins' }}</small></span>@if($count)<span class="msg-unread" aria-label="{{ $count }} unread messages">{{ $count }}</span>@endif
+   </a>
+  @endforeach
+  <p class="msg-search-empty" x-cloak x-show="(search || unreadOnly) && !visibleConversations()">No conversations match your filters.</p>
+  @if($options->isEmpty())<p class="msg-no-options">{{ $admin?'No enrolled referrers yet.':'Join a program to start messaging.' }}</p>@endif
+  </div></aside>
+  <section class="msg-chat" aria-label="Selected conversation">
+   <header class="msg-thread-heading"><button type="button" class="msg-back" @click="mobileList=true" aria-label="Back to conversations">←</button><span class="msg-avatar">{{ mb_strtoupper(mb_substr($admin?($recipient?->name??'?'):($program?->name??'?'),0,2)) }}</span><div><h2>{{ $admin?($recipient?->name??'Choose a referrer'):($program?->name??'Choose a program') }}</h2><p>{{ $admin?'Referrer · '.$program?->name:'Company admins · In-app messaging' }}</p></div>@if($program)<button type="button" x-ref="detailsTrigger" class="msg-details-toggle" @click="showDetails()">Details</button>@endif</header>
+   <p class="msg-network" role="status" x-show="network" x-cloak><span x-text="network"></span> <button type="button" @click="poll()">Retry now</button></p>
+   <div class="msg-history" x-ref="history" @scroll="if(nearBottom())newMessages=false" aria-label="Message history" tabindex="0">
+    @if($messages && $messages->hasPages())<nav class="msg-history-pages" aria-label="Message history pages">@if($messages->nextPageUrl())<a href="{{ $messages->nextPageUrl() }}">← Older messages</a>@endif @if($messages->previousPageUrl())<a href="{{ $messages->previousPageUrl() }}">Newer messages →</a>@endif</nav>@endif
+    <template x-for="(message,i) in messages" :key="message.id"><div><div class="msg-day" x-show="separator(i)"><span x-text="day(message.at)"></span></div><article class="msg-message" :class="{'mine':message.mine,'grouped':grouped(i)}"><div class="msg-bubble"><small x-show="!grouped(i)" x-text="message.mine?'You':message.sender"></small><p x-text="message.body"></p><time :datetime="message.at" x-text="time(message.at)"></time></div></article></div></template>
+    <div class="msg-empty" x-show="!messages.length"><img src="{{ asset('images/mascots/r-bunny-celebration.webp') }}" width="80" height="80" alt="R Bunny"><h3>{{ $program&&$recipient?'Start the conversation':'No conversation selected' }}</h3><p>{{ $admin?'Select an enrolled referrer and send a message about this program.':'Have a question about the program, your referrals, or your rewards? Send the company team a message.' }}</p></div>
+   </div>
+   <button type="button" class="msg-new" x-show="newMessages" x-cloak @click="bottom()">↓ New messages</button>
+   @if($program && $recipient)
+   <form class="msg-composer" @submit.prevent="send()" method="POST" action="{{ $chatConfig['send'] }}">@csrf<input type="hidden" name="program_id" value="{{ $program->id }}">@if($admin)<input type="hidden" name="reseller_id" value="{{ $recipient->id }}">@endif
+    <p role="alert" class="msg-error" x-text="error" x-show="error" x-cloak></p>
+    <label for="msg-body" class="sr-only">Write a message</label><textarea id="msg-body" name="body" x-ref="composer" x-model="body" :readonly="sending" @input="grow($el)" @keydown.enter="if(!$event.shiftKey && !$event.isComposing){$event.preventDefault();send()}" rows="2" maxlength="5000" required placeholder="Write a message…">{{ old('body',$referralDraft??'') }}</textarea><div class="msg-compose-footer"><small>Enter to send · Shift+Enter for a new line <span x-text="body.length+'/5000'"></span></small><button type="submit" :disabled="sending || !body.trim() || body.length>5000" x-text="sending?'Sending…':'Send →'">Send →</button></div>
+   </form>@endif
+  </section>
+  <aside class="msg-context" aria-label="Program details">@include('shared.messaging.details')</aside>
+ </div>
+ <dialog x-ref="details" class="msg-details-dialog" @click="if($event.target===$el)closeDetails()" @cancel.prevent="closeDetails()"><button type="button" @click="closeDetails()" aria-label="Close details">Close ×</button>@include('shared.messaging.details')</dialog>
+ <noscript><p>Enable JavaScript to use the live messenger. Your existing messages remain saved.</p></noscript>
 </div>
 @endsection

@@ -1,0 +1,227 @@
+/* Presentation only: opt-in automated company dashboard, never protected tenants. */
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub{color:#181044;max-width:1600px;margin:auto;font-size:13px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub *{box-sizing:border-box}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .panel{background:#fff;border:1px solid #e8e2ff;border-radius:13px;padding:20px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero{background:linear-gradient(110deg,#fff,#faf7ff);margin-bottom:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .eyebrow{background:#efe4ff;color:#7935f8;font-size:11px;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:5px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h1{font-size:29px;font-weight:750;letter-spacing:-.8px;margin:8px 0 3px;line-height:1.2}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h2{font-size:18px;font-weight:700;letter-spacing:-.4px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .muted{color:#77709c;font-size:12px;line-height:1.6}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .status{font-size:12px;color:#078766;background:#d8f9eb;border-radius:15px;padding:4px 10px;vertical-align:middle;letter-spacing:0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .terms{display:flex;gap:28px;flex-wrap:wrap;margin-top:20px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .term{display:flex;gap:9px;align-items:center}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .symbol{color:#8040ff;font-size:23px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .button{border:1px solid #e5dbff;border-radius:9px;padding:10px 14px;background:#fff;color:#5929ab;font-weight:600;display:inline-block;text-decoration:none;cursor:pointer}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .primary{background:linear-gradient(125deg,#9349ff,#6835ef);color:white;border-color:transparent}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub input,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub select{border:1px solid #e4dcf6;border-radius:8px;padding:9px;background:white;color:#322352;font:inherit;max-width:100%}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card{min-height:147px;padding:18px 15px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child{background:linear-gradient(135deg,#9171e8,#522acb);color:white;border-color:transparent}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child .muted{color:#ece5ff}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card .value{font-size:25px;font-weight:750;display:block;margin:18px 0 5px;letter-spacing:-.8px;overflow-wrap:anywhere}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .icon{display:inline-flex;background:#f2eaff;border-radius:15px;width:37px;height:37px;align-items:center;justify-content:center;color:#8644ff;font-size:21px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child .icon{background:#ffffff30;color:white}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card-label{display:flex;align-items:center;gap:9px;font-size:12px;line-height:1.4;min-height:38px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(280px,1fr);gap:12px;margin-bottom:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom{display:grid;grid-template-columns:1fr 1.1fr;gap:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention{display:flex;align-items:center;gap:12px;border:1px solid #eee8fa;border-radius:11px;padding:13px;margin:9px 0;color:inherit;text-decoration:none}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention:hover{background:#faf7ff}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hint{background:#f3f0ff;border-radius:9px;padding:12px;color:#716095;font-size:12px;margin:12px 0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .legend{display:flex;gap:15px;font-size:11px;color:#736396;flex-wrap:wrap}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey{display:flex;align-items:center;gap:10px;margin:20px 0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .step{flex:1;text-align:center;background:#f8f4ff;border-radius:12px;padding:17px 7px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .step strong{font-size:23px;display:block}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub table{width:100%;border-collapse:collapse;font-size:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub th{text-align:left;background:#faf8ff;font-weight:500;color:#82739f;padding:12px 8px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub td{border-bottom:1px solid #f0eafa;padding:13px 8px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .avatar{width:29px;height:29px;border-radius:50%;background:#eee4ff;display:inline-flex;align-items:center;justify-content:center;margin-right:8px;color:#7040bd}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{width:100%;height:auto;min-height:240px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub label{font-size:11px;color:#74628f;display:block}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub dialog{width:min(480px,calc(100% - 32px));border:1px solid #e5d9ff;border-radius:20px;padding:25px;color:#261447;margin:auto;box-shadow:0 24px 80px #20104544}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub dialog::backdrop{background:#24174366}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub dialog input{width:100%;margin:5px 0 14px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub a:focus-visible,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub button:focus-visible{outline:3px solid #bf9afe;outline-offset:3px}
+@media(min-width:1450px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card .value{font-size:30px}
+}
+@media(max-width:1150px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{grid-template-columns:repeat(3,1fr)}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle{grid-template-columns:minmax(0,1.8fr) minmax(250px,1fr)}
+}
+@media(max-width:800px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom{grid-template-columns:1fr}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h1{font-size:24px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{grid-template-columns:repeat(2,1fr)}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .panel{padding:16px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{min-height:180px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .terms{gap:15px}
+}
+
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub{max-width:1600px;font-size:13px;color:#171348}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .panel{border-radius:10px;padding:16px 18px;box-shadow:0 2px 9px #5540a003;min-width:0}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero{padding:16px 20px;background:linear-gradient(110deg,#fff 25%,#f7f3ff);margin-bottom:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h1{font-size:30px;line-height:1.15;margin:7px 0 4px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h2{font-size:18px;line-height:1.3}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .muted{color:#70688e;font-size:11px;line-height:1.5}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .row{gap:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .terms{gap:26px;margin-top:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .term{gap:9px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .campaign-row{margin-top:12px;padding-top:10px;border-top:1px solid #eee6fb}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .campaign-row>div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters{margin-top:9px;gap:8px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters>div{display:flex;align-items:center;gap:6px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters input,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters select{padding:6px 8px;font-size:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters .button{padding:7px 10px;font-size:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .mechanics-link{margin-left:auto;color:#7038e6;font-weight:600;font-size:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .button{padding:8px 12px;border-radius:8px;font-size:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .primary{background:linear-gradient(120deg,#8647fa,#6935ec)}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{gap:8px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card{min-height:152px;padding:14px;display:flex;flex-direction:column}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child{background:linear-gradient(140deg,#8260df,#5f31cf)}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card .value{font-size:28px;line-height:1.2;margin:15px 0 7px;font-variant-numeric:tabular-nums}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child .value{font-size:27px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card .muted{margin-top:auto}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .icon{width:44px;height:44px;border-radius:15px;flex-shrink:0}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card-label{font-size:12px;min-height:44px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle{grid-template-columns:minmax(0,2.35fr) minmax(295px,1fr);gap:12px;align-items:stretch}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{display:block;min-height:0;height:260px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .analytics-panel{display:flex;flex-direction:column}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .analytics-panel>.hint{margin:8px 0;padding:9px 12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention{padding:9px 10px;gap:9px;margin:7px 0;border-radius:9px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention>.icon{width:36px;height:36px;border-radius:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention>span:last-child:not(.icon){margin-left:auto}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention:nth-of-type(1) .icon{color:#ee456a;background:#fff0f3}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention:nth-of-type(2) .icon,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention:nth-of-type(4) .icon{color:#d7800e;background:#fff5e7}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .attention-panel .hint{padding:9px 10px;margin:9px 0;font-size:11px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom>.panel{min-height:222px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-panel>.row{flex-wrap:nowrap;gap:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-panel .journey{margin:14px 0;gap:7px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-panel .step{padding:12px 6px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-panel .step strong{font-size:21px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot{width:145px;flex:0 0 145px;text-align:center;font-size:11px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot img{width:140px;height:140px;object-fit:contain;margin:-5px auto 0}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot .button{font-size:11px;padding:7px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub th,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub td{padding:10px 8px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .daily-data{margin-top:12px;scroll-margin-top:60px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .daily-data summary{font-weight:600;color:#7139dc;margin-bottom:8px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub a:hover{filter:brightness(.96)}
+
+@media(max-width:1199px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle{grid-template-columns:minmax(0,1.7fr) minmax(275px,1fr)}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom{grid-template-columns:1fr}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot{width:180px;flex-basis:180px}
+}
+
+@media(max-width:800px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .middle,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom{grid-template-columns:1fr}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero{padding:16px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub h1{font-size:25px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card .value,body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card:first-child .value{font-size:25px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .panel{padding:14px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{height:235px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero>.row{align-items:flex-start}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .connection-card{width:100%}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .mechanics-link{margin-left:0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters>div{display:block}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .campaign-row>div{display:block}
+}
+
+@media(max-width:480px){body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-panel>.row{flex-wrap:wrap}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot{display:flex;align-items:center;width:100%;flex-basis:100%;text-align:left;gap:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .journey-mascot img{width:85px;height:95px;margin:0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card{padding:12px;min-height:165px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card-label{align-items:flex-start;gap:7px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .card-label .icon{width:32px;height:32px;border-radius:11px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{height:190px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .legend{gap:8px}
+}
+
+
+body[data-rb-ui="admin-subscription-dashboard-v1"]{background:#f5f3ff}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .sidebar{width:218px;background:linear-gradient(155deg,#28255e,#302b6d);flex-shrink:0}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .sidebar .nav-top,body[data-rb-ui="admin-subscription-dashboard-v1"] .sidebar .nav-group{font-size:13px;font-weight:500}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .sidebar>nav{padding:12px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] main{padding:12px 16px 24px;background:linear-gradient(140deg,#f4f2ff,#faf9ff)}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar{height:48px;padding:0 24px;gap:10px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar h1{font-size:13px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar>div.max-w-lg{max-width:300px;margin:0 8px}
+
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar>div.max-w-lg button{font-size:11px;padding:6px 10px}
+
+@media(min-width:1024px){body[data-rb-ui="admin-subscription-dashboard-v1"] .sidebar{position:sticky;top:0;height:100vh}
+}
+
+@media(max-width:800px){body[data-rb-ui="admin-subscription-dashboard-v1"] main{padding:12px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar{height:auto;min-height:56px;padding:8px 12px;flex-wrap:wrap}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-admin-topbar>div.ml-auto{max-width:100%;flex-wrap:wrap}
+}
+
+/* Keep controls in the overview without adding a full-height secondary toolbar. */
+@media(min-width:1200px){
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero{display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,2fr);column-gap:18px;row-gap:8px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .hero>.row:not(.campaign-row){grid-column:1/-1}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .campaign-row{border:0;padding:0;margin:0;gap:6px;align-items:center}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .campaign-row>div{display:block;flex:1}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters{margin:0;align-content:center;justify-content:flex-end}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .dashboard-filters>span{font-size:10px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .mechanics-link{margin-left:0}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .chart{height:205px}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .analytics-panel>.row:nth-child(2){margin:10px 0!important}
+body[data-rb-ui="admin-subscription-dashboard-v1"] .rb-sub .bottom>.panel{min-height:220px}
+}

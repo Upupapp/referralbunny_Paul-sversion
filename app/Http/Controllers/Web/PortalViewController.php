@@ -27,7 +27,7 @@ class PortalViewController extends Controller
             $memberships = TenantMembership::where('tenant_user_id', $user->id)->where('status', 'active');
             if (!empty($data['tenant_id'])) $memberships->where('tenant_id', $data['tenant_id']);
             $membership = $memberships->firstOrFail();
-            $referrer = DB::transaction(function () use ($user, $membership) {
+            $referrer = DB::transaction(function () use ($user, $membership, $request) {
                 // Lock the identity so concurrent switch requests cannot create duplicate profiles.
                 TenantUser::whereKey($user->id)->lockForUpdate()->firstOrFail();
                 $existing = Reseller::withTrashed()->where('linked_tenant_user_id', $user->id)
@@ -41,9 +41,34 @@ class PortalViewController extends Controller
                     ->whereIn('status', ['active', 'nda_signed'])->orderBy('id')->first();
                 if ($linked) return $linked;
                 // Never attach an unrelated account based only on its email address.
-                abort_if(Reseller::withTrashed()->where('tenant_id', $membership->tenant_id)
-                    ->whereRaw('LOWER(email) = ?', [strtolower($user->email)])->exists(), 409,
-                    'An existing referrer profile must be linked to your account before switching.');
+                $matching = Reseller::withTrashed()->where('tenant_id', $membership->tenant_id)
+                    ->whereRaw('LOWER(email) = ?', [strtolower($user->email)])->lockForUpdate()->get();
+                if ($matching->isNotEmpty()) {
+                    // Preserve the protected tenant's existing behavior. Never link on email alone.
+                    abort_if(\App\Support\ProtectedTenants::isProtected($membership->tenant_id), 409,
+                        'An existing referrer profile must be linked to your account before switching.');
+                    $profile = $matching->count() === 1 ? $matching->first() : null;
+                    $canVerify = $profile && !$profile->trashed() && !$profile->linked_tenant_user_id
+                        && in_array($profile->status, ['active', 'nda_signed']) && $profile->password;
+                    $key = 'portal-profile-link:'.$user->id.':'.$request->ip();
+                    $error = null;
+                    if ($request->filled('password') && $canVerify) {
+                        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 5)) {
+                            $error = 'Too many attempts. Please wait a minute before trying again.';
+                        } else {
+                            \Illuminate\Support\Facades\RateLimiter::hit($key, 60);
+                            if (\Illuminate\Support\Facades\Hash::check((string)$request->input('password'), $profile->password)) {
+                                $profile->update(['linked_tenant_user_id' => $user->id]);
+                                \Illuminate\Support\Facades\RateLimiter::clear($key);
+                                return $profile;
+                            }
+                            $error = 'That password did not match your existing referrer account.';
+                        }
+                    }
+                    return response()->view('auth.link-referrer', [
+                        'tenantId' => $membership->tenant_id, 'canVerify' => (bool)$canVerify, 'linkError' => $error,
+                    ]);
+                }
                 return Reseller::create([
                     'tenant_id' => $membership->tenant_id,
                     'linked_tenant_user_id' => $user->id,
@@ -54,6 +79,8 @@ class PortalViewController extends Controller
                     'joined_date' => now()->toDateString(),
                 ]);
             });
+            // Commit failed-attempt counters even when the cache uses this database.
+            if (!$referrer instanceof Reseller) return $referrer;
             Auth::guard('tenant')->logout();
             Auth::guard('reseller')->login($referrer);
             $request->session()->forget(['url.intended', 'legal_agreements.intended_url']);

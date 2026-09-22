@@ -17,7 +17,7 @@ class GetHiredSignupSync {
    $cursor=DB::table('program_signup_sync')->where('connection_id',$connection->id)->value('cursor');
    $feed=app(GetHiredConnector::class)->request('signups',['connectionId'=>$connection->id,'cursor'=>$cursor]);
    abort_unless(($feed['connectionId']??null)===$connection->id && ($feed['programId']??null)===$program->id,502);
-   Validator::make($feed,['rows'=>'present|array|max:100','cursor'=>'nullable|string|max:128','rows.*.customerId'=>'required|string|size:64|regex:/^[a-f0-9]+$/','rows.*.membershipId'=>'required|string|max:100','rows.*.clickId'=>'nullable|uuid','rows.*.referredAt'=>'required|date','rows.*.occurredAt'=>'required|date|before_or_equal:'.now()->addMinutes(5)->toIso8601String()])->validate();
+   Validator::make($feed,['rows'=>'present|array|max:100','cursor'=>'nullable|string|max:128','rows.*.customerId'=>'required|string|size:64|regex:/^[a-f0-9]+$/','rows.*.paymentCustomerIds'=>'sometimes|array','rows.*.paymentCustomerIds.*'=>'required|string|max:120','rows.*.membershipId'=>'required|string|max:100','rows.*.clickId'=>'nullable|uuid','rows.*.referredAt'=>'required|date','rows.*.occurredAt'=>'required|date|before_or_equal:'.now()->addMinutes(5)->toIso8601String()])->validate();
    DB::transaction(function()use($feed,$connection,$program,&$count){
     foreach($feed['rows'] as $row) {
      $member=ReferrerProgramMembership::where('tenant_id',$connection->tenant_id)->where('program_id',$program->id)->find($row['membershipId']);
@@ -27,6 +27,11 @@ class GetHiredSignupSync {
      $clickId=null;
      if(!empty($row['clickId']) && DB::table('program_referral_clicks')->where('id',$row['clickId'])->where('membership_id',$member->id)->where('created_at','<=',$occurred)->exists())$clickId=$row['clickId'];
      $count+=DB::table('program_signup_events')->insertOrIgnore(['connection_id'=>$connection->id,'customer_id'=>$row['customerId'],'membership_id'=>$member->id,'click_id'=>$clickId,'occurred_at'=>$occurred,'referred_at'=>$referred,'created_at'=>now()]);
+     // Connector-supplied company ownership mapping only; never infer from email or names.
+     $owned=DB::table('program_signup_events')->where('connection_id',$connection->id)->where('customer_id',$row['customerId'])->where('membership_id',$member->id)->exists();
+     if($owned && !empty($row['paymentCustomerIds'])) foreach($row['paymentCustomerIds'] as $paymentCustomer) {
+      DB::table('program_signup_account_links')->insertOrIgnore(['connection_id'=>$connection->id,'signup_customer_id'=>$row['customerId'],'payment_customer_id'=>$paymentCustomer,'membership_id'=>$member->id,'created_at'=>now()]);
+     }
      if($clickId)DB::table('program_signup_events')->where('connection_id',$connection->id)->where('customer_id',$row['customerId'])->where('membership_id',$member->id)->whereNull('click_id')->update(['click_id'=>$clickId]);
     }
     DB::table('program_signup_sync')->where('connection_id',$connection->id)->update(['cursor'=>$feed['cursor']??null,'synced_at'=>now(),'status'=>'ready']);

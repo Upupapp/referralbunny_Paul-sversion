@@ -1,0 +1,6 @@
+@if($program)
+<section><span class="msg-eyebrow">{{ $admin ? 'Referrer' : 'Talking with' }}</span><h3>{{ $admin ? $recipient?->name : 'Company admins' }}</h3><p>{{ $admin ? 'This conversation belongs to the selected program.' : 'Replies come from the company team managing this program.' }}</p></section>
+<section><span class="msg-eyebrow">Program</span><h3>{{ $program->name }}</h3><p>{{ $program->referralProgramLabel() }}</p><span class="msg-status">{{ ucfirst($program->status) }}</span><a href="{{ $admin ? route('tenant.programs.workspace',[$tenant->id,$program->id]).'?tab=mechanics' : route('reseller.programs.show',[$tenant->id,$program->id]).'?tab=mechanics' }}">View full mechanics →</a></section>
+@if(!$admin)<section><h3>Your program</h3><a href="{{ route('reseller.deals',['tenantId'=>$tenant->id,'program_id'=>$program->id]) }}">My referrals →</a><a href="{{ route('reseller.commission',['tenantId'=>$tenant->id,'program_id'=>$program->id]) }}">My rewards →</a></section>@endif
+<section class="msg-tip"><img src="{{ asset('images/mascots/r-bunny-celebration.webp') }}" width="72" height="72" alt="R Bunny"><h3>A little context helps</h3><p>Include a referral reference or date so the company team can help you faster.</p></section>
+@endif

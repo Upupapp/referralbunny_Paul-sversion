@@ -13,6 +13,8 @@ class ReferrerProgramPortalController extends Controller
         extract($context);
         $tenant = Tenant::findOrFail($tenantId);
         $mode = $program?->effectiveOperatingMode();
+        if ($mode === 'automated' && $request->routeIs('reseller.deals')) return app(ReferrerReferralAccountController::class)->index($request,$tenantId);
+        if ($mode === 'automated' && $request->routeIs('reseller.commission')) return app(ReferrerRewardsController::class)->index($request,$tenantId);
         $records = null; $totals = collect(); $membership = null; $offers = collect(); $stages = collect();
         if ($program) {
             $membership = $program->referrerMemberships()->where('tenant_id',$tenantId)->where('reseller_id',$reseller->id)->first();
@@ -20,6 +22,13 @@ class ReferrerProgramPortalController extends Controller
             if ($mode === 'automated') {
                 $ids = ProgramConnection::where('tenant_id',$tenantId)->where('program_id',$program->id)->pluck('id');
                 $events = DB::table('program_conversion_events')->whereIn('connection_id',$ids)->where('referrer_id',$reseller->id)->whereIn('type',['payment','refund']);
+                if ($request->filled('referral_reference') && $request->routeIs('reseller.commission','reseller.activity')) {
+                    $request->validate(['referral_reference'=>'string|max:100']);
+                    $read=app(\App\Services\Programs\ReferralAccountReadModel::class);
+                    $read->detail($program,$reseller,$request->referral_reference,$program->default_currency ?: 'PHP');
+                    $eventIds=DB::query()->fromSub($read->sources($program,$reseller),'source')->where('reference',$request->referral_reference)->whereNotNull('event_id')->select('event_id');
+                    $events->whereIn(DB::raw('CAST(id AS TEXT)'),$eventIds);
+                }
                 $totals = (clone $events)->selectRaw("currency, SUM(reward_minor) as reward_minor, SUM(CASE WHEN type = 'payment' THEN 1 ELSE 0 END) as payments")->groupBy('currency')->get();
                 $records = $events->orderByDesc('occurred_at')->paginate(20)->withQueryString();
             } else {

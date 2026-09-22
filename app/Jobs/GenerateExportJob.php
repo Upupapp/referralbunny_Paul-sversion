@@ -22,11 +22,10 @@ class GenerateExportJob implements ShouldQueue
     public int    $tries   = 2;
     public int    $timeout = 300;
     public int    $backoff = 60;
-    public string $queue   = 'exports';
 
     public function __construct(
         private string $exportRequestId,
-    ) {}
+    ) { $this->onQueue('exports'); }
 
     public function failed(Throwable $e): void
     {
@@ -60,6 +59,8 @@ class GenerateExportJob implements ShouldQueue
         ], true)) {
             return;
         }
+
+        if (($request->export_scope['report'] ?? null) === 'referral_accounts' && $request->status === ExportRequest::STATUS_PENDING) return;
 
         try {
             $approvalService->markProcessing($request);
@@ -152,6 +153,9 @@ class GenerateExportJob implements ShouldQueue
      */
     private function generateDeals(ExportRequest $request): array
     {
+        if (($request->export_scope['report'] ?? null) === 'referral_accounts') {
+            return app(\App\Services\Programs\ReferralAccountExport::class)->rows($request);
+        }
         $query = DB::table('leads')
             ->where('tenant_id', $request->tenant_id)
             ->whereNull('deleted_at')

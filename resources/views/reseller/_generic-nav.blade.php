@@ -12,7 +12,9 @@
         ['Profile', 'reseller.profile', 'M16 7a4 4 0 11-8 0 4 4 0 018 0M4 21a8 8 0 0116 0'],
     ];
 @endphp
+@php $_navSelectedProgram = $program ?? (config('programs.enabled') ? app(\App\Services\Programs\ReferrerProgramContext::class)->resolve($tenant->id,request())['program'] : null); @endphp
 @foreach($referrerTabs as [$label, $tabRoute, $icon])
+    @continue($tabRoute === 'reseller.activity' && $_navSelectedProgram?->effectiveOperatingMode() === 'automated')
     @continue($tabRoute === 'reseller.programs.index' && !config('programs.enabled'))
     @php $tabActive = request()->routeIs($tabRoute, $tabRoute === 'reseller.programs.index' ? 'reseller.programs.*' : $tabRoute.'.*'); @endphp
     <a href="{{ route($tabRoute, $tenant->id) }}" class="rs-sidebar-link {{ $tabActive ? 'active' : '' }}" @if($tabActive) aria-current="page" @endif>

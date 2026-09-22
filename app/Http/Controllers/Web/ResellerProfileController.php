@@ -30,7 +30,7 @@ class ResellerProfileController extends Controller
         $reseller = Auth::guard('reseller')->user();
         if (!$reseller) abort(403);
 
-        $data = $request->validate([
+        $rules = [
             'nickname'     => 'nullable|string|max:50',
             'phone'        => 'nullable|string|max:30',
             'job_title'    => 'nullable|string|max:100',
@@ -41,7 +41,11 @@ class ResellerProfileController extends Controller
             'timezone'     => 'nullable|string|max:100',
             'language'     => 'nullable|string|max:20',
             'bio'          => 'nullable|string|max:500',
-        ]);
+        ];
+        if (!\App\Support\ProtectedTenants::isProtected($tenantId)) {
+            $rules['name'] = 'required|string|max:150';
+        }
+        $data = $request->validate($rules);
 
         $reseller->update($data);
         Auth::guard('reseller')->setUser($reseller->fresh());

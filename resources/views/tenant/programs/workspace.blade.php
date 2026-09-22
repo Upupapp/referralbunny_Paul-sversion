@@ -1056,6 +1056,9 @@
             <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
             @endif
 
+            @if(\App\Services\Programs\GetHiredPublicLanding::matches($program))
+                @include('tenant.programs.partials.gethired-landing-editor')
+            @else
             <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
                 <div>
                     <h2 class="text-base font-semibold text-heading">Live public page</h2>
@@ -1101,6 +1104,7 @@
                     @endcan
                 </div>
             </form>
+            @endif
         </div>
 
         {{-- ── Intake tab ────────────────────────────────────────────────────── --}}

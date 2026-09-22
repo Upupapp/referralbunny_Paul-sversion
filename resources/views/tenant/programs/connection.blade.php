@@ -4,18 +4,19 @@
     @include('tenant._nav', ['tenant' => $tenant])
 @endsection
 @section('content')
+@php($gethiredTrackingCopy = $program->id === '8184125a-ace1-4db8-b7d9-884e692002b4' && $connection->platform === 'gethired')
 <main class="max-w-4xl mx-auto p-5 sm:p-8 space-y-6">
     <div class="rounded-2xl bg-white border border-purple-100 p-6">
         <p class="text-xs font-semibold uppercase tracking-wide text-purple-700">{{ $program->name }}</p>
-        <h1 class="text-2xl font-bold mt-2">Your program is ready. Connect your platform next.</h1>
+        <h1 class="text-2xl font-bold mt-2">{{ $gethiredTrackingCopy ? 'Your GetHired referral connection' : 'Your program is ready. Connect your platform next.' }}</h1>
         <p class="mt-3 text-sm text-slate-600">{{ $connection->website }}</p>
         <p class="mt-3 font-semibold {{ $connection->status === 'connected' ? 'text-green-700' : 'text-amber-700' }}">{{ ['connected' => 'Payment tracking connected', 'tested' => 'Test received · Waiting for a live payment', 'not_connected' => 'Payment tracking not connected'][$connection->status] }}</p>
-        <p class="text-sm text-slate-500 mt-2">Connect your platform below. Account connection and payment tracking are shown separately.</p>
+        <p class="text-sm text-slate-500 mt-2">{{ $gethiredTrackingCopy ? 'Check account access, referred signups and payment tracking below. A connected account can be ready before its first customer payment.' : 'Connect your platform below. Account connection and payment tracking are shown separately.' }}</p>
         <a href="{{ route('tenant.programs.workspace', [$tenant->id, $program->id]) }}" class="inline-block mt-4 text-purple-700 underline">Open program workspace</a>
     </div>
     <section class="bg-white rounded-2xl border border-purple-100 p-6 space-y-4">
-        <h2 class="text-xl font-bold">Connect my platform</h2>
-        <p class="text-sm text-slate-600">Connect your platform without copying code or API keys.</p>
+        <h2 class="text-xl font-bold">{{ $gethiredTrackingCopy ? 'Tracking status' : 'Connect my platform' }}</h2>
+        <p class="text-sm text-slate-600">{{ $gethiredTrackingCopy ? 'These statuses are checked directly with GetHired. Use Check connection to refresh them.' : 'Connect your platform without copying code or API keys.' }}</p>
         @if(session('platform_message'))<p role="status" class="text-purple-700">{{ session('platform_message') }}</p>@endif
         @if($errors->has('platform'))<p role="alert" class="text-red-700">{{ $errors->first('platform') }}</p>@endif
         <div class="rounded-xl border p-5 space-y-4" x-data="gethiredConnection(@js(['enabled'=>(bool)config('services.gethired.enabled'),'previouslyConnected'=>(bool)$connection->platform_connected_at,'statusUrl'=>route('tenant.quick-program.gethired.status',[$tenant->id,$program->id])]))">
@@ -26,7 +27,7 @@
                 <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Payment tracking</dt><dd class="mt-1 text-sm font-semibold" x-text="paymentLabel">Not verified</dd></div>
             </dl>
             @if(config('services.gethired.owner_connection_id'))
-                <p class="text-sm text-slate-600">GetHired is configured by the platform owner for its designated referral program. No separate GetHired login is needed. Signup tracking is available after connection; payment and refund tracking require a separate setup.</p>
+                <p class="text-sm text-slate-600">{{ $gethiredTrackingCopy ? 'GetHired is managed by the platform owner. No extra login, snippet or test purchase is needed here. When payment tracking is enabled, verified eligible payments and refund reversals sync automatically. A signup alone does not earn a reward.' : 'GetHired is configured by the platform owner for its designated referral program. No separate GetHired login is needed. Signup tracking is available after connection; payment and refund tracking require a separate setup.' }}</p>
             @else
             <p class="text-sm text-slate-600">Sign in as a GetHired platform administrator to approve access. Reconnecting an active account preserves saved referral details. Payment tracking requires separate approval when enabled. Refund synchronization is not available yet.</p>
             @endif
@@ -127,7 +128,7 @@ await fetch(process.env.RB_ENDPOINT, {
         @forelse($events as $event)
             <tr class="border-t"><td class="p-2">{{ $event->invoice_id }}</td><td class="p-2">{{ $event->type }}</td><td class="p-2">{{ $event->currency }} {{ number_format($event->reward_minor / 100, 2) }}</td><td class="p-2">{{ str_replace('_', ' ', $event->status) }}</td><td class="p-2">{{ $event->available_at ?? '—' }}</td></tr>
         @empty
-            <tr><td colspan="5" class="p-4 text-slate-500">No payment events yet. Send a signed test request to check your connection.</td></tr>
+            <tr><td colspan="5" class="p-4 text-slate-500">{{ $gethiredTrackingCopy ? 'No confirmed referred payments yet. Eligible customer purchases will appear here automatically when payment tracking is enabled. No test purchase is needed.' : 'No payment events yet. Send a signed test request to check your connection.' }}</td></tr>
         @endforelse
         </tbody></table></div>
     </section>

@@ -35,6 +35,9 @@ Route::post('/logout',[AuthWebController::class, 'logout'])->name('logout');
 Route::post('/portal/switch-view', [\App\Http\Controllers\Web\PortalViewController::class, 'switchView'])->middleware('auth:tenant,reseller')->name('portal.switch-view');
 Route::get('/portal/my-programs', [\App\Http\Controllers\Web\PortalViewController::class, 'myPrograms'])->middleware('auth:tenant,reseller')->name('portal.my-programs');
 
+Route::get('/gethired/referrals', [\App\Http\Controllers\Web\GetHiredPublicLandingController::class,'show'])->name('public.gethired.referrers');
+Route::post('/gethired/referrals/invite', [\App\Http\Controllers\Web\GetHiredPublicLandingController::class,'invite'])->middleware('throttle:5,1')->name('public.gethired.invite');
+
 // ── Root — public marketing landing page ──────────────────────
 Route::get('/', [PublicLandingController::class, 'index'])->name('public.home');
 
@@ -120,6 +123,9 @@ Route::middleware(['auth:reseller,web', 'reseller.access', 'legal.agreements'])
     ->name('reseller.')
     ->group(function () {
         Route::get('/dashboard',  [ResellerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/referral-accounts/{reference}', [\App\Http\Controllers\Web\ReferrerReferralAccountController::class,'detail'])->name('referral-accounts.detail');
+        Route::post('/referral-account-exports', [\App\Http\Controllers\Web\ReferrerReferralAccountController::class,'export'])->middleware('throttle:5,1')->name('referral-accounts.export');
+        Route::get('/referral-account-exports/{exportId}', [\App\Http\Controllers\Web\ReferrerReferralAccountController::class,'exportStatus'])->name('referral-accounts.export-status');
         Route::get('/deals',                                       [ResellerPortalController::class, 'deals'])->name('deals');
         // ── Deal Import (Referrer) — must be before /deals/{dealId} to avoid route conflict
         Route::get('/deals/imports',                                   [\App\Http\Controllers\Web\TenantDealImportController::class, 'index'])->name('deals.imports');
@@ -432,6 +438,8 @@ Route::middleware(['auth:tenant,web', 'tenant.access', 'legal.agreements'])->pre
         Route::get('/',                                   [\App\Http\Controllers\Web\ProgramController::class, 'index'])->name('index');
         Route::get('/create',                             [\App\Http\Controllers\Web\ProgramController::class, 'create'])->name('create');
         Route::post('/',                                  [\App\Http\Controllers\Web\ProgramController::class, 'store'])->middleware('throttle:20,1')->name('store');
+        Route::get('/{programId}/public-landing/preview', [\App\Http\Controllers\Web\GetHiredPublicLandingController::class,'preview'])->name('landing.preview');
+        Route::patch('/{programId}/public-landing', [\App\Http\Controllers\Web\GetHiredPublicLandingController::class,'update'])->middleware('throttle:20,1')->name('landing.update');
         Route::get('/{programId}',                        [\App\Http\Controllers\Web\ProgramWorkspaceController::class, 'show'])->name('workspace');
         Route::post('/{programId}/members/bulk-resend', [\App\Http\Controllers\Web\ProgramReferrersController::class, 'bulkResend'])->middleware('throttle:2,1')->name('members.bulk-resend');
         Route::post('/{programId}/members/{membershipId}/cancel', [\App\Http\Controllers\Web\ProgramReferrersController::class, 'cancel'])->name('members.cancel');
